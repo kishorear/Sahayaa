@@ -10,16 +10,20 @@ import TicketDetailsPage from "@/pages/admin/TicketDetailsPage";
 import TeamPage from "@/pages/admin/TeamPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
+import AuthPage from "@/pages/AuthPage";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/tickets" component={TicketsPage} />
-      <Route path="/admin/tickets/:id" component={TicketDetailsPage} />
-      <Route path="/admin/team" component={TeamPage} />
-      <Route path="/admin/settings" component={SettingsPage} />
+      <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/" component={Home} />
+      <ProtectedRoute path="/admin" component={AdminDashboard} />
+      <ProtectedRoute path="/admin/tickets" component={TicketsPage} />
+      <ProtectedRoute path="/admin/tickets/:id" component={TicketDetailsPage} />
+      <ProtectedRoute path="/admin/team" component={TeamPage} />
+      <ProtectedRoute path="/admin/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -28,9 +32,11 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <ChatbotInterface />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <ChatbotInterface />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -297,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/metrics/recent", async (req, res) => {
+  app.get("/api/metrics/recent", requireAuth, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 5;
       const tickets = await storage.getAllTickets();

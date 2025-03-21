@@ -1,10 +1,39 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Home() {
+  const { user, logoutMutation } = useAuth();
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Navigation Bar */}
+      <nav className="bg-white dark:bg-gray-900 border-b">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
+              </svg>
+              <span className="ml-2 text-xl font-bold">SupportAI</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-sm">
+                Welcome, <span className="font-semibold">{user?.name || user?.username}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                {logoutMutation.isPending ? "Logging out..." : "Logout"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
       <header className="bg-gradient-to-r from-indigo-600 to-indigo-500 text-white">
         <div className="container mx-auto px-4 py-16 md:py-24">
@@ -186,11 +215,11 @@ export default function Home() {
             </div>
             <div className="flex space-x-6">
               <Link href="/admin">
-                <a className="hover:text-white transition-colors">Admin Dashboard</a>
+                <span className="hover:text-white transition-colors cursor-pointer">Admin Dashboard</span>
               </Link>
-              <a href="#" className="hover:text-white transition-colors">Documentation</a>
-              <a href="#" className="hover:text-white transition-colors">API</a>
-              <a href="#" className="hover:text-white transition-colors">Contact</a>
+              <span className="hover:text-white transition-colors cursor-pointer">Documentation</span>
+              <span className="hover:text-white transition-colors cursor-pointer">API</span>
+              <span className="hover:text-white transition-colors cursor-pointer">Contact</span>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">

@@ -1,0 +1,358 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation } from "./ai";
+import { z } from "zod";
+import { 
+  insertTicketSchema, 
+  insertMessageSchema, 
+  insertUserSchema,
+  type InsertTicket,
+  type InsertMessage,
+  type ChatbotResponse
+} from "@shared/schema";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // AUTH ROUTES
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user || user.password !== password) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // In a real application, you would use proper authentication with sessions/JWT
+      // and not return the password
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.status(200).json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
+      
+      const newUser = await storage.createUser(userData);
+      const { password: _, ...userWithoutPassword } = newUser;
+      
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // TICKET ROUTES
+  app.get("/api/tickets", async (req, res) => {
+    try {
+      const tickets = await storage.getAllTickets();
+      res.status(200).json(tickets);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/tickets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ticket = await storage.getTicketById(id);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      const messages = await storage.getMessagesByTicketId(id);
+      res.status(200).json({ ...ticket, messages });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/tickets", async (req, res) => {
+    try {
+      const ticketData = insertTicketSchema.parse(req.body);
+      
+      // Use AI to classify the ticket
+      const classification = await classifyTicket(ticketData.title, ticketData.description);
+      
+      const newTicket: InsertTicket = {
+        ...ticketData,
+        category: classification.category,
+        complexity: classification.complexity,
+        assignedTo: classification.assignedTo,
+        aiNotes: classification.aiNotes,
+      };
+      
+      const ticket = await storage.createTicket(newTicket);
+      
+      // Attempt to auto-resolve if AI thinks it can
+      if (classification.canAutoResolve) {
+        const { resolved, response } = await attemptAutoResolve(ticket.title, ticket.description);
+        
+        // Store AI response as a message
+        await storage.createMessage({
+          ticketId: ticket.id,
+          sender: "ai",
+          content: response,
+          metadata: { isAutoResolved: resolved }
+        });
+        
+        if (resolved) {
+          // Update ticket as resolved by AI
+          await storage.updateTicket(ticket.id, { 
+            status: "resolved",
+            aiResolved: true,
+            resolvedAt: new Date()
+          });
+        }
+      }
+      
+      res.status(201).json(ticket);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/tickets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ticket = await storage.getTicketById(id);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      const updatedTicket = await storage.updateTicket(id, req.body);
+      res.status(200).json(updatedTicket);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // MESSAGE ROUTES
+  app.get("/api/tickets/:ticketId/messages", async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId);
+      const messages = await storage.getMessagesByTicketId(ticketId);
+      res.status(200).json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/tickets/:ticketId/messages", async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId);
+      const messageData = insertMessageSchema.parse({ ...req.body, ticketId });
+      
+      const ticket = await storage.getTicketById(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      const newMessage = await storage.createMessage(messageData);
+      
+      // If message is from user and ticket is still active, generate AI response
+      if (messageData.sender === "user" && ticket.status !== "resolved") {
+        const messages = await storage.getMessagesByTicketId(ticketId);
+        
+        // Convert to the format expected by the AI
+        const messageHistory = messages.map(msg => ({
+          role: msg.sender === "user" ? "user" : "assistant",
+          content: msg.content
+        }));
+        
+        // Generate AI response
+        const aiResponse = await generateChatResponse(
+          { id: ticket.id, title: ticket.title, description: ticket.description, category: ticket.category },
+          messageHistory,
+          messageData.content
+        );
+        
+        // Store AI response
+        const aiMessage = await storage.createMessage({
+          ticketId,
+          sender: "ai",
+          content: aiResponse,
+          metadata: null
+        });
+        
+        // Check if ticket should be marked as resolved
+        if (aiResponse.toLowerCase().includes("resolved") && 
+            !aiResponse.toLowerCase().includes("not resolved")) {
+          await storage.updateTicket(ticketId, { 
+            status: "resolved",
+            aiResolved: true,
+            resolvedAt: new Date()
+          });
+        }
+        
+        return res.status(201).json({ 
+          userMessage: newMessage, 
+          aiMessage
+        });
+      }
+      
+      res.status(201).json(newMessage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // CHATBOT API - For direct interactions without creating a ticket first
+  app.post("/api/chatbot", async (req, res) => {
+    try {
+      const { message } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+      
+      // First determine if we need to create a ticket
+      const initialClassification = await classifyTicket("New chat request", message);
+      
+      let response: ChatbotResponse;
+      
+      if (initialClassification.canAutoResolve) {
+        // Try to auto-resolve without creating a ticket
+        const { resolved, response: aiResponse } = await attemptAutoResolve("New chat request", message);
+        
+        response = {
+          message: aiResponse,
+          action: resolved ? { type: 'resolve_ticket', data: null } : undefined
+        };
+      } else {
+        // Need to create a ticket
+        response = {
+          message: "I'll need to create a support ticket for this issue. Our team will follow up with you.",
+          action: {
+            type: 'create_ticket',
+            data: {
+              title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+              description: message,
+              category: initialClassification.category,
+              complexity: initialClassification.complexity,
+              assignedTo: initialClassification.assignedTo,
+              aiNotes: initialClassification.aiNotes
+            }
+          }
+        };
+      }
+      
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "I'm having trouble processing your request right now. Please try again shortly."
+      });
+    }
+  });
+
+  // DASHBOARD METRICS
+  app.get("/api/metrics/summary", async (req, res) => {
+    try {
+      const tickets = await storage.getAllTickets();
+      
+      const totalTickets = tickets.length;
+      const resolvedTickets = tickets.filter(t => t.status === "resolved").length;
+      
+      // Calculate avg response time (placeholder calculation, would be more accurate in real app)
+      let totalResponseTime = 0;
+      let ticketsWithResponseTime = 0;
+      
+      for (const ticket of tickets) {
+        if (ticket.resolvedAt && ticket.createdAt) {
+          const created = new Date(ticket.createdAt);
+          const resolved = new Date(ticket.resolvedAt);
+          const responseTimeHours = (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
+          totalResponseTime += responseTimeHours;
+          ticketsWithResponseTime++;
+        }
+      }
+      
+      const avgResponseTime = ticketsWithResponseTime ? 
+        (totalResponseTime / ticketsWithResponseTime).toFixed(1) + " hours" : 
+        "N/A";
+      
+      // Calculate AI resolution percentage
+      const aiResolvedCount = tickets.filter(t => t.aiResolved).length;
+      const aiResolvedPercentage = totalTickets ? 
+        Math.round((aiResolvedCount / totalTickets) * 100) + "%" : 
+        "0%";
+      
+      res.status(200).json({
+        totalTickets,
+        resolvedTickets,
+        avgResponseTime,
+        aiResolvedPercentage
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/metrics/categories", async (req, res) => {
+    try {
+      const tickets = await storage.getAllTickets();
+      
+      // Count tickets by category
+      const categoryCount: Record<string, number> = {};
+      
+      tickets.forEach(ticket => {
+        categoryCount[ticket.category] = (categoryCount[ticket.category] || 0) + 1;
+      });
+      
+      // Calculate percentages
+      const distribution = Object.entries(categoryCount).map(([category, count]) => ({
+        category,
+        count,
+        percentage: Math.round((count / tickets.length) * 100)
+      }));
+      
+      res.status(200).json(distribution);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/metrics/recent", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 5;
+      const tickets = await storage.getAllTickets();
+      
+      // Sort by createdAt (descending) and take the most recent ones
+      const recentTickets = tickets
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, limit);
+      
+      res.status(200).json(recentTickets);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  const httpServer = createServer(app);
+  return httpServer;
+}

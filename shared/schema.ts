@@ -9,15 +9,19 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   name: text("name"),
   email: text("email"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  role: true,
-  name: true,
-  email: true,
-});
+export const insertUserSchema = createInsertSchema(users)
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .pick({
+    username: true,
+    password: true,
+    role: true,
+    name: true,
+    email: true,
+  });
 
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),
@@ -44,10 +48,11 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   metadata: json("metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export const insertMessageSchema = createInsertSchema(messages)
-  .omit({ id: true, createdAt: true });
+  .omit({ id: true, createdAt: true, updatedAt: true });
 
 // Type definitions
 export type User = typeof users.$inferSelect;

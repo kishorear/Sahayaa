@@ -1,7 +1,10 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI();
+
+// Log to verify OpenAI initialization without exposing the key
+console.log("OpenAI client initialized");
 
 type ChatMessage = {
   role: 'user' | 'assistant' | 'system';
@@ -42,7 +45,8 @@ export async function classifyTicket(title: string, description: string): Promis
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(response.choices[0].message.content) as TicketClassification;
+    const content = response.choices[0].message.content || '{}';
+    return JSON.parse(content) as TicketClassification;
   } catch (error) {
     console.error("Error classifying ticket:", error);
     // Fallback classification if AI fails
@@ -79,11 +83,12 @@ export async function attemptAutoResolve(title: string, description: string, pre
       messages
     });
 
-    const content = response.choices[0].message.content;
-    const resolved = content.toLowerCase().includes('resolved') && 
-                    !content.toLowerCase().includes('not resolved') && 
-                    !content.toLowerCase().includes('escalate') &&
-                    !content.toLowerCase().includes('human intervention');
+    const content = response.choices[0].message.content || '';
+    const lowerContent = content.toLowerCase();
+    const resolved = lowerContent.includes('resolved') && 
+                    !lowerContent.includes('not resolved') && 
+                    !lowerContent.includes('escalate') &&
+                    !lowerContent.includes('human intervention');
 
     return {
       resolved,
@@ -124,7 +129,7 @@ export async function generateChatResponse(
       messages
     });
 
-    return response.choices[0].message.content;
+    return response.choices[0].message.content || "I'm sorry, I couldn't process your request.";
   } catch (error) {
     console.error("Error generating chat response:", error);
     return "I'm having trouble connecting right now. Please try again in a moment or I can escalate this to our support team.";
@@ -143,7 +148,7 @@ export async function summarizeConversation(messages: ChatMessage[]): Promise<st
       messages: [{ role: "user", content: prompt }]
     });
 
-    return response.choices[0].message.content;
+    return response.choices[0].message.content || "No summary available.";
   } catch (error) {
     console.error("Error summarizing conversation:", error);
     return "Unable to generate summary at this time.";

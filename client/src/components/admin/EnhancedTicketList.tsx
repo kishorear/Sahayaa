@@ -240,7 +240,7 @@ export default function EnhancedTicketList() {
                           <TableCell className="font-medium">{ticket.id}</TableCell>
                           <TableCell>
                             <Link href={`/admin/tickets/${ticket.id}`}>
-                              <a className="hover:underline text-blue-600">{ticket.title}</a>
+                              <span className="hover:underline text-blue-600 cursor-pointer">{ticket.title}</span>
                             </Link>
                           </TableCell>
                           <TableCell>{formatCategory(ticket.category || '')}</TableCell>

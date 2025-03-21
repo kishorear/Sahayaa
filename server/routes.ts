@@ -276,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tickets = await storage.getAllTickets();
       
       const totalTickets = tickets.length;
-      const resolvedTickets = tickets.filter(t => t.status === "resolved").length;
+      const resolvedTickets = tickets.filter(t => t.status === "resolved" || t.resolvedAt !== null).length;
       
       // Calculate avg response time (placeholder calculation, would be more accurate in real app)
       let totalResponseTime = 0;

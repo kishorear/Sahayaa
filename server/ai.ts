@@ -3,7 +3,7 @@ import { findRelevantKnowledgeBaseEntries } from './knowledgeBase';
 
 console.log("Local AI implementation initialized");
 
-type ChatMessage = {
+export type ChatMessage = {
   role: 'user' | 'assistant' | 'system';
   content: string;
 };

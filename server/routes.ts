@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation, type ChatMessage } from "./ai";
+import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation } from "./ai";
+import type { ChatMessage } from "./ai";
 import { z } from "zod";
 import { 
   insertTicketSchema, 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation } from "./ai";
+import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation, type ChatMessage } from "./ai";
 import { z } from "zod";
 import { 
   insertTicketSchema, 
@@ -177,10 +177,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const messages = await storage.getMessagesByTicketId(ticketId);
         
         // Convert to the format expected by the AI
-        const messageHistory = messages.map(msg => ({
+        const messageHistory: ChatMessage[] = messages.map(msg => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.content
-        }));
+        } as ChatMessage));
         
         // Generate AI response
         const aiResponse = await generateChatResponse(

@@ -145,7 +145,11 @@ export class MemStorage implements IStorage {
     
     // Create the sample tickets
     for (const ticketData of sampleTickets) {
-      const ticket = await this.createTicket(ticketData);
+      // Override the default status with the one from the sample data
+      const ticket = await this.createTicket({
+        ...ticketData,
+        status: ticketData.status || "new"
+      });
       
       // For resolved tickets, set a resolvedAt date
       if (ticket.status === "resolved") {
@@ -153,7 +157,8 @@ export class MemStorage implements IStorage {
         resolvedDate.setHours(resolvedDate.getHours() - Math.floor(Math.random() * 72)); // Random time within last 3 days
         await this.updateTicket(ticket.id, { 
           resolvedAt: resolvedDate,
-          status: "resolved"
+          status: "resolved",
+          aiResolved: ticketData.aiResolved || false
         });
       }
       
@@ -227,8 +232,8 @@ export class MemStorage implements IStorage {
     const ticket = {
       ...insertTicket,
       id,
-      status: "new",
-      aiResolved: false,
+      status: insertTicket.status || "new",
+      aiResolved: insertTicket.aiResolved || false,
       complexity: insertTicket.complexity || "medium",
       assignedTo: insertTicket.assignedTo || null,
       aiNotes: insertTicket.aiNotes || null,

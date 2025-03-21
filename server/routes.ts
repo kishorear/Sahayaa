@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation } from "./ai";
@@ -12,56 +12,14 @@ import {
   type InsertMessage,
   type ChatbotResponse
 } from "@shared/schema";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // AUTH ROUTES
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      
-      if (!username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
-      }
-      
-      const user = await storage.getUserByUsername(username);
-      
-      if (!user || user.password !== password) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-      
-      // In a real application, you would use proper authentication with sessions/JWT
-      // and not return the password
-      const { password: _, ...userWithoutPassword } = user;
-      
-      res.status(200).json(userWithoutPassword);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
+  // Setup authentication routes and middleware
+  const { requireAuth } = setupAuth(app);
 
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const userData = insertUserSchema.parse(req.body);
-      
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already taken" });
-      }
-      
-      const newUser = await storage.createUser(userData);
-      const { password: _, ...userWithoutPassword } = newUser;
-      
-      res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid input", errors: error.errors });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // TICKET ROUTES
-  app.get("/api/tickets", async (req, res) => {
+  // TICKET ROUTES - Protected admin routes
+  app.get("/api/tickets", requireAuth, async (req, res) => {
     try {
       const tickets = await storage.getAllTickets();
       res.status(200).json(tickets);
@@ -70,7 +28,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tickets/:id", async (req, res) => {
+  app.get("/api/tickets/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const ticket = await storage.getTicketById(id);
@@ -86,6 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // This route needs no auth since it can be created by the chatbot
   app.post("/api/tickets", async (req, res) => {
     try {
       const ticketData = insertTicketSchema.parse(req.body);
@@ -134,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/tickets/:id", async (req, res) => {
+  app.patch("/api/tickets/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const ticket = await storage.getTicketById(id);
@@ -151,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // MESSAGE ROUTES
-  app.get("/api/tickets/:ticketId/messages", async (req, res) => {
+  app.get("/api/tickets/:ticketId/messages", requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       const messages = await storage.getMessagesByTicketId(ticketId);
@@ -271,8 +230,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DASHBOARD METRICS
-  app.get("/api/metrics/summary", async (req, res) => {
+  // DASHBOARD METRICS - All require auth
+  app.get("/api/metrics/summary", requireAuth, async (req, res) => {
     try {
       const tickets = await storage.getAllTickets();
       
@@ -314,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/metrics/categories", async (req, res) => {
+  app.get("/api/metrics/categories", requireAuth, async (req, res) => {
     try {
       const tickets = await storage.getAllTickets();
       

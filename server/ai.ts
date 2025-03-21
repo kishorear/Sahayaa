@@ -1,4 +1,6 @@
 // Using a local implementation instead of OpenAI API
+import { findRelevantKnowledgeBaseEntries } from './knowledgeBase';
+
 console.log("Local AI implementation initialized");
 
 type ChatMessage = {
@@ -98,39 +100,80 @@ export async function classifyTicket(title: string, description: string): Promis
 
 // Attempt to resolve a ticket automatically
 export async function attemptAutoResolve(title: string, description: string, previousMessages: ChatMessage[] = []): Promise<{resolved: boolean; response: string}> {
-  // Simple rule-based resolution system
+  // Combine title and description for analysis
   const text = (title + " " + description).toLowerCase();
   let resolved = false;
   let response = "";
-
-  // Check for common issues that can be auto-resolved
-  if (text.includes('reset password') || text.includes('forgot password')) {
-    resolved = true;
-    response = "I can help you reset your password. Please check your email for a password reset link I've just sent. If you don't receive it within the next few minutes, please check your spam folder. The link will be valid for 24 hours. Is there anything else I can help you with? This issue is now resolved.";
-  }
-  else if (text.includes('how to') && text.includes('account')) {
-    resolved = true;
-    response = "Here's a guide on how to manage your account settings:\n\n1. Log in to your account\n2. Click on the profile icon in the top right corner\n3. Select 'Account Settings' from the dropdown menu\n4. Here you can update your personal information, notification preferences, and privacy settings\n\nI've also sent you an email with our comprehensive account management guide. Is there anything specific about your account you need help with? This issue is now resolved.";
-  }
-  else if (text.includes('login') && !text.includes('reset') && !text.includes('forgot')) {
-    resolved = false;
-    response = "I understand you're having trouble logging in. Could you please provide more details about the issue you're experiencing? Are you seeing any specific error messages? This would help us troubleshoot more effectively. This issue requires additional information to resolve.";
-  }
-  else if (text.includes('documentation') || text.includes('guide') || text.includes('how to')) {
-    resolved = true;
-    response = "I've found some documentation that should help with your question. You can find our complete user guide at our Help Center: https://help.example.com/guide\n\nSpecifically, the section on '" + (text.includes('account') ? 'Account Management' : 'Getting Started') + "' should address your question. Is there anything specific within the documentation you're looking for? This issue is now resolved.";
-  }
-  else if (text.includes('feature request') || text.includes('suggestion')) {
-    resolved = true;
-    response = "Thank you for your feature suggestion. I've recorded your request and forwarded it to our product team for consideration. We really appreciate user feedback as it helps us improve our product. While I can't promise when or if this specific feature will be implemented, please know that your input is valuable. Is there anything else I can help you with today? This issue is now resolved.";
-  }
-  else if (text.includes('billing') && (text.includes('question') || text.includes('information'))) {
-    resolved = false;
-    response = "I understand you have a billing question. To better assist you, can you please provide your account details and the specific information you're looking for? For security reasons, our billing team will need to verify your account. This issue requires human intervention to properly address your billing concern.";
-  }
+  
+  // First check if we have a relevant knowledge base entry
+  const knowledgeBaseEntry = findRelevantKnowledgeBaseEntries(text);
+  
+  if (knowledgeBaseEntry) {
+    // If we have a good knowledge base match, use it for the response
+    response = knowledgeBaseEntry.solution;
+    
+    // Determine if this type of issue can be auto-resolved
+    if (knowledgeBaseEntry.category === 'authentication' && 
+        (knowledgeBaseEntry.question.toLowerCase().includes('reset') || 
+         knowledgeBaseEntry.question.toLowerCase().includes('forgot'))) {
+      resolved = true;
+      response += " Is there anything else I can help you with? This issue is now resolved.";
+    } 
+    else if (knowledgeBaseEntry.category === 'account' && 
+             knowledgeBaseEntry.question.toLowerCase().includes('how')) {
+      resolved = true;
+      response += " Is there anything specific about your account you need help with? This issue is now resolved.";
+    }
+    else if (knowledgeBaseEntry.category === 'documentation') {
+      resolved = true;
+      response += " Is there anything specific within the documentation you're looking for? This issue is now resolved.";
+    }
+    else if (knowledgeBaseEntry.category === 'feature_request') {
+      resolved = true;
+      response += " Is there anything else I can help you with today? This issue is now resolved.";
+    }
+    else if (knowledgeBaseEntry.category === 'technical_issue' && 
+            !knowledgeBaseEntry.question.toLowerCase().includes('error')) {
+      // Only resolve simple technical issues, not error-related ones
+      resolved = true;
+      response += " Does this information help solve your problem? This issue is now resolved.";
+    }
+    else {
+      // Complex issues that need human intervention
+      resolved = false;
+      response += " I've provided some initial information, but a support specialist will follow up with you for more detailed assistance.";
+    }
+  } 
   else {
-    resolved = false;
-    response = "Thank you for contacting us. Based on your message, I'll need to escalate this to our support team for further assistance. A support representative will review your ticket and get back to you as soon as possible. This issue requires human intervention.";
+    // Fall back to rule-based resolution if no knowledge base match
+    if (text.includes('reset password') || text.includes('forgot password')) {
+      resolved = true;
+      response = "I can help you reset your password. Please check your email for a password reset link I've just sent. If you don't receive it within the next few minutes, please check your spam folder. The link will be valid for 24 hours. Is there anything else I can help you with? This issue is now resolved.";
+    }
+    else if (text.includes('how to') && text.includes('account')) {
+      resolved = true;
+      response = "Here's a guide on how to manage your account settings:\n\n1. Log in to your account\n2. Click on the profile icon in the top right corner\n3. Select 'Account Settings' from the dropdown menu\n4. Here you can update your personal information, notification preferences, and privacy settings\n\nI've also sent you an email with our comprehensive account management guide. Is there anything specific about your account you need help with? This issue is now resolved.";
+    }
+    else if (text.includes('login') && !text.includes('reset') && !text.includes('forgot')) {
+      resolved = false;
+      response = "I understand you're having trouble logging in. Could you please provide more details about the issue you're experiencing? Are you seeing any specific error messages? This would help us troubleshoot more effectively. This issue requires additional information to resolve.";
+    }
+    else if (text.includes('documentation') || text.includes('guide') || text.includes('how to')) {
+      resolved = true;
+      response = "I've found some documentation that should help with your question. You can find our complete user guide at our Help Center: https://help.example.com/guide\n\nSpecifically, the section on '" + (text.includes('account') ? 'Account Management' : 'Getting Started') + "' should address your question. Is there anything specific within the documentation you're looking for? This issue is now resolved.";
+    }
+    else if (text.includes('feature request') || text.includes('suggestion')) {
+      resolved = true;
+      response = "Thank you for your feature suggestion. I've recorded your request and forwarded it to our product team for consideration. We really appreciate user feedback as it helps us improve our product. While I can't promise when or if this specific feature will be implemented, please know that your input is valuable. Is there anything else I can help you with today? This issue is now resolved.";
+    }
+    else if (text.includes('billing') && (text.includes('question') || text.includes('information'))) {
+      resolved = false;
+      response = "I understand you have a billing question. To better assist you, can you please provide your account details and the specific information you're looking for? For security reasons, our billing team will need to verify your account. This issue requires human intervention to properly address your billing concern.";
+    }
+    else {
+      resolved = false;
+      response = "Thank you for contacting us. Based on your message, I'll need to escalate this to our support team for further assistance. A support representative will review your ticket and get back to you as soon as possible. This issue requires human intervention.";
+    }
   }
 
   return { resolved, response };
@@ -142,11 +185,11 @@ export async function generateChatResponse(
   messageHistory: ChatMessage[],
   userMessage: string
 ): Promise<string> {
-  // Simple rule-based chat response system based on the ticket context and user message
+  // Basic chat management for simple responses
   const text = userMessage.toLowerCase();
   const category = ticketContext.category.toLowerCase();
   
-  // Generic responses based on message content
+  // Generic responses based on message content - handle these first
   if (text.includes('thank you') || text.includes('thanks')) {
     return "You're welcome! Is there anything else I can help you with today?";
   }
@@ -159,13 +202,23 @@ export async function generateChatResponse(
     return "Alright! If you need any further assistance in the future, don't hesitate to reach out. Have a great day!";
   }
   
-  // Category-specific responses
+  // Check if there's a match in our knowledge base for complex questions
+  const knowledgeBaseEntry = findRelevantKnowledgeBaseEntries(userMessage);
+  
+  if (knowledgeBaseEntry) {
+    // Use the knowledge base response if we have a good match
+    return knowledgeBaseEntry.solution;
+  }
+  
+  // Fall back to category-specific responses if no knowledge base match
   switch (category) {
     case 'authentication':
       if (text.includes('password') || text.includes('reset')) {
         return "I can help you reset your password. I've sent a password reset link to your registered email address. The link will expire in 24 hours. Please let me know if you don't receive the email within the next few minutes.";
       } else if (text.includes('login') || text.includes('sign in')) {
         return "If you're having trouble logging in, please try the following steps:\n\n1. Ensure caps lock is turned off\n2. Clear your browser cookies and cache\n3. Try using a different browser\n4. If you still can't log in, I can help you reset your password";
+      } else if (text.includes('two-factor') || text.includes('2fa')) {
+        return "Two-factor authentication provides an extra layer of security for your account. To enable it, go to Account Settings > Security and click 'Enable 2FA'. You can choose between SMS verification or using an authenticator app like Google Authenticator or Authy.";
       }
       break;
       
@@ -174,6 +227,8 @@ export async function generateChatResponse(
         return "I understand you're requesting a refund. I'll need to transfer your ticket to our billing department who can better assist with this request. They typically respond within 1-2 business days. Is there any specific information about the refund you'd like me to include in the ticket?";
       } else if (text.includes('invoice') || text.includes('receipt')) {
         return "You can download all your invoices and receipts from the Billing section in your account settings. If you're having trouble locating a specific invoice, please provide the approximate date or transaction amount, and I can help you find it.";
+      } else if (text.includes('update') || text.includes('change') || text.includes('edit')) {
+        return "To update your billing information, go to Account Settings > Billing. Click 'Edit Payment Method' to update your credit card details. All changes are securely processed through our payment provider.";
       }
       break;
       
@@ -182,6 +237,10 @@ export async function generateChatResponse(
         return "I'm sorry you're experiencing this error. To help us troubleshoot, could you please provide the following information:\n\n1. What were you doing when the error occurred?\n2. Are you able to reproduce the error consistently?\n3. What device and browser are you using?\n\nThis information will help our technical team resolve the issue more quickly.";
       } else if (text.includes('bug') || text.includes('not working')) {
         return "I apologize for the inconvenience. Our engineering team will need to look into this issue. I've escalated your ticket with the details you've provided. In the meantime, is there a workaround you've tried that might help other users experiencing similar issues?";
+      } else if (text.includes('slow') || text.includes('performance')) {
+        return "Performance issues can be caused by several factors. Try these steps:\n\n1. Clear your browser cache and cookies\n2. Try a different browser\n3. Check your internet connection speed\n4. Disable browser extensions\n\nIf the problem persists, please provide details about your device and browser for further troubleshooting.";
+      } else if (text.includes('integration') || text.includes('connect') || text.includes('api')) {
+        return "We offer various integration options including a comprehensive REST API. Our API documentation is available at https://api.example.com/docs with authentication details, endpoints, and code examples. Is there a specific system you're trying to integrate with?";
       }
       break;
       
@@ -196,8 +255,19 @@ export async function generateChatResponse(
         return "I understand you're looking to delete your account. Before proceeding, please be aware that this action is permanent and all your data will be removed. If you're sure you want to continue, please confirm, and I'll guide you through the account deletion process.";
       } else if (text.includes('update') || text.includes('change')) {
         return "You can update your account information from your Account Settings page. After logging in, click on your profile picture in the top-right corner and select 'Account Settings'. From there, you can modify your personal information, notification preferences, and privacy settings. Let me know if you have trouble finding any specific setting.";
+      } else if (text.includes('team') || text.includes('add user') || text.includes('invite')) {
+        return "To add team members, go to Settings > Team Members and click 'Invite New User'. Enter their email address and select their access level. They'll receive an invitation email with instructions to join your team. Note that additional users may affect your billing depending on your subscription plan.";
       }
       break;
+  }
+  
+  // Check ticket context for any clues to generate a more relevant response
+  if (ticketContext.description.toLowerCase().includes('api') && text.includes('document')) {
+    return "You can find our API documentation at https://api.example.com/docs which includes authentication details, endpoints, and code examples in various languages. Is there a specific aspect of the API you need help with?";
+  }
+  
+  if (ticketContext.description.toLowerCase().includes('export') && (text.includes('how') || text.includes('where'))) {
+    return "To export your data, go to the Reports section. Select the data you want to export, click 'Export' and choose your preferred format (CSV, Excel, or PDF). For large data sets, the export will be processed in the background and you'll receive an email when it's ready to download.";
   }
   
   // Default response if none of the above patterns match

@@ -52,6 +52,135 @@ export class MemStorage implements IStorage {
       role: "admin",
       name: "Admin User"
     });
+    
+    // Initialize with sample tickets
+    this.initSampleTickets();
+  }
+  
+  private async initSampleTickets() {
+    // Sample tickets with various categories, statuses, and complexities
+    const sampleTickets: InsertTicket[] = [
+      {
+        title: "Login not working with Google account",
+        description: "I tried to login with my Google account but keep getting an error message that says 'Authentication failed'.",
+        category: "authentication",
+        complexity: "medium",
+        status: "open",
+        assignedTo: "support",
+      },
+      {
+        title: "Can't update my profile picture",
+        description: "Whenever I try to upload a new profile picture, the system hangs and then gives me a timeout error.",
+        category: "profile_management",
+        complexity: "simple",
+        status: "in_progress",
+        assignedTo: "support",
+      },
+      {
+        title: "Credit card payment failing",
+        description: "I'm trying to upgrade to the premium plan but my credit card payment is being declined even though the card works elsewhere.",
+        category: "billing",
+        complexity: "medium",
+        status: "open",
+        assignedTo: "billing",
+      },
+      {
+        title: "Feature request: Dark mode",
+        description: "It would be great if you could add a dark mode option to reduce eye strain when using the app at night.",
+        category: "feature_request",
+        complexity: "complex",
+        status: "open",
+        assignedTo: "product",
+      },
+      {
+        title: "API integration with Zapier not working",
+        description: "I've set up a Zapier integration with your API but the webhook calls are failing with a 403 error.",
+        category: "api_integration",
+        complexity: "complex",
+        status: "in_progress",
+        assignedTo: "engineering",
+      },
+      {
+        title: "How do I reset my password?",
+        description: "I forgot my password and don't see a reset option on the login page.",
+        category: "authentication",
+        complexity: "simple",
+        status: "resolved",
+        assignedTo: "support",
+        aiResolved: true,
+      },
+      {
+        title: "Mobile app crashing on startup",
+        description: "After the latest update, the mobile app crashes immediately when I try to open it. I'm using an iPhone 12 with iOS 15.",
+        category: "mobile_app",
+        complexity: "complex",
+        status: "open",
+        assignedTo: "engineering",
+      },
+      {
+        title: "Can't export my data in CSV format",
+        description: "The CSV export feature isn't working. When I try to download my data, I get an empty file.",
+        category: "data_management",
+        complexity: "medium",
+        status: "in_progress",
+        assignedTo: "engineering",
+      },
+      {
+        title: "Need help with custom report configuration",
+        description: "I'm trying to create a custom report that shows user activity by region, but I'm not sure how to set up the filters correctly.",
+        category: "reporting",
+        complexity: "medium",
+        status: "resolved",
+        assignedTo: "support",
+      },
+      {
+        title: "Website is slow to load dashboard",
+        description: "The dashboard takes over 30 seconds to load completely. This started happening about a week ago.",
+        category: "performance",
+        complexity: "complex",
+        status: "in_progress",
+        assignedTo: "engineering",
+      }
+    ];
+    
+    // Create the sample tickets
+    for (const ticketData of sampleTickets) {
+      const ticket = await this.createTicket(ticketData);
+      
+      // For resolved tickets, set a resolvedAt date
+      if (ticket.status === "resolved") {
+        const resolvedDate = new Date();
+        resolvedDate.setHours(resolvedDate.getHours() - Math.floor(Math.random() * 72)); // Random time within last 3 days
+        await this.updateTicket(ticket.id, { 
+          resolvedAt: resolvedDate,
+          status: "resolved"
+        });
+      }
+      
+      // Add a sample message for each ticket
+      await this.createMessage({
+        ticketId: ticket.id,
+        sender: "user",
+        content: ticket.description,
+        metadata: null
+      });
+      
+      // Add AI response for simple tickets
+      if (ticket.complexity === "simple") {
+        await this.createMessage({
+          ticketId: ticket.id,
+          sender: "ai",
+          content: `Thank you for your message. ${
+            ticket.status === "resolved" 
+              ? "I've found a solution to your issue. " + (ticket.category === "authentication" 
+                ? "You can reset your password by clicking on the 'Forgot Password' link below the login form. We'll send you an email with instructions." 
+                : "Please try refreshing the page and clearing your browser cache, then try again.")
+              : "Our team is looking into this and will get back to you shortly."
+          }`,
+          metadata: { autoResponse: true }
+        });
+      }
+    }
   }
 
   // User operations

@@ -68,12 +68,15 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
     const now = new Date();
-    const user = { 
+    const user: User = { 
       ...insertUser, 
       id,
+      role: insertUser.role || "user",
+      name: insertUser.name || null,
+      email: insertUser.email || null,
       createdAt: now,
       updatedAt: now
-    } as User;
+    };
     this.users.set(id, user);
     return user;
   }
@@ -90,15 +93,21 @@ export class MemStorage implements IStorage {
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
     const id = this.ticketIdCounter++;
     const now = new Date();
-    const ticket: Ticket = {
+    
+    // Ensure all required properties have values
+    const ticket = {
       ...insertTicket,
       id,
       status: "new",
       aiResolved: false,
+      complexity: insertTicket.complexity || "medium",
+      assignedTo: insertTicket.assignedTo || null,
+      aiNotes: insertTicket.aiNotes || null,
       createdAt: now,
       updatedAt: now,
       resolvedAt: null
-    };
+    } as Ticket;
+    
     this.tickets.set(id, ticket);
     return ticket;
   }
@@ -129,12 +138,13 @@ export class MemStorage implements IStorage {
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const id = this.messageIdCounter++;
     const now = new Date();
-    const message: Message = {
+    const message = {
       ...insertMessage,
       id,
+      metadata: insertMessage.metadata || null,
       createdAt: now,
       updatedAt: now
-    };
+    } as Message;
     this.messages.set(id, message);
     return message;
   }

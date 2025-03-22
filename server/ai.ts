@@ -1,7 +1,15 @@
-// Using a local implementation instead of OpenAI API
 import { findRelevantKnowledgeBaseEntries } from './knowledgeBase';
+import { 
+  classifyTicketWithAI, 
+  attemptAutoResolveWithAI, 
+  generateChatResponseWithAI, 
+  summarizeConversationWithAI 
+} from './openai-service';
 
-console.log("Local AI implementation initialized");
+// Determine if we're using OpenAI or local implementation
+const USE_OPENAI = process.env.OPENAI_API_KEY ? true : false;
+
+console.log(USE_OPENAI ? "OpenAI implementation initialized" : "Local AI implementation initialized");
 
 export type ChatMessage = {
   role: 'user' | 'assistant' | 'system';
@@ -18,6 +26,17 @@ type TicketClassification = {
 
 // Analyze a support request and classify it
 export async function classifyTicket(title: string, description: string): Promise<TicketClassification> {
+  // Use OpenAI if available
+  if (USE_OPENAI) {
+    try {
+      return await classifyTicketWithAI(title, description);
+    } catch (error) {
+      console.error("OpenAI classification failed, falling back to local:", error);
+      // Fall back to local implementation
+    }
+  }
+  
+  // Local implementation as fallback
   // Simple rule-based classification
   const text = (title + " " + description).toLowerCase();
   
@@ -100,6 +119,17 @@ export async function classifyTicket(title: string, description: string): Promis
 
 // Attempt to resolve a ticket automatically
 export async function attemptAutoResolve(title: string, description: string, previousMessages: ChatMessage[] = []): Promise<{resolved: boolean; response: string}> {
+  // Use OpenAI if available
+  if (USE_OPENAI) {
+    try {
+      return await attemptAutoResolveWithAI(title, description, previousMessages);
+    } catch (error) {
+      console.error("OpenAI auto-resolve failed, falling back to local:", error);
+      // Fall back to local implementation
+    }
+  }
+  
+  // Local fallback implementation
   // Combine title and description for analysis
   const text = (title + " " + description).toLowerCase();
   let resolved = false;
@@ -185,6 +215,17 @@ export async function generateChatResponse(
   messageHistory: ChatMessage[],
   userMessage: string
 ): Promise<string> {
+  // Use OpenAI if available
+  if (USE_OPENAI) {
+    try {
+      return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage);
+    } catch (error) {
+      console.error("OpenAI chat response failed, falling back to local:", error);
+      // Fall back to local implementation
+    }
+  }
+  
+  // Local fallback implementation
   // Basic chat management for simple responses
   const text = userMessage.toLowerCase();
   const category = ticketContext.category.toLowerCase();

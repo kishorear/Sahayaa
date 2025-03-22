@@ -1,16 +1,43 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Tenant table for multi-tenant support
+export const tenants = pgTable("tenants", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  subdomain: text("subdomain").notNull().unique(),
+  apiKey: text("apiKey").notNull().unique(),
+  settings: json("settings").default({}).notNull(), // Tenant-specific settings
+  branding: json("branding").default({
+    primaryColor: '#4F46E5',
+    logo: null,
+    companyName: '',
+    emailTemplate: 'default'
+  }).notNull(),
+  active: boolean("active").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export const insertTenantSchema = createInsertSchema(tenants)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
+  tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
+  username: text("username").notNull(),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"),
   name: text("name"),
   email: text("email"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Create a unique index on username + tenantId to allow same username in different tenants
+    usernameUnique: uniqueIndex("username_tenant_unique").on(table.username, table.tenantId),
+  };
 });
 
 export const insertUserSchema = createInsertSchema(users)
@@ -21,10 +48,12 @@ export const insertUserSchema = createInsertSchema(users)
     role: true,
     name: true,
     email: true,
+    tenantId: true,
   });
 
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
   title: text("title").notNull(),
   description: text("description").notNull(),
   status: text("status").notNull().default("new"), // new, in_progress, resolved
@@ -38,6 +67,8 @@ export const tickets = pgTable("tickets", {
   aiNotes: text("aiNotes"),
   // Integration fields
   externalIntegrations: json("externalIntegrations"), // {zendesk: {id, url}, jira: {id, key, url}}
+  // Client metadata (for when tickets are created from external clients)
+  clientMetadata: json("clientMetadata"),
 });
 
 export const insertTicketSchema = createInsertSchema(tickets)
@@ -71,6 +102,9 @@ export const insertAttachmentSchema = createInsertSchema(attachments)
   .omit({ id: true, createdAt: true });
 
 // Type definitions
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = z.infer<typeof insertTenantSchema>;
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -113,6 +147,7 @@ export type ChatbotResponse = {
 // Data sources schema
 export const dataSources = pgTable("data_sources", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
   name: text("name").notNull(),
   type: text("type").notNull(), // "kb" (knowledge base), "url", "doc", "custom"
   description: text("description"),

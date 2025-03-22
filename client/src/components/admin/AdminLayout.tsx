@@ -8,7 +8,8 @@ import {
   LogOut, 
   Search, 
   Bell, 
-  Menu 
+  Menu,
+  Link2 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -42,6 +43,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/team", 
       label: "Team", 
       icon: Users 
+    },
+    { 
+      path: "/admin/integrations", 
+      label: "Integrations", 
+      icon: Link2 
     },
     { 
       path: "/admin/settings", 

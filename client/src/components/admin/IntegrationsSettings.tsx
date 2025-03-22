@@ -172,33 +172,21 @@ export default function IntegrationsSettings() {
   }
 
   // Get the active form based on the selected tab
-  const getActiveForm = () => {
-    switch (activeTab) {
-      case "zendesk":
-        return {
-          form: zendeskForm,
-          onSubmit: onZendeskSubmit,
-          schema: zendeskSchema,
-          isPending: saveIntegrationMutation.isPending && saveIntegrationMutation.variables?.type === "zendesk",
-        };
-      case "jira":
-        return {
-          form: jiraForm,
-          onSubmit: onJiraSubmit,
-          schema: jiraSchema,
-          isPending: saveIntegrationMutation.isPending && saveIntegrationMutation.variables?.type === "jira",
-        };
-      default:
-        return {
-          form: zendeskForm,
-          onSubmit: onZendeskSubmit,
-          schema: zendeskSchema,
-          isPending: saveIntegrationMutation.isPending && saveIntegrationMutation.variables?.type === "zendesk",
-        };
+  // Get the active form based on the selected tab
+  const form = activeTab === "zendesk" ? zendeskForm : jiraForm;
+  const isPending = saveIntegrationMutation.isPending && 
+    (activeTab === "zendesk" 
+      ? saveIntegrationMutation.variables?.type === "zendesk"
+      : saveIntegrationMutation.variables?.type === "jira");
+
+  // Handle form submission based on active tab
+  const handleFormSubmit = () => {
+    if (activeTab === "zendesk") {
+      zendeskForm.handleSubmit(onZendeskSubmit)();
+    } else {
+      jiraForm.handleSubmit(onJiraSubmit)();
     }
   };
-
-  const { form, onSubmit, isPending } = getActiveForm();
 
   return (
     <Card className="w-full">
@@ -415,14 +403,14 @@ export default function IntegrationsSettings() {
           type="button" 
           variant="outline" 
           onClick={testCurrentIntegration}
-          disabled={testingConnection || form.getValues("enabled") === false}
+          disabled={testingConnection || !form.getValues().enabled}
         >
           {testingConnection && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Test Connection
         </Button>
         <Button 
           type="submit" 
-          onClick={form.handleSubmit(onSubmit)} 
+          onClick={handleFormSubmit} 
           disabled={isPending}
         >
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

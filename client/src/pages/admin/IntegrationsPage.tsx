@@ -1,15 +1,14 @@
-import { Helmet } from "react-helmet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import IntegrationsSettings from "@/components/admin/IntegrationsSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 export default function IntegrationsPage() {
+  // Set document title
+  document.title = "Integrations | AI Support Admin";
+  
   return (
     <AdminLayout>
-      <Helmet>
-        <title>Integrations | AI Support Admin</title>
-      </Helmet>
       
       <div className="flex flex-col gap-6">
         <div>

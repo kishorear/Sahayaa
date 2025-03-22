@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import ChatMessages from "./ChatMessages";
-import { MessageSquare, X } from "lucide-react";
-import { InsertTicket } from "@shared/schema";
+import ScreenRecorder from "./ScreenRecorder";
+import { MessageSquare, X, Video } from "lucide-react";
+import { InsertTicket, InsertAttachment } from "@shared/schema";
 
 type Message = {
   id: string;
@@ -21,6 +22,8 @@ export default function ChatbotInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showRecorder, setShowRecorder] = useState(false);
+  const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -105,10 +108,22 @@ export default function ChatbotInterface() {
     },
     onSuccess: async (response) => {
       const ticket = await response.json();
+      setCurrentTicketId(ticket.id);
       toast({
         title: "Ticket Created",
         description: `Support ticket #${ticket.id} has been created. Our team will follow up shortly.`,
       });
+      
+      // Prompt user to record their screen
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `ai-recorder-${Date.now()}`,
+          content: "Would you like to record your screen to better show us the issue?",
+          sender: "ai",
+          timestamp: new Date(),
+        }
+      ]);
     },
     onError: (error) => {
       toast({
@@ -118,15 +133,58 @@ export default function ChatbotInterface() {
       });
     },
   });
+  
+  const createAttachmentMutation = useMutation({
+    mutationFn: async ({ ticketId, attachmentData }: { ticketId: number, attachmentData: InsertAttachment }) => {
+      return await apiRequest("POST", `/api/tickets/${ticketId}/attachments`, attachmentData);
+    },
+    onSuccess: async () => {
+      toast({
+        title: "Recording Attached",
+        description: "Your screen recording has been attached to the ticket successfully.",
+      });
+      
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `ai-attachment-${Date.now()}`,
+          content: "Thanks for sharing your screen recording. This will help our team better understand and resolve your issue.",
+          sender: "ai",
+          timestamp: new Date(),
+        }
+      ]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to attach recording: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
+    if (!isChatOpen) {
+      setShowRecorder(false); // Close recorder when opening chat
+    }
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!inputMessage.trim()) return;
+    
+    // Check if message contains keywords for screen recording
+    const recordingKeywords = ['record', 'screen', 'show', 'yes', 'share'];
+    const message = inputMessage.toLowerCase();
+    
+    if (currentTicketId && recordingKeywords.some(keyword => message.includes(keyword))) {
+      // If user wants to record the screen and we have a ticket
+      setShowRecorder(true);
+      setInputMessage("");
+      return;
+    }
     
     // Add user message to chat
     setMessages((prev) => [
@@ -148,68 +206,171 @@ export default function ChatbotInterface() {
     // Clear input
     setInputMessage("");
   };
+  
+  const handleRecordingComplete = (blob: Blob) => {
+    if (!currentTicketId) {
+      toast({
+        title: "Error",
+        description: "No active ticket to attach recording to.",
+        variant: "destructive",
+      });
+      setShowRecorder(false);
+      return;
+    }
+    
+    // Convert blob to base64
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = function() {
+      const base64data = reader.result?.toString().split(',')[1];
+      
+      if (!base64data) {
+        toast({
+          title: "Error",
+          description: "Failed to process recording.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Create attachment data
+      const attachmentData: InsertAttachment = {
+        ticketId: currentTicketId,
+        type: "screen_recording",
+        filename: `screen-recording-${Date.now()}.webm`,
+        contentType: "video/webm",
+        data: base64data,
+      };
+      
+      // Send to server
+      createAttachmentMutation.mutate({ 
+        ticketId: currentTicketId,
+        attachmentData
+      });
+    };
+    
+    // Hide the recorder
+    setShowRecorder(false);
+    
+    // Add a message about the recording
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `user-recording-${Date.now()}`,
+        content: "I've shared a screen recording to help explain my issue.",
+        sender: "user",
+        timestamp: new Date(),
+      },
+    ]);
+  };
+  
+  const handleCancelRecording = () => {
+    setShowRecorder(false);
+    
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `user-cancel-recording-${Date.now()}`,
+        content: "I've decided not to share a screen recording at this time.",
+        sender: "user",
+        timestamp: new Date(),
+      },
+    ]);
+  };
 
   return (
-    <div className="fixed bottom-6 right-6 flex flex-col z-50">
-      {/* Chat bubble (when closed) */}
-      <Button
-        onClick={toggleChat}
-        className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-        size="icon"
-      >
-        <MessageSquare className="w-8 h-8 text-white" />
-      </Button>
-
-      {/* Chat window */}
-      {isChatOpen && (
-        <div className="mb-4 w-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden" style={{ height: "500px" }}>
-          {/* Chat header */}
-          <div className="bg-primary text-white px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center">
-              <MessageSquare className="w-6 h-6 mr-2" />
-              <h3 className="font-semibold">Support Chat</h3>
-            </div>
-            <Button variant="ghost" size="icon" onClick={toggleChat} className="text-white hover:bg-primary/80">
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-
-          {/* Chat messages area */}
-          <div className="flex-1 px-4 py-4 overflow-y-auto" id="chat-messages">
-            <ChatMessages messages={messages} isTyping={isTyping} />
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Chat input area */}
-          <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
-            <form className="flex items-center" onSubmit={handleSendMessage}>
-              <Textarea
-                id="message-input"
-                placeholder="Type your message..."
-                className="flex-1 border border-gray-300 rounded-l-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[40px] max-h-[120px]"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage(e);
-                  }
-                }}
-                disabled={chatbotMutation.isPending}
-              />
-              <Button
-                type="submit"
-                className="bg-primary text-white rounded-r-md px-4 py-2 text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 h-[40px]"
-                disabled={!inputMessage.trim() || chatbotMutation.isPending}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-                </svg>
-              </Button>
-            </form>
+    <>
+      {/* Screen recorder modal */}
+      {showRecorder && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl w-full">
+            <ScreenRecorder 
+              onRecordingComplete={handleRecordingComplete}
+              onCancel={handleCancelRecording}
+            />
           </div>
         </div>
       )}
-    </div>
+      
+      <div className="fixed bottom-6 right-6 flex flex-col z-40">
+        {/* Chat bubble (when closed) */}
+        <Button
+          onClick={toggleChat}
+          className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          size="icon"
+        >
+          <MessageSquare className="w-8 h-8 text-white" />
+        </Button>
+
+        {/* Chat window */}
+        {isChatOpen && (
+          <div className="mb-4 w-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden" style={{ height: "500px" }}>
+            {/* Chat header */}
+            <div className="bg-primary text-white px-4 py-4 flex justify-between items-center">
+              <div className="flex items-center">
+                <MessageSquare className="w-6 h-6 mr-2" />
+                <h3 className="font-semibold">Support Chat</h3>
+              </div>
+              <div className="flex items-center">
+                {currentTicketId && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setShowRecorder(true)}
+                    className="text-white hover:bg-primary/80 mr-2"
+                    title="Record Screen"
+                  >
+                    <Video className="w-5 h-5" />
+                  </Button>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={toggleChat} 
+                  className="text-white hover:bg-primary/80"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Chat messages area */}
+            <div className="flex-1 px-4 py-4 overflow-y-auto" id="chat-messages">
+              <ChatMessages messages={messages} isTyping={isTyping} />
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Chat input area */}
+            <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
+              <form className="flex items-center" onSubmit={handleSendMessage}>
+                <Textarea
+                  id="message-input"
+                  placeholder="Type your message..."
+                  className="flex-1 border border-gray-300 rounded-l-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[40px] max-h-[120px]"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                  disabled={chatbotMutation.isPending}
+                />
+                <Button
+                  type="submit"
+                  className="bg-primary text-white rounded-r-md px-4 py-2 text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 h-[40px]"
+                  disabled={!inputMessage.trim() || chatbotMutation.isPending}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                  </svg>
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

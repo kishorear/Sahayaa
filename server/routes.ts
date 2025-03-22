@@ -327,6 +327,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ATTACHMENT ROUTES
+  app.get("/api/tickets/:ticketId/attachments", requireAuth, async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId);
+      const attachments = await storage.getAttachmentsByTicketId(ticketId);
+      res.status(200).json(attachments);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/attachments/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const attachment = await storage.getAttachmentById(id);
+      
+      if (!attachment) {
+        return res.status(404).json({ message: "Attachment not found" });
+      }
+      
+      res.status(200).json(attachment);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/tickets/:ticketId/attachments", async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId);
+      const ticket = await storage.getTicketById(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      const attachmentData = insertAttachmentSchema.parse({ 
+        ...req.body, 
+        ticketId 
+      });
+      
+      const attachment = await storage.createAttachment(attachmentData);
+      res.status(201).json(attachment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }

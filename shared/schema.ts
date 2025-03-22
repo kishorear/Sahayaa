@@ -31,6 +31,18 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   name: text("name"),
   email: text("email"),
+  
+  // MFA fields
+  mfaEnabled: boolean("mfaEnabled").default(false),
+  mfaSecret: text("mfaSecret"),
+  mfaBackupCodes: json("mfaBackupCodes").default([]),
+  
+  // SSO fields
+  ssoEnabled: boolean("ssoEnabled").default(false),
+  ssoProvider: text("ssoProvider"), // "google", "microsoft", "saml", etc.
+  ssoProviderId: text("ssoProviderId"), // External provider's user ID
+  ssoProviderData: json("ssoProviderData").default({}),
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (table) => {
@@ -166,3 +178,24 @@ export const insertDataSourceSchema = createInsertSchema(dataSources).omit({
 
 export type DataSource = typeof dataSources.$inferSelect;
 export type InsertDataSource = z.infer<typeof insertDataSourceSchema>;
+
+// SSO identity provider schema
+export const identityProviders = pgTable("identity_providers", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  type: text("type").notNull(), // "saml", "oauth2", "oidc"
+  name: text("name").notNull(), // Display name for the provider
+  enabled: boolean("enabled").default(true).notNull(),
+  
+  // SSO Provider configuration
+  config: json("config").notNull(), // Provider-specific configuration
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export const insertIdentityProviderSchema = createInsertSchema(identityProviders)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+export type IdentityProvider = typeof identityProviders.$inferSelect;
+export type InsertIdentityProvider = z.infer<typeof insertIdentityProviderSchema>;

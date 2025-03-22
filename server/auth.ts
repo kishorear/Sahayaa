@@ -497,28 +497,67 @@ export function setupAuth(app: Express) {
       
       // If user is in the request, we're all set
       if (req.user) {
-        // Remove password from response
-        const { password: _, ...userWithoutPassword } = req.user;
-        console.log("API user request - Returning user data for:", userWithoutPassword.username);
-        return res.status(200).json(userWithoutPassword);
+        try {
+          // Remove password from response with extra error handling
+          const { password: _, ...userWithoutPassword } = req.user;
+          console.log(`API user request [${traceId}] - Returning user data for:`, userWithoutPassword.username);
+          return res.status(200).json(userWithoutPassword);
+        } catch (userObjectError) {
+          console.error(`API user request [${traceId}] - Error processing user object:`, userObjectError);
+          // Don't fail, continue to try fallback mechanisms
+        }
       }
       
       // No user in request, start trying fallback mechanisms
-      console.log("API user request - User data: No user in request");
+      console.log(`API user request [${traceId}] - User data: No user in request`);
       
       // 1. Try using the user ID from session
       if (req.session.userId) {
         try {
-          const user = await storage.getUser(req.session.userId);
+          console.log(`API user request [${traceId}] - Attempting to restore from session.userId:`, req.session.userId);
+          
+          // Try to get user from storage with error handling
+          let user;
+          try {
+            user = await storage.getUser(req.session.userId);
+          } catch (dbError) {
+            console.error(`API user request [${traceId}] - Database error fetching user:`, dbError);
+            
+            // Check if this is a connection error and try to reconnect
+            if (dbError && typeof dbError === 'object' && 
+                (dbError.code === 'ECONNREFUSED' || dbError.code === '57P01' || 
+                 dbError.code === '08006' || dbError.code === 'ETIMEDOUT')) {
+              console.error(`API user request [${traceId}] - Database connection error, attempting reconnection...`);
+              
+              try {
+                // Attempt to reconnect the database
+                const db = await import('./db');
+                await db.reconnectDb();
+                
+                // Try fetching the user again after reconnection
+                console.log(`API user request [${traceId}] - Attempting to fetch user after reconnection`);
+                user = await storage.getUser(req.session.userId);
+              } catch (reconnectError) {
+                console.error(`API user request [${traceId}] - Reconnection attempt failed:`, reconnectError);
+              }
+            }
+          }
+          
           if (user) {
             // Found user, restore session
             req.user = user;
-            const { password: _, ...userWithoutPassword } = user;
-            console.log("User restored from session.userId:", user.id);
-            return res.status(200).json(userWithoutPassword);
+            try {
+              const { password: _, ...userWithoutPassword } = user;
+              console.log(`API user request [${traceId}] - User restored from session.userId:`, user.id);
+              return res.status(200).json(userWithoutPassword);
+            } catch (responseError) {
+              console.error(`API user request [${traceId}] - Error formatting user response:`, responseError);
+            }
+          } else {
+            console.log(`API user request [${traceId}] - No user found for session.userId:`, req.session.userId);
           }
         } catch (err) {
-          console.error("Error restoring user from session.userId:", err);
+          console.error(`API user request [${traceId}] - Error in session.userId fallback:`, err);
         }
       }
       
@@ -533,39 +572,135 @@ export function setupAuth(app: Express) {
       const directUserId = req.cookies?.ticket_auth_user_id;
       if (directUserId) {
         try {
+          console.log(`API user request [${traceId}] - Attempting to restore from direct user ID cookie:`, directUserId);
+          
           const userId = parseInt(directUserId);
           if (!isNaN(userId)) {
-            const user = await storage.getUser(userId);
+            // Try to get user from storage with error handling
+            let user;
+            try {
+              user = await storage.getUser(userId);
+            } catch (dbError) {
+              console.error(`API user request [${traceId}] - Database error fetching user:`, dbError);
+              
+              // Check if this is a connection error and try to reconnect
+              if (dbError && typeof dbError === 'object' && 
+                  (dbError.code === 'ECONNREFUSED' || dbError.code === '57P01' || 
+                  dbError.code === '08006' || dbError.code === 'ETIMEDOUT')) {
+                console.error(`API user request [${traceId}] - Database connection error, attempting reconnection...`);
+                
+                try {
+                  // Attempt to reconnect the database
+                  const db = await import('./db');
+                  await db.reconnectDb();
+                  
+                  // Try fetching the user again after reconnection
+                  console.log(`API user request [${traceId}] - Attempting to fetch user after reconnection`);
+                  user = await storage.getUser(userId);
+                } catch (reconnectError) {
+                  console.error(`API user request [${traceId}] - Reconnection attempt failed:`, reconnectError);
+                }
+              }
+            }
+            
             if (user) {
               // Found user via direct ID cookie
               req.user = user;
               req.session.userId = user.id;
               
-              // Save the session for future requests
-              req.session.save(() => {
-                console.log("Session saved with restored user ID:", user.id);
-              });
+              // Save the session for future requests with error handling
+              try {
+                req.session.save((saveErr) => {
+                  if (saveErr) {
+                    console.error(`API user request [${traceId}] - Error saving session:`, saveErr);
+                  } else {
+                    console.log(`API user request [${traceId}] - Session saved with restored user ID:`, user.id);
+                  }
+                });
+              } catch (saveError) {
+                console.error(`API user request [${traceId}] - Exception saving session:`, saveError);
+              }
               
-              // Return the user data
-              const { password: _, ...userWithoutPassword } = user;
-              console.log("User restored from direct ID cookie:", user.id);
-              return res.status(200).json(userWithoutPassword);
+              // Return the user data with error handling
+              try {
+                const { password: _, ...userWithoutPassword } = user;
+                console.log(`API user request [${traceId}] - User restored from direct ID cookie:`, user.id);
+                return res.status(200).json(userWithoutPassword);
+              } catch (responseError) {
+                console.error(`API user request [${traceId}] - Error formatting user response:`, responseError);
+              }
             }
           }
         } catch (err) {
-          console.error("Error restoring user from direct ID cookie:", err);
+          console.error(`API user request [${traceId}] - Error restoring user from direct ID cookie:`, err);
         }
       }
       
       // All restore attempts failed, for diagnostics, check if admin exists in database
       try {
-        const adminUser = await storage.getUserByUsername('admin');
-        console.log("Admin user exists in database:", !!adminUser);
+        console.log(`API user request [${traceId}] - All restore attempts failed, checking admin user as a diagnostic step`);
+        
+        // Try to check admin with error handling
+        let adminUser;
+        try {
+          adminUser = await storage.getUserByUsername('admin');
+        } catch (dbError) {
+          console.error(`API user request [${traceId}] - Database error checking admin:`, dbError);
+          
+          // Check if this is a connection error and try to reconnect
+          if (dbError && typeof dbError === 'object' && 
+              (dbError.code === 'ECONNREFUSED' || dbError.code === '57P01' || 
+               dbError.code === '08006' || dbError.code === 'ETIMEDOUT')) {
+            console.error(`API user request [${traceId}] - Database connection error, attempting reconnection...`);
+            
+            try {
+              // Attempt to reconnect the database
+              const db = await import('./db');
+              await db.reconnectDb();
+              
+              // Try checking admin user again after reconnection
+              console.log(`API user request [${traceId}] - Attempting to check admin after reconnection`);
+              adminUser = await storage.getUserByUsername('admin');
+            } catch (reconnectError) {
+              console.error(`API user request [${traceId}] - Reconnection attempt failed:`, reconnectError);
+            }
+          }
+        }
+        
+        console.log(`API user request [${traceId}] - Admin user exists in database:`, !!adminUser);
         if (adminUser) {
-          console.log("Admin user ID:", adminUser.id);
+          console.log(`API user request [${traceId}] - Admin user ID:`, adminUser.id);
+          
+          // LAST RESORT: If we can find the admin user but couldn't restore the user session,
+          // and this appears to be an internal API call (as indicated by specific headers),
+          // we could consider a special fallback mechanism here for highly critical operations
+          // This is commented out by default for security reasons
+          /*
+          const isInternalApiCall = req.headers['x-internal-api'] === 'true';
+          if (isInternalApiCall && process.env.ENABLE_FALLBACK_ADMIN === 'true') {
+            console.log(`API user request [${traceId}] - Using admin fallback for internal API call`);
+            req.user = adminUser;
+            req.session.userId = adminUser.id;
+            
+            // Save the session for future requests with error handling
+            try {
+              req.session.save();
+            } catch (saveError) {
+              console.error(`API user request [${traceId}] - Exception saving admin session:`, saveError);
+            }
+            
+            // Return the admin user data for internal API calls only
+            try {
+              const { password: _, ...adminUserWithoutPassword } = adminUser;
+              return res.status(200).json(adminUserWithoutPassword);
+            } catch (responseError) {
+              console.error(`API user request [${traceId}] - Error formatting admin response:`, responseError);
+            }
+          }
+          */
         }
       } catch (dbError) {
-        console.error("Failed to check admin user in database:", dbError);
+        console.error(`API user request [${traceId}] - Failed to check admin user in database:`, dbError);
       }
       
       // No user found through any method
@@ -574,28 +709,69 @@ export function setupAuth(app: Express) {
       console.error("Get user error:", error);
       
       // Handle database connection errors specially for better debugging
-      if (error && typeof error === 'object' && 
-          (error.code === 'ECONNREFUSED' || error.code === '57P01' || 
-           error.code === '08006' || error.code === 'ETIMEDOUT')) {
-        console.error("Database connection error in auth endpoint, attempting reconnection...");
-        // Try to reconnect the database
-        import('./db').then(db => {
-          db.reconnectDb().catch(e => console.error("Failed to reconnect DB:", e));
-        }).catch(e => console.error("Failed to import db module:", e));
-        
-        // Return a specific error for database issues
-        return res.status(500).json({ 
-          message: "Error fetching user account",
-          error_type: "database_connection",
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+      try {
+        if (error && typeof error === 'object') {
+          // Get error code with safety checks
+          let errorCode: string | undefined;
+          try {
+            errorCode = error.code ? error.code.toString() : undefined;
+          } catch (e) {
+            console.error(`API user request [${traceId}] - Error accessing error.code:`, e);
+          }
+
+          // Check for common database error codes
+          const isDbConnectionError = errorCode && 
+            ['ECONNREFUSED', '57P01', '08006', 'ETIMEDOUT', '08001', 'ENOTFOUND'].includes(errorCode);
+          
+          if (isDbConnectionError) {
+            console.error(`API user request [${traceId}] - Database connection error in auth endpoint (${errorCode}), attempting reconnection...`);
+            
+            // Try to reconnect the database
+            try {
+              const db = await import('./db');
+              db.reconnectDb().catch(e => console.error(`API user request [${traceId}] - Failed to reconnect DB:`, e));
+            } catch (importError) {
+              console.error(`API user request [${traceId}] - Failed to import db module:`, importError);
+            }
+            
+            // Get more info about the error for diagnostics
+            let errorDetails = 'Unknown database error';
+            try {
+              errorDetails = error.message || errorCode || 'No additional details';
+            } catch (e) {
+              console.error(`API user request [${traceId}] - Error accessing error properties:`, e);
+            }
+            
+            // Return a specific error for database issues
+            return res.status(503).json({ 
+              message: "Error fetching user account",
+              error_type: "database_connection",
+              retry_after: 5, // Suggest retry after 5 seconds
+              details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+            });
+          }
+        }
+      } catch (errorHandlingError) {
+        console.error(`API user request [${traceId}] - Error in database error handler:`, errorHandlingError);
+      }
+      
+      // Get error message safely
+      let errorMessage = 'Unknown error';
+      try {
+        if (error && typeof error === 'object' && error.message) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+      } catch (msgError) {
+        console.error(`API user request [${traceId}] - Error getting error message:`, msgError);
       }
       
       // Generic error handling
       res.status(500).json({ 
         message: "Internal server error",
-        details: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        details: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? (error && typeof error === 'object' ? error.stack : undefined) : undefined
       });
     }
   });

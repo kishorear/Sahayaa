@@ -771,26 +771,24 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     try {
-      // Use standard select operation with transformation for camelCase properties
-      const results = await db.select().from(users).where(eq(users.id, id));
+      // Use direct raw query with proper column aliasing to handle case differences
+      const query = `
+        SELECT 
+          id, "tenantId", username, password, role, name, email, 
+          "mfaEnabled", "mfaSecret", "mfaBackupCodes",
+          "ssoEnabled", "ssoProvider", "ssoProviderId", "ssoProviderData",
+          "createdAt", "updatedAt"
+        FROM users
+        WHERE id = $1
+      `;
       
-      if (results.length === 0) {
+      const result = await db.execute(query, [id]);
+      
+      if (result.rows.length === 0) {
         return undefined;
       }
       
-      // Transform the result to ensure camelCase property names are mapped from DB column names
-      const result = results[0];
-      return {
-        ...result,
-        // PostgreSQL column names are lowercase, ensure we map them correctly
-        mfaEnabled: result.mfaenabled as boolean,
-        mfaSecret: result.mfasecret as string | null,
-        mfaBackupCodes: result.mfabackupcodes as string[] | [],
-        ssoEnabled: result.ssoenabled as boolean,
-        ssoProvider: result.ssoprovider as string | null,
-        ssoProviderId: result.ssoproviderid as string | null,
-        ssoProviderData: result.ssoproviderdata as Record<string, any> | {},
-      } as User;
+      return result.rows[0] as User;
     } catch (error) {
       console.error("Error fetching user:", error);
       throw error;
@@ -799,41 +797,41 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
     try {
-      // Use standard select operation with transformation for camelCase properties
-      let results;
+      // Use direct raw query with proper column aliasing to handle case differences
+      let query = '';
+      let params = [];
       
       if (tenantId) {
-        // If tenantId is provided, restrict to that tenant
-        results = await db.select()
-          .from(users)
-          .where(and(
-            eq(users.username, username),
-            eq(users.tenantId, tenantId)
-          ));
+        query = `
+          SELECT 
+            id, "tenantId", username, password, role, name, email, 
+            "mfaEnabled", "mfaSecret", "mfaBackupCodes",
+            "ssoEnabled", "ssoProvider", "ssoProviderId", "ssoProviderData",
+            "createdAt", "updatedAt"
+          FROM users
+          WHERE username = $1 AND "tenantId" = $2
+        `;
+        params = [username, tenantId];
       } else {
-        // Default behavior for backward compatibility
-        results = await db.select()
-          .from(users)
-          .where(eq(users.username, username));
+        query = `
+          SELECT 
+            id, "tenantId", username, password, role, name, email, 
+            "mfaEnabled", "mfaSecret", "mfaBackupCodes",
+            "ssoEnabled", "ssoProvider", "ssoProviderId", "ssoProviderData",
+            "createdAt", "updatedAt"
+          FROM users
+          WHERE username = $1
+        `;
+        params = [username];
       }
       
-      if (results.length === 0) {
+      const result = await db.execute(query, params);
+      
+      if (result.rows.length === 0) {
         return undefined;
       }
       
-      // Transform the result to ensure camelCase property names are mapped from DB column names
-      const result = results[0];
-      return {
-        ...result,
-        // PostgreSQL column names are lowercase, ensure we map them correctly
-        mfaEnabled: result.mfaenabled as boolean,
-        mfaSecret: result.mfasecret as string | null,
-        mfaBackupCodes: result.mfabackupcodes as string[] | [],
-        ssoEnabled: result.ssoenabled as boolean,
-        ssoProvider: result.ssoprovider as string | null,
-        ssoProviderId: result.ssoproviderid as string | null,
-        ssoProviderData: result.ssoproviderdata as Record<string, any> | {},
-      } as User;
+      return result.rows[0] as User;
     } catch (error) {
       console.error("Error fetching user by username:", error);
       throw error;
@@ -875,20 +873,26 @@ export class DatabaseStorage implements IStorage {
       let params = [];
       
       if (tenantId) {
-        query = `SELECT id, "tenantId", username, password, role, name, email, 
-                mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-                ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-                ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-                FROM users 
-                WHERE ssoprovider = $1 AND ssoproviderid = $2 AND "tenantId" = $3`;
+        query = `
+          SELECT 
+            id, "tenantId", username, password, role, name, email, 
+            "mfaEnabled", "mfaSecret", "mfaBackupCodes",
+            "ssoEnabled", "ssoProvider", "ssoProviderId", "ssoProviderData",
+            "createdAt", "updatedAt"
+          FROM users 
+          WHERE "ssoProvider" = $1 AND "ssoProviderId" = $2 AND "tenantId" = $3
+        `;
         params = [provider, providerId, tenantId];
       } else {
-        query = `SELECT id, "tenantId", username, password, role, name, email, 
-                mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-                ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-                ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-                FROM users 
-                WHERE ssoprovider = $1 AND ssoproviderid = $2`;
+        query = `
+          SELECT 
+            id, "tenantId", username, password, role, name, email, 
+            "mfaEnabled", "mfaSecret", "mfaBackupCodes",
+            "ssoEnabled", "ssoProvider", "ssoProviderId", "ssoProviderData",
+            "createdAt", "updatedAt"
+          FROM users 
+          WHERE "ssoProvider" = $1 AND "ssoProviderId" = $2
+        `;
         params = [provider, providerId];
       }
       

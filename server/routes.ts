@@ -15,6 +15,7 @@ import {
   type ChatbotResponse
 } from "@shared/schema";
 import { setupAuth } from "./auth";
+import { registerEmailRoutes } from "./routes/email-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes and middleware

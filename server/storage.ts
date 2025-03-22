@@ -771,35 +771,15 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     try {
-      // Use a raw SQL query to handle column name casing issues
-      const query = `
-        SELECT 
-          id, "tenantId", username, password, role, name, email, 
-          mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-          ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-          ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-        FROM users 
-        WHERE id = $1
-      `;
+      // Fall back to the standard Drizzle approach but handle field mapping afterward
+      const results = await db.select().from(users).where(eq(users.id, id));
       
-      const { rows } = await db.execute(query, [id]);
-      
-      if (rows.length === 0) {
+      if (results.length === 0) {
         return undefined;
       }
       
-      // Convert any null values to their expected defaults
-      const user = rows[0];
-      return {
-        ...user,
-        mfaEnabled: user.mfaEnabled ?? false,
-        mfaSecret: user.mfaSecret ?? null,
-        mfaBackupCodes: user.mfaBackupCodes ?? [],
-        ssoEnabled: user.ssoEnabled ?? false,
-        ssoProvider: user.ssoProvider ?? null,
-        ssoProviderId: user.ssoProviderId ?? null,
-        ssoProviderData: user.ssoProviderData ?? {}
-      } as User;
+      // Just return the first result directly
+      return results[0];
     } catch (error) {
       console.error("Error fetching user:", error);
       throw error;
@@ -825,27 +805,7 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
-      const result = results[0];
-      
-      // Transform column names to the expected format
-      return {
-        id: result.id,
-        tenantId: result.tenantId,
-        username: result.username,
-        password: result.password,
-        role: result.role,
-        name: result.name,
-        email: result.email,
-        mfaEnabled: result.mfaEnabled ?? false,
-        mfaSecret: result.mfaSecret ?? null,
-        mfaBackupCodes: result.mfaBackupCodes ?? [],
-        ssoEnabled: result.ssoEnabled ?? false,
-        ssoProvider: result.ssoProvider ?? null,
-        ssoProviderId: result.ssoProviderId ?? null,
-        ssoProviderData: result.ssoProviderData ?? {},
-        createdAt: result.createdAt,
-        updatedAt: result.updatedAt
-      } as User;
+      return results[0] as User;
     } catch (error) {
       console.error("Error fetching user by username:", error);
       throw error;
@@ -943,41 +903,28 @@ export class DatabaseStorage implements IStorage {
   
   async getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined> {
     try {
-      // Use direct SQL query with proper column naming to avoid field name casing issues
-      let query = '';
-      let params = [];
+      let whereCondition;
       
       if (tenantId) {
-        query = `
-          SELECT 
-            id, "tenantId", username, password, role, name, email, 
-            mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-            ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-            ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-          FROM users 
-          WHERE ssoprovider = $1 AND ssoproviderid = $2 AND "tenantId" = $3
-        `;
-        params = [provider, providerId, tenantId];
+        whereCondition = and(
+          eq(users.ssoProvider, provider),
+          eq(users.ssoProviderId, providerId),
+          eq(users.tenantId, tenantId)
+        );
       } else {
-        query = `
-          SELECT 
-            id, "tenantId", username, password, role, name, email, 
-            mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-            ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-            ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-          FROM users 
-          WHERE ssoprovider = $1 AND ssoproviderid = $2
-        `;
-        params = [provider, providerId];
+        whereCondition = and(
+          eq(users.ssoProvider, provider),
+          eq(users.ssoProviderId, providerId)
+        );
       }
       
-      const { rows } = await db.execute(query, params);
+      const results = await db.select().from(users).where(whereCondition);
       
-      if (rows.length === 0) {
+      if (results.length === 0) {
         return undefined;
       }
       
-      return rows[0] as User;
+      return results[0];
     } catch (error) {
       console.error("Error fetching user by SSO ID:", error);
       throw error;

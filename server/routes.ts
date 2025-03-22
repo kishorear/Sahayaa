@@ -8,8 +8,10 @@ import {
   insertTicketSchema, 
   insertMessageSchema, 
   insertUserSchema,
+  insertAttachmentSchema,
   type InsertTicket,
   type InsertMessage,
+  type InsertAttachment,
   type ChatbotResponse
 } from "@shared/schema";
 import { setupAuth } from "./auth";
@@ -38,7 +40,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const messages = await storage.getMessagesByTicketId(id);
-      res.status(200).json({ ...ticket, messages });
+      const attachments = await storage.getAttachmentsByTicketId(id);
+      res.status(200).json({ ...ticket, messages, attachments });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

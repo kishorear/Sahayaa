@@ -1,13 +1,16 @@
 import { 
   users, 
   tickets, 
-  messages, 
+  messages,
+  attachments,
   type User, 
   type InsertUser, 
   type Ticket, 
   type InsertTicket, 
   type Message, 
-  type InsertMessage 
+  type InsertMessage,
+  type Attachment,
+  type InsertAttachment
 } from "@shared/schema";
 
 // Interface for all storage operations
@@ -26,23 +29,32 @@ export interface IStorage {
   // Message operations
   getMessagesByTicketId(ticketId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  
+  // Attachment operations
+  getAttachmentsByTicketId(ticketId: number): Promise<Attachment[]>;
+  getAttachmentById(id: number): Promise<Attachment | undefined>;
+  createAttachment(attachment: InsertAttachment): Promise<Attachment>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private tickets: Map<number, Ticket>;
   private messages: Map<number, Message>;
+  private attachments: Map<number, Attachment>;
   private userIdCounter: number;
   private ticketIdCounter: number;
   private messageIdCounter: number;
+  private attachmentIdCounter: number;
 
   constructor() {
     this.users = new Map();
     this.tickets = new Map();
     this.messages = new Map();
+    this.attachments = new Map();
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
     this.messageIdCounter = 1;
+    this.attachmentIdCounter = 1;
     
     // Add a default admin user
     this.createUser({
@@ -281,6 +293,29 @@ export class MemStorage implements IStorage {
     } as Message;
     this.messages.set(id, message);
     return message;
+  }
+  
+  // Attachment operations
+  async getAttachmentsByTicketId(ticketId: number): Promise<Attachment[]> {
+    return Array.from(this.attachments.values())
+      .filter(attachment => attachment.ticketId === ticketId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+  
+  async getAttachmentById(id: number): Promise<Attachment | undefined> {
+    return this.attachments.get(id);
+  }
+  
+  async createAttachment(insertAttachment: InsertAttachment): Promise<Attachment> {
+    const id = this.attachmentIdCounter++;
+    const now = new Date();
+    const attachment = {
+      ...insertAttachment,
+      id,
+      createdAt: now
+    } as Attachment;
+    this.attachments.set(id, attachment);
+    return attachment;
   }
 }
 

@@ -3,7 +3,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User, users } from "@shared/schema";
+import { User as SchemaUser, users } from "@shared/schema";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -17,8 +17,26 @@ declare module 'express-session' {
 // Extend the Request type to include the user property
 declare global {
   namespace Express {
+    interface User {
+      id: number;
+      tenantId: number;
+      username: string;
+      password: string;
+      role: string;
+      name: string | null;
+      email: string | null;
+      mfaEnabled: boolean | null;
+      mfaSecret: string | null;
+      mfaBackupCodes: any[] | null;
+      ssoEnabled: boolean | null;
+      ssoProvider: string | null;
+      ssoProviderId: string | null;
+      ssoProviderData: any;
+      createdAt: Date;
+      updatedAt: Date;
+    }
     interface Request {
-      user?: User;
+      user?: Express.User;
     }
   }
 }

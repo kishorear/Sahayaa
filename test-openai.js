@@ -259,6 +259,18 @@ async function testOpenAI() {
     console.log('\nClassification result:');
     console.log(JSON.stringify(classificationResult, null, 2));
     
+    console.log('\n\nTesting auto-resolve capability...');
+    
+    // Test auto-resolve capability with a common question that should be resolvable
+    const autoResolveResult = await provider.attemptAutoResolve(
+      'How do I change my password?',
+      'I need to update my password for security reasons but I can\'t find where to do this in the dashboard.'
+    );
+    
+    console.log('\nAuto-resolve result:');
+    console.log(`Resolved: ${autoResolveResult.resolved}`);
+    console.log(`Response: ${autoResolveResult.response}`);
+    
     console.log('\nAll tests completed successfully.');
   } catch (error) {
     console.error('Error testing OpenAI provider:', error);

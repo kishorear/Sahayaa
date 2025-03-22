@@ -35,18 +35,40 @@ function createDbPool() {
   const pool = new Pool(dbConfig);
 
   // Add error handler to the pool
-  pool.on('error', (err) => {
+  pool.on('error', (err: any) => {
     console.error('Unexpected error on idle client', err);
-  });
-
-  // Test the connection
-  pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-      console.error('Error connecting to the database:', err);
-    } else {
-      console.log('Database connection successful!', res.rows[0]);
+    
+    // Don't crash the application on connection errors
+    if (err && typeof err === 'object' && 
+        (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND')) {
+      console.error('Database connection error, but continuing execution:', err.message);
     }
   });
+
+  // Test the connection with retries
+  const testConnection = async (retries = 3, delay = 2000) => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const res = await pool.query('SELECT NOW()');
+        console.log('Database connection successful!', res.rows[0]);
+        return true;
+      } catch (err: any) {
+        const errorMessage = err && typeof err === 'object' ? err.message : String(err);
+        console.error(`Database connection attempt ${attempt}/${retries} failed:`, errorMessage);
+        
+        if (attempt < retries) {
+          console.log(`Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error('All database connection attempts failed. Continuing with fallback mechanisms.');
+        }
+      }
+    }
+    return false;
+  };
+  
+  // Start test connection process but don't wait for it
+  testConnection();
 
   return pool;
 }

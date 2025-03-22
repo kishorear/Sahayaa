@@ -1,6 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { testDbConnection, reconnectDb } from "./db";
+
+// Process-level unhandled rejection handler to prevent crashes
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't crash the server, just log the error
+});
+
+// Process-level uncaught exception handler
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Continue execution, don't crash the server
+});
 
 const app = express();
 app.use(express.json());
@@ -39,12 +52,37 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  // Add API database health check middleware
+  app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Check database connection occasionally to avoid overwhelming DB
+      if (Math.random() < 0.05) { // ~5% of requests
+        const isDbConnected = await testDbConnection();
+        if (!isDbConnected) {
+          console.log("Database connection check failed, attempting reconnect");
+          await reconnectDb();
+        }
+      }
+      next();
+    } catch (error) {
+      console.error("Database health check error:", error);
+      next(); // Continue even if DB check fails
+    }
+  });
 
-    res.status(status).json({ message });
-    throw err;
+  // Global error handler - don't throw after handling
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    try {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      
+      console.error(`Error handling request (${status}):`, err);
+      res.status(status).json({ message });
+      // Don't throw here, it would crash the server
+    } catch (handlerError) {
+      console.error("Error in error handler:", handlerError);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   });
 
   // importantly only setup vite in development and after

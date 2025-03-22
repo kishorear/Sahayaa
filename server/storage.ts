@@ -176,6 +176,43 @@ export class MemStorage implements IStorage {
     // Initialize with sample tickets and data sources
     this.initSampleTickets();
     this.initSampleDataSources();
+    this.initSampleAiProviders();
+  }
+  
+  private async initSampleAiProviders() {
+    // Create default OpenAI provider
+    await this.createAiProvider({
+      name: "OpenAI GPT-4o",
+      type: "openai",
+      tenantId: 1,
+      model: "gpt-4o",
+      isPrimary: true,
+      enabled: true,
+      useForChat: true,
+      useForClassification: true,
+      useForAutoResolve: true,
+      useForEmail: true,
+      settings: {
+        systemPrompt: "You are a helpful customer support assistant. Your goal is to resolve customer issues efficiently and professionally."
+      }
+    });
+    
+    // Adding a secondary provider
+    await this.createAiProvider({
+      name: "OpenAI GPT-3.5",
+      type: "openai",
+      tenantId: 1,
+      model: "gpt-3.5-turbo",
+      isPrimary: false,
+      enabled: true,
+      useForChat: true,
+      useForClassification: false,
+      useForAutoResolve: false,
+      useForEmail: false,
+      settings: {
+        systemPrompt: "You are a helpful customer support assistant. Your goal is to resolve customer issues efficiently and professionally."
+      }
+    });
   }
   
   private async initSampleDataSources() {
@@ -744,6 +781,112 @@ export class MemStorage implements IStorage {
     return this.dataSources.delete(id);
   }
   
+  // AI provider operations
+  async getAiProviders(tenantId: number): Promise<AiProvider[]> {
+    return Array.from(this.aiProviders.values()).filter(
+      (provider) => provider.tenantId === tenantId
+    );
+  }
+  
+  async getAiProviderById(id: number, tenantId?: number): Promise<AiProvider | undefined> {
+    const provider = this.aiProviders.get(id);
+    if (tenantId && provider && provider.tenantId !== tenantId) {
+      return undefined; // Don't return providers from other tenants
+    }
+    return provider;
+  }
+  
+  async getAiProvidersByType(type: string, tenantId: number): Promise<AiProvider[]> {
+    return Array.from(this.aiProviders.values()).filter(
+      (provider) => provider.type === type && provider.tenantId === tenantId
+    );
+  }
+  
+  async getPrimaryAiProvider(tenantId: number): Promise<AiProvider | undefined> {
+    return Array.from(this.aiProviders.values()).find(
+      (provider) => provider.tenantId === tenantId && provider.isPrimary === true && provider.enabled === true
+    );
+  }
+  
+  async createAiProvider(provider: InsertAiProvider): Promise<AiProvider> {
+    const id = this.aiProviderIdCounter++;
+    const now = new Date();
+    
+    // If this is marked as primary, ensure no other provider for this tenant is primary
+    if (provider.isPrimary) {
+      for (const existingProvider of this.aiProviders.values()) {
+        if (existingProvider.tenantId === provider.tenantId && existingProvider.isPrimary) {
+          // Set existing primary provider to not primary
+          existingProvider.isPrimary = false;
+          this.aiProviders.set(existingProvider.id, existingProvider);
+        }
+      }
+    }
+    
+    const aiProvider: AiProvider = {
+      ...provider,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      enabled: provider.enabled ?? true,
+      isPrimary: provider.isPrimary ?? false,
+      useForChat: provider.useForChat ?? true,
+      useForClassification: provider.useForClassification ?? true,
+      useForAutoResolve: provider.useForAutoResolve ?? true,
+      useForEmail: provider.useForEmail ?? true,
+      settings: provider.settings ?? {}
+    };
+    
+    this.aiProviders.set(id, aiProvider);
+    return aiProvider;
+  }
+  
+  async updateAiProvider(id: number, updates: Partial<AiProvider>, tenantId?: number): Promise<AiProvider> {
+    const provider = this.aiProviders.get(id);
+    if (!provider) {
+      throw new Error(`AI provider with id ${id} not found`);
+    }
+    
+    // If tenantId is provided, ensure provider belongs to that tenant
+    if (tenantId && provider.tenantId !== tenantId) {
+      throw new Error(`AI provider with id ${id} does not belong to tenant ${tenantId}`);
+    }
+    
+    // If this is being set as primary, ensure no other provider for this tenant is primary
+    if (updates.isPrimary) {
+      for (const existingProvider of this.aiProviders.values()) {
+        if (existingProvider.id !== id && existingProvider.tenantId === provider.tenantId && existingProvider.isPrimary) {
+          // Set existing primary provider to not primary
+          existingProvider.isPrimary = false;
+          this.aiProviders.set(existingProvider.id, existingProvider);
+        }
+      }
+    }
+    
+    const updatedProvider: AiProvider = {
+      ...provider,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.aiProviders.set(id, updatedProvider);
+    return updatedProvider;
+  }
+  
+  async deleteAiProvider(id: number, tenantId?: number): Promise<boolean> {
+    const provider = this.aiProviders.get(id);
+    if (!provider) {
+      return false;
+    }
+    
+    // If tenantId is provided, ensure provider belongs to that tenant
+    if (tenantId && provider.tenantId !== tenantId) {
+      return false;
+    }
+    
+    return this.aiProviders.delete(id);
+  }
+
   // Widget analytics operations
   async getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined> {
     return Array.from(this.widgetAnalyticsData.values()).find(
@@ -810,6 +953,112 @@ export class DatabaseStorage implements IStorage {
       tableName: 'session', // Default table name for sessions
       createTableIfMissing: true
     });
+  }
+  
+  // AI provider operations
+  async getAiProviders(tenantId: number): Promise<AiProvider[]> {
+    return await db.select().from(aiProviders).where(eq(aiProviders.tenantId, tenantId));
+  }
+  
+  async getAiProviderById(id: number, tenantId?: number): Promise<AiProvider | undefined> {
+    if (tenantId) {
+      const results = await db.select().from(aiProviders).where(
+        and(eq(aiProviders.id, id), eq(aiProviders.tenantId, tenantId))
+      );
+      return results[0];
+    } else {
+      const results = await db.select().from(aiProviders).where(eq(aiProviders.id, id));
+      return results[0];
+    }
+  }
+  
+  async getAiProvidersByType(type: string, tenantId: number): Promise<AiProvider[]> {
+    return await db.select().from(aiProviders).where(
+      and(eq(aiProviders.type, type), eq(aiProviders.tenantId, tenantId))
+    );
+  }
+  
+  async getPrimaryAiProvider(tenantId: number): Promise<AiProvider | undefined> {
+    const results = await db.select().from(aiProviders).where(
+      and(
+        eq(aiProviders.tenantId, tenantId),
+        eq(aiProviders.isPrimary, true),
+        eq(aiProviders.enabled, true)
+      )
+    );
+    return results[0];
+  }
+  
+  async createAiProvider(provider: InsertAiProvider): Promise<AiProvider> {
+    // If this is marked as primary, clear any existing primary providers for this tenant
+    if (provider.isPrimary) {
+      await db.update(aiProviders)
+        .set({ isPrimary: false })
+        .where(
+          and(
+            eq(aiProviders.tenantId, provider.tenantId),
+            eq(aiProviders.isPrimary, true)
+          )
+        );
+    }
+    
+    const [result] = await db.insert(aiProviders).values(provider).returning();
+    return result;
+  }
+  
+  async updateAiProvider(id: number, updates: Partial<AiProvider>, tenantId?: number): Promise<AiProvider> {
+    // Get the provider first to check tenantId if needed
+    const provider = await this.getAiProviderById(id);
+    
+    if (!provider) {
+      throw new Error(`AI provider with id ${id} not found`);
+    }
+    
+    // If tenantId is provided, ensure provider belongs to that tenant
+    if (tenantId && provider.tenantId !== tenantId) {
+      throw new Error(`AI provider with id ${id} does not belong to tenant ${tenantId}`);
+    }
+    
+    // If this is being set as primary, clear any existing primary providers for this tenant
+    if (updates.isPrimary) {
+      await db.update(aiProviders)
+        .set({ isPrimary: false })
+        .where(
+          and(
+            eq(aiProviders.tenantId, provider.tenantId),
+            eq(aiProviders.id, id, "!="), // Not this provider
+            eq(aiProviders.isPrimary, true)
+          )
+        );
+    }
+    
+    const [updated] = await db
+      .update(aiProviders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(
+        tenantId
+          ? and(eq(aiProviders.id, id), eq(aiProviders.tenantId, tenantId))
+          : eq(aiProviders.id, id)
+      )
+      .returning();
+      
+    if (!updated) {
+      throw new Error(`AI provider with id ${id} not found`);
+    }
+    
+    return updated;
+  }
+  
+  async deleteAiProvider(id: number, tenantId?: number): Promise<boolean> {
+    const deleteResult = await db
+      .delete(aiProviders)
+      .where(
+        tenantId
+          ? and(eq(aiProviders.id, id), eq(aiProviders.tenantId, tenantId))
+          : eq(aiProviders.id, id)
+      );
+      
+    return (deleteResult.count ?? 0) > 0;
   }
 
   // Tenant operations

@@ -21,6 +21,7 @@ import { registerDataSourceRoutes } from "./routes/data-source-routes";
 import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
+import { registerAiProviderRoutes } from "./routes/ai-provider-routes";
 import { getSsoService } from "./sso-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {

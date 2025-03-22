@@ -355,8 +355,9 @@ export function setupAuth(app: Express) {
         // Check that session was saved correctly
         console.log("Session data:", {
           id: req.session.id,
-          cookie: req.session.cookie,
-          userId: req.session.userId
+          cookie: JSON.stringify(req.session.cookie),
+          userId: req.session.userId,
+          sessionStore: req.sessionStore ? 'Session store available' : 'No session store found'
         });
       } catch (sessionError) {
         console.error("Error creating session:", sessionError);
@@ -413,12 +414,33 @@ export function setupAuth(app: Express) {
       console.log("API user request - Session ID:", req.session.id);
       console.log("API user request - Session data:", {
         userId: req.session.userId,
-        cookie: req.session.cookie
+        cookie: JSON.stringify(req.session.cookie),
+        sessionStore: req.sessionStore ? 'Session store available' : 'No session store found'
       });
+      
+      // If there's a backup cookie but no user in session, try manual lookup
+      const backupSessionId = req.cookies?.ticket_support_sid_backup;
+      if (!req.user && backupSessionId) {
+        console.log("Attempting user lookup using backup session ID:", backupSessionId);
+        
+        // Check all other cookie values
+        console.log("All cookies:", req.cookies);
+      }
       
       console.log("API user request - User data:", req.user ? "User found" : "No user in request");
       
       if (!req.user) {
+        // For diagnostics in production, always try a direct database lookup for the admin user
+        try {
+          const adminUser = await storage.getUserByUsername('admin');
+          console.log("Admin user exists in database:", !!adminUser);
+          if (adminUser) {
+            console.log("Admin user ID:", adminUser.id);
+          }
+        } catch (dbError) {
+          console.error("Failed to check admin user in database:", dbError);
+        }
+        
         return res.status(401).json({ message: "Not authenticated" });
       }
 

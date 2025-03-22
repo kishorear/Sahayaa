@@ -66,17 +66,30 @@ export async function classifyTicketWithAI(title: string, description: string) {
 /**
  * Attempts to automatically resolve a ticket using OpenAI
  */
-export async function attemptAutoResolveWithAI(title: string, description: string, previousMessages: OpenAIMessage[] = []) {
+export async function attemptAutoResolveWithAI(
+  title: string, 
+  description: string, 
+  previousMessages: OpenAIMessage[] = [],
+  knowledgeContext: string = ''
+) {
   try {
+    // Build system content with knowledge context if available
+    let systemContent = `You are an AI support assistant for a SaaS product. 
+        Your goal is to provide helpful, accurate responses to user queries and resolve issues when possible.
+        If you can fully resolve the issue, indicate this by including "[ISSUE RESOLVED]" at the end of your response.
+        If the issue requires human intervention, indicate this by including "[REQUIRES HUMAN]" at the end of your response.
+        `;
+    
+    // Add knowledge context if available
+    if (knowledgeContext) {
+      systemContent += `\n\n${knowledgeContext}`;
+    }
+    
     // Convert previous messages to OpenAI format
     const messages = [
       {
         role: "system" as const,
-        content: `You are an AI support assistant for a SaaS product. 
-        Your goal is to provide helpful, accurate responses to user queries and resolve issues when possible.
-        If you can fully resolve the issue, indicate this by including "[ISSUE RESOLVED]" at the end of your response.
-        If the issue requires human intervention, indicate this by including "[REQUIRES HUMAN]" at the end of your response.
-        `
+        content: systemContent
       },
       ...previousMessages,
       {

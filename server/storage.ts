@@ -24,7 +24,7 @@ import {
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import createMemoryStore from "memorystore";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { db, pool } from "./db";
 
 // Interface for all storage operations
@@ -771,21 +771,26 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     try {
-      // Use raw SQL to avoid casing issues with PostgreSQL columns
-      const result = await db.execute(
-        `SELECT id, "tenantId", username, password, role, name, email, 
-         mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-         ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-         ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-         FROM users WHERE id = $1`,
-        [id]
-      );
+      // Use standard select operation with transformation for camelCase properties
+      const results = await db.select().from(users).where(eq(users.id, id));
       
-      if (result.rows.length === 0) {
+      if (results.length === 0) {
         return undefined;
       }
       
-      return result.rows[0] as User;
+      // Transform the result to ensure camelCase property names are mapped from DB column names
+      const result = results[0];
+      return {
+        ...result,
+        // PostgreSQL column names are lowercase, ensure we map them correctly
+        mfaEnabled: result.mfaenabled as boolean,
+        mfaSecret: result.mfasecret as string | null,
+        mfaBackupCodes: result.mfabackupcodes as string[] | [],
+        ssoEnabled: result.ssoenabled as boolean,
+        ssoProvider: result.ssoprovider as string | null,
+        ssoProviderId: result.ssoproviderid as string | null,
+        ssoProviderData: result.ssoproviderdata as Record<string, any> | {},
+      } as User;
     } catch (error) {
       console.error("Error fetching user:", error);
       throw error;
@@ -794,34 +799,41 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
     try {
-      let query = '';
-      let params = [];
+      // Use standard select operation with transformation for camelCase properties
+      let results;
       
       if (tenantId) {
         // If tenantId is provided, restrict to that tenant
-        query = `SELECT id, "tenantId", username, password, role, name, email, 
-                 mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-                 ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-                 ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-                 FROM users WHERE username = $1 AND "tenantId" = $2`;
-        params = [username, tenantId];
+        results = await db.select()
+          .from(users)
+          .where(and(
+            eq(users.username, username),
+            eq(users.tenantId, tenantId)
+          ));
       } else {
         // Default behavior for backward compatibility
-        query = `SELECT id, "tenantId", username, password, role, name, email, 
-                mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
-                ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
-                ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
-                FROM users WHERE username = $1`;
-        params = [username];
+        results = await db.select()
+          .from(users)
+          .where(eq(users.username, username));
       }
       
-      const result = await db.execute(query, params);
-      
-      if (result.rows.length === 0) {
+      if (results.length === 0) {
         return undefined;
       }
       
-      return result.rows[0] as User;
+      // Transform the result to ensure camelCase property names are mapped from DB column names
+      const result = results[0];
+      return {
+        ...result,
+        // PostgreSQL column names are lowercase, ensure we map them correctly
+        mfaEnabled: result.mfaenabled as boolean,
+        mfaSecret: result.mfasecret as string | null,
+        mfaBackupCodes: result.mfabackupcodes as string[] | [],
+        ssoEnabled: result.ssoenabled as boolean,
+        ssoProvider: result.ssoprovider as string | null,
+        ssoProviderId: result.ssoproviderid as string | null,
+        ssoProviderData: result.ssoproviderdata as Record<string, any> | {},
+      } as User;
     } catch (error) {
       console.error("Error fetching user by username:", error);
       throw error;

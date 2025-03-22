@@ -19,7 +19,8 @@ function isDatabaseConnectionError(text: string, status: number): boolean {
     status === 503 || // Service Unavailable
     status === 500 || // Internal Server Error
     (typeof text === 'string' && text.includes("database") && text.includes("connection")) || 
-    (typeof text === 'string' && text.includes("Error fetching user account"))
+    (typeof text === 'string' && text.includes("Error fetching user account")) ||
+    (typeof text === 'string' && text.includes("Internal server error"))
   );
 }
 

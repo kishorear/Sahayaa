@@ -1,5 +1,6 @@
 import AdminLayout from "@/components/admin/AdminLayout";
 import IntegrationSettings from "@/components/admin/IntegrationSettings";
+import DataSourcesSettings from "@/components/admin/DataSourcesSettings";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -92,6 +93,7 @@ export default function SettingsPage() {
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="ai">AI Settings</TabsTrigger>
             <TabsTrigger value="tickets">Ticket Settings</TabsTrigger>
+            <TabsTrigger value="knowledge">Knowledge Sources</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
 
@@ -457,6 +459,10 @@ export default function SettingsPage() {
                 <Button onClick={updateAssignmentSettings}>Save Ticket Settings</Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="knowledge">
+            <DataSourcesSettings />
           </TabsContent>
 
           <TabsContent value="integrations">

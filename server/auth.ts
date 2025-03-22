@@ -125,19 +125,44 @@ export function setupAuth(app: Express) {
         const user = await storage.getUser(req.session.userId);
         if (user) {
           req.user = user;
+          console.log("User authenticated via session:", user.id);
         }
       } catch (error) {
         console.error("Error fetching user:", error);
       }
     } else {
-      // If there's a backup cookie but no session, try to recover the session
+      // Try to restore from backup methods if session doesn't have user ID
+      
+      // First try the backup session ID
       const backupSessionId = req.cookies?.ticket_support_sid_backup;
       if (backupSessionId) {
         console.log("Found backup session ID, attempting to recover session");
-        
-        // This is just a simple check to provide more debugging information
-        // The actual session recovery would require more work with the session store
         console.log("Backup session ID:", backupSessionId);
+      }
+      
+      // If that doesn't work, try the direct user ID cookie
+      if (!req.user && req.cookies?.ticket_auth_user_id) {
+        const userId = parseInt(req.cookies.ticket_auth_user_id);
+        console.log("Found direct user ID cookie, attempting to recover user:", userId);
+        
+        if (!isNaN(userId)) {
+          try {
+            const user = await storage.getUser(userId);
+            if (user) {
+              // Restore both the session and the user object
+              req.user = user;
+              req.session.userId = user.id;
+              console.log("User authenticated via backup cookie:", user.id);
+              
+              // Save the restored session
+              await new Promise<void>((resolve) => {
+                req.session.save(() => resolve());
+              });
+            }
+          } catch (error) {
+            console.error("Error restoring user from backup cookie:", error);
+          }
+        }
       }
     }
     next();
@@ -330,6 +355,9 @@ export function setupAuth(app: Express) {
         // Set session directly
         req.session.userId = user.id;
         
+        // Also manually set the user object
+        req.user = user;
+        
         await new Promise<void>((resolve, reject) => {
           req.session.save((err) => {
             if (err) {
@@ -350,6 +378,15 @@ export function setupAuth(app: Express) {
           path: '/'
         });
         
+        // Set additional auth cookie with the user ID directly
+        res.cookie('ticket_auth_user_id', user.id.toString(), {
+          maxAge: 24 * 60 * 60 * 1000, // 24 hours
+          secure: false,
+          sameSite: "lax",
+          httpOnly: true,
+          path: '/'
+        });
+        
         console.log(`Session created for user ID: ${user.id}`);
         
         // Check that session was saved correctly
@@ -357,6 +394,7 @@ export function setupAuth(app: Express) {
           id: req.session.id,
           cookie: JSON.stringify(req.session.cookie),
           userId: req.session.userId,
+          user: req.user ? 'User object available' : 'No user object',
           sessionStore: req.sessionStore ? 'Session store available' : 'No session store found'
         });
       } catch (sessionError) {
@@ -398,6 +436,14 @@ export function setupAuth(app: Express) {
       });
       
       res.clearCookie("ticket_support_sid_backup", {
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax"
+      });
+      
+      // Also clear the direct auth cookie
+      res.clearCookie("ticket_auth_user_id", {
         path: '/',
         httpOnly: true,
         secure: false,

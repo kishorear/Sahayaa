@@ -195,6 +195,8 @@ export default function SsoSettings() {
     if (providerType === "oauth2") {
       setProviderTemplate("google");
       form.reset(PREDEFINED_PROVIDERS.google);
+    } else if (providerType === "google") {
+      form.reset(PREDEFINED_PROVIDERS.google_native);
     } else {
       setProviderTemplate("generic_saml");
       form.reset(PREDEFINED_PROVIDERS.generic_saml);
@@ -222,6 +224,8 @@ export default function SsoSettings() {
       // Reset form
       if (data.type === "oauth2") {
         form.reset(PREDEFINED_PROVIDERS.google);
+      } else if (data.type === "google") {
+        form.reset(PREDEFINED_PROVIDERS.google_native);
       } else {
         form.reset(PREDEFINED_PROVIDERS.generic_saml);
       }
@@ -363,7 +367,11 @@ export default function SsoSettings() {
                         </Badge>
                       </CardTitle>
                       <CardDescription>
-                        {provider.type === "oauth2" ? "OAuth 2.0" : "SAML"} Provider
+                        {provider.type === "oauth2" 
+                          ? "OAuth 2.0" 
+                          : provider.type === "google" 
+                            ? "Google" 
+                            : "SAML"} Provider
                       </CardDescription>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -439,13 +447,14 @@ export default function SsoSettings() {
                         <Label>Provider Type</Label>
                         <Select 
                           defaultValue={providerType} 
-                          onValueChange={(value) => setProviderType(value as "oauth2" | "saml")}
+                          onValueChange={(value) => setProviderType(value as "oauth2" | "google" | "saml")}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select provider type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="oauth2">OAuth 2.0</SelectItem>
+                            <SelectItem value="google">Google</SelectItem>
                             <SelectItem value="saml">SAML</SelectItem>
                           </SelectContent>
                         </Select>
@@ -558,6 +567,77 @@ export default function SsoSettings() {
                             </FormItem>
                           )}
                         />
+                      </>
+                    )}
+                    
+                    {providerType === "google" && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="config.clientID"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Client ID</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                The client ID from Google Cloud Console
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="config.clientSecret"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Client Secret</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="password" />
+                              </FormControl>
+                              <FormDescription>
+                                The client secret from Google Cloud Console
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="config.callbackURL"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Callback URL</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Add this URL to your Google OAuth authorized redirect URIs
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <Alert className="mt-4">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Google OAuth Setup</AlertTitle>
+                          <AlertDescription>
+                            <p className="mb-2">To configure Google authentication:</p>
+                            <ol className="list-decimal pl-5 space-y-1 text-sm">
+                              <li>Go to the <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" className="text-primary underline">Google Cloud Console</a></li>
+                              <li>Create a project or select an existing one</li>
+                              <li>Navigate to &quot;APIs &amp; Services&quot; {'->'} &quot;Credentials&quot;</li>
+                              <li>Create an OAuth client ID for &quot;Web application&quot;</li>
+                              <li>Add your authorized redirect URI (the callback URL above)</li>
+                              <li>Copy the Client ID and Client Secret</li>
+                            </ol>
+                          </AlertDescription>
+                        </Alert>
                       </>
                     )}
                     

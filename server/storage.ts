@@ -950,25 +950,48 @@ export class DatabaseStorage implements IStorage {
 
   constructor() {
     try {
-      console.log('Setting up PostgreSQL session store');
-      // Initialize PostgreSQL session store
-      const PostgresStore = connectPg(session);
-      this.sessionStore = new PostgresStore({
-        pool,
-        tableName: 'session', // Default table name for sessions
-        createTableIfMissing: true,
-        errorLog: (err) => console.error('PostgreSQL session store error:', err)
-      });
-      console.log('PostgreSQL session store initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize PostgreSQL session store, falling back to memory store:', error);
+      console.log('Setting up PostgreSQL session store - Environment:', isProduction ? 'Production' : 'Development');
       
-      // Fall back to memory store if PostgreSQL connection fails
-      const MemoryStore = createMemoryStore(session);
-      this.sessionStore = new MemoryStore({
-        checkPeriod: 86400000 // 24 hours
-      });
+      // Check if DATABASE_URL is available before attempting to connect
+      if (process.env.DATABASE_URL) {
+        try {
+          // Initialize PostgreSQL session store with enhanced error handling
+          const PostgresStore = connectPg(session);
+          this.sessionStore = new PostgresStore({
+            pool, 
+            tableName: 'session',
+            createTableIfMissing: true,
+            // Enhanced error logging with more context
+            errorLog: (err) => {
+              console.error('PostgreSQL session store error:', err);
+              // Log additional connection info on error
+              if (err.code === 'ECONNREFUSED') {
+                console.error('Database connection refused. Check if PostgreSQL is running.');
+              }
+            }
+          });
+          console.log('PostgreSQL session store initialized successfully');
+        } catch (dbError) {
+          console.error('Failed to initialize PostgreSQL session store:', dbError);
+          this.setupMemoryStore('Database connection error');
+        }
+      } else {
+        console.log('No DATABASE_URL provided, using memory session store');
+        this.setupMemoryStore('No database URL');
+      }
+    } catch (error) {
+      console.error('Critical error during storage initialization:', error);
+      this.setupMemoryStore('Critical error');
     }
+  }
+  
+  // Helper method to set up memory session store
+  private setupMemoryStore(reason: string) {
+    const MemoryStore = createMemoryStore(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // 24 hours
+    });
+    console.log(`Memory session store initialized as fallback. Reason: ${reason}`);
   }
   
   // AI provider operations

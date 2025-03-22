@@ -191,6 +191,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
       
+      // Handle simple greetings and common phrases without creating a ticket
+      const lowerMessage = message.toLowerCase().trim();
+      const isSimpleGreeting = /^(hi|hello|hey|greetings|howdy|hola|what's up|sup|good (morning|afternoon|evening)|how are you|how's it going|how is it going|how are things)[\s\?\!\.]*$/i.test(lowerMessage);
+      
+      if (isSimpleGreeting) {
+        return res.status(200).json({
+          message: "Hello! I'm your AI support assistant. How can I help you today?",
+          action: undefined
+        });
+      }
+      
       // First determine if we need to create a ticket
       const initialClassification = await classifyTicket("New chat request", message);
       

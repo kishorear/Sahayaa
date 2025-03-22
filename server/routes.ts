@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   
   // Setup authentication routes and middleware
-  const { requireAuth, requireRole } = setupAuth(app);
+  const { requireAuth, requireRole } = await setupAuth(app);
   
   // Register email-related routes
   registerEmailRoutes(app, requireRole(['admin', 'support-agent']));

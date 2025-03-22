@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { User as SchemaUser, users } from "@shared/schema";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import createMemoryStore from "memorystore";
 
 // Extend the session type to include our custom fields
 declare module 'express-session' {
@@ -88,7 +89,7 @@ async function comparePasswords(supplied: string, stored: string) {
   }
 }
 
-export function setupAuth(app: Express) {
+export async function setupAuth(app: Express) {
   // Determine if we're in a production environment
   const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
   
@@ -107,13 +108,49 @@ export function setupAuth(app: Express) {
   // Log cookie configuration
   console.log("Session cookie configuration:", cookieConfig);
   
+  // Test session store connection before setting it up
+  let sessionStore = storage.sessionStore;
+  
+  // Wrap PostgreSQL session store operations with automatic fallback on error
+  try {
+    // Quick connection test to verify session store is working
+    const now = Date.now();
+    await new Promise<void>((resolve, reject) => {
+      const testTimeout = setTimeout(() => {
+        console.warn("Session store connection test timed out");
+        reject(new Error("Connection timeout"));
+      }, 2000);
+      
+      storage.sessionStore.set(`test-${now}`, { cookie: { maxAge: 10000 }, test: "connection-test" } as any, (err) => {
+        clearTimeout(testTimeout);
+        if (err) {
+          reject(err);
+        } else {
+          console.log("Session store connection test successful");
+          resolve();
+        }
+      });
+    });
+  } catch (storeError) {
+    console.error("Session store connection failed, using memory store:", storeError);
+    
+    // Create a memory store as fallback if the main store fails
+    const MemoryStore = createMemoryStore(session);
+    sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // 24 hours
+    });
+    console.log("Memory session store initialized as emergency fallback");
+  }
+  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "super-secret-key-change-in-production",
     resave: true, // Changed to true to ensure session is saved
     saveUninitialized: true, // Changed to true to ensure new sessions are saved
-    store: storage.sessionStore,
+    store: sessionStore, // Use our tested and verified store
     cookie: cookieConfig,
-    name: 'ticket_support_sid' // Custom name for session cookie to avoid conflicts
+    name: 'ticket_support_sid', // Custom name for session cookie to avoid conflicts
+    // Add error handling for session store operations
+    unset: 'destroy' // Remove session from store when req.session is destroyed
   };
 
   app.use(session(sessionSettings));

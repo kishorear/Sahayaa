@@ -1757,6 +1757,23 @@ export class DatabaseStorage implements IStorage {
         })
         .returning();
       
+      // Add the new user to the cache immediately for better performance
+      try {
+        // Cache by ID
+        this.userCache.set(user.id, user);
+        
+        // Cache by username (with tenant ID if provided)
+        const usernameKey = user.tenantId 
+          ? `${user.username}:${user.tenantId}` 
+          : user.username;
+        this.userByUsernameCache.set(usernameKey, user);
+        
+        console.log(`New user ${user.username} (ID: ${user.id}) added to cache`);
+      } catch (cacheError) {
+        // Non-fatal error - just log it
+        console.error(`Failed to add new user to cache:`, cacheError);
+      }
+      
       return user;
     } catch (error) {
       console.error("Error creating user:", error);

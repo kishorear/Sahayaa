@@ -1885,8 +1885,433 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Create a PostgreSQL storage implementation for production
-export const storage = new DatabaseStorage();
+// Create a function to initialize storage with fallback to in-memory if database fails
+function initializeStorage(): IStorage {
+  try {
+    console.log("Attempting to initialize database storage...");
+    // Try database first
+    return new DatabaseStorage();
+  } catch (error) {
+    console.error("Failed to initialize database storage:", error);
+    console.log("Falling back to in-memory storage");
+    // Fall back to memory storage
+    return new MemStorage();
+  }
+}
 
-// If you need to use in-memory storage for development, uncomment this line
-// export const storage = new MemStorage();
+// Export a wrapped storage instance that catches database errors and provides fallbacks
+class StorageWrapper implements IStorage {
+  private storageImpl: IStorage;
+  public sessionStore: session.Store;
+  
+  constructor() {
+    try {
+      this.storageImpl = initializeStorage();
+      this.sessionStore = this.storageImpl.sessionStore;
+      console.log("Storage initialized successfully");
+    } catch (error) {
+      console.error("Error during storage initialization:", error);
+      console.log("Using in-memory storage as last resort fallback");
+      this.storageImpl = new MemStorage();
+      this.sessionStore = this.storageImpl.sessionStore;
+    }
+  }
+  
+  // Tenant operations
+  async getTenantById(id: number): Promise<Tenant | undefined> {
+    try {
+      return await this.storageImpl.getTenantById(id);
+    } catch (error) {
+      console.error(`Error in getTenantById(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  async getTenantByApiKey(apiKey: string): Promise<Tenant | undefined> {
+    try {
+      return await this.storageImpl.getTenantByApiKey(apiKey);
+    } catch (error) {
+      console.error(`Error in getTenantByApiKey:`, error);
+      throw error;
+    }
+  }
+  
+  async getTenantBySubdomain(subdomain: string): Promise<Tenant | undefined> {
+    try {
+      return await this.storageImpl.getTenantBySubdomain(subdomain);
+    } catch (error) {
+      console.error(`Error in getTenantBySubdomain(${subdomain}):`, error);
+      throw error;
+    }
+  }
+  
+  async getAllTenants(): Promise<Tenant[]> {
+    try {
+      return await this.storageImpl.getAllTenants();
+    } catch (error) {
+      console.error(`Error in getAllTenants():`, error);
+      throw error;
+    }
+  }
+  
+  async createTenant(tenant: InsertTenant): Promise<Tenant> {
+    try {
+      return await this.storageImpl.createTenant(tenant);
+    } catch (error) {
+      console.error(`Error in createTenant():`, error);
+      throw error;
+    }
+  }
+  
+  async updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant> {
+    try {
+      return await this.storageImpl.updateTenant(id, updates);
+    } catch (error) {
+      console.error(`Error in updateTenant(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    try {
+      return await this.storageImpl.getUser(id);
+    } catch (error) {
+      console.error(`Error in getUser(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
+    try {
+      return await this.storageImpl.getUserByUsername(username, tenantId);
+    } catch (error) {
+      console.error(`Error in getUserByUsername(${username}):`, error);
+      throw error;
+    }
+  }
+  
+  async getUsersByTenantId(tenantId: number): Promise<User[]> {
+    try {
+      return await this.storageImpl.getUsersByTenantId(tenantId);
+    } catch (error) {
+      console.error(`Error in getUsersByTenantId(${tenantId}):`, error);
+      throw error;
+    }
+  }
+  
+  async createUser(user: InsertUser): Promise<User> {
+    try {
+      return await this.storageImpl.createUser(user);
+    } catch (error) {
+      console.error(`Error in createUser():`, error);
+      throw error;
+    }
+  }
+  
+  async updateUser(id: number, updates: Partial<User>): Promise<User> {
+    try {
+      return await this.storageImpl.updateUser(id, updates);
+    } catch (error) {
+      console.error(`Error in updateUser(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  async getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined> {
+    try {
+      return await this.storageImpl.getUserBySsoId(provider, providerId, tenantId);
+    } catch (error) {
+      console.error(`Error in getUserBySsoId():`, error);
+      throw error;
+    }
+  }
+  
+  // Identity provider operations
+  async getIdentityProviders(tenantId: number): Promise<IdentityProvider[]> {
+    try {
+      return await this.storageImpl.getIdentityProviders(tenantId);
+    } catch (error) {
+      console.error(`Error in getIdentityProviders():`, error);
+      throw error;
+    }
+  }
+  
+  async getIdentityProviderById(id: number, tenantId?: number): Promise<IdentityProvider | undefined> {
+    try {
+      return await this.storageImpl.getIdentityProviderById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getIdentityProviderById():`, error);
+      throw error;
+    }
+  }
+  
+  async createIdentityProvider(provider: InsertIdentityProvider): Promise<IdentityProvider> {
+    try {
+      return await this.storageImpl.createIdentityProvider(provider);
+    } catch (error) {
+      console.error(`Error in createIdentityProvider():`, error);
+      throw error;
+    }
+  }
+  
+  async updateIdentityProvider(id: number, updates: Partial<IdentityProvider>, tenantId?: number): Promise<IdentityProvider> {
+    try {
+      return await this.storageImpl.updateIdentityProvider(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateIdentityProvider():`, error);
+      throw error;
+    }
+  }
+  
+  async deleteIdentityProvider(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteIdentityProvider(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteIdentityProvider():`, error);
+      throw error;
+    }
+  }
+  
+  // Ticket operations  
+  async getAllTickets(tenantId?: number): Promise<Ticket[]> {
+    try {
+      return await this.storageImpl.getAllTickets(tenantId);
+    } catch (error) {
+      console.error(`Error in getAllTickets():`, error);
+      throw error;
+    }
+  }
+  
+  async getTicketById(id: number, tenantId?: number): Promise<Ticket | undefined> {
+    try {
+      return await this.storageImpl.getTicketById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getTicketById():`, error);
+      throw error;
+    }
+  }
+  
+  async createTicket(ticket: InsertTicket): Promise<Ticket> {
+    try {
+      return await this.storageImpl.createTicket(ticket);
+    } catch (error) {
+      console.error(`Error in createTicket():`, error);
+      throw error;
+    }
+  }
+  
+  async updateTicket(id: number, updates: Partial<Ticket>, tenantId?: number): Promise<Ticket> {
+    try {
+      return await this.storageImpl.updateTicket(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateTicket():`, error);
+      throw error;
+    }
+  }
+  
+  // Message operations
+  async getMessagesByTicketId(ticketId: number): Promise<Message[]> {
+    try {
+      return await this.storageImpl.getMessagesByTicketId(ticketId);
+    } catch (error) {
+      console.error(`Error in getMessagesByTicketId():`, error);
+      throw error;
+    }
+  }
+  
+  async createMessage(message: InsertMessage): Promise<Message> {
+    try {
+      return await this.storageImpl.createMessage(message);
+    } catch (error) {
+      console.error(`Error in createMessage():`, error);
+      throw error;
+    }
+  }
+  
+  // Attachment operations
+  async getAttachmentsByTicketId(ticketId: number): Promise<Attachment[]> {
+    try {
+      return await this.storageImpl.getAttachmentsByTicketId(ticketId);
+    } catch (error) {
+      console.error(`Error in getAttachmentsByTicketId():`, error);
+      throw error;
+    }
+  }
+  
+  async getAttachmentById(id: number): Promise<Attachment | undefined> {
+    try {
+      return await this.storageImpl.getAttachmentById(id);
+    } catch (error) {
+      console.error(`Error in getAttachmentById():`, error);
+      throw error;
+    }
+  }
+  
+  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
+    try {
+      return await this.storageImpl.createAttachment(attachment);
+    } catch (error) {
+      console.error(`Error in createAttachment():`, error);
+      throw error;
+    }
+  }
+  
+  // Data source operations
+  async getAllDataSources(tenantId?: number): Promise<DataSource[]> {
+    try {
+      return await this.storageImpl.getAllDataSources(tenantId);
+    } catch (error) {
+      console.error(`Error in getAllDataSources():`, error);
+      throw error;
+    }
+  }
+  
+  async getEnabledDataSources(tenantId?: number): Promise<DataSource[]> {
+    try {
+      return await this.storageImpl.getEnabledDataSources(tenantId);
+    } catch (error) {
+      console.error(`Error in getEnabledDataSources():`, error);
+      throw error;
+    }
+  }
+  
+  async getDataSourceById(id: number, tenantId?: number): Promise<DataSource | undefined> {
+    try {
+      return await this.storageImpl.getDataSourceById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getDataSourceById():`, error);
+      throw error;
+    }
+  }
+  
+  async createDataSource(dataSource: InsertDataSource): Promise<DataSource> {
+    try {
+      return await this.storageImpl.createDataSource(dataSource);
+    } catch (error) {
+      console.error(`Error in createDataSource():`, error);
+      throw error;
+    }
+  }
+  
+  async updateDataSource(id: number, updates: Partial<DataSource>, tenantId?: number): Promise<DataSource> {
+    try {
+      return await this.storageImpl.updateDataSource(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateDataSource():`, error);
+      throw error;
+    }
+  }
+  
+  async deleteDataSource(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteDataSource(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteDataSource():`, error);
+      throw error;
+    }
+  }
+  
+  // AI provider operations
+  async getAiProviders(tenantId: number): Promise<AiProvider[]> {
+    try {
+      return await this.storageImpl.getAiProviders(tenantId);
+    } catch (error) {
+      console.error(`Error in getAiProviders():`, error);
+      throw error;
+    }
+  }
+  
+  async getAiProviderById(id: number, tenantId?: number): Promise<AiProvider | undefined> {
+    try {
+      return await this.storageImpl.getAiProviderById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getAiProviderById():`, error);
+      throw error;
+    }
+  }
+  
+  async getAiProvidersByType(type: string, tenantId: number): Promise<AiProvider[]> {
+    try {
+      return await this.storageImpl.getAiProvidersByType(type, tenantId);
+    } catch (error) {
+      console.error(`Error in getAiProvidersByType():`, error);
+      throw error;
+    }
+  }
+  
+  async getPrimaryAiProvider(tenantId: number): Promise<AiProvider | undefined> {
+    try {
+      return await this.storageImpl.getPrimaryAiProvider(tenantId);
+    } catch (error) {
+      console.error(`Error in getPrimaryAiProvider():`, error);
+      throw error;
+    }
+  }
+  
+  async createAiProvider(provider: InsertAiProvider): Promise<AiProvider> {
+    try {
+      return await this.storageImpl.createAiProvider(provider);
+    } catch (error) {
+      console.error(`Error in createAiProvider():`, error);
+      throw error;
+    }
+  }
+  
+  async updateAiProvider(id: number, updates: Partial<AiProvider>, tenantId?: number): Promise<AiProvider> {
+    try {
+      return await this.storageImpl.updateAiProvider(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateAiProvider():`, error);
+      throw error;
+    }
+  }
+  
+  async deleteAiProvider(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteAiProvider(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteAiProvider():`, error);
+      throw error;
+    }
+  }
+  
+  // Widget analytics operations
+  async getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined> {
+    try {
+      return await this.storageImpl.getWidgetAnalyticsByApiKey(apiKey);
+    } catch (error) {
+      console.error(`Error in getWidgetAnalyticsByApiKey():`, error);
+      throw error;
+    }
+  }
+  
+  async getWidgetAnalyticsByAdminId(adminId: number, tenantId?: number): Promise<WidgetAnalytics[]> {
+    try {
+      return await this.storageImpl.getWidgetAnalyticsByAdminId(adminId, tenantId);
+    } catch (error) {
+      console.error(`Error in getWidgetAnalyticsByAdminId():`, error);
+      throw error;
+    }
+  }
+  
+  async createWidgetAnalytics(analytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
+    try {
+      return await this.storageImpl.createWidgetAnalytics(analytics);
+    } catch (error) {
+      console.error(`Error in createWidgetAnalytics():`, error);
+      throw error;
+    }
+  }
+  
+  async updateWidgetAnalytics(id: number, updates: Partial<WidgetAnalytics>): Promise<WidgetAnalytics> {
+    try {
+      return await this.storageImpl.updateWidgetAnalytics(id, updates);
+    } catch (error) {
+      console.error(`Error in updateWidgetAnalytics():`, error);
+      throw error;
+    }
+  }
+}
+
+export const storage = new StorageWrapper();

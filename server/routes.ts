@@ -20,6 +20,9 @@ import { registerEmailRoutes } from "./routes/email-routes";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes and middleware
   const { requireAuth } = setupAuth(app);
+  
+  // Register email-related routes
+  registerEmailRoutes(app, requireAuth);
 
   // TICKET ROUTES - Protected admin routes
   app.get("/api/tickets", requireAuth, async (req, res) => {

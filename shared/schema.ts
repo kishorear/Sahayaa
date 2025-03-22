@@ -36,6 +36,8 @@ export const tickets = pgTable("tickets", {
   resolvedAt: timestamp("resolvedAt"),
   aiResolved: boolean("aiResolved").default(false),
   aiNotes: text("aiNotes"),
+  // Integration fields
+  externalIntegrations: json("externalIntegrations"), // {zendesk: {id, url}, jira: {id, key, url}}
 });
 
 export const insertTicketSchema = createInsertSchema(tickets)

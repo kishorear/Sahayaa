@@ -23,16 +23,25 @@ import { db, pool } from "./db";
 
 // Interface for all storage operations
 export interface IStorage {
+  // Tenant operations
+  getTenantById(id: number): Promise<Tenant | undefined>;
+  getTenantByApiKey(apiKey: string): Promise<Tenant | undefined>;
+  getTenantBySubdomain(subdomain: string): Promise<Tenant | undefined>;
+  getAllTenants(): Promise<Tenant[]>;
+  createTenant(tenant: InsertTenant): Promise<Tenant>;
+  updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant>;
+  
   // User operations
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByUsername(username: string, tenantId?: number): Promise<User | undefined>;
+  getUsersByTenantId(tenantId: number): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   
   // Ticket operations
-  getAllTickets(): Promise<Ticket[]>;
-  getTicketById(id: number): Promise<Ticket | undefined>;
+  getAllTickets(tenantId?: number): Promise<Ticket[]>;
+  getTicketById(id: number, tenantId?: number): Promise<Ticket | undefined>;
   createTicket(ticket: InsertTicket): Promise<Ticket>;
-  updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket>;
+  updateTicket(id: number, updates: Partial<Ticket>, tenantId?: number): Promise<Ticket>;
   
   // Message operations
   getMessagesByTicketId(ticketId: number): Promise<Message[]>;
@@ -44,12 +53,12 @@ export interface IStorage {
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   
   // Data source operations
-  getAllDataSources(): Promise<DataSource[]>;
-  getEnabledDataSources(): Promise<DataSource[]>;
-  getDataSourceById(id: number): Promise<DataSource | undefined>;
+  getAllDataSources(tenantId?: number): Promise<DataSource[]>;
+  getEnabledDataSources(tenantId?: number): Promise<DataSource[]>;
+  getDataSourceById(id: number, tenantId?: number): Promise<DataSource | undefined>;
   createDataSource(dataSource: InsertDataSource): Promise<DataSource>;
-  updateDataSource(id: number, updates: Partial<DataSource>): Promise<DataSource>;
-  deleteDataSource(id: number): Promise<boolean>;
+  updateDataSource(id: number, updates: Partial<DataSource>, tenantId?: number): Promise<DataSource>;
+  deleteDataSource(id: number, tenantId?: number): Promise<boolean>;
   
   // Session management
   sessionStore: session.Store;

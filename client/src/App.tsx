@@ -6,6 +6,8 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";  // New Dashboard component
 import LandingPage from "@/pages/LandingPage";  // New Landing Page component
 import PricingPage from "@/pages/PricingPage";  // New Pricing Page component
+import DocumentationPage from "@/pages/DocumentationPage"; // Documentation page
+import ApiDocsPage from "@/pages/ApiDocsPage"; // API documentation page
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import TicketsPage from "@/pages/admin/TicketsPage";
 import TicketDetailsPage from "@/pages/admin/TicketDetailsPage";
@@ -24,6 +26,8 @@ function Router() {
       {/* Public Routes */}
       <Route path="/" component={LandingPage} />
       <Route path="/pricing" component={PricingPage} />
+      <Route path="/docs" component={DocumentationPage} />
+      <Route path="/api" component={ApiDocsPage} />
       <Route path="/auth" component={AuthPage} />
       
       {/* Protected Routes - Application */}

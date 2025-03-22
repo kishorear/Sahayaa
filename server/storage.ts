@@ -833,21 +833,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateDataSource(id: number, updates: Partial<DataSource>, tenantId?: number): Promise<DataSource> {
-    let condition;
+    let result;
+    
     if (tenantId) {
-      condition = and(
-        eq(dataSources.id, id),
-        eq(dataSources.tenantId, tenantId)
-      );
+      result = await db
+        .update(dataSources)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(and(
+          eq(dataSources.id, id),
+          eq(dataSources.tenantId, tenantId)
+        ))
+        .returning();
     } else {
-      condition = eq(dataSources.id, id);
+      result = await db
+        .update(dataSources)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(dataSources.id, id))
+        .returning();
     }
     
-    const [updatedDataSource] = await db
-      .update(dataSources)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(condition)
-      .returning();
+    const updatedDataSource = result[0];
     
     if (!updatedDataSource) {
       if (tenantId) {
@@ -861,19 +866,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDataSource(id: number, tenantId?: number): Promise<boolean> {
-    let condition;
-    if (tenantId) {
-      condition = and(
-        eq(dataSources.id, id),
-        eq(dataSources.tenantId, tenantId)
-      );
-    } else {
-      condition = eq(dataSources.id, id);
-    }
+    let result;
     
-    const result = await db
-      .delete(dataSources)
-      .where(condition);
+    if (tenantId) {
+      result = await db
+        .delete(dataSources)
+        .where(and(
+          eq(dataSources.id, id),
+          eq(dataSources.tenantId, tenantId)
+        ));
+    } else {
+      result = await db
+        .delete(dataSources)
+        .where(eq(dataSources.id, id));
+    }
       
     return !!result;
   }

@@ -23,7 +23,9 @@ export function registerDataSourceRoutes(app: Express, requireAuth: any) {
         return res.status(403).json({ error: 'Unauthorized access to data sources' });
       }
       
-      const dataSources = await storage.getAllDataSources();
+      // Get tenant-specific data sources if tenant is defined, otherwise get all
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      const dataSources = await storage.getAllDataSources(tenantId);
       return res.status(200).json(dataSources);
     } catch (error) {
       console.error('Error fetching data sources:', error);
@@ -34,7 +36,9 @@ export function registerDataSourceRoutes(app: Express, requireAuth: any) {
   // Get enabled data sources
   app.get('/api/data-sources/enabled', requireAuth, async (req: Request, res: Response) => {
     try {
-      const dataSources = await storage.getEnabledDataSources();
+      // Get tenant-specific data sources
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      const dataSources = await storage.getEnabledDataSources(tenantId);
       return res.status(200).json(dataSources);
     } catch (error) {
       console.error('Error fetching enabled data sources:', error);
@@ -55,7 +59,9 @@ export function registerDataSourceRoutes(app: Express, requireAuth: any) {
         return res.status(400).json({ error: 'Invalid data source ID' });
       }
       
-      const dataSource = await storage.getDataSourceById(id);
+      // Get tenant-specific data source
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      const dataSource = await storage.getDataSourceById(id, tenantId);
       if (!dataSource) {
         return res.status(404).json({ error: 'Data source not found' });
       }
@@ -77,6 +83,14 @@ export function registerDataSourceRoutes(app: Express, requireAuth: any) {
       
       // Validate request body
       const validData = insertDataSourceSchema.parse(req.body);
+      
+      // Get tenant-specific context
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      
+      // Add tenant ID to the data source
+      if (tenantId) {
+        validData.tenantId = tenantId;
+      }
       
       // Create the data source
       const dataSource = await storage.createDataSource(validData);
@@ -107,8 +121,11 @@ export function registerDataSourceRoutes(app: Express, requireAuth: any) {
         return res.status(400).json({ error: 'Invalid data source ID' });
       }
       
+      // Get tenant-specific context
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      
       // Check if data source exists
-      const existingDataSource = await storage.getDataSourceById(id);
+      const existingDataSource = await storage.getDataSourceById(id, tenantId);
       if (!existingDataSource) {
         return res.status(404).json({ error: 'Data source not found' });
       }
@@ -117,7 +134,7 @@ export function registerDataSourceRoutes(app: Express, requireAuth: any) {
       const updates = req.body;
       
       // Update the data source
-      const updatedDataSource = await storage.updateDataSource(id, updates);
+      const updatedDataSource = await storage.updateDataSource(id, updates, tenantId);
       return res.status(200).json(updatedDataSource);
     } catch (error) {
       console.error('Error updating data source:', error);
@@ -138,14 +155,17 @@ export function registerDataSourceRoutes(app: Express, requireAuth: any) {
         return res.status(400).json({ error: 'Invalid data source ID' });
       }
       
+      // Get tenant-specific context
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      
       // Check if data source exists
-      const existingDataSource = await storage.getDataSourceById(id);
+      const existingDataSource = await storage.getDataSourceById(id, tenantId);
       if (!existingDataSource) {
         return res.status(404).json({ error: 'Data source not found' });
       }
       
       // Delete the data source
-      const success = await storage.deleteDataSource(id);
+      const success = await storage.deleteDataSource(id, tenantId);
       if (!success) {
         return res.status(500).json({ error: 'Failed to delete data source' });
       }

@@ -7,6 +7,7 @@ import {
 import { InsertUser, User } from "@shared/schema";
 import { apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 type AuthContextType = {
   user: User | null;
@@ -23,6 +24,8 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [_, setLocation] = useLocation();
+  
   const {
     data: user,
     error,
@@ -53,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login successful",
         description: `Welcome back, ${user.username}!`,
       });
+      // Redirect to dashboard after successful login
+      setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({
@@ -74,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Registration successful",
         description: `Welcome, ${user.username}!`,
       });
+      // Redirect to dashboard after successful registration
+      setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({
@@ -94,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Logged out",
         description: "You have been logged out successfully.",
       });
+      // Redirect to landing page after logout
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({

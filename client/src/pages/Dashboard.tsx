@@ -9,17 +9,31 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Define types for the metrics data
+interface SummaryMetrics {
+  totalTickets: number;
+  resolvedTickets: number;
+  avgResponseTime: string;
+  aiResolvedPercentage: string;
+}
+
+interface CategoryMetric {
+  category: string;
+  count: number;
+  percentage: number;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   
   // Fetch summary metrics
-  const { data: summaryData, isLoading: isLoadingSummary } = useQuery({
+  const { data: summaryData, isLoading: isLoadingSummary } = useQuery<SummaryMetrics>({
     queryKey: ['/api/metrics/summary'],
     enabled: !!user
   });
   
   // Fetch category distribution
-  const { data: categoriesData, isLoading: isLoadingCategories } = useQuery({
+  const { data: categoriesData, isLoading: isLoadingCategories } = useQuery<CategoryMetric[]>({
     queryKey: ['/api/metrics/categories'],
     enabled: !!user
   });
@@ -197,20 +211,26 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {categoriesData && categoriesData.map((category: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className={`w-3 h-3 rounded-full bg-primary mr-2 opacity-${90 - (index * 20)}`}></div>
-                        <span className="text-sm font-medium">{category.category}</span>
+                  {categoriesData && categoriesData.length > 0 ? (
+                    categoriesData.map((category, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className={`w-3 h-3 rounded-full bg-primary mr-2 opacity-${90 - (index * 20)}`}></div>
+                          <span className="text-sm font-medium">{category.category}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium">{category.count}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                            ({category.percentage}%)
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium">{category.count}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                          ({category.percentage}%)
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                      No category data available
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>

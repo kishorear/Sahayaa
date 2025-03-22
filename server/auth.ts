@@ -450,6 +450,12 @@ export function setupAuth(app: Express) {
 
   app.post("/api/logout", (req, res) => {
     console.log("Logout attempt received for session ID:", req.session.id);
+    
+    // Clear all authentication cookies regardless of session state
+    res.clearCookie('ticket_support_sid');
+    res.clearCookie('ticket_support_sid_backup');
+    res.clearCookie('ticket_auth_user_id');
+    
     req.session.destroy((err) => {
       if (err) {
         console.error("Error destroying session:", err);
@@ -488,12 +494,35 @@ export function setupAuth(app: Express) {
     try {
       // Add request trace ID for better debugging in production
       const traceId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-      console.log(`API user request [${traceId}] - Session ID:`, req.session.id);
-      console.log(`API user request [${traceId}] - Session data:`, {
-        userId: req.session.userId,
-        cookie: JSON.stringify(req.session.cookie),
-        sessionStore: req.sessionStore ? 'Session store available' : 'No session store found'
-      });
+      
+      // Log session information with enhanced safety
+      let sessionIdLog = 'No session ID available';
+      try {
+        sessionIdLog = req.session?.id || 'Session exists but no ID';
+      } catch (sessionError) {
+        console.error(`API user request [${traceId}] - Error accessing session ID:`, sessionError);
+      }
+      
+      console.log(`API user request [${traceId}] - Session ID:`, sessionIdLog);
+      
+      // Safe version of session data logging
+      let sessionDataLog = {
+        userId: 'Error accessing userId',
+        cookie: 'Error accessing cookie data',
+        sessionStore: 'Error determining session store status'
+      };
+      
+      try {
+        sessionDataLog = {
+          userId: req.session?.userId,
+          cookie: req.session?.cookie ? JSON.stringify(req.session.cookie) : 'No cookie data',
+          sessionStore: req.sessionStore ? 'Session store available' : 'No session store found'
+        };
+      } catch (sessionDataError) {
+        console.error(`API user request [${traceId}] - Error accessing session data:`, sessionDataError);
+      }
+      
+      console.log(`API user request [${traceId}] - Session data:`, sessionDataLog);
       
       // If user is in the request, we're all set
       if (req.user) {

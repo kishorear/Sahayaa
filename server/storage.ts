@@ -961,6 +961,46 @@ export class DatabaseStorage implements IStorage {
   private tenantByApiKeyCache: Map<string, Tenant> = new Map();
   private tenantBySubdomainCache: Map<string, Tenant> = new Map();
   
+  // Helper method to clear all cached data for a user by ID
+  private clearUserFromCache(userId: number): void {
+    // First, get the user from cache to find username
+    const cachedUser = this.userCache.get(userId);
+    
+    // Remove from ID cache
+    this.userCache.delete(userId);
+    
+    // If we found the cached user, also remove by username
+    if (cachedUser) {
+      const usernameKey = cachedUser.tenantId 
+        ? `${cachedUser.username}:${cachedUser.tenantId}` 
+        : cachedUser.username;
+      this.userByUsernameCache.delete(usernameKey);
+    }
+    
+    console.log(`Cache entries cleared for user ID: ${userId}`);
+  }
+  
+  // Helper method to clear all cached data for a tenant by ID
+  private clearTenantFromCache(tenantId: number): void {
+    // First, get the tenant from cache to find other keys
+    const cachedTenant = this.tenantCache.get(tenantId);
+    
+    // Remove from ID cache
+    this.tenantCache.delete(tenantId);
+    
+    // If we found the cached tenant, also remove by apiKey and subdomain
+    if (cachedTenant) {
+      if (cachedTenant.apiKey) {
+        this.tenantByApiKeyCache.delete(cachedTenant.apiKey);
+      }
+      if (cachedTenant.subdomain) {
+        this.tenantBySubdomainCache.delete(cachedTenant.subdomain);
+      }
+    }
+    
+    console.log(`Cache entries cleared for tenant ID: ${tenantId}`);
+  }
+  
   // Default fallback user for admin account (used as last resort during severe database failures)
   private readonly FALLBACK_ADMIN_USER: User = {
     id: 1,
@@ -1849,6 +1889,15 @@ export class DatabaseStorage implements IStorage {
       
       // Get the updated user
       const updated = result.rows[0];
+      
+      // Clear the user from cache to ensure fresh data on next fetch
+      try {
+        this.clearUserFromCache(id);
+        console.log(`Cache cleared for updated user with ID: ${id}`);
+      } catch (cacheError) {
+        // Don't fail the update if cache clearing fails
+        console.error(`Failed to clear cache for user ${id}:`, cacheError);
+      }
       
       // Transform result to expected User type format
       return {

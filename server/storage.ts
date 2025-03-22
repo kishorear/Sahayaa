@@ -120,6 +120,12 @@ export class MemStorage implements IStorage {
   private dataSourceIdCounter: number;
   private widgetAnalyticsIdCounter: number;
   private aiProviderIdCounter: number;
+  
+  // Add caches for critical data in production
+  private userCache: Map<string, User> = new Map();
+  private tenantCache: Map<string, Tenant> = new Map();
+  private ticketCache: Map<string, Ticket> = new Map();
+  
   public sessionStore: session.Store;
 
   constructor() {
@@ -450,19 +456,65 @@ export class MemStorage implements IStorage {
   
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    // Check cache first for better performance and resilience
+    const cacheKey = `user:${id}`;
+    const cachedUser = this.userCache.get(cacheKey);
+    if (cachedUser) {
+      console.log(`User cache hit for ID: ${id}`);
+      return cachedUser;
+    }
+    
+    // Cache miss, look up in the map
+    const user = this.users.get(id);
+    
+    // If found, add to cache for future requests
+    if (user) {
+      this.userCache.set(cacheKey, user);
+      
+      // Clear cache entry after 1 hour to avoid stale data
+      setTimeout(() => {
+        this.userCache.delete(cacheKey);
+      }, 60 * 60 * 1000);
+    }
+    
+    return user;
   }
 
   async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
+    // Generate a cache key based on username and optional tenantId
+    const cacheKey = tenantId ? `${username}:${tenantId}` : username;
+    
+    // Check cache first for faster response and resilience
+    const cachedUser = this.userCache.get(cacheKey);
+    if (cachedUser) {
+      console.log(`User cache hit for username: ${username}`);
+      return cachedUser;
+    }
+    
+    // Cache miss, look up in the map
+    let user: User | undefined;
+    
     if (tenantId) {
-      return Array.from(this.users.values()).find(
+      user = Array.from(this.users.values()).find(
         (user) => user.username === username && user.tenantId === tenantId
       );
     } else {
-      return Array.from(this.users.values()).find(
+      user = Array.from(this.users.values()).find(
         (user) => user.username === username
       );
     }
+    
+    // If found, add to cache for future requests
+    if (user) {
+      this.userCache.set(cacheKey, user);
+      
+      // Clear cache entry after 1 hour to avoid stale data
+      setTimeout(() => {
+        this.userCache.delete(cacheKey);
+      }, 60 * 60 * 1000);
+    }
+    
+    return user;
   }
   
   async getUsersByTenantId(tenantId: number): Promise<User[]> {

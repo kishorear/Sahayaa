@@ -58,6 +58,11 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // Determine if we're in a production environment
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
+  
+  console.log(`Auth setup - Environment: ${isProduction ? 'Production' : 'Development'}`);
+  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "super-secret-key-change-in-production",
     resave: false,
@@ -65,8 +70,9 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: { 
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax"
+      secure: false, // Setting secure: false works better with Replit deployments
+      sameSite: "lax", 
+      httpOnly: true
     }
   };
 
@@ -116,16 +122,33 @@ export function setupAuth(app: Express) {
   // Register routes
   app.post("/api/register", async (req, res) => {
     try {
+      console.log("Registration attempt received:", { 
+        body: req.body,
+        method: req.method,
+        path: req.path,
+        headers: { 
+          'content-type': req.get('content-type'),
+          'user-agent': req.get('user-agent')
+        }
+      });
+      
       const { username, password, name, email, role } = req.body;
 
       if (!username || !password) {
+        console.log("Registration failed: Missing username or password");
         return res.status(400).json({ message: "Username and password are required" });
       }
 
       // Check if user already exists
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username is already taken" });
+      try {
+        const existingUser = await storage.getUserByUsername(username);
+        if (existingUser) {
+          console.log(`Registration failed: Username ${username} already exists`);
+          return res.status(400).json({ message: "Username is already taken" });
+        }
+      } catch (checkError) {
+        console.error("Error checking for existing user:", checkError);
+        return res.status(500).json({ message: "Error checking username availability" });
       }
 
       // Validate role - only allow admin users to create other admins
@@ -133,33 +156,71 @@ export function setupAuth(app: Express) {
       const requestedRole = role || "user";
       
       // Check if any users exist
-      const userCount = await db.select({ count: sql`count(*)` }).from(users);
-      const isFirstUser = userCount[0].count === '0';
-      
-      // Only enforce admin restriction if it's not the first user
-      if (requestedRole === "admin" && !isFirstUser && (!req.user || req.user.role !== "admin")) {
-        return res.status(403).json({ message: "Only admins can create admin accounts" });
+      try {
+        const userCount = await db.select({ count: sql`count(*)` }).from(users);
+        console.log("User count result:", userCount);
+        const isFirstUser = userCount[0].count === '0';
+        
+        // Only enforce admin restriction if it's not the first user
+        if (requestedRole === "admin" && !isFirstUser && (!req.user || req.user.role !== "admin")) {
+          console.log("Registration failed: Unauthorized attempt to create admin account");
+          return res.status(403).json({ message: "Only admins can create admin accounts" });
+        }
+      } catch (countError) {
+        console.error("Error checking user count:", countError);
+        return res.status(500).json({ message: "Error checking existing users" });
       }
 
       // Create new user with hashed password
-      const hashedPassword = await hashPassword(password);
-      const user = await storage.createUser({
-        username,
-        password: hashedPassword,
-        name: name || null,
-        email: email || null,
-        role: requestedRole
-      });
+      let user;
+      try {
+        const hashedPassword = await hashPassword(password);
+        console.log("Password hashed successfully, creating user...");
+        
+        user = await storage.createUser({
+          username,
+          password: hashedPassword,
+          name: name || null,
+          email: email || null,
+          role: requestedRole
+        });
+        
+        console.log(`User created successfully: ${username} (ID: ${user.id})`);
+      } catch (createError) {
+        console.error("Error creating user:", createError);
+        return res.status(500).json({ message: "Error creating user account", details: createError.message });
+      }
 
       // Login the user (set session)
-      req.session.userId = user.id;
+      try {
+        req.session.userId = user.id;
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) {
+              console.error("Error saving session:", err);
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        });
+        console.log(`Session created for user ID: ${user.id}`);
+      } catch (sessionError) {
+        console.error("Error saving session:", sessionError);
+        // Continue anyway - user is created but might need to log in manually
+      }
 
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user;
+      console.log("Registration successful, sending response");
       res.status(201).json(userWithoutPassword);
     } catch (error) {
       console.error("Registration error:", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ 
+        message: "Internal server error", 
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 

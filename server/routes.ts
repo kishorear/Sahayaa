@@ -46,6 +46,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register widget analytics routes
   registerWidgetAnalyticsRoutes(app, requireAuth);
   
+  // Register AI provider routes
+  registerAiProviderRoutes(app, requireAuth, requireRole);
+  
   // Initialize SSO service for all tenants
   try {
     const ssoService = getSsoService();

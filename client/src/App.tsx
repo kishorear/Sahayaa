@@ -15,6 +15,7 @@ import TeamPage from "@/pages/admin/TeamPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import IntegrationsPage from "@/pages/admin/IntegrationsPage"; // New Integrations Page component
 import ChatWidgetPage from "@/pages/admin/ChatWidgetPage"; // New Chat Widget Page component
+import AISettingsPage from "@/pages/admin/AISettingsPage"; // AI Provider Settings Page
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
@@ -41,6 +42,7 @@ function Router() {
       <ProtectedRoute path="/admin/integrations" component={IntegrationsPage} />
       <ProtectedRoute path="/admin/settings" component={SettingsPage} />
       <ProtectedRoute path="/admin/widget" component={ChatWidgetPage} />
+      <ProtectedRoute path="/admin/ai-settings" component={AISettingsPage} />
       
       {/* 404 Route */}
       <Route component={NotFound} />

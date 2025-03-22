@@ -9,7 +9,8 @@ import {
   Search, 
   Bell, 
   Menu,
-  Link2 
+  Link2,
+  Bot 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -48,6 +49,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/integrations", 
       label: "Integrations", 
       icon: Link2 
+    },
+    { 
+      path: "/admin/ai-settings", 
+      label: "AI Settings", 
+      icon: Bot 
     },
     { 
       path: "/admin/settings", 

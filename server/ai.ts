@@ -317,6 +317,17 @@ export async function generateChatResponse(
 
 // Generate a summary of multiple messages for ticket context
 export async function summarizeConversation(messages: ChatMessage[]): Promise<string> {
+  // Use OpenAI if available
+  if (USE_OPENAI) {
+    try {
+      return await summarizeConversationWithAI(messages);
+    } catch (error) {
+      console.error("OpenAI summarization failed, falling back to local:", error);
+      // Fall back to local implementation
+    }
+  }
+  
+  // Local fallback implementation
   // Simple conversation summarization
   if (messages.length === 0) {
     return "No conversation to summarize.";

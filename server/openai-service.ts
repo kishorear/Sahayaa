@@ -117,7 +117,7 @@ export async function generateChatResponseWithAI(
   ticketContext: { id: number; title: string; description: string; category: string },
   messageHistory: OpenAIMessage[],
   userMessage: string
-) {
+): Promise<string> {
   try {
     // Create a system message with ticket context
     const systemMessage = {
@@ -144,7 +144,7 @@ export async function generateChatResponseWithAI(
       max_tokens: 500
     });
 
-    return response.choices[0].message.content;
+    return response.choices[0].message.content || "I couldn't generate a response at this time.";
   } catch (error) {
     console.error("Error calling OpenAI for chat response:", error);
     // Fall back to a generic response
@@ -155,7 +155,7 @@ export async function generateChatResponseWithAI(
 /**
  * Summarizes a conversation using OpenAI
  */
-export async function summarizeConversationWithAI(messages: OpenAIMessage[]) {
+export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Promise<string> {
   try {
     const prompt = `
     Please summarize the following support conversation in a concise paragraph. 
@@ -173,7 +173,7 @@ export async function summarizeConversationWithAI(messages: OpenAIMessage[]) {
       max_tokens: 250
     });
 
-    return response.choices[0].message.content;
+    return response.choices[0].message.content || "Summary unavailable";
   } catch (error) {
     console.error("Error calling OpenAI for conversation summarization:", error);
     // Create a basic summary if AI fails

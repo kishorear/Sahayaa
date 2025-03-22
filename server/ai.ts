@@ -5,6 +5,7 @@ import {
   generateChatResponseWithAI, 
   summarizeConversationWithAI 
 } from './openai-service';
+import { buildAIContext } from './data-source-service';
 
 // Determine if we're using OpenAI or local implementation
 const USE_OPENAI = typeof process.env.OPENAI_API_KEY === 'string' && process.env.OPENAI_API_KEY.startsWith('sk-');
@@ -122,7 +123,10 @@ export async function attemptAutoResolve(title: string, description: string, pre
   // Use OpenAI if available
   if (USE_OPENAI) {
     try {
-      return await attemptAutoResolveWithAI(title, description, previousMessages);
+      // Get relevant knowledge from data sources
+      const combinedText = `${title} ${description}`;
+      const knowledgeContext = await buildAIContext(combinedText);
+      return await attemptAutoResolveWithAI(title, description, previousMessages, knowledgeContext);
     } catch (error) {
       console.error("OpenAI auto-resolve failed, falling back to local:", error);
       // Fall back to local implementation
@@ -218,7 +222,9 @@ export async function generateChatResponse(
   // Use OpenAI if available
   if (USE_OPENAI) {
     try {
-      return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage);
+      // Get relevant knowledge from data sources
+      const knowledgeContext = await buildAIContext(userMessage);
+      return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
     } catch (error) {
       console.error("OpenAI chat response failed, falling back to local:", error);
       // Fall back to local implementation

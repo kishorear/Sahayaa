@@ -120,18 +120,26 @@ export async function attemptAutoResolveWithAI(title: string, description: strin
 export async function generateChatResponseWithAI(
   ticketContext: { id: number; title: string; description: string; category: string },
   messageHistory: OpenAIMessage[],
-  userMessage: string
+  userMessage: string,
+  knowledgeContext: string = ''
 ): Promise<string> {
   try {
-    // Create a system message with ticket context
-    const systemMessage = {
-      role: "system" as const,
-      content: `You are an AI support assistant for a SaaS product. You're currently helping with a ticket in the "${ticketContext.category}" category.
+    // Create a system message with ticket context and knowledge context if available
+    let systemContent = `You are an AI support assistant for a SaaS product. You're currently helping with a ticket in the "${ticketContext.category}" category.
       Ticket #${ticketContext.id}: "${ticketContext.title}"
       Original description: "${ticketContext.description}"
       
       Provide helpful, concise responses based on this context. If you can fully resolve the issue, indicate this clearly in your response.
-      If you need more information or the issue requires human intervention, make that clear as well.`
+      If you need more information or the issue requires human intervention, make that clear as well.`;
+    
+    // Add knowledge context if available
+    if (knowledgeContext) {
+      systemContent += `\n\n${knowledgeContext}`;
+    }
+    
+    const systemMessage = {
+      role: "system" as const,
+      content: systemContent
     };
 
     // Prepare the messages array with context and history

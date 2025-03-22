@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AI Support Ticket System Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      color: #333;
+    }
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    h2 {
+      margin-top: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+    .diagram-container {
+      margin: 20px 0;
+      overflow: auto;
+    }
+    ul, ol {
+      margin-left: 20px;
+    }
+    pre {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+    }
+    .callout {
+      background-color: #f1f8ff;
+      border-left: 4px solid #2196F3;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .note {
+      font-style: italic;
+      color: #666;
+      font-size: 0.9em;
+    }
+    @media print {
+      body {
+        padding: 0;
+      }
+      .container {
+        box-shadow: none;
+        padding: 0;
+      }
+      .no-print {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI-Powered Support Ticket System Architecture</h1>
+    
+    <h2>System Overview</h2>
+    <p>This document outlines the architecture of our AI-powered support ticket management system. The system leverages multiple AI providers, including OpenAI, to automate ticket classification, routing, and resolution while maintaining a fallback mechanism to human support agents for complex issues.</p>
+    
+    <div class="diagram-container">
+      <div class="mermaid">
+flowchart TB
+    subgraph "Client Layer"
+        C1[Customer Web Interface]
+        C2[Embedded Chat Widget]
+        C3[Email Interface]
+        C4[Admin Dashboard]
+    end
+    
+    subgraph "API Gateway"
+        AG[Express API Router]
+    end
+    
+    subgraph "Authentication Layer"
+        Auth1[User Authentication]
+        Auth2[API Key Authentication]
+        Auth3[Session Management]
+        Auth4[MFA Service]
+        Auth5[SSO Service]
+    end
+    
+    subgraph "Core Services"
+        S1[Ticket Service]
+        S2[Chat Service]
+        S3[User Service]
+        S4[Tenant Service]
+    end
+    
+    subgraph "AI Engine"
+        AI1[AI Provider Factory]
+        AI2[OpenAI Provider]
+        AI3[Gemini Provider]
+        AI4[Anthropic Provider]
+        AI5[AWS Bedrock Provider]
+        AI6[Custom Provider]
+    end
+    
+    subgraph "Data Sources"
+        DS1[Knowledge Base]
+        DS2[URL Content]
+        DS3[Custom Data]
+    end
+    
+    subgraph "Integrations"
+        I1[Zendesk]
+        I2[Jira]
+        I3[Email Service]
+    end
+    
+    subgraph "Storage Layer"
+        DB1[(PostgreSQL)]
+        DB2[(Memory Fallback)]
+    end
+    
+    %% Client to API connections
+    C1 --> AG
+    C2 --> AG
+    C3 --> I3
+    C4 --> AG
+    
+    %% API to Auth connections
+    AG --> Auth1
+    AG --> Auth2
+    
+    %% Auth to Core Services
+    Auth1 --> S1
+    Auth1 --> S2
+    Auth1 --> S3
+    Auth1 --> S4
+    Auth2 --> S1
+    Auth2 --> S2
+    Auth3 --- Auth1
+    Auth4 --- Auth1
+    Auth5 --- Auth1
+    
+    %% Core Services to AI Engine
+    S1 --> AI1
+    S2 --> AI1
+    
+    %% AI Factory to Providers
+    AI1 --> AI2
+    AI1 --> AI3
+    AI1 --> AI4
+    AI1 --> AI5
+    AI1 --> AI6
+    
+    %% AI Engine to Data Sources
+    AI1 --> DS1
+    AI1 --> DS2
+    AI1 --> DS3
+    
+    %% Core Services to Integrations
+    S1 --> I1
+    S1 --> I2
+    S1 --> I3
+    
+    %% Services to Storage
+    S1 --> DB1
+    S2 --> DB1
+    S3 --> DB1
+    S4 --> DB1
+    DB1 -.- DB2
+    
+    %% Integration to external
+    I3 --> C3
+      </div>
+    </div>
+    
+    <h2>Component Details</h2>
+    
+    <h3>Client Layer</h3>
+    <ul>
+      <li><strong>Customer Web Interface</strong>: React.js frontend for end-users to submit and view tickets</li>
+      <li><strong>Embedded Chat Widget</strong>: Embeddable component for integration into customer websites</li>
+      <li><strong>Email Interface</strong>: Two-way email communication channel for ticket updates</li>
+      <li><strong>Admin Dashboard</strong>: React.js frontend for administrators and support agents</li>
+    </ul>
+    
+    <h3>API Gateway</h3>
+    <ul>
+      <li><strong>Express API Router</strong>: Routes HTTP requests to appropriate services</li>
+    </ul>
+    
+    <h3>Authentication Layer</h3>
+    <ul>
+      <li><strong>User Authentication</strong>: Session-based authentication with password hashing</li>
+      <li><strong>API Key Authentication</strong>: Token-based authentication for API access</li>
+      <li><strong>Session Management</strong>: PostgreSQL-backed session store with memory fallback</li>
+      <li><strong>MFA Service</strong>: Multi-factor authentication for enhanced security</li>
+      <li><strong>SSO Service</strong>: Single sign-on with support for SAML, OAuth2, and custom providers</li>
+    </ul>
+    
+    <h3>Core Services</h3>
+    <ul>
+      <li><strong>Ticket Service</strong>: Creates, retrieves, updates, and deletes support tickets</li>
+      <li><strong>Chat Service</strong>: Manages real-time chat interactions</li>
+      <li><strong>User Service</strong>: Manages user accounts and permissions</li>
+      <li><strong>Tenant Service</strong>: Manages multi-tenant configurations for enterprise customers</li>
+    </ul>
+    
+    <h3>AI Engine</h3>
+    <ul>
+      <li><strong>AI Provider Factory</strong>: Factory pattern implementation to abstract provider-specific details</li>
+      <li><strong>OpenAI Provider</strong>: Integration with OpenAI's GPT models</li>
+      <li><strong>Gemini Provider</strong>: Integration with Google's Gemini models</li>
+      <li><strong>Anthropic Provider</strong>: Integration with Anthropic's Claude models</li>
+      <li><strong>AWS Bedrock Provider</strong>: Integration with Amazon's foundation models</li>
+      <li><strong>Custom Provider</strong>: Support for custom/in-house AI services</li>
+    </ul>
+    
+    <h3>Data Sources</h3>
+    <ul>
+      <li><strong>Knowledge Base</strong>: Structured repository of support articles and FAQs</li>
+      <li><strong>URL Content</strong>: Crawled content from specified URLs</li>
+      <li><strong>Custom Data</strong>: Client-specific knowledge sources</li>
+    </ul>
+    
+    <h3>Integrations</h3>
+    <ul>
+      <li><strong>Zendesk</strong>: Two-way sync with Zendesk for ticket management</li>
+      <li><strong>Jira</strong>: Two-way sync with Jira for issue tracking</li>
+      <li><strong>Email Service</strong>: Manages email communication for ticket updates</li>
+    </ul>
+    
+    <h3>Storage Layer</h3>
+    <ul>
+      <li><strong>PostgreSQL</strong>: Primary data store for persistent storage</li>
+      <li><strong>Memory Fallback</strong>: In-memory storage for when database connection fails</li>
+    </ul>
+    
+    <div class="diagram-container">
+      <div class="mermaid">
+sequenceDiagram
+    autonumber
+    
+    participant User
+    participant Widget as Chat Widget
+    participant API as API Gateway
+    participant TS as Ticket Service
+    participant AI as AI Engine
+    participant KB as Knowledge Base
+    participant DB as Database
+    
+    User->>Widget: Submit support query
+    Widget->>API: POST /api/chatbot {query}
+    API->>TS: Process chat message
+    TS->>AI: Classify ticket
+    AI->>KB: Fetch relevant knowledge
+    KB-->>AI: Return context
+    AI-->>TS: Return classification
+    
+    alt Simple query with auto-resolve
+        TS->>AI: Attempt auto-resolution
+        AI-->>TS: Return solution [ISSUE RESOLVED]
+        TS->>DB: Create resolved ticket
+        TS-->>API: Return AI solution
+        API-->>Widget: Display solution
+        Widget-->>User: Show resolution
+    else Complex query needing human
+        TS->>AI: Generate initial response
+        AI-->>TS: Return [REQUIRES HUMAN]
+        TS->>DB: Create unresolved ticket
+        TS-->>API: Return interim response
+        API-->>Widget: Display response
+        Widget-->>User: Show response + ticket ID
+    end
+      </div>
+    </div>
+    
+    <h2>AI Capabilities</h2>
+    
+    <h3>1. Ticket Classification</h3>
+    <p>The system uses AI to automatically categorize incoming tickets based on their content:</p>
+    <ul>
+      <li><strong>Category Assignment</strong>: Determines the appropriate category (authentication, billing, technical issue, etc.)</li>
+      <li><strong>Complexity Determination</strong>: Assesses if the ticket is simple, medium, or complex</li>
+      <li><strong>Department Routing</strong>: Routes tickets to support, engineering, product, or billing teams</li>
+      <li><strong>Auto-resolution Assessment</strong>: Determines if the ticket can be automatically resolved</li>
+    </ul>
+    <div class="callout">
+      <p><strong>Example Classification Result:</strong></p>
+      <pre>{
+  "category": "authentication",
+  "complexity": "medium",
+  "assignedTo": "support",
+  "canAutoResolve": false,
+  "aiNotes": "The issue may require additional verification or assistance with account settings beyond a simple password reset."
+}</pre>
+    </div>
+    
+    <h3>2. Auto-Resolution</h3>
+    <p>For simple queries that can be resolved without human intervention:</p>
+    <ul>
+      <li><strong>Knowledge Base Integration</strong>: References internal knowledge sources</li>
+      <li><strong>Step-by-Step Guidance</strong>: Provides clear instructions for self-service</li>
+      <li><strong>Resolution Flagging</strong>: Marks responses with [ISSUE RESOLVED] or [REQUIRES HUMAN]</li>
+    </ul>
+    <div class="callout">
+      <p><strong>Example Auto-Resolution:</strong></p>
+      <p>For a "How do I change my password?" query:</p>
+      <pre>To change your password, please follow these steps:
+
+1. Log in to your account on the dashboard.
+2. Click on your profile icon or name in the top-right corner.
+3. Select "Account Settings" from the dropdown menu.
+4. Look for a "Security" or "Password" tab.
+5. Click on "Change Password."
+6. Enter your current password and then your new password.
+7. Confirm the new password and save your changes.</pre>
+    </div>
+    
+    <h3>3. Conversational AI</h3>
+    <p>Engages users in natural language conversations:</p>
+    <ul>
+      <li><strong>Context Awareness</strong>: Maintains conversation context across multiple messages</li>
+      <li><strong>Personalization</strong>: Adapts responses based on user history and preferences</li>
+      <li><strong>Clarification Requests</strong>: Asks follow-up questions when needed</li>
+    </ul>
+    
+    <h3>4. Multi-Provider Support</h3>
+    <p>The system's AI Factory allows for flexible integration with multiple AI providers:</p>
+    <ul>
+      <li><strong>Provider Selection</strong>: Dynamically selects the most appropriate provider</li>
+      <li><strong>Fallback Mechanism</strong>: Falls back to alternative providers if primary is unavailable</li>
+      <li><strong>Custom Provider Support</strong>: Allows for integration with proprietary models</li>
+    </ul>
+    
+    <h2>Data Flow Diagrams</h2>
+    
+    <h3>Ticket Creation Flow</h3>
+    <div class="diagram-container">
+      <div class="mermaid">
+flowchart TD
+    A[User submits ticket] --> B{Input Channel?}
+    B -->|Web/Chat| C[Chat Service]
+    B -->|Email| D[Email Service]
+    
+    C --> E[AI Classification]
+    D --> E
+    
+    E --> F{Auto-resolvable?}
+    F -->|Yes| G[AI Resolution]
+    F -->|No| H[Queue for Support Agent]
+    
+    G --> I[Notify User]
+    H --> J[Enrich with Context]
+    J --> K[Assign Priority]
+    K --> L[Route to Department]
+    L --> M[Notify Support Agent]
+      </div>
+    </div>
+    
+    <h3>AI Provider Selection Flow</h3>
+    <div class="diagram-container">
+      <div class="mermaid">
+flowchart TD
+    A[Request AI Service] --> B[AI Provider Factory]
+    B --> C{Primary Provider Available?}
+    
+    C -->|Yes| D[Use Primary Provider]
+    C -->|No| E{Fallback Provider Available?}
+    
+    E -->|Yes| F[Use Fallback Provider]
+    E -->|No| G[Use In-Memory Model]
+    
+    D --> H[Process Request]
+    F --> H
+    G --> H
+    
+    H --> I[Return Result]
+      </div>
+    </div>
+    
+    <h2>Database Schema</h2>
+    <div class="diagram-container">
+      <div class="mermaid">
+erDiagram
+    tenants {
+        int id PK
+        string name
+        string subdomain
+        string api_key
+        string logo_url
+        json settings
+        datetime created_at
+        datetime updated_at
+    }
+    
+    users {
+        int id PK
+        int tenant_id FK
+        string username
+        string password
+        string role
+        string name
+        string email
+        boolean mfa_enabled
+        string mfa_secret
+        json mfa_backup_codes
+        boolean sso_enabled
+        string sso_provider
+        string sso_provider_id
+        json sso_provider_data
+        datetime created_at
+        datetime updated_at
+    }
+    
+    tickets {
+        int id PK
+        int tenant_id FK
+        string title
+        string description
+        string status
+        string category
+        string complexity
+        string assigned_to
+        int assigned_user_id FK
+        boolean ai_assisted
+        boolean auto_resolved
+        datetime created_at
+        datetime updated_at
+        datetime resolved_at
+    }
+    
+    messages {
+        int id PK
+        int ticket_id FK
+        int user_id FK
+        string content
+        string type
+        boolean is_ai_generated
+        datetime created_at
+    }
+    
+    attachments {
+        int id PK
+        int message_id FK
+        string filename
+        string url
+        string mime_type
+        int size
+        datetime created_at
+    }
+    
+    data_sources {
+        int id PK
+        int tenant_id FK
+        string name
+        string type
+        string url
+        json configuration
+        boolean enabled
+        datetime created_at
+        datetime updated_at
+    }
+    
+    ai_providers {
+        int id PK
+        int tenant_id FK
+        string name
+        string type
+        string api_key
+        string model
+        json configuration
+        boolean enabled
+        boolean is_default
+        datetime created_at
+        datetime updated_at
+    }
+    
+    tenants ||--o{ users : "has"
+    tenants ||--o{ tickets : "has"
+    tenants ||--o{ data_sources : "has"
+    tenants ||--o{ ai_providers : "has"
+    users ||--o{ tickets : "assigned to"
+    tickets ||--o{ messages : "contains"
+    messages ||--o{ attachments : "has"
+      </div>
+    </div>
+    
+    <h2>Security Architecture</h2>
+    <div class="diagram-container">
+      <div class="mermaid">
+flowchart TD
+    subgraph "Authentication Types"
+        A1[Session Authentication]
+        A2[API Key Authentication]
+        A3[SSO Authentication]
+        A4[MFA Authentication]
+    end
+    
+    subgraph "Authorization Layers"
+        B1[Role-Based Access Control]
+        B2[Tenant Resource Guard]
+        B3[Multi-Tenancy Isolation]
+    end
+    
+    subgraph "Data Protection"
+        C1[Password Hashing]
+        C2[API Key Encryption]
+        C3[Session Encryption]
+        C4[Data Isolation]
+    end
+    
+    A1 --> B1
+    A2 --> B2
+    A3 --> B1
+    A4 --> A1
+    
+    B1 --> C1
+    B1 --> C3
+    B2 --> C2
+    B3 --> C4
+      </div>
+    </div>
+    
+    <h2>Deployment Architecture</h2>
+    <div class="diagram-container">
+      <div class="mermaid">
+flowchart TB
+    subgraph "Web Tier"
+        W1[Load Balancer]
+        W2[Web Server 1]
+        W3[Web Server 2]
+    end
+    
+    subgraph "Application Tier"
+        A1[App Server 1]
+        A2[App Server 2]
+    end
+    
+    subgraph "Database Tier"
+        D1[(Primary DB)]
+        D2[(Replica DB)]
+    end
+    
+    subgraph "External Services"
+        E1[OpenAI API]
+        E2[Google API]
+        E3[Anthropic API]
+        E4[AWS Bedrock]
+        E5[Email Server]
+    end
+    
+    W1 --> W2
+    W1 --> W3
+    W2 --> A1
+    W3 --> A2
+    A1 --> D1
+    A2 --> D1
+    D1 --> D2
+    
+    A1 --> E1
+    A1 --> E2
+    A1 --> E3
+    A1 --> E4
+    A1 --> E5
+    A2 --> E1
+    A2 --> E2
+    A2 --> E3
+    A2 --> E4
+    A2 --> E5
+      </div>
+    </div>
+    
+    <h2>Resilience Strategies</h2>
+    <ul>
+      <li><strong>Database Fallback</strong>: In-memory storage when database connection fails</li>
+      <li><strong>AI Provider Redundancy</strong>: Multiple AI providers with automatic failover</li>
+      <li><strong>Session Store Fallback</strong>: Memory-based session store when PostgreSQL unavailable</li>
+      <li><strong>Caching Layer</strong>: Comprehensive caching for users, tenants, tickets, and messages</li>
+      <li><strong>Error Recovery</strong>: Automatic retry mechanisms for transient failures</li>
+    </ul>
+    
+    <h2>Implementation Notes</h2>
+    <div class="callout">
+      <p>This system follows several key design patterns:</p>
+      <ul>
+        <li><strong>Factory Pattern</strong>: For AI provider creation and management</li>
+        <li><strong>Repository Pattern</strong>: For data access abstraction</li>
+        <li><strong>Strategy Pattern</strong>: For dynamic selection of AI providers</li>
+        <li><strong>Adapter Pattern</strong>: For third-party service integrations</li>
+        <li><strong>Observer Pattern</strong>: For event handling and notifications</li>
+      </ul>
+    </div>
+    
+    <p class="note">This architecture diagram provides a high-level overview of the system. Detailed component specifications and API documentation are available in separate documents.</p>
+  </div>
+  
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: 'basis'
+      },
+      securityLevel: 'loose'
+    });
+  </script>
+</body>
+</html>

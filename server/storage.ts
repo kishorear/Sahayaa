@@ -31,7 +31,10 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import createMemoryStore from "memorystore";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
-import { db, pool } from "./db";
+import { db, pool, testDbConnection } from "./db";
+
+// Determine if we're in a production environment
+const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
 
 // Interface for all storage operations
 export interface IStorage {

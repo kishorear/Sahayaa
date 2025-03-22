@@ -190,6 +190,7 @@ export default function DocumentationPage() {
                   <li><strong>Resolution Time Metrics</strong> - Measure how quickly issues are resolved.</li>
                   <li><strong>AI Efficiency</strong> - Monitor automation rates and AI resolution success.</li>
                   <li><strong>Agent Performance</strong> - Track individual and team performance metrics.</li>
+                  <li><strong>Chat Widget Analytics</strong> - Monitor usage, interactions, and effectiveness of deployed chat widgets.</li>
                 </ul>
 
                 <h3>Knowledge Management</h3>
@@ -237,6 +238,32 @@ export default function DocumentationPage() {
                 </pre>
                 <p>
                   For a complete list of customization options, visit the <Link href="/api" className="text-primary underline">API Reference</Link>.
+                </p>
+
+                <h3>Chat Widget Analytics</h3>
+                <p>
+                  The chat widget includes built-in analytics tracking to help you monitor usage and effectiveness:
+                </p>
+                <ul>
+                  <li><strong>Usage Metrics</strong> - Track interactions, messages received, and tickets created</li>
+                  <li><strong>User Data</strong> - Gather information about client websites, user agents, and geographic regions</li>
+                  <li><strong>Performance Tracking</strong> - Monitor response times and resolution rates</li>
+                </ul>
+                <p>
+                  To enable analytics tracking, include the <code>reportData</code> parameter in your widget configuration:
+                </p>
+                <pre className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md overflow-x-auto">
+                  <code>{`aisp('init', { 
+  tenantId: 'YOUR_TENANT_ID',
+  apiKey: 'YOUR_API_KEY',
+  theme: 'light',
+  reportData: true,  // Enable analytics tracking
+  adminId: YOUR_ADMIN_ID  // Associate data with your admin account
+});`}</code>
+                </pre>
+                <p>
+                  View your widget analytics in the admin dashboard under <strong>Chat Widget → Widget Analytics</strong>. 
+                  The dashboard provides detailed charts and tables showing widget performance across all your deployments.
                 </p>
                 
                 <h3>Email Integration</h3>
@@ -356,6 +383,21 @@ export default function DocumentationPage() {
                       <td><code>/chatbot/message</code></td>
                       <td>POST</td>
                       <td>Send a message to the chatbot</td>
+                    </tr>
+                    <tr>
+                      <td><code>/widget-analytics/{'{apiKey}'}</code></td>
+                      <td>GET</td>
+                      <td>Get analytics for a specific widget</td>
+                    </tr>
+                    <tr>
+                      <td><code>/widget-analytics/{'{apiKey}'}</code></td>
+                      <td>POST</td>
+                      <td>Update analytics for a widget instance</td>
+                    </tr>
+                    <tr>
+                      <td><code>/admin/widget-analytics</code></td>
+                      <td>GET</td>
+                      <td>Get all widget analytics for an admin</td>
                     </tr>
                   </tbody>
                 </table>

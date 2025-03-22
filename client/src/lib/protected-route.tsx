@@ -14,14 +14,13 @@ export function ProtectedRoute({
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
   
-  // Exact match for the current path
-  const isActive = location === path || location.startsWith(`${path}/`);
-
-  // Create a wrapper component for the protected route
+  // TEMPORARY CHANGE: Skip authentication and always render the component
+  // This will be reverted back to proper authentication when needed
+  
   return (
     <Route path={path}>
       {(params) => {
-        // Show loading state
+        // Show loading state while auth is checked (kept for UI consistency)
         if (isLoading) {
           return (
             <div className="flex items-center justify-center min-h-screen">
@@ -30,6 +29,10 @@ export function ProtectedRoute({
           );
         }
         
+        // TEMPORARY: Directly render the component without checking authentication
+        return <Component params={params} />;
+        
+        /* ORIGINAL AUTHENTICATION LOGIC (DISABLED)
         // If route is active and user is not logged in, redirect to auth
         if (isActive && !user) {
           return <Redirect to="/auth" />;
@@ -42,6 +45,7 @@ export function ProtectedRoute({
         
         // Safety fallback - should not reach here but just in case
         return <Redirect to="/auth" />;
+        */
       }}
     </Route>
   );

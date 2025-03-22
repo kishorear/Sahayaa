@@ -856,14 +856,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    // Insert with all lowercase column names to match PostgreSQL convention
     const [user] = await db.insert(users).values({
       ...insertUser,
-      mfaEnabled: false,
-      mfaBackupCodes: [],
-      ssoEnabled: false,
-      ssoProviderData: {}
-    }).returning();
-    return user;
+      mfaenabled: false,
+      mfabackupcodes: [],
+      ssoenabled: false,
+      ssoproviderdata: {}
+    } as any).returning();
+    
+    // Transform result to expected User type format
+    return {
+      id: user.id,
+      tenantId: user.tenantId,
+      username: user.username,
+      password: user.password,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      mfaEnabled: user.mfaenabled ?? false,
+      mfaSecret: user.mfasecret ?? null,
+      mfaBackupCodes: user.mfabackupcodes ?? [],
+      ssoEnabled: user.ssoenabled ?? false,
+      ssoProvider: user.ssoprovider ?? null,
+      ssoProviderId: user.ssoproviderid ?? null,
+      ssoProviderData: user.ssoproviderdata ?? {},
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    } as User;
   }
   
   async updateUser(id: number, updates: Partial<User>): Promise<User> {

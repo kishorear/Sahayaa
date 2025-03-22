@@ -98,7 +98,7 @@ export class SsoService {
       clientSecret: config.clientSecret,
       callbackURL: config.callbackURL,
       scope: config.scope || 'profile email',
-      passReqToCallback: true
+      passReqToCallback: true as true // Force type to 'true' literal
     };
     
     passport.use(`oauth2-${providerId}`, new OAuth2Strategy(

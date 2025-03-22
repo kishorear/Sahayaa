@@ -126,6 +126,14 @@ export async function attemptAutoResolve(title: string, description: string, pre
       // Get relevant knowledge from data sources
       const combinedText = `${title} ${description}`;
       const knowledgeContext = await buildAIContext(combinedText);
+      
+      // Log if knowledge context was found
+      if (knowledgeContext) {
+        console.log(`Using knowledge context for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"`);
+      } else {
+        console.log(`No relevant knowledge context found for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"`);
+      }
+      
       return await attemptAutoResolveWithAI(title, description, previousMessages, knowledgeContext);
     } catch (error) {
       console.error("OpenAI auto-resolve failed, falling back to local:", error);
@@ -224,6 +232,14 @@ export async function generateChatResponse(
     try {
       // Get relevant knowledge from data sources
       const knowledgeContext = await buildAIContext(userMessage);
+      
+      // Log if knowledge context was found
+      if (knowledgeContext) {
+        console.log(`Using knowledge context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"`);
+      } else {
+        console.log(`No relevant knowledge context found for chat response. Ticket ID: ${ticketContext.id}`);
+      }
+      
       return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
     } catch (error) {
       console.error("OpenAI chat response failed, falling back to local:", error);
@@ -326,7 +342,30 @@ export async function summarizeConversation(messages: ChatMessage[]): Promise<st
   // Use OpenAI if available
   if (USE_OPENAI) {
     try {
-      return await summarizeConversationWithAI(messages);
+      // Get conversation content to build context
+      const conversationText = messages.map(m => m.content).join(' ');
+      const knowledgeContext = await buildAIContext(conversationText);
+      
+      // Log if knowledge context was found
+      if (knowledgeContext) {
+        console.log(`Using knowledge context for conversation summary. Message count: ${messages.length}`);
+      } else {
+        console.log(`No relevant knowledge context found for conversation summary. Message count: ${messages.length}`);
+      }
+      
+      // If we have knowledge context, add it as a system message
+      let messagesToSend = messages;
+      if (knowledgeContext) {
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: knowledgeContext
+        };
+        
+        // Insert system message at the beginning
+        messagesToSend = [systemMessage, ...messages];
+      }
+      
+      return await summarizeConversationWithAI(messagesToSend);
     } catch (error) {
       console.error("OpenAI summarization failed, falling back to local:", error);
       // Fall back to local implementation

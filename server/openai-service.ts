@@ -182,18 +182,44 @@ export async function generateChatResponseWithAI(
  */
 export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Promise<string> {
   try {
-    const prompt = `
+    // Check if there's a system message (knowledge context) at the beginning
+    let systemMessage: OpenAIMessage | null = null;
+    let conversationMessages = [...messages];
+    
+    if (messages.length > 0 && messages[0].role === 'system') {
+      // Extract the system message
+      systemMessage = messages[0];
+      // Remove it from conversation messages to avoid displaying it as part of the conversation
+      conversationMessages = messages.slice(1);
+    }
+    
+    // Create the prompt for summarization
+    let promptContent = `
     Please summarize the following support conversation in a concise paragraph. 
     Focus on the main issue, any solutions provided, and the current status (resolved or needs further action).
     
-    ${messages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
+    ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
     
     Provide a clear, professional summary:
     `;
-
+    
+    // Prepare messages array for the API call
+    const apiMessages: OpenAIMessage[] = [];
+    
+    // Add the knowledge context as system message if available
+    if (systemMessage) {
+      apiMessages.push({
+        role: 'system',
+        content: `Use the following information to help you understand the context of the conversation: ${systemMessage.content}`
+      });
+    }
+    
+    // Add the main prompt as a user message
+    apiMessages.push({ role: "user", content: promptContent });
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      messages: apiMessages,
       temperature: 0.3,
       max_tokens: 250
     });

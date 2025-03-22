@@ -105,7 +105,7 @@ function processKnowledgeBase(dataSource: DataSource, query: string): string {
     }
     
     // Score and rank entries based on keyword matches
-    const scoredEntries = knowledgeBase.map(entry => {
+    const initialScoredEntries = knowledgeBase.map(entry => {
       const entryText = `${entry.question} ${entry.category} ${entry.tags?.join(' ') || ''}`.toLowerCase();
       
       // Calculate keyword match score
@@ -139,15 +139,13 @@ function processKnowledgeBase(dataSource: DataSource, query: string): string {
     }).filter(Boolean);
     
     // Filter out nulls before sorting
-    const nonNullScoredEntries = scoredEntries.filter((item): item is {entry: any, score: number} => item !== null);
+    const nonNullScoredEntries = initialScoredEntries.filter((item): item is {entry: any, score: number} => item !== null);
     
     // Sort by score (highest first)
     nonNullScoredEntries.sort((a, b) => b.score - a.score);
     
-    // Replace scoredEntries with the filtered and sorted array
-    scoredEntries = nonNullScoredEntries;
-    
-    const topEntries = scoredEntries.slice(0, 3); // Limit to 3 most relevant entries
+    // Get top entries from the filtered and sorted array
+    const topEntries = nonNullScoredEntries.slice(0, 3); // Limit to 3 most relevant entries
     
     if (topEntries.length === 0) {
       console.log(`No relevant entries found in "${dataSource.name}" for query: "${query}"`);

@@ -6,6 +6,7 @@ import {
   dataSources,
   tenants,
   identityProviders,
+  widgetAnalytics,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -19,7 +20,9 @@ import {
   type Tenant,
   type InsertTenant,
   type IdentityProvider,
-  type InsertIdentityProvider
+  type InsertIdentityProvider,
+  type WidgetAnalytics,
+  type InsertWidgetAnalytics
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -75,6 +78,12 @@ export interface IStorage {
   updateDataSource(id: number, updates: Partial<DataSource>, tenantId?: number): Promise<DataSource>;
   deleteDataSource(id: number, tenantId?: number): Promise<boolean>;
   
+  // Widget analytics operations
+  getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined>;
+  getWidgetAnalyticsByAdminId(adminId: number, tenantId?: number): Promise<WidgetAnalytics[]>;
+  createWidgetAnalytics(analytics: InsertWidgetAnalytics): Promise<WidgetAnalytics>;
+  updateWidgetAnalytics(id: number, updates: Partial<WidgetAnalytics>): Promise<WidgetAnalytics>;
+  
   // Session management
   sessionStore: session.Store;
 }
@@ -86,12 +95,14 @@ export class MemStorage implements IStorage {
   private messages: Map<number, Message>;
   private attachments: Map<number, Attachment>;
   private dataSources: Map<number, DataSource>;
+  private widgetAnalyticsData: Map<number, WidgetAnalytics>;
   private tenantIdCounter: number;
   private userIdCounter: number;
   private ticketIdCounter: number;
   private messageIdCounter: number;
   private attachmentIdCounter: number;
   private dataSourceIdCounter: number;
+  private widgetAnalyticsIdCounter: number;
   public sessionStore: session.Store;
 
   constructor() {
@@ -101,12 +112,14 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.attachments = new Map();
     this.dataSources = new Map();
+    this.widgetAnalyticsData = new Map();
     this.tenantIdCounter = 1;
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
     this.messageIdCounter = 1;
     this.attachmentIdCounter = 1;
     this.dataSourceIdCounter = 1;
+    this.widgetAnalyticsIdCounter = 1;
     
     // Initialize memory session store
     const MemoryStore = createMemoryStore(session);

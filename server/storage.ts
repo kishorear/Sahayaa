@@ -771,15 +771,37 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     try {
-      // Fall back to the standard Drizzle approach but handle field mapping afterward
-      const results = await db.select().from(users).where(eq(users.id, id));
+      // Use sql query directly to avoid column name case issues
+      const result = await db.execute(
+        sql`SELECT * FROM users WHERE id = ${id}`
+      );
       
-      if (results.length === 0) {
+      if (result.rows.length === 0) {
         return undefined;
       }
       
-      // Just return the first result directly
-      return results[0];
+      // Get the first row of data from the result
+      const user = result.rows[0];
+      
+      // Standardize field names by creating a consistent object
+      return {
+        id: user.id,
+        tenantId: user.tenantid || user.tenantId,
+        username: user.username,
+        password: user.password,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        mfaEnabled: user.mfaenabled || false,
+        mfaSecret: user.mfasecret || null,
+        mfaBackupCodes: user.mfabackupcodes || [],
+        ssoEnabled: user.ssoenabled || false,
+        ssoProvider: user.ssoprovider || null,
+        ssoProviderId: user.ssoproviderid || null,
+        ssoProviderData: user.ssoproviderdata || {},
+        createdAt: user.createdat || user.createdAt,
+        updatedAt: user.updatedat || user.updatedAt
+      } as User;
     } catch (error) {
       console.error("Error fetching user:", error);
       throw error;
@@ -788,24 +810,42 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
     try {
-      let whereCondition;
-      
+      // Use sql query with parameterized values to avoid column name case issues
+      let query;
       if (tenantId) {
-        whereCondition = and(
-          eq(users.username, username),
-          eq(users.tenantId, tenantId)
-        );
+        query = sql`SELECT * FROM users WHERE username = ${username} AND "tenantId" = ${tenantId}`;
       } else {
-        whereCondition = eq(users.username, username);
+        query = sql`SELECT * FROM users WHERE username = ${username}`;
       }
       
-      const results = await db.select().from(users).where(whereCondition);
+      const result = await db.execute(query);
       
-      if (results.length === 0) {
+      if (result.rows.length === 0) {
         return undefined;
       }
       
-      return results[0] as User;
+      // Get the first row of data from the result
+      const user = result.rows[0];
+      
+      // Standardize field names by creating a consistent object
+      return {
+        id: user.id,
+        tenantId: user.tenantid || user.tenantId,
+        username: user.username,
+        password: user.password,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        mfaEnabled: user.mfaenabled || false,
+        mfaSecret: user.mfasecret || null,
+        mfaBackupCodes: user.mfabackupcodes || [],
+        ssoEnabled: user.ssoenabled || false,
+        ssoProvider: user.ssoprovider || null,
+        ssoProviderId: user.ssoproviderid || null,
+        ssoProviderData: user.ssoproviderdata || {},
+        createdAt: user.createdat || user.createdAt,
+        updatedAt: user.updatedat || user.updatedAt
+      } as User;
     } catch (error) {
       console.error("Error fetching user by username:", error);
       throw error;
@@ -817,114 +857,256 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    // Insert with all lowercase column names to match PostgreSQL convention
-    const [user] = await db.insert(users).values({
-      ...insertUser,
-      mfaenabled: false,
-      mfabackupcodes: [],
-      ssoenabled: false,
-      ssoproviderdata: {}
-    } as any).returning();
-    
-    // Transform result to expected User type format
-    return {
-      id: user.id,
-      tenantId: user.tenantId,
-      username: user.username,
-      password: user.password,
-      role: user.role,
-      name: user.name,
-      email: user.email,
-      mfaEnabled: user.mfaenabled ?? false,
-      mfaSecret: user.mfasecret ?? null,
-      mfaBackupCodes: user.mfabackupcodes ?? [],
-      ssoEnabled: user.ssoenabled ?? false,
-      ssoProvider: user.ssoprovider ?? null,
-      ssoProviderId: user.ssoproviderid ?? null,
-      ssoProviderData: user.ssoproviderdata ?? {},
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
-    } as User;
+    try {
+      // Use raw SQL to insert the user with lowercase column names
+      const result = await db.execute(sql`
+        INSERT INTO users 
+        (username, password, role, name, email, "tenantId", mfaenabled, mfabackupcodes, ssoenabled, ssoproviderdata)
+        VALUES 
+        (
+          ${insertUser.username}, 
+          ${insertUser.password}, 
+          ${insertUser.role || 'user'}, 
+          ${insertUser.name || null}, 
+          ${insertUser.email || null}, 
+          ${insertUser.tenantId || 1}, 
+          false, 
+          '[]', 
+          false, 
+          '{}'
+        )
+        RETURNING *
+      `);
+      
+      // Get the first row of data from the result
+      const user = result.rows[0];
+      
+      // Standardize field names by creating a consistent object
+      return {
+        id: user.id,
+        tenantId: user.tenantid || user.tenantId,
+        username: user.username,
+        password: user.password,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        mfaEnabled: user.mfaenabled || false,
+        mfaSecret: user.mfasecret || null,
+        mfaBackupCodes: user.mfabackupcodes || [],
+        ssoEnabled: user.ssoenabled || false,
+        ssoProvider: user.ssoprovider || null,
+        ssoProviderId: user.ssoproviderid || null,
+        ssoProviderData: user.ssoproviderdata || {},
+        createdAt: user.createdat || user.createdAt,
+        updatedAt: user.updatedat || user.updatedAt
+      } as User;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   }
   
   async updateUser(id: number, updates: Partial<User>): Promise<User> {
-    // Convert camelCase property names to lowercase for PostgreSQL
-    const dbUpdates: any = {};
-    
-    if (updates.mfaEnabled !== undefined) dbUpdates.mfaenabled = updates.mfaEnabled;
-    if (updates.mfaSecret !== undefined) dbUpdates.mfasecret = updates.mfaSecret;
-    if (updates.mfaBackupCodes !== undefined) dbUpdates.mfabackupcodes = updates.mfaBackupCodes;
-    if (updates.ssoEnabled !== undefined) dbUpdates.ssoenabled = updates.ssoEnabled;
-    if (updates.ssoProvider !== undefined) dbUpdates.ssoprovider = updates.ssoProvider;
-    if (updates.ssoProviderId !== undefined) dbUpdates.ssoproviderid = updates.ssoProviderId;
-    if (updates.ssoProviderData !== undefined) dbUpdates.ssoproviderdata = updates.ssoProviderData;
-    
-    // Add other fields that don't need case conversion
-    if (updates.username !== undefined) dbUpdates.username = updates.username;
-    if (updates.password !== undefined) dbUpdates.password = updates.password;
-    if (updates.role !== undefined) dbUpdates.role = updates.role;
-    if (updates.name !== undefined) dbUpdates.name = updates.name;
-    if (updates.email !== undefined) dbUpdates.email = updates.email;
-    if (updates.tenantId !== undefined) dbUpdates.tenantId = updates.tenantId;
-    
-    // Add updatedAt timestamp
-    dbUpdates.updatedAt = new Date();
-    
-    const [updated] = await db
-      .update(users)
-      .set(dbUpdates)
-      .where(eq(users.id, id))
-      .returning();
-    
-    if (!updated) {
-      throw new Error(`User with ID ${id} not found`);
+    try {
+      // Instead of using Drizzle's update and set, we'll use SQL directly
+      // Build the SET part of the query manually
+      let setClauses = [];
+      const params = [];
+      let paramIndex = 1;
+      
+      // Convert camelCase property names to lowercase for PostgreSQL
+      if (updates.mfaEnabled !== undefined) {
+        setClauses.push(`mfaenabled = $${paramIndex++}`);
+        params.push(updates.mfaEnabled);
+      }
+      
+      if (updates.mfaSecret !== undefined) {
+        setClauses.push(`mfasecret = $${paramIndex++}`);
+        params.push(updates.mfaSecret);
+      }
+      
+      if (updates.mfaBackupCodes !== undefined) {
+        setClauses.push(`mfabackupcodes = $${paramIndex++}`);
+        params.push(JSON.stringify(updates.mfaBackupCodes));
+      }
+      
+      if (updates.ssoEnabled !== undefined) {
+        setClauses.push(`ssoenabled = $${paramIndex++}`);
+        params.push(updates.ssoEnabled);
+      }
+      
+      if (updates.ssoProvider !== undefined) {
+        setClauses.push(`ssoprovider = $${paramIndex++}`);
+        params.push(updates.ssoProvider);
+      }
+      
+      if (updates.ssoProviderId !== undefined) {
+        setClauses.push(`ssoproviderid = $${paramIndex++}`);
+        params.push(updates.ssoProviderId);
+      }
+      
+      if (updates.ssoProviderData !== undefined) {
+        setClauses.push(`ssoproviderdata = $${paramIndex++}`);
+        params.push(JSON.stringify(updates.ssoProviderData));
+      }
+      
+      // Add other fields that don't need case conversion
+      if (updates.username !== undefined) {
+        setClauses.push(`username = $${paramIndex++}`);
+        params.push(updates.username);
+      }
+      
+      if (updates.password !== undefined) {
+        setClauses.push(`password = $${paramIndex++}`);
+        params.push(updates.password);
+      }
+      
+      if (updates.role !== undefined) {
+        setClauses.push(`role = $${paramIndex++}`);
+        params.push(updates.role);
+      }
+      
+      if (updates.name !== undefined) {
+        setClauses.push(`name = $${paramIndex++}`);
+        params.push(updates.name);
+      }
+      
+      if (updates.email !== undefined) {
+        setClauses.push(`email = $${paramIndex++}`);
+        params.push(updates.email);
+      }
+      
+      if (updates.tenantId !== undefined) {
+        setClauses.push(`"tenantId" = $${paramIndex++}`);
+        params.push(updates.tenantId);
+      }
+      
+      // Add updatedAt timestamp
+      setClauses.push(`"updatedAt" = $${paramIndex++}`);
+      params.push(new Date());
+      
+      // If there's nothing to update, return the existing user
+      if (setClauses.length === 0) {
+        const existingUserResult = await db.execute(sql`SELECT * FROM users WHERE id = ${id}`);
+        if (existingUserResult.rows.length === 0) {
+          throw new Error(`User with ID ${id} not found`);
+        }
+        
+        const user = existingUserResult.rows[0];
+        
+        return {
+          id: user.id,
+          tenantId: user.tenantid || user.tenantId,
+          username: user.username,
+          password: user.password,
+          role: user.role,
+          name: user.name,
+          email: user.email,
+          mfaEnabled: user.mfaenabled || false,
+          mfaSecret: user.mfasecret || null,
+          mfaBackupCodes: user.mfabackupcodes || [],
+          ssoEnabled: user.ssoenabled || false,
+          ssoProvider: user.ssoprovider || null,
+          ssoProviderId: user.ssoproviderid || null,
+          ssoProviderData: user.ssoproviderdata || {},
+          createdAt: user.createdat || user.createdAt,
+          updatedAt: user.updatedat || user.updatedAt
+        } as User;
+      }
+      
+      // Execute the update
+      const updateQuery = `
+        UPDATE users
+        SET ${setClauses.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+      
+      params.push(id);
+      const result = await db.execute({
+        text: updateQuery,
+        values: params
+      });
+      
+      if (result.rows.length === 0) {
+        throw new Error(`User with ID ${id} not found`);
+      }
+      
+      // Get the updated user
+      const updated = result.rows[0];
+      
+      // Transform result to expected User type format
+      return {
+        id: updated.id,
+        tenantId: updated.tenantid || updated.tenantId,
+        username: updated.username,
+        password: updated.password,
+        role: updated.role,
+        name: updated.name,
+        email: updated.email,
+        mfaEnabled: updated.mfaenabled || false,
+        mfaSecret: updated.mfasecret || null,
+        mfaBackupCodes: updated.mfabackupcodes || [],
+        ssoEnabled: updated.ssoenabled || false,
+        ssoProvider: updated.ssoprovider || null,
+        ssoProviderId: updated.ssoproviderid || null,
+        ssoProviderData: updated.ssoproviderdata || {},
+        createdAt: updated.createdat || updated.createdAt,
+        updatedAt: updated.updatedat || updated.updatedAt
+      } as User;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      throw error;
     }
-    
-    // Transform result to expected User type format
-    return {
-      id: updated.id,
-      tenantId: updated.tenantId,
-      username: updated.username,
-      password: updated.password,
-      role: updated.role,
-      name: updated.name,
-      email: updated.email,
-      mfaEnabled: updated.mfaenabled ?? false,
-      mfaSecret: updated.mfasecret ?? null,
-      mfaBackupCodes: updated.mfabackupcodes ?? [],
-      ssoEnabled: updated.ssoenabled ?? false,
-      ssoProvider: updated.ssoprovider ?? null,
-      ssoProviderId: updated.ssoproviderid ?? null,
-      ssoProviderData: updated.ssoproviderdata ?? {},
-      createdAt: updated.createdAt,
-      updatedAt: updated.updatedAt
-    } as User;
   }
   
   async getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined> {
     try {
-      let whereCondition;
+      let query;
       
       if (tenantId) {
-        whereCondition = and(
-          eq(users.ssoProvider, provider),
-          eq(users.ssoProviderId, providerId),
-          eq(users.tenantId, tenantId)
-        );
+        query = sql`
+          SELECT * FROM users 
+          WHERE ssoprovider = ${provider} 
+          AND ssoproviderid = ${providerId} 
+          AND "tenantId" = ${tenantId}
+        `;
       } else {
-        whereCondition = and(
-          eq(users.ssoProvider, provider),
-          eq(users.ssoProviderId, providerId)
-        );
+        query = sql`
+          SELECT * FROM users 
+          WHERE ssoprovider = ${provider} 
+          AND ssoproviderid = ${providerId}
+        `;
       }
       
-      const results = await db.select().from(users).where(whereCondition);
+      const result = await db.execute(query);
       
-      if (results.length === 0) {
+      if (result.rows.length === 0) {
         return undefined;
       }
       
-      return results[0];
+      // Get the first row of data from the result
+      const user = result.rows[0];
+      
+      // Standardize field names by creating a consistent object
+      return {
+        id: user.id,
+        tenantId: user.tenantid || user.tenantId,
+        username: user.username,
+        password: user.password,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        mfaEnabled: user.mfaenabled || false,
+        mfaSecret: user.mfasecret || null,
+        mfaBackupCodes: user.mfabackupcodes || [],
+        ssoEnabled: user.ssoenabled || false,
+        ssoProvider: user.ssoprovider || null,
+        ssoProviderId: user.ssoproviderid || null,
+        ssoProviderData: user.ssoproviderdata || {},
+        createdAt: user.createdat || user.createdAt,
+        updatedAt: user.updatedat || user.updatedAt
+      } as User;
     } catch (error) {
       console.error("Error fetching user by SSO ID:", error);
       throw error;

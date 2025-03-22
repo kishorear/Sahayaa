@@ -770,23 +770,61 @@ export class DatabaseStorage implements IStorage {
 
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    const results = await db.select().from(users).where(eq(users.id, id));
-    return results[0];
+    try {
+      // Use raw SQL to avoid casing issues with PostgreSQL columns
+      const result = await db.execute(
+        `SELECT id, "tenantId", username, password, role, name, email, 
+         mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
+         ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
+         ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
+         FROM users WHERE id = $1`,
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      return result.rows[0] as User;
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      throw error;
+    }
   }
 
   async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
-    if (tenantId) {
-      // If tenantId is provided, restrict to that tenant
-      const results = await db.select().from(users)
-        .where(and(
-          eq(users.username, username),
-          eq(users.tenantId, tenantId)
-        ));
-      return results[0];
-    } else {
-      // Default behavior for backward compatibility
-      const results = await db.select().from(users).where(eq(users.username, username));
-      return results[0];
+    try {
+      let query = '';
+      let params = [];
+      
+      if (tenantId) {
+        // If tenantId is provided, restrict to that tenant
+        query = `SELECT id, "tenantId", username, password, role, name, email, 
+                 mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
+                 ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
+                 ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
+                 FROM users WHERE username = $1 AND "tenantId" = $2`;
+        params = [username, tenantId];
+      } else {
+        // Default behavior for backward compatibility
+        query = `SELECT id, "tenantId", username, password, role, name, email, 
+                mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
+                ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
+                ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
+                FROM users WHERE username = $1`;
+        params = [username];
+      }
+      
+      const result = await db.execute(query, params);
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      return result.rows[0] as User;
+    } catch (error) {
+      console.error("Error fetching user by username:", error);
+      throw error;
     }
   }
 
@@ -820,23 +858,39 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined> {
-    let query;
-    
-    if (tenantId) {
-      query = and(
-        eq(users.ssoProvider, provider),
-        eq(users.ssoProviderId, providerId),
-        eq(users.tenantId, tenantId)
-      );
-    } else {
-      query = and(
-        eq(users.ssoProvider, provider),
-        eq(users.ssoProviderId, providerId)
-      );
+    try {
+      let query = '';
+      let params = [];
+      
+      if (tenantId) {
+        query = `SELECT id, "tenantId", username, password, role, name, email, 
+                mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
+                ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
+                ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
+                FROM users 
+                WHERE ssoprovider = $1 AND ssoproviderid = $2 AND "tenantId" = $3`;
+        params = [provider, providerId, tenantId];
+      } else {
+        query = `SELECT id, "tenantId", username, password, role, name, email, 
+                mfaenabled as "mfaEnabled", mfasecret as "mfaSecret", mfabackupcodes as "mfaBackupCodes",
+                ssoenabled as "ssoEnabled", ssoprovider as "ssoProvider", ssoproviderid as "ssoProviderId", 
+                ssoproviderdata as "ssoProviderData", "createdAt", "updatedAt"
+                FROM users 
+                WHERE ssoprovider = $1 AND ssoproviderid = $2`;
+        params = [provider, providerId];
+      }
+      
+      const result = await db.execute(query, params);
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      return result.rows[0] as User;
+    } catch (error) {
+      console.error("Error fetching user by SSO ID:", error);
+      throw error;
     }
-    
-    const results = await db.select().from(users).where(query);
-    return results[0];
   }
   
   // Identity Provider operations

@@ -46,6 +46,7 @@
     "@types/imap": "^0.8.42",
     "@types/mailparser": "^3.4.5",
     "@types/nodemailer": "^6.4.17",
+    "@types/passport-oauth2": "^1.4.17",
     "@types/qrcode": "^1.5.5",
     "@types/speakeasy": "^2.0.10",
     "axios": "^1.8.4",

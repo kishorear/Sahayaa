@@ -5,6 +5,7 @@ import {
   attachments,
   dataSources,
   tenants,
+  identityProviders,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -16,7 +17,9 @@ import {
   type DataSource,
   type InsertDataSource,
   type Tenant,
-  type InsertTenant
+  type InsertTenant,
+  type IdentityProvider,
+  type InsertIdentityProvider
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -39,6 +42,15 @@ export interface IStorage {
   getUserByUsername(username: string, tenantId?: number): Promise<User | undefined>;
   getUsersByTenantId(tenantId: number): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, updates: Partial<User>): Promise<User>;
+  getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined>;
+  
+  // Identity provider operations
+  getIdentityProviders(tenantId: number): Promise<IdentityProvider[]>;
+  getIdentityProviderById(id: number, tenantId?: number): Promise<IdentityProvider | undefined>;
+  createIdentityProvider(provider: InsertIdentityProvider): Promise<IdentityProvider>;
+  updateIdentityProvider(id: number, updates: Partial<IdentityProvider>, tenantId?: number): Promise<IdentityProvider>;
+  deleteIdentityProvider(id: number, tenantId?: number): Promise<boolean>;
   
   // Ticket operations
   getAllTickets(tenantId?: number): Promise<Ticket[]>;
@@ -400,11 +412,116 @@ export class MemStorage implements IStorage {
       name: insertUser.name || null,
       email: insertUser.email || null,
       tenantId: insertUser.tenantId || 1, // Default to tenant ID 1 if not specified
+      
+      // MFA fields
+      mfaEnabled: false,
+      mfaSecret: null,
+      mfaBackupCodes: [],
+      
+      // SSO fields
+      ssoEnabled: false,
+      ssoProvider: null,
+      ssoProviderId: null,
+      ssoProviderData: {},
+      
       createdAt: now,
       updatedAt: now
     };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUser(id: number, updates: Partial<User>): Promise<User> {
+    const user = this.users.get(id);
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    
+    const updatedUser: User = {
+      ...user,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => 
+        user.ssoProvider === provider && 
+        user.ssoProviderId === providerId && 
+        (!tenantId || user.tenantId === tenantId)
+    );
+  }
+  
+  // Identity Provider operations
+  private identityProviders: Map<number, IdentityProvider> = new Map();
+  private identityProviderIdCounter: number = 1;
+  
+  async getIdentityProviders(tenantId: number): Promise<IdentityProvider[]> {
+    return Array.from(this.identityProviders.values()).filter(
+      (provider) => provider.tenantId === tenantId
+    );
+  }
+  
+  async getIdentityProviderById(id: number, tenantId?: number): Promise<IdentityProvider | undefined> {
+    const provider = this.identityProviders.get(id);
+    if (tenantId && provider && provider.tenantId !== tenantId) {
+      return undefined; // Don't return providers from other tenants
+    }
+    return provider;
+  }
+  
+  async createIdentityProvider(insertProvider: InsertIdentityProvider): Promise<IdentityProvider> {
+    const id = this.identityProviderIdCounter++;
+    const now = new Date();
+    
+    const provider: IdentityProvider = {
+      ...insertProvider,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.identityProviders.set(id, provider);
+    return provider;
+  }
+  
+  async updateIdentityProvider(id: number, updates: Partial<IdentityProvider>, tenantId?: number): Promise<IdentityProvider> {
+    const provider = this.identityProviders.get(id);
+    if (!provider) {
+      throw new Error(`Identity provider with id ${id} not found`);
+    }
+    
+    // If tenantId is provided, ensure provider belongs to that tenant
+    if (tenantId && provider.tenantId !== tenantId) {
+      throw new Error(`Identity provider with id ${id} does not belong to tenant ${tenantId}`);
+    }
+    
+    const updatedProvider: IdentityProvider = {
+      ...provider,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.identityProviders.set(id, updatedProvider);
+    return updatedProvider;
+  }
+  
+  async deleteIdentityProvider(id: number, tenantId?: number): Promise<boolean> {
+    const provider = this.identityProviders.get(id);
+    if (!provider) {
+      return false;
+    }
+    
+    // If tenantId is provided, ensure provider belongs to that tenant
+    if (tenantId && provider.tenantId !== tenantId) {
+      return false;
+    }
+    
+    return this.identityProviders.delete(id);
   }
   
   // Ticket operations
@@ -678,8 +795,129 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    const [user] = await db.insert(users).values({
+      ...insertUser,
+      mfaEnabled: false,
+      mfaBackupCodes: [],
+      ssoEnabled: false,
+      ssoProviderData: {}
+    }).returning();
     return user;
+  }
+  
+  async updateUser(id: number, updates: Partial<User>): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!updated) {
+      throw new Error(`User with ID ${id} not found`);
+    }
+    
+    return updated;
+  }
+  
+  async getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined> {
+    let query;
+    
+    if (tenantId) {
+      query = and(
+        eq(users.ssoProvider, provider),
+        eq(users.ssoProviderId, providerId),
+        eq(users.tenantId, tenantId)
+      );
+    } else {
+      query = and(
+        eq(users.ssoProvider, provider),
+        eq(users.ssoProviderId, providerId)
+      );
+    }
+    
+    const results = await db.select().from(users).where(query);
+    return results[0];
+  }
+  
+  // Identity Provider operations
+  async getIdentityProviders(tenantId: number): Promise<IdentityProvider[]> {
+    return await db
+      .select()
+      .from(identityProviders)
+      .where(eq(identityProviders.tenantId, tenantId))
+      .orderBy(asc(identityProviders.name));
+  }
+  
+  async getIdentityProviderById(id: number, tenantId?: number): Promise<IdentityProvider | undefined> {
+    let query;
+    
+    if (tenantId) {
+      query = and(
+        eq(identityProviders.id, id),
+        eq(identityProviders.tenantId, tenantId)
+      );
+    } else {
+      query = eq(identityProviders.id, id);
+    }
+    
+    const results = await db.select().from(identityProviders).where(query);
+    return results[0];
+  }
+  
+  async createIdentityProvider(provider: InsertIdentityProvider): Promise<IdentityProvider> {
+    // Ensure enabled is set to a boolean
+    const providerWithDefaults = {
+      ...provider,
+      enabled: provider.enabled === undefined ? true : provider.enabled
+    };
+    
+    const [identityProvider] = await db
+      .insert(identityProviders)
+      .values(providerWithDefaults)
+      .returning();
+      
+    return identityProvider;
+  }
+  
+  async updateIdentityProvider(id: number, updates: Partial<IdentityProvider>, tenantId?: number): Promise<IdentityProvider> {
+    let query;
+    
+    if (tenantId) {
+      query = and(
+        eq(identityProviders.id, id),
+        eq(identityProviders.tenantId, tenantId)
+      );
+    } else {
+      query = eq(identityProviders.id, id);
+    }
+    
+    const [updated] = await db
+      .update(identityProviders)
+      .set({...updates, updatedAt: new Date()})
+      .where(query)
+      .returning();
+      
+    if (!updated) {
+      throw new Error(`Identity provider with ID ${id} not found`);
+    }
+    
+    return updated;
+  }
+  
+  async deleteIdentityProvider(id: number, tenantId?: number): Promise<boolean> {
+    let query;
+    
+    if (tenantId) {
+      query = and(
+        eq(identityProviders.id, id),
+        eq(identityProviders.tenantId, tenantId)
+      );
+    } else {
+      query = eq(identityProviders.id, id);
+    }
+    
+    const result = await db.delete(identityProviders).where(query);
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Ticket operations

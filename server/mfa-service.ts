@@ -3,6 +3,11 @@ import QRCode from 'qrcode';
 import { storage } from './storage';
 import { User } from '@shared/schema';
 
+// Ensure storage has updateUser method - this is for type safety
+if (!storage.updateUser) {
+  throw new Error('Storage implementation does not have updateUser method');
+}
+
 /**
  * Service for handling Multi-Factor Authentication
  */

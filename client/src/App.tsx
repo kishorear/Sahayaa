@@ -11,7 +11,7 @@ import TeamPage from "@/pages/admin/TeamPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
@@ -34,11 +34,21 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router />
-        <ChatbotInterface />
+        <ProtectedChatbot />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
+}
+
+// Component that only renders the chatbot for authenticated users
+function ProtectedChatbot() {
+  const { user } = useAuth();
+  
+  // Only show the chatbot if the user is logged in
+  if (!user) return null;
+  
+  return <ChatbotInterface />;
 }
 
 export default App;

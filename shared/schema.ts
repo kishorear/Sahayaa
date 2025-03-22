@@ -51,8 +51,22 @@ export const messages = pgTable("messages", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const attachments = pgTable("attachments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticketId").notNull(),
+  messageId: integer("messageId"),
+  type: text("type").notNull(), // screen_recording, image, file
+  filename: text("filename").notNull(),
+  contentType: text("contentType").notNull(),
+  data: text("data").notNull(), // base64 encoded data
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const insertMessageSchema = createInsertSchema(messages)
   .omit({ id: true, createdAt: true, updatedAt: true });
+  
+export const insertAttachmentSchema = createInsertSchema(attachments)
+  .omit({ id: true, createdAt: true });
 
 // Type definitions
 export type User = typeof users.$inferSelect;
@@ -64,9 +78,13 @@ export type InsertTicket = z.infer<typeof insertTicketSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
+export type Attachment = typeof attachments.$inferSelect;
+export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+
 // API response types
 export type TicketWithMessages = Ticket & {
   messages: Message[];
+  attachments?: Attachment[];
 };
 
 export type TicketSummary = {

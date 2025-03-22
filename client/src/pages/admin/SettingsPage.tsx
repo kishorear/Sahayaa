@@ -1,4 +1,5 @@
 import AdminLayout from "@/components/admin/AdminLayout";
+import IntegrationSettings from "@/components/admin/IntegrationSettings";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";

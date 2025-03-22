@@ -1116,7 +1116,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Using SQL directly due to column name inconsistency
       const result = await db.execute(
-        sql`SELECT * FROM identity_providers WHERE "tenantId" = ${tenantId} ORDER BY name ASC`
+        sql`SELECT * FROM identity_providers WHERE "tenantid" = ${tenantId} ORDER BY name ASC`
       );
       
       if (!result.rows || result.rows.length === 0) {
@@ -1146,7 +1146,7 @@ export class DatabaseStorage implements IStorage {
       
       if (tenantId) {
         // Using SQL directly due to column name inconsistency
-        query = sql`SELECT * FROM identity_providers WHERE id = ${id} AND "tenantId" = ${tenantId}`;
+        query = sql`SELECT * FROM identity_providers WHERE id = ${id} AND "tenantid" = ${tenantId}`;
       } else {
         query = sql`SELECT * FROM identity_providers WHERE id = ${id}`;
       }
@@ -1184,7 +1184,7 @@ export class DatabaseStorage implements IStorage {
       
       // Using SQL directly due to column name inconsistency
       const result = await db.execute(
-        sql`INSERT INTO identity_providers ("tenantId", name, type, enabled, config, "createdAt", "updatedAt")
+        sql`INSERT INTO identity_providers ("tenantid", name, type, enabled, config, "createdat", "updatedat")
             VALUES (${providerWithDefaults.tenantId}, ${providerWithDefaults.name}, ${providerWithDefaults.type}, 
                    ${providerWithDefaults.enabled}, ${providerWithDefaults.config}, NOW(), NOW())
             RETURNING *`
@@ -1233,7 +1233,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Always update the updated_at timestamp
-      updateFields.push(sql`"updatedAt" = ${new Date()}`);
+      updateFields.push(sql`"updatedat" = ${new Date()}`);
       
       // Combine the update fields with commas
       const setClause = sql.join(updateFields, sql`, `);
@@ -1241,7 +1241,7 @@ export class DatabaseStorage implements IStorage {
       // Build the complete query with WHERE clause
       let query;
       if (tenantId) {
-        query = sql`UPDATE identity_providers SET ${setClause} WHERE id = ${id} AND "tenantId" = ${tenantId} RETURNING *`;
+        query = sql`UPDATE identity_providers SET ${setClause} WHERE id = ${id} AND "tenantid" = ${tenantId} RETURNING *`;
       } else {
         query = sql`UPDATE identity_providers SET ${setClause} WHERE id = ${id} RETURNING *`;
       }
@@ -1275,7 +1275,7 @@ export class DatabaseStorage implements IStorage {
       let query;
       
       if (tenantId) {
-        query = sql`DELETE FROM identity_providers WHERE id = ${id} AND "tenantId" = ${tenantId}`;
+        query = sql`DELETE FROM identity_providers WHERE id = ${id} AND "tenantid" = ${tenantId}`;
       } else {
         query = sql`DELETE FROM identity_providers WHERE id = ${id}`;
       }

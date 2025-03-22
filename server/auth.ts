@@ -51,10 +51,33 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  try {
+    // Validate that stored password has the expected format
+    if (!stored || !stored.includes('.')) {
+      console.error('Password comparison failed: Invalid stored password format');
+      return false;
+    }
+    
+    const [hashed, salt] = stored.split(".");
+    console.log('Password comparison:', {
+      suppliedLength: supplied.length,
+      storedLength: stored.length,
+      hashedLength: hashed.length,
+      saltLength: salt.length
+    });
+    
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    
+    // Compare the buffers
+    const result = timingSafeEqual(hashedBuf, suppliedBuf);
+    console.log('Password comparison result:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('Error comparing passwords:', error);
+    return false;
+  }
 }
 
 export function setupAuth(app: Express) {

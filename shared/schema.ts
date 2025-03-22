@@ -208,6 +208,7 @@ export const widgetAnalytics = pgTable("widget_analytics", {
   adminId: integer("adminId").notNull(), // The admin user who generated/downloaded the widget
   apiKey: text("apiKey").notNull(), // The unique API key assigned to the widget instance
   clientWebsite: text("clientWebsite"), // The website where the widget is installed
+  clientInfo: text("clientInfo"), // User agent or other client information
   interactions: integer("interactions").default(0), // Count of user interactions
   messagesReceived: integer("messagesReceived").default(0), // Count of messages from users
   messagesSent: integer("messagesSent").default(0), // Count of responses sent

@@ -129,6 +129,16 @@ export function setupAuth(app: Express) {
       } catch (error) {
         console.error("Error fetching user:", error);
       }
+    } else {
+      // If there's a backup cookie but no session, try to recover the session
+      const backupSessionId = req.cookies?.ticket_support_sid_backup;
+      if (backupSessionId) {
+        console.log("Found backup session ID, attempting to recover session");
+        
+        // This is just a simple check to provide more debugging information
+        // The actual session recovery would require more work with the session store
+        console.log("Backup session ID:", backupSessionId);
+      }
     }
     next();
   });
@@ -317,6 +327,7 @@ export function setupAuth(app: Express) {
 
       // Set session
       try {
+        // Set session directly
         req.session.userId = user.id;
         
         await new Promise<void>((resolve, reject) => {
@@ -328,6 +339,15 @@ export function setupAuth(app: Express) {
               resolve();
             }
           });
+        });
+        
+        // Additional cookie setting for more reliability
+        res.cookie('ticket_support_sid_backup', req.session.id, {
+          maxAge: 24 * 60 * 60 * 1000, // 24 hours
+          secure: false,
+          sameSite: "lax",
+          httpOnly: true,
+          path: '/'
         });
         
         console.log(`Session created for user ID: ${user.id}`);
@@ -368,7 +388,7 @@ export function setupAuth(app: Express) {
         return res.status(500).json({ message: "Failed to logout", details: err.message });
       }
       
-      // Clear the custom cookie we've set
+      // Clear the session cookies
       res.clearCookie("ticket_support_sid", {
         path: '/',
         httpOnly: true,
@@ -376,7 +396,14 @@ export function setupAuth(app: Express) {
         sameSite: "lax"
       });
       
-      console.log("Session destroyed and cookie cleared successfully");
+      res.clearCookie("ticket_support_sid_backup", {
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax"
+      });
+      
+      console.log("Session destroyed and cookies cleared successfully");
       res.status(200).json({ message: "Logged out successfully" });
     });
   });

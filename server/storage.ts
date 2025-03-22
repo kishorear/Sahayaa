@@ -1562,6 +1562,73 @@ export class DatabaseStorage implements IStorage {
       
     return !!result;
   }
+  
+  // Widget analytics operations
+  async getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined> {
+    const results = await db
+      .select()
+      .from(widgetAnalytics)
+      .where(eq(widgetAnalytics.apiKey, apiKey));
+    
+    return results[0];
+  }
+  
+  async getWidgetAnalyticsByAdminId(adminId: number, tenantId?: number): Promise<WidgetAnalytics[]> {
+    if (tenantId) {
+      return await db
+        .select()
+        .from(widgetAnalytics)
+        .where(and(
+          eq(widgetAnalytics.adminId, adminId),
+          eq(widgetAnalytics.tenantId, tenantId)
+        ));
+    } else {
+      return await db
+        .select()
+        .from(widgetAnalytics)
+        .where(eq(widgetAnalytics.adminId, adminId));
+    }
+  }
+  
+  async createWidgetAnalytics(insertAnalytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
+    const analyticsToInsert = {
+      ...insertAnalytics,
+      clientWebsite: insertAnalytics.clientWebsite || null,
+      interactions: insertAnalytics.interactions || 0,
+      messagesReceived: insertAnalytics.messagesReceived || 0,
+      messagesSent: insertAnalytics.messagesSent || 0,
+      ticketsCreated: insertAnalytics.ticketsCreated || 0,
+      metadata: insertAnalytics.metadata || {},
+      lastActivity: insertAnalytics.lastActivity || new Date(),
+      lastClientIp: insertAnalytics.lastClientIp || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const [analytics] = await db
+      .insert(widgetAnalytics)
+      .values(analyticsToInsert)
+      .returning();
+      
+    return analytics;
+  }
+  
+  async updateWidgetAnalytics(id: number, updates: Partial<WidgetAnalytics>): Promise<WidgetAnalytics> {
+    const [updated] = await db
+      .update(widgetAnalytics)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(widgetAnalytics.id, id))
+      .returning();
+      
+    if (!updated) {
+      throw new Error(`Widget analytics with ID ${id} not found`);
+    }
+    
+    return updated;
+  }
 }
 
 // Create a PostgreSQL storage implementation for production

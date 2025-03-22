@@ -20,6 +20,7 @@ import { registerIntegrationRoutes } from "./routes/integration-routes";
 import { registerDataSourceRoutes } from "./routes/data-source-routes";
 import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
+import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
 import { getSsoService } from "./sso-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -40,6 +41,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register SSO routes
   registerSsoRoutes(app, requireAuth, requireRole);
+  
+  // Register widget analytics routes
+  registerWidgetAnalyticsRoutes(app, requireAuth);
   
   // Initialize SSO service for all tenants
   try {

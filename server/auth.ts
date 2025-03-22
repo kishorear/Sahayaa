@@ -5,6 +5,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User, users } from "@shared/schema";
 import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 // Extend the session type to include our custom fields
 declare module 'express-session' {
@@ -110,8 +111,15 @@ export function setupAuth(app: Express) {
       }
 
       // Validate role - only allow admin users to create other admins
+      // Special case: If this is the first user, allow them to be an admin
       const requestedRole = role || "user";
-      if (requestedRole === "admin" && (!req.user || req.user.role !== "admin")) {
+      
+      // Check if any users exist
+      const userCount = await db.select({ count: sql`count(*)` }).from(users);
+      const isFirstUser = userCount[0].count === '0';
+      
+      // Only enforce admin restriction if it's not the first user
+      if (requestedRole === "admin" && !isFirstUser && (!req.user || req.user.role !== "admin")) {
         return res.status(403).json({ message: "Only admins can create admin accounts" });
       }
 

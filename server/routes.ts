@@ -24,13 +24,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { requireAuth, requireRole } = setupAuth(app);
   
   // Register email-related routes
-  registerEmailRoutes(app, requireAuth);
+  registerEmailRoutes(app, requireRole(['admin', 'support-agent']));
   
   // Register third-party integration routes
-  registerIntegrationRoutes(app, requireAuth);
+  registerIntegrationRoutes(app, requireRole(['admin']));
   
   // Register data source routes
-  registerDataSourceRoutes(app, requireAuth);
+  registerDataSourceRoutes(app, requireRole(['admin']));
 
   // TICKET ROUTES - Protected routes for support staff and admins
   app.get("/api/tickets", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
@@ -125,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // MESSAGE ROUTES
-  app.get("/api/tickets/:ticketId/messages", requireAuth, async (req, res) => {
+  app.get("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       const messages = await storage.getMessagesByTicketId(ticketId);
@@ -135,7 +135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tickets/:ticketId/messages", async (req, res) => {
+  app.post("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       const messageData = insertMessageSchema.parse({ ...req.body, ticketId });
@@ -340,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ATTACHMENT ROUTES
-  app.get("/api/tickets/:ticketId/attachments", requireAuth, async (req, res) => {
+  app.get("/api/tickets/:ticketId/attachments", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       const attachments = await storage.getAttachmentsByTicketId(ticketId);
@@ -350,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/attachments/:id", requireAuth, async (req, res) => {
+  app.get("/api/attachments/:id", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const attachment = await storage.getAttachmentById(id);
@@ -365,7 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/tickets/:ticketId/attachments", async (req, res) => {
+  app.post("/api/tickets/:ticketId/attachments", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       const ticket = await storage.getTicketById(ticketId);

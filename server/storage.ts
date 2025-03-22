@@ -482,7 +482,8 @@ export class MemStorage implements IStorage {
       ...insertProvider,
       id,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      enabled: insertProvider.enabled ?? true // Ensure enabled is not undefined
     };
     
     this.identityProviders.set(id, provider);
@@ -1023,10 +1024,7 @@ export class DatabaseStorage implements IStorage {
       `;
       
       params.push(id);
-      const result = await db.execute({
-        text: updateQuery,
-        values: params
-      });
+      const result = await db.execute(sql.raw(updateQuery).params(params));
       
       if (result.rows.length === 0) {
         throw new Error(`User with ID ${id} not found`);
@@ -1259,8 +1257,9 @@ export class DatabaseStorage implements IStorage {
       params.push(id);
     }
     
-    // Execute the update using db.query directly
-    const { rows } = await db.query(sqlQuery, params);
+    // Execute the update using sql.raw
+    const result = await db.execute(sql.raw(sqlQuery).params(params));
+    const rows = result.rows;
     
     if (rows.length === 0) {
       throw new Error(`Identity provider with ID ${id} not found`);
@@ -1292,7 +1291,8 @@ export class DatabaseStorage implements IStorage {
         params = [id];
       }
       
-      const { rowCount } = await db.query(sqlQuery, params);
+      const result = await db.execute(sql`${sql.raw(sqlQuery)}`.params(...params));
+      const rowCount = result.rowCount || 0;
       return rowCount > 0;
     } catch (error) {
       console.error("Error deleting identity provider:", error);

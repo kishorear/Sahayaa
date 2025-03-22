@@ -390,7 +390,7 @@ export default function SsoSettings() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4 text-sm">
-                      {provider.type === "oauth2" && (
+                      {(provider.type === "oauth2" || provider.type === "google") && (
                         <>
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Client ID</Label>

@@ -15,9 +15,9 @@ export type OpenAIMessage = {
 /**
  * Classifies a support ticket using OpenAI
  */
-export async function classifyTicketWithAI(title: string, description: string) {
+export async function classifyTicketWithAI(title: string, description: string, knowledgeContext: string = '') {
   try {
-    const prompt = `
+    let prompt = `
     You are an AI support ticket classifier. Based on the following ticket information, 
     classify the ticket according to these criteria:
     
@@ -29,7 +29,14 @@ export async function classifyTicketWithAI(title: string, description: string) {
     
     Ticket Title: ${title}
     Ticket Description: ${description}
+    `;
     
+    // Add knowledge context if available to help with classification accuracy
+    if (knowledgeContext) {
+      prompt += `\nRelevant Knowledge Base Information:\n${knowledgeContext}`;
+    }
+    
+    prompt += `
     Respond with JSON only in this format:
     {
       "category": "category_name",
@@ -131,7 +138,7 @@ export async function attemptAutoResolveWithAI(
  * Generates a response to a chat message using OpenAI
  */
 export async function generateChatResponseWithAI(
-  ticketContext: { id: number; title: string; description: string; category: string },
+  ticketContext: { id: number; title: string; description: string; category: string; tenantId?: number },
   messageHistory: OpenAIMessage[],
   userMessage: string,
   knowledgeContext: string = ''

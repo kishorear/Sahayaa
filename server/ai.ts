@@ -26,11 +26,22 @@ type TicketClassification = {
 };
 
 // Analyze a support request and classify it
-export async function classifyTicket(title: string, description: string): Promise<TicketClassification> {
+export async function classifyTicket(title: string, description: string, tenantId?: number): Promise<TicketClassification> {
   // Use OpenAI if available
   if (USE_OPENAI) {
     try {
-      return await classifyTicketWithAI(title, description);
+      // Get relevant knowledge from data sources with tenant context if available
+      const combinedText = `${title} ${description}`;
+      const knowledgeContext = await buildAIContext(combinedText, tenantId);
+      
+      // Log if knowledge context was found
+      if (knowledgeContext) {
+        console.log(`Using knowledge context for ticket classification. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      } else {
+        console.log(`No relevant knowledge context found for ticket classification. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      }
+      
+      return await classifyTicketWithAI(title, description, knowledgeContext);
     } catch (error) {
       console.error("OpenAI classification failed, falling back to local:", error);
       // Fall back to local implementation

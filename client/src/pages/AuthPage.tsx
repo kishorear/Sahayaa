@@ -26,9 +26,9 @@ const registerSchema = z.object({
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   
-  // If user is already logged in, redirect to home page
+  // If user is already logged in, redirect to dashboard
   if (user) {
-    return <Redirect to="/" />;
+    return <Redirect to="/dashboard" />;
   }
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({

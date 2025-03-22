@@ -58,6 +58,18 @@ const oauthProviderSchema = z.object({
   })
 });
 
+const googleProviderSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  type: z.literal("google"),
+  enabled: z.boolean().default(true),
+  config: z.object({
+    clientID: z.string().min(1, "Client ID is required"),
+    clientSecret: z.string().min(1, "Client Secret is required"),
+    callbackURL: z.string().url("Must be a valid URL").optional(),
+    scope: z.string().optional()
+  })
+});
+
 const samlProviderSchema = z.object({
   name: z.string().min(1, "Name is required"),
   type: z.literal("saml"),
@@ -72,6 +84,7 @@ const samlProviderSchema = z.object({
 
 const providerSchema = z.discriminatedUnion("type", [
   oauthProviderSchema,
+  googleProviderSchema,
   samlProviderSchema
 ]);
 
@@ -91,6 +104,17 @@ const PREDEFINED_PROVIDERS = {
       authorizationURL: "https://accounts.google.com/o/oauth2/v2/auth",
       tokenURL: "https://oauth2.googleapis.com/token",
       callbackURL: window.location.origin + "/api/sso/oauth2/1/callback",
+      scope: "profile email"
+    }
+  },
+  google_native: {
+    name: "Google",
+    type: "google" as const,
+    enabled: true,
+    config: {
+      clientID: "",
+      clientSecret: "",
+      callbackURL: window.location.origin + "/api/sso/google/1/callback",
       scope: "profile email"
     }
   },
@@ -124,7 +148,7 @@ export default function SsoSettings() {
   const { toast } = useToast();
   const [providers, setProviders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("existing");
-  const [providerType, setProviderType] = useState<"oauth2" | "saml">("oauth2");
+  const [providerType, setProviderType] = useState<"oauth2" | "google" | "saml">("oauth2");
   const [providerTemplate, setProviderTemplate] = useState("google");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [testResult, setTestResult] = useState<{success: boolean; message: string} | null>(null);

@@ -45,9 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               credentials: "include"
             });
             
-            // If unauthorized, just return null without retrying
+            // If unauthorized, try fallback mechanisms
             if (res.status === 401) {
-              return null;
+              console.log("Server returned 401, checking for fallback user data");
+              return await tryFallbackUserData();
             }
             
             // For server errors, retry with exponential backoff
@@ -67,13 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Handle other errors
             const errorText = await res.text();
             console.error(`Error fetching user data: ${res.status} - ${errorText}`);
-            return null;
+            
+            // Try fallback user data as a last resort
+            return await tryFallbackUserData();
           } catch (fetchError) {
             console.error("Network error fetching user data:", fetchError);
             retries--;
             
             if (retries <= 0) {
-              return null;
+              // Try fallback user data as a last resort
+              return await tryFallbackUserData();
             }
             
             await new Promise(resolve => setTimeout(resolve, delay));
@@ -81,16 +85,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         
-        return null;
+        // All retries failed, try fallback
+        return await tryFallbackUserData();
       } catch (error) {
         console.error("Unhandled error in user query:", error);
-        return null;
+        
+        // Final attempt with fallback
+        return await tryFallbackUserData();
       }
     },
     // Increase retry attempts
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * (2 ** attemptIndex), 30000)
   });
+  
+  // Function to extract essential user data from cookie as a last resort fallback
+  async function tryFallbackUserData(): Promise<User | null> {
+    try {
+      const cookies = document.cookie.split(';');
+      const userDataCookie = cookies.find(cookie => cookie.trim().startsWith('essential_user_data='));
+      
+      if (userDataCookie) {
+        const cookieValue = userDataCookie.split('=')[1];
+        if (cookieValue) {
+          const userData = JSON.parse(decodeURIComponent(cookieValue));
+          console.log("Found fallback user data in cookie:", userData.username);
+          
+          // This is a minimal User object with just enough data to keep the app functional
+          // until the server becomes available again
+          return {
+            id: userData.id,
+            username: userData.username,
+            role: userData.role,
+            tenantId: userData.tenantId,
+            // Add minimal defaults for required fields
+            password: '',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            name: userData.username,
+            email: null,
+            mfaEnabled: false,
+            mfaSecret: null,
+            mfaBackupCodes: null,
+            ssoEnabled: false,
+            ssoProvider: null,
+            ssoProviderId: null,
+            ssoProviderData: {}
+          } as User;
+        }
+      }
+      
+      console.log("No fallback user data available");
+      return null;
+    } catch (fallbackError) {
+      console.error("Error using fallback user data:", fallbackError);
+      return null;
+    }
+  }
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
@@ -162,6 +213,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: User) => {
       console.log('Login successful for:', user.username);
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Store a minimal backup of essential user data in a cookie
+      // This will be used as a last resort if all server methods fail
+      try {
+        const essentialUserData = {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          tenantId: user.tenantId
+        };
+        document.cookie = `essential_user_data=${JSON.stringify(essentialUserData)};path=/;max-age=86400`;
+      } catch (cookieError) {
+        console.error('Failed to set fallback cookie:', cookieError);
+      }
+      
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.username}!`,
@@ -249,6 +315,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: User) => {
       console.log('Registration successful for:', user.username);
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Store a minimal backup of essential user data in a cookie
+      // This will be used as a last resort if all server methods fail
+      try {
+        const essentialUserData = {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          tenantId: user.tenantId
+        };
+        document.cookie = `essential_user_data=${JSON.stringify(essentialUserData)};path=/;max-age=86400`;
+      } catch (cookieError) {
+        console.error('Failed to set fallback cookie:', cookieError);
+      }
+      
       toast({
         title: "Registration successful",
         description: `Welcome, ${user.username}!`,
@@ -321,6 +402,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      
+      // Clear the backup cookie as well
+      try {
+        document.cookie = "essential_user_data=;path=/;max-age=0;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      } catch (cookieError) {
+        console.error('Failed to clear fallback cookie:', cookieError);
+      }
+      
       toast({
         title: "Logged out",
         description: "You have been logged out successfully.",

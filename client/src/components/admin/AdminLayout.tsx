@@ -92,7 +92,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   </div>
                 </Link>
               ))}
-              <button className="flex w-full items-center px-2 py-2 mt-8 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">
+              <button 
+                onClick={() => {
+                  fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                  }).then(() => {
+                    window.location.href = '/auth';
+                  });
+                }}
+                className="flex w-full items-center px-2 py-2 mt-8 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+              >
                 <LogOut className="w-6 h-6 mr-3 text-gray-400" />
                 Logout
               </button>
@@ -161,7 +171,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   </div>
                 </Link>
               ))}
-              <button className="flex w-full items-center px-2 py-2 mt-4 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">
+              <button 
+                onClick={() => {
+                  fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                  }).then(() => {
+                    window.location.href = '/auth';
+                  });
+                }}
+                className="flex w-full items-center px-2 py-2 mt-4 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+              >
                 <LogOut className="w-6 h-6 mr-3 text-gray-400" />
                 Logout
               </button>

@@ -199,3 +199,27 @@ export const insertIdentityProviderSchema = createInsertSchema(identityProviders
 
 export type IdentityProvider = typeof identityProviders.$inferSelect;
 export type InsertIdentityProvider = z.infer<typeof insertIdentityProviderSchema>;
+
+// Widget analytics schema for tracking chat widget usage
+export const widgetAnalytics = pgTable("widget_analytics", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  adminId: integer("adminId").notNull(), // The admin user who generated/downloaded the widget
+  apiKey: text("apiKey").notNull(), // The unique API key assigned to the widget instance
+  clientWebsite: text("clientWebsite"), // The website where the widget is installed
+  interactions: integer("interactions").default(0), // Count of user interactions
+  messagesReceived: integer("messagesReceived").default(0), // Count of messages from users
+  messagesSent: integer("messagesSent").default(0), // Count of responses sent
+  ticketsCreated: integer("ticketsCreated").default(0), // Count of tickets created from this widget
+  lastActivity: timestamp("lastActivity").defaultNow().notNull(),
+  lastClientIp: text("lastClientIp"), // IP address of the last client interaction
+  metadata: json("metadata").default({}), // Additional metadata about the widget usage
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export const insertWidgetAnalyticsSchema = createInsertSchema(widgetAnalytics)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+export type WidgetAnalytics = typeof widgetAnalytics.$inferSelect;
+export type InsertWidgetAnalytics = z.infer<typeof insertWidgetAnalyticsSchema>;

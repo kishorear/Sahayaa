@@ -28,11 +28,14 @@ export default function ChatWidgetPage() {
 <script>
   window.supportAiConfig = {
     tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
+    apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
     primaryColor: "${primaryColor}",
     position: "${widgetPosition}",
     greetingMessage: "${greetingMessage}",
     autoOpen: ${autoOpen},
-    branding: ${includeBranding}
+    branding: ${includeBranding},
+    reportData: true,
+    adminId: ${user?.id || 'YOUR_ADMIN_ID'}
   };
 </script>
 <script src="https://supportai.com/widget.js" async></script>`;
@@ -58,11 +61,14 @@ function App() {
       
       <SupportAIChat
         tenantId="${user?.tenantId || 'YOUR_TENANT_ID'}"
+        apiKey="${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}"
         primaryColor="${primaryColor}"
         position="${widgetPosition}"
         greetingMessage="${greetingMessage}"
         autoOpen={${autoOpen}}
         branding={${includeBranding}}
+        reportData={true}
+        adminId={${user?.id || 'YOUR_ADMIN_ID'}}
       />
     </div>
   );
@@ -230,11 +236,14 @@ function App() {
 // Initialize the widget
 initSupportAI({
   tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
+  apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
   primaryColor: "${primaryColor}",
   position: "${widgetPosition}",
   greetingMessage: "${greetingMessage}",
   autoOpen: ${autoOpen},
-  branding: ${includeBranding}
+  branding: ${includeBranding},
+  reportData: true,
+  adminId: ${user?.id || 'YOUR_ADMIN_ID'}
 });`}
                   </pre>
                 </TabsContent>

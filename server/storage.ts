@@ -4,6 +4,7 @@ import {
   messages,
   attachments,
   dataSources,
+  tenants,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -13,7 +14,9 @@ import {
   type Attachment,
   type InsertAttachment,
   type DataSource,
-  type InsertDataSource
+  type InsertDataSource,
+  type Tenant,
+  type InsertTenant
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -65,11 +68,13 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  private tenants: Map<number, Tenant>;
   private users: Map<number, User>;
   private tickets: Map<number, Ticket>;
   private messages: Map<number, Message>;
   private attachments: Map<number, Attachment>;
   private dataSources: Map<number, DataSource>;
+  private tenantIdCounter: number;
   private userIdCounter: number;
   private ticketIdCounter: number;
   private messageIdCounter: number;
@@ -78,11 +83,13 @@ export class MemStorage implements IStorage {
   public sessionStore: session.Store;
 
   constructor() {
+    this.tenants = new Map();
     this.users = new Map();
     this.tickets = new Map();
     this.messages = new Map();
     this.attachments = new Map();
     this.dataSources = new Map();
+    this.tenantIdCounter = 1;
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
     this.messageIdCounter = 1;
@@ -95,13 +102,34 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // Prune expired entries every 24h
     });
     
-    // Add a default admin user
+    // Create a default tenant
+    this.createTenant({
+      name: "Default Tenant",
+      subdomain: "default",
+      apiKey: "default-api-key",
+      active: true,
+      settings: {
+        emailEnabled: true,
+        aiEnabled: true,
+        webhookEnabled: false,
+        autoResolveEnabled: true
+      },
+      branding: {
+        primaryColor: '#4F46E5',
+        logo: null,
+        companyName: 'Support AI',
+        emailTemplate: 'default'
+      }
+    });
+    
+    // Add a default admin user for the default tenant
     this.createUser({
       username: "admin",
       password: "admin123",
       email: "admin@example.com",
       role: "admin",
-      name: "Admin User"
+      name: "Admin User",
+      tenantId: 1 // Default tenant ID
     });
     
     // Initialize with sample tickets and data sources
@@ -120,7 +148,8 @@ export class MemStorage implements IStorage {
       description: "Built-in knowledge base with common support solutions",
       content: JSON.stringify(knowledgeBase),
       enabled: true,
-      priority: 1
+      priority: 1,
+      tenantId: 1 // Default tenant ID
     });
     
     // Create other sample data sources
@@ -130,7 +159,8 @@ export class MemStorage implements IStorage {
       description: "Official product documentation",
       content: "https://docs.example.com/api",
       enabled: true,
-      priority: 2
+      priority: 2,
+      tenantId: 1 // Default tenant ID
     });
     
     await this.createDataSource({
@@ -143,7 +173,8 @@ export class MemStorage implements IStorage {
         { question: "Is there a mobile app?", answer: "Yes, our mobile app is available on iOS and Android. You can download it from the App Store or Google Play." }
       ]),
       enabled: true,
-      priority: 3
+      priority: 3,
+      tenantId: 1 // Default tenant ID
     });
   }
   
@@ -278,14 +309,84 @@ export class MemStorage implements IStorage {
     }
   }
 
+  // Tenant operations
+  async getTenantById(id: number): Promise<Tenant | undefined> {
+    return this.tenants.get(id);
+  }
+
+  async getTenantByApiKey(apiKey: string): Promise<Tenant | undefined> {
+    return Array.from(this.tenants.values()).find(
+      (tenant) => tenant.apiKey === apiKey
+    );
+  }
+
+  async getTenantBySubdomain(subdomain: string): Promise<Tenant | undefined> {
+    return Array.from(this.tenants.values()).find(
+      (tenant) => tenant.subdomain === subdomain
+    );
+  }
+
+  async getAllTenants(): Promise<Tenant[]> {
+    return Array.from(this.tenants.values());
+  }
+
+  async createTenant(insertTenant: InsertTenant): Promise<Tenant> {
+    const id = this.tenantIdCounter++;
+    const now = new Date();
+    const tenant: Tenant = {
+      ...insertTenant,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      active: insertTenant.active ?? true,
+      settings: insertTenant.settings ?? {},
+      branding: insertTenant.branding ?? {
+        primaryColor: '#4F46E5',
+        logo: null,
+        companyName: '',
+        emailTemplate: 'default'
+      }
+    };
+    this.tenants.set(id, tenant);
+    return tenant;
+  }
+
+  async updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant> {
+    const tenant = this.tenants.get(id);
+    if (!tenant) {
+      throw new Error(`Tenant with id ${id} not found`);
+    }
+    
+    const updatedTenant: Tenant = {
+      ...tenant,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.tenants.set(id, updatedTenant);
+    return updatedTenant;
+  }
+  
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+  async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
+    if (tenantId) {
+      return Array.from(this.users.values()).find(
+        (user) => user.username === username && user.tenantId === tenantId
+      );
+    } else {
+      return Array.from(this.users.values()).find(
+        (user) => user.username === username
+      );
+    }
+  }
+  
+  async getUsersByTenantId(tenantId: number): Promise<User[]> {
+    return Array.from(this.users.values()).filter(
+      (user) => user.tenantId === tenantId
     );
   }
 
@@ -467,15 +568,69 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  // Tenant operations
+  async getTenantById(id: number): Promise<Tenant | undefined> {
+    const results = await db.select().from(tenants).where(eq(tenants.id, id));
+    return results[0];
+  }
+
+  async getTenantByApiKey(apiKey: string): Promise<Tenant | undefined> {
+    const results = await db.select().from(tenants).where(eq(tenants.apiKey, apiKey));
+    return results[0];
+  }
+
+  async getTenantBySubdomain(subdomain: string): Promise<Tenant | undefined> {
+    const results = await db.select().from(tenants).where(eq(tenants.subdomain, subdomain));
+    return results[0];
+  }
+
+  async getAllTenants(): Promise<Tenant[]> {
+    return await db.select().from(tenants).orderBy(asc(tenants.name));
+  }
+
+  async createTenant(insertTenant: InsertTenant): Promise<Tenant> {
+    const [tenant] = await db.insert(tenants).values(insertTenant).returning();
+    return tenant;
+  }
+
+  async updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant> {
+    const [updated] = await db
+      .update(tenants)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(tenants.id, id))
+      .returning();
+    
+    if (!updated) {
+      throw new Error(`Tenant with ID ${id} not found`);
+    }
+    
+    return updated;
+  }
+
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     const results = await db.select().from(users).where(eq(users.id, id));
     return results[0];
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const results = await db.select().from(users).where(eq(users.username, username));
-    return results[0];
+  async getUserByUsername(username: string, tenantId?: number): Promise<User | undefined> {
+    if (tenantId) {
+      // If tenantId is provided, restrict to that tenant
+      const results = await db.select().from(users)
+        .where(and(
+          eq(users.username, username),
+          eq(users.tenantId, tenantId)
+        ));
+      return results[0];
+    } else {
+      // Default behavior for backward compatibility
+      const results = await db.select().from(users).where(eq(users.username, username));
+      return results[0];
+    }
+  }
+
+  async getUsersByTenantId(tenantId: number): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.tenantId, tenantId));
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

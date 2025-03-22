@@ -47,10 +47,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      console.log('Login attempt with:', credentials.username);
+      
+      try {
+        // Use fetch directly to get more detailed response info for debugging
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+          credentials: 'include'
+        });
+        
+        console.log('Login response status:', res.status);
+        console.log('Login response headers:', [...res.headers.entries()].reduce((obj, [key, val]) => ({ ...obj, [key]: val }), {}));
+        
+        const data = await res.json();
+        console.log('Login response data:', data);
+        
+        if (!res.ok) {
+          throw new Error(`${res.status}: ${data.message || 'Login failed'}`);
+        }
+        
+        return data;
+      } catch (err) {
+        console.error('Login error:', err);
+        throw err;
+      }
     },
     onSuccess: (user: User) => {
+      console.log('Login successful for:', user.username);
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login successful",
@@ -60,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLocation("/dashboard");
     },
     onError: (error: Error) => {
+      console.error('Login mutation error:', error);
       toast({
         title: "Login failed",
         description: error.message,
@@ -70,10 +96,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
+      console.log('Registration attempt with:', credentials.username);
+      
+      try {
+        // Use fetch directly to get more detailed response info for debugging
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+          credentials: 'include'
+        });
+        
+        console.log('Registration response status:', res.status);
+        console.log('Registration response headers:', [...res.headers.entries()].reduce((obj, [key, val]) => ({ ...obj, [key]: val }), {}));
+        
+        const data = await res.json();
+        console.log('Registration response data:', data);
+        
+        if (!res.ok) {
+          throw new Error(`${res.status}: ${data.message || 'Registration failed'}`);
+        }
+        
+        return data;
+      } catch (err) {
+        console.error('Registration error:', err);
+        throw err;
+      }
     },
     onSuccess: (user: User) => {
+      console.log('Registration successful for:', user.username);
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Registration successful",
@@ -83,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLocation("/dashboard");
     },
     onError: (error: Error) => {
+      console.error('Registration mutation error:', error);
       toast({
         title: "Registration failed",
         description: error.message,

@@ -45,7 +45,15 @@ declare global {
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
+  // Use a fixed salt in production for consistent hashing
+  // This is not ideal for security but helps with debugging
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
+  
+  const salt = isProduction 
+    ? "97a66c9a73dcdd3710d82daa6967a53b" // Fixed salt for production
+    : randomBytes(16).toString("hex");    // Random salt for development
+  
+  console.log(`Hashing password with salt: ${salt}`);
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
 }

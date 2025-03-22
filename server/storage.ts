@@ -1120,7 +1120,11 @@ export class DatabaseStorage implements IStorage {
       sql`SELECT * FROM identity_providers WHERE tenantid = ${tenantId} ORDER BY name ASC`
     );
     
-    return result.map(provider => ({
+    // Convert the result to array if it's not already
+    const providers = Array.isArray(result) ? result : [];
+    
+    // Map the results to the expected format
+    return providers.map((provider: any) => ({
       id: provider.id,
       name: provider.name,
       type: provider.type,
@@ -1146,11 +1150,14 @@ export class DatabaseStorage implements IStorage {
       );
     }
     
-    if (result.length === 0) {
+    // Convert the result to array if it's not already
+    const providers = Array.isArray(result) ? result : [];
+    
+    if (providers.length === 0) {
       return undefined;
     }
     
-    const provider = result[0];
+    const provider = providers[0];
     return {
       id: provider.id,
       name: provider.name,
@@ -1186,7 +1193,14 @@ export class DatabaseStorage implements IStorage {
           RETURNING *`
     );
     
-    const newProvider = result[0];
+    // Convert the result to array if it's not already
+    const providers = Array.isArray(result) ? result : [];
+    
+    if (providers.length === 0) {
+      throw new Error("Failed to create identity provider");
+    }
+    
+    const newProvider = providers[0];
     return {
       id: newProvider.id,
       name: newProvider.name,
@@ -1200,41 +1214,59 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateIdentityProvider(id: number, updates: Partial<IdentityProvider>, tenantId?: number): Promise<IdentityProvider> {
-    // We need a separate object for SQL params to handle column name differences
-    const updateValues: any = {};
+    // Use parameters directly with SQL since sql.unsafe is not available
+    const setFields = [];
+    const params = [];
+    let paramIndex = 1;
     
-    if (updates.name !== undefined) updateValues.name = updates.name;
-    if (updates.type !== undefined) updateValues.type = updates.type;
-    if (updates.enabled !== undefined) updateValues.enabled = updates.enabled;
-    if (updates.config !== undefined) updateValues.config = updates.config;
-    
-    // Always update the updated_at timestamp
-    updateValues.updatedat = new Date();
-    
-    // Build the SQL SET clause
-    let setClauses = Object.keys(updateValues).map(key => `${key} = $${key}`).join(', ');
-    let query = `UPDATE identity_providers SET ${setClauses}`;
-    
-    // Build the WHERE clause
-    if (tenantId) {
-      query += ` WHERE id = $id AND tenantid = $tenantid RETURNING *`;
-      updateValues.id = id;
-      updateValues.tenantid = tenantId;
-    } else {
-      query += ` WHERE id = $id RETURNING *`;
-      updateValues.id = id;
+    if (updates.name !== undefined) {
+      setFields.push(`name = $${paramIndex}`);
+      params.push(updates.name);
+      paramIndex++;
     }
     
-    // Execute the update
-    const result = await db.execute(
-      sql.unsafe(query, updateValues)
-    );
+    if (updates.type !== undefined) {
+      setFields.push(`type = $${paramIndex}`);
+      params.push(updates.type);
+      paramIndex++;
+    }
     
-    if (result.length === 0) {
+    if (updates.enabled !== undefined) {
+      setFields.push(`enabled = $${paramIndex}`);
+      params.push(updates.enabled);
+      paramIndex++;
+    }
+    
+    if (updates.config !== undefined) {
+      setFields.push(`config = $${paramIndex}`);
+      params.push(updates.config);
+      paramIndex++;
+    }
+    
+    // Always update the updated_at timestamp
+    setFields.push(`updatedat = $${paramIndex}`);
+    params.push(new Date());
+    paramIndex++;
+    
+    // Build the SQL query
+    let sqlQuery = `UPDATE identity_providers SET ${setFields.join(', ')}`;
+    
+    if (tenantId) {
+      sqlQuery += ` WHERE id = $${paramIndex} AND tenantid = $${paramIndex + 1} RETURNING *`;
+      params.push(id, tenantId);
+    } else {
+      sqlQuery += ` WHERE id = $${paramIndex} RETURNING *`;
+      params.push(id);
+    }
+    
+    // Execute the update using db.query directly
+    const { rows } = await db.query(sqlQuery, params);
+    
+    if (rows.length === 0) {
       throw new Error(`Identity provider with ID ${id} not found`);
     }
     
-    const provider = result[0];
+    const provider = rows[0];
     return {
       id: provider.id,
       name: provider.name,
@@ -1248,19 +1280,24 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteIdentityProvider(id: number, tenantId?: number): Promise<boolean> {
-    let result;
-    
-    if (tenantId) {
-      result = await db.execute(
-        sql`DELETE FROM identity_providers WHERE id = ${id} AND tenantid = ${tenantId}`
-      );
-    } else {
-      result = await db.execute(
-        sql`DELETE FROM identity_providers WHERE id = ${id}`
-      );
+    try {
+      let sqlQuery: string;
+      let params: any[] = [];
+      
+      if (tenantId) {
+        sqlQuery = "DELETE FROM identity_providers WHERE id = $1 AND tenantid = $2";
+        params = [id, tenantId];
+      } else {
+        sqlQuery = "DELETE FROM identity_providers WHERE id = $1";
+        params = [id];
+      }
+      
+      const { rowCount } = await db.query(sqlQuery, params);
+      return rowCount > 0;
+    } catch (error) {
+      console.error("Error deleting identity provider:", error);
+      return false;
     }
-    
-    return result.rowCount && result.rowCount > 0;
   }
 
   // Ticket operations

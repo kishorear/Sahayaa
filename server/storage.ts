@@ -1190,48 +1190,24 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      // Use raw SQL to insert the user with lowercase column names
-      const result = await db.execute(sql`
-        INSERT INTO users 
-        (username, password, role, name, email, "tenantId", mfaenabled, mfabackupcodes, ssoenabled, ssoproviderdata)
-        VALUES 
-        (
-          ${insertUser.username}, 
-          ${insertUser.password}, 
-          ${insertUser.role || 'user'}, 
-          ${insertUser.name || null}, 
-          ${insertUser.email || null}, 
-          ${insertUser.tenantId || 1}, 
-          false, 
-          '[]', 
-          false, 
-          '{}'
-        )
-        RETURNING *
-      `);
+      // Instead of raw SQL, use Drizzle ORM
+      const [user] = await db
+        .insert(users)
+        .values({
+          username: insertUser.username, 
+          password: insertUser.password, 
+          role: insertUser.role || 'user', 
+          name: insertUser.name || null, 
+          email: insertUser.email || null, 
+          tenantId: insertUser.tenantId || 1, 
+          mfaEnabled: false, 
+          mfaBackupCodes: [], 
+          ssoEnabled: false,
+          ssoProviderData: {}
+        })
+        .returning();
       
-      // Get the first row of data from the result
-      const user = result.rows[0];
-      
-      // Standardize field names by creating a consistent object
-      return {
-        id: user.id,
-        tenantId: user.tenantid || user.tenantId,
-        username: user.username,
-        password: user.password,
-        role: user.role,
-        name: user.name,
-        email: user.email,
-        mfaEnabled: user.mfaenabled || false,
-        mfaSecret: user.mfasecret || null,
-        mfaBackupCodes: user.mfabackupcodes || [],
-        ssoEnabled: user.ssoenabled || false,
-        ssoProvider: user.ssoprovider || null,
-        ssoProviderId: user.ssoproviderid || null,
-        ssoProviderData: user.ssoproviderdata || {},
-        createdAt: user.createdat || user.createdAt,
-        updatedAt: user.updatedat || user.updatedAt
-      } as User;
+      return user;
     } catch (error) {
       console.error("Error creating user:", error);
       throw error;

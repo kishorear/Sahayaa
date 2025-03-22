@@ -19,6 +19,8 @@ import { registerEmailRoutes } from "./routes/email-routes";
 import { registerIntegrationRoutes } from "./routes/integration-routes";
 import { registerDataSourceRoutes } from "./routes/data-source-routes";
 import { registerMfaRoutes } from "./routes/mfa-routes";
+import { registerSsoRoutes } from "./routes/sso-routes";
+import { getSsoService } from "./sso-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes and middleware
@@ -35,6 +37,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register MFA routes
   registerMfaRoutes(app, requireAuth);
+  
+  // Register SSO routes
+  registerSsoRoutes(app, requireAuth, requireRole);
+  
+  // Initialize SSO service for all tenants
+  try {
+    const ssoService = getSsoService();
+    await ssoService.initializeProviders(1); // Initialize for default tenant
+  } catch (error) {
+    console.error("Failed to initialize SSO providers:", error);
+  }
 
   // TICKET ROUTES - Protected routes for support staff and admins
   app.get("/api/tickets", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {

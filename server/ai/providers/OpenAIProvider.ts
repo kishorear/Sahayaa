@@ -42,13 +42,39 @@ export class OpenAIProvider implements AIProviderInterface {
         }))
       ];
 
-      const response = await this.client.chat.completions.create({
+      console.log(`Using OpenAI model: ${this.model} for chat response`);
+      console.log(`OpenAI API Request (generateChatResponse):`);
+      console.log(JSON.stringify({
         model: this.model,
-        messages: apiMessages,
+        messages: apiMessages.map(m => ({
+          role: m.role,
+          content: m.role === 'system' ? `[System prompt: ${m.content.substring(0, 50)}...]` : m.content.substring(0, 50) + '...'
+        })),
         temperature: 0.7,
         max_tokens: 500
+      }, null, 2));
+      
+      const response = await this.client.chat.completions.create({
+        model: this.model, // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: apiMessages,
+        temperature: 0.7,
+        max_tokens: 500,
+        stream: false
       });
 
+      console.log(`OpenAI API Response (generateChatResponse):`);
+      console.log(JSON.stringify({
+        id: response.id,
+        model: response.model,
+        choices: [{
+          message: {
+            role: response.choices[0].message.role,
+            content: response.choices[0].message.content?.substring(0, 100) + '...'
+          }
+        }],
+        usage: response.usage
+      }, null, 2));
+      
       return response.choices[0].message.content || "I couldn't generate a response at this time.";
     } catch (error) {
       console.error("Error calling OpenAI for chat response:", error);
@@ -98,11 +124,32 @@ export class OpenAIProvider implements AIProviderInterface {
       }
       `;
 
-      const response = await this.client.chat.completions.create({
+      console.log(`Using OpenAI model: ${this.model} for ticket classification`);
+      console.log(`OpenAI API Request (classifyTicket):`);
+      console.log(JSON.stringify({
         model: this.model,
+        messages: [{ role: "user", content: prompt.substring(0, 100) + '...' }],
+        response_format: { type: "json_object" }
+      }, null, 2));
+      
+      const response = await this.client.chat.completions.create({
+        model: this.model, // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }
       });
+      
+      console.log(`OpenAI API Response (classifyTicket):`);
+      console.log(JSON.stringify({
+        id: response.id,
+        model: response.model,
+        choices: [{
+          message: {
+            role: response.choices[0].message.role,
+            content: response.choices[0].message.content?.substring(0, 100) + '...'
+          }
+        }],
+        usage: response.usage
+      }, null, 2));
 
       // Parse the JSON response
       const content = response.choices[0].message.content || "{}";

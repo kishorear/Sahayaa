@@ -65,7 +65,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticketData = insertTicketSchema.parse(req.body);
       
       // Use AI to classify the ticket
-      const classification = await classifyTicket(ticketData.title, ticketData.description);
+      // Pass tenant context if available (from middleware or user)
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      const classification = await classifyTicket(ticketData.title, ticketData.description, tenantId);
       
       const newTicket: InsertTicket = {
         ...ticketData,
@@ -73,13 +75,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         complexity: classification.complexity,
         assignedTo: classification.assignedTo,
         aiNotes: classification.aiNotes,
+        // Ensure the ticket is associated with the correct tenant
+        tenantId: tenantId || ticketData.tenantId
       };
       
       const ticket = await storage.createTicket(newTicket);
       
       // Attempt to auto-resolve if AI thinks it can
       if (classification.canAutoResolve) {
-        const { resolved, response } = await attemptAutoResolve(ticket.title, ticket.description);
+        const { resolved, response } = await attemptAutoResolve(ticket.title, ticket.description, [], ticket.tenantId);
         
         // Store AI response as a message
         await storage.createMessage({
@@ -159,7 +163,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Generate AI response
         const aiResponse = await generateChatResponse(
-          { id: ticket.id, title: ticket.title, description: ticket.description, category: ticket.category },
+          { 
+            id: ticket.id, 
+            title: ticket.title, 
+            description: ticket.description, 
+            category: ticket.category,
+            tenantId: ticket.tenantId 
+          },
           messageHistory,
           messageData.content
         );
@@ -206,6 +216,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
       
+      // Get tenant context from middleware or request
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      
       // Handle simple greetings and common phrases without creating a ticket
       const lowerMessage = message.toLowerCase().trim();
       const isSimpleGreeting = /^(hi|hello|hey|greetings|howdy|hola|what's up|sup|good (morning|afternoon|evening)|how are you|how's it going|how is it going|how are things)[\s\?\!\.]*$/i.test(lowerMessage);
@@ -218,13 +231,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // First determine if we need to create a ticket
-      const initialClassification = await classifyTicket("New chat request", message);
+      const initialClassification = await classifyTicket("New chat request", message, tenantId);
       
       let response: ChatbotResponse;
       
       if (initialClassification.canAutoResolve) {
         // Try to auto-resolve without creating a ticket
-        const { resolved, response: aiResponse } = await attemptAutoResolve("New chat request", message);
+        const { resolved, response: aiResponse } = await attemptAutoResolve("New chat request", message, [], tenantId);
         
         response = {
           message: aiResponse,
@@ -242,7 +255,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               category: initialClassification.category,
               complexity: initialClassification.complexity,
               assignedTo: initialClassification.assignedTo,
-              aiNotes: initialClassification.aiNotes
+              aiNotes: initialClassification.aiNotes,
+              tenantId: tenantId
             }
           }
         };

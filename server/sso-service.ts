@@ -1,5 +1,6 @@
 import { Strategy as SamlStrategy } from 'passport-saml';
 import { Strategy as OAuth2Strategy } from 'passport-oauth2';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { User, IdentityProvider, InsertUser } from '@shared/schema';
 import { storage } from './storage';
 import passport from 'passport';
@@ -35,7 +36,58 @@ export class SsoService {
       this.setupSamlProvider(provider.id, config);
     } else if (type === 'oauth2') {
       this.setupOAuth2Provider(provider.id, config);
+    } else if (type === 'google') {
+      this.setupGoogleProvider(provider.id, config);
+    } else {
+      console.warn(`Unsupported SSO provider type: ${type}`);
     }
+  }
+  
+  /**
+   * Set up a Google OAuth provider
+   * 
+   * @param providerId The ID of the identity provider
+   * @param config The Google configuration
+   */
+  private setupGoogleProvider(providerId: number, config: any): void {
+    const googleConfig = {
+      clientID: config.clientID,
+      clientSecret: config.clientSecret,
+      callbackURL: config.callbackURL || `/api/sso/google/${providerId}/callback`,
+      scope: config.scope || ['profile', 'email'],
+      passReqToCallback: true as true
+    };
+    
+    passport.use(`google-${providerId}`, new GoogleStrategy(
+      googleConfig,
+      async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
+        try {
+          // Extract tenant ID from request or state
+          const tenantId = req.tenant?.id || 1;
+          
+          // Find or create user
+          const user = await this.findOrCreateSsoUser(
+            'google',
+            profile.id,
+            tenantId,
+            {
+              name: profile.displayName,
+              email: profile.emails?.[0]?.value,
+              role: 'user' // Default role
+            },
+            {
+              accessToken,
+              refreshToken,
+              profile
+            }
+          );
+          
+          return done(null, user);
+        } catch (error) {
+          return done(error);
+        }
+      }
+    ));
   }
   
   /**
@@ -259,7 +311,7 @@ export class SsoService {
       const { type, config } = providerConfig;
       
       if (type === 'saml') {
-        // Basic validation
+        // Basic validation for SAML
         if (!config.entryPoint || !config.callbackUrl || !config.cert) {
           return { 
             success: false, 
@@ -267,11 +319,19 @@ export class SsoService {
           };
         }
       } else if (type === 'oauth2') {
-        // Basic validation
+        // Basic validation for generic OAuth2
         if (!config.authorizationURL || !config.tokenURL || !config.clientID || !config.clientSecret || !config.callbackURL) {
           return { 
             success: false, 
             message: 'Missing required OAuth2 configuration: authorizationURL, tokenURL, clientID, clientSecret, and callbackURL are required' 
+          };
+        }
+      } else if (type === 'google') {
+        // Basic validation for Google OAuth
+        if (!config.clientID || !config.clientSecret) {
+          return {
+            success: false,
+            message: 'Missing required Google configuration: clientID and clientSecret are required'
           };
         }
       } else {

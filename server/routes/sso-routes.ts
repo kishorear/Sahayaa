@@ -140,6 +140,10 @@ export function registerSsoRoutes(app: Express, requireAuth: any, requireRole: a
       passport.authenticate(`oauth2-${providerId}`, {
         scope: ['profile', 'email']
       })(req, res);
+    } else if (providerType === 'google') {
+      passport.authenticate(`google-${providerId}`, {
+        scope: ['profile', 'email']
+      })(req, res);
     } else if (providerType === 'saml') {
       passport.authenticate(`saml-${providerId}`)(req, res);
     } else {

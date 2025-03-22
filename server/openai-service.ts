@@ -131,7 +131,7 @@ export async function attemptAutoResolveWithAI(
  * Generates a response to a chat message using OpenAI
  */
 export async function generateChatResponseWithAI(
-  ticketContext: { id: number; title: string; description: string; category: string },
+  ticketContext: { id: number; title: string; description: string; category: string; tenantId?: number },
   messageHistory: OpenAIMessage[],
   userMessage: string,
   knowledgeContext: string = ''

@@ -79,7 +79,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Attempt to auto-resolve if AI thinks it can
       if (classification.canAutoResolve) {
-        const { resolved, response } = await attemptAutoResolve(ticket.title, ticket.description);
+        // Pass tenant context if available
+        const tenantId = req.tenant?.id;
+        const { resolved, response } = await attemptAutoResolve(ticket.title, ticket.description, [], tenantId);
         
         // Store AI response as a message
         await storage.createMessage({

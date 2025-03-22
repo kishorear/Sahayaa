@@ -173,7 +173,36 @@ export function setupAuth(app: Express) {
     if (req.user) {
       next();
     } else {
-      res.status(401).json({ message: "Unauthorized" });
+      // Try to restore the user from direct user ID cookie as a last resort
+      const directUserId = req.cookies?.ticket_auth_user_id;
+      
+      if (directUserId) {
+        const userId = parseInt(directUserId);
+        if (!isNaN(userId)) {
+          storage.getUser(userId).then(user => {
+            if (user) {
+              // User found, manually restore the session
+              req.user = user;
+              req.session.userId = user.id;
+              
+              // Save the session and continue
+              req.session.save(() => {
+                console.log(`User ${user.id} authenticated via direct cookie`);
+                next();
+              });
+            } else {
+              res.status(401).json({ message: "Unauthorized" });
+            }
+          }).catch(error => {
+            console.error("Error restoring user from direct cookie:", error);
+            res.status(401).json({ message: "Unauthorized" });
+          });
+        } else {
+          res.status(401).json({ message: "Unauthorized" });
+        }
+      } else {
+        res.status(401).json({ message: "Unauthorized" });
+      }
     }
   };
 
@@ -464,36 +493,81 @@ export function setupAuth(app: Express) {
         sessionStore: req.sessionStore ? 'Session store available' : 'No session store found'
       });
       
-      // If there's a backup cookie but no user in session, try manual lookup
+      // If user is in the request, we're all set
+      if (req.user) {
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = req.user;
+        console.log("API user request - Returning user data for:", userWithoutPassword.username);
+        return res.status(200).json(userWithoutPassword);
+      }
+      
+      // No user in request, start trying fallback mechanisms
+      console.log("API user request - User data: No user in request");
+      
+      // 1. Try using the user ID from session
+      if (req.session.userId) {
+        try {
+          const user = await storage.getUser(req.session.userId);
+          if (user) {
+            // Found user, restore session
+            req.user = user;
+            const { password: _, ...userWithoutPassword } = user;
+            console.log("User restored from session.userId:", user.id);
+            return res.status(200).json(userWithoutPassword);
+          }
+        } catch (err) {
+          console.error("Error restoring user from session.userId:", err);
+        }
+      }
+      
+      // 2. Try using the backup session ID
       const backupSessionId = req.cookies?.ticket_support_sid_backup;
-      if (!req.user && backupSessionId) {
+      if (backupSessionId) {
         console.log("Attempting user lookup using backup session ID:", backupSessionId);
-        
-        // Check all other cookie values
         console.log("All cookies:", req.cookies);
       }
       
-      console.log("API user request - User data:", req.user ? "User found" : "No user in request");
-      
-      if (!req.user) {
-        // For diagnostics in production, always try a direct database lookup for the admin user
+      // 3. Try using the direct user ID cookie
+      const directUserId = req.cookies?.ticket_auth_user_id;
+      if (directUserId) {
         try {
-          const adminUser = await storage.getUserByUsername('admin');
-          console.log("Admin user exists in database:", !!adminUser);
-          if (adminUser) {
-            console.log("Admin user ID:", adminUser.id);
+          const userId = parseInt(directUserId);
+          if (!isNaN(userId)) {
+            const user = await storage.getUser(userId);
+            if (user) {
+              // Found user via direct ID cookie
+              req.user = user;
+              req.session.userId = user.id;
+              
+              // Save the session for future requests
+              req.session.save(() => {
+                console.log("Session saved with restored user ID:", user.id);
+              });
+              
+              // Return the user data
+              const { password: _, ...userWithoutPassword } = user;
+              console.log("User restored from direct ID cookie:", user.id);
+              return res.status(200).json(userWithoutPassword);
+            }
           }
-        } catch (dbError) {
-          console.error("Failed to check admin user in database:", dbError);
+        } catch (err) {
+          console.error("Error restoring user from direct ID cookie:", err);
         }
-        
-        return res.status(401).json({ message: "Not authenticated" });
       }
-
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = req.user;
-      console.log("API user request - Returning user data for:", userWithoutPassword.username);
-      res.status(200).json(userWithoutPassword);
+      
+      // All restore attempts failed, for diagnostics, check if admin exists in database
+      try {
+        const adminUser = await storage.getUserByUsername('admin');
+        console.log("Admin user exists in database:", !!adminUser);
+        if (adminUser) {
+          console.log("Admin user ID:", adminUser.id);
+        }
+      } catch (dbError) {
+        console.error("Failed to check admin user in database:", dbError);
+      }
+      
+      // No user found through any method
+      return res.status(401).json({ message: "Not authenticated" });
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ 

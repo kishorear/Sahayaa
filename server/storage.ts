@@ -947,41 +947,173 @@ export class MemStorage implements IStorage {
 
 export class DatabaseStorage implements IStorage {
   public sessionStore: session.Store;
+  private memoryStore: session.Store;
+  private postgreStore: any;
+  private useMemoryFallback: boolean = false;
+  private reconnectInterval: NodeJS.Timeout | null = null;
+  private reconnectAttempts: number = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 10;
 
   constructor() {
+    // Always initialize memory store as fallback
+    this.setupMemoryStore('Initialization');
+    this.memoryStore = this.sessionStore;
+    
     try {
       console.log('Setting up PostgreSQL session store - Environment:', isProduction ? 'Production' : 'Development');
       
       // Check if DATABASE_URL is available before attempting to connect
       if (process.env.DATABASE_URL) {
         try {
-          // Initialize PostgreSQL session store with enhanced error handling
+          // Initialize PostgreSQL session store with enhanced error handling and timeout settings
           const PostgresStore = connectPg(session);
-          this.sessionStore = new PostgresStore({
+          const postgresStoreOptions = {
             pool, 
             tableName: 'session',
             createTableIfMissing: true,
+            // More aggressive timeouts for production
+            ttl: 86400, // 24 hours in seconds
+            disableTouch: false,
             // Enhanced error logging with more context
-            errorLog: (err) => {
+            errorLog: (err: any) => {
               console.error('PostgreSQL session store error:', err);
-              // Log additional connection info on error
-              if (err.code === 'ECONNREFUSED') {
-                console.error('Database connection refused. Check if PostgreSQL is running.');
+              
+              // Check for connection-related errors
+              const isConnectionError = 
+                (err && typeof err === 'object' && 
+                (err.code === 'ECONNREFUSED' || 
+                 err.code === 'ETIMEDOUT' || 
+                 err.code === 'ENOTFOUND' ||
+                 err.code === '57P01' || // terminating connection due to administrator command
+                 err.code === '08006' || // connection failure
+                 err.code === '08001' || // unable to connect
+                 (err.message && (
+                   err.message.includes('Connection terminated') ||
+                   err.message.includes('timeout')
+                 ))
+                ));
+              
+              // If this is a connection error, switch to memory store and start reconnect attempts
+              if (isConnectionError && !this.useMemoryFallback) {
+                console.log('Database connection error detected, switching to memory store temporarily');
+                this.useMemoryFallback = true;
+                this.sessionStore = this.memoryStore;
+                
+                // Start reconnection attempts if not already running
+                this.startReconnectAttempts();
               }
             }
-          });
+          };
+          
+          // Create the PostgreSQL store
+          this.postgreStore = new PostgresStore(postgresStoreOptions);
+          this.sessionStore = this.postgreStore;
           console.log('PostgreSQL session store initialized successfully');
+          
+          // Test the connection immediately
+          this.testSessionStore();
         } catch (dbError) {
           console.error('Failed to initialize PostgreSQL session store:', dbError);
-          this.setupMemoryStore('Database connection error');
+          this.useMemoryFallback = true;
         }
       } else {
         console.log('No DATABASE_URL provided, using memory session store');
-        this.setupMemoryStore('No database URL');
+        this.useMemoryFallback = true;
       }
     } catch (error) {
       console.error('Critical error during storage initialization:', error);
-      this.setupMemoryStore('Critical error');
+      this.useMemoryFallback = true;
+    }
+    
+    // Set up periodic health check for the database
+    setInterval(() => this.checkDatabaseHealth(), 30000); // Check every 30 seconds
+  }
+  
+  // Helper method to test the session store connection
+  private async testSessionStore() {
+    try {
+      // Simple test: try to set and get a test session
+      const testSessionId = `test-${Date.now()}`;
+      await new Promise<void>((resolve, reject) => {
+        if (this.postgreStore) {
+          this.postgreStore.set(testSessionId, { test: true }, (err: any) => {
+            if (err) {
+              reject(err);
+            } else {
+              this.postgreStore.get(testSessionId, (err: any, session: any) => {
+                if (err) {
+                  reject(err);
+                } else if (!session || !session.test) {
+                  reject(new Error('Test session not found or invalid'));
+                } else {
+                  this.postgreStore.destroy(testSessionId, () => {
+                    resolve();
+                  });
+                }
+              });
+            }
+          });
+        } else {
+          reject(new Error('PostgreSQL store not initialized'));
+        }
+      });
+      console.log('Session store connection test successful');
+      
+      // If we were using the memory fallback, switch back to PostgreSQL
+      if (this.useMemoryFallback && this.postgreStore) {
+        console.log('Switching back to PostgreSQL session store after successful test');
+        this.useMemoryFallback = false;
+        this.sessionStore = this.postgreStore;
+        this.reconnectAttempts = 0;
+        if (this.reconnectInterval) {
+          clearInterval(this.reconnectInterval);
+          this.reconnectInterval = null;
+        }
+      }
+    } catch (error) {
+      console.error('Session store connection test failed:', error);
+      
+      // If not already using memory fallback, switch to it
+      if (!this.useMemoryFallback) {
+        console.log('Switching to memory store fallback after failed connection test');
+        this.useMemoryFallback = true;
+        this.sessionStore = this.memoryStore;
+        
+        // Start reconnection attempts
+        this.startReconnectAttempts();
+      }
+    }
+  }
+  
+  // Start periodic reconnection attempts
+  private startReconnectAttempts() {
+    // Don't start multiple intervals
+    if (this.reconnectInterval) return;
+    
+    this.reconnectAttempts = 0;
+    this.reconnectInterval = setInterval(() => {
+      this.reconnectAttempts++;
+      console.log(`PostgreSQL reconnection attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS}`);
+      
+      // Try to reconnect
+      this.testSessionStore();
+      
+      // If too many attempts or a successful reconnection occurred, stop trying
+      if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS || !this.useMemoryFallback) {
+        if (this.reconnectInterval) {
+          clearInterval(this.reconnectInterval);
+          this.reconnectInterval = null;
+        }
+      }
+    }, 5000); // Try every 5 seconds
+  }
+  
+  // Periodic health check
+  private async checkDatabaseHealth() {
+    // Only check if we should be using PostgreSQL but aren't
+    if (process.env.DATABASE_URL && this.useMemoryFallback) {
+      console.log('Running periodic database health check');
+      await this.testSessionStore();
     }
   }
   

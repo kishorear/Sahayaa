@@ -124,6 +124,8 @@ export class MemStorage implements IStorage {
   // Add caches for critical data in production
   private userCache: Map<string, User> = new Map();
   private tenantCache: Map<string, Tenant> = new Map();
+  private tenantByApiKeyCache: Map<string, Tenant> = new Map();
+  private tenantBySubdomainCache: Map<string, Tenant> = new Map();
   private ticketCache: Map<string, Ticket> = new Map();
   
   public sessionStore: session.Store;
@@ -398,19 +400,80 @@ export class MemStorage implements IStorage {
 
   // Tenant operations
   async getTenantById(id: number): Promise<Tenant | undefined> {
-    return this.tenants.get(id);
+    // Check cache first for better performance and resilience
+    const cacheKey = `tenant:${id}`;
+    const cachedTenant = this.tenantCache.get(cacheKey);
+    if (cachedTenant) {
+      console.log(`Tenant cache hit for ID: ${id}`);
+      return cachedTenant;
+    }
+    
+    // Cache miss, look up in the map
+    const tenant = this.tenants.get(id);
+    
+    // If found, add to cache for future requests
+    if (tenant) {
+      this.tenantCache.set(cacheKey, tenant);
+      
+      // Clear cache entry after 30 minutes to avoid stale data
+      setTimeout(() => {
+        this.tenantCache.delete(cacheKey);
+      }, 30 * 60 * 1000);
+    }
+    
+    return tenant;
   }
 
   async getTenantByApiKey(apiKey: string): Promise<Tenant | undefined> {
-    return Array.from(this.tenants.values()).find(
+    // Check cache first for better performance and resilience
+    const cachedTenant = this.tenantByApiKeyCache.get(apiKey);
+    if (cachedTenant) {
+      console.log(`Tenant cache hit for API key: ${apiKey.substring(0, 4)}****`);
+      return cachedTenant;
+    }
+    
+    // Cache miss, look up in the map
+    const tenant = Array.from(this.tenants.values()).find(
       (tenant) => tenant.apiKey === apiKey
     );
+    
+    // If found, add to cache for future requests
+    if (tenant) {
+      this.tenantByApiKeyCache.set(apiKey, tenant);
+      
+      // Clear cache entry after 30 minutes to avoid stale data
+      setTimeout(() => {
+        this.tenantByApiKeyCache.delete(apiKey);
+      }, 30 * 60 * 1000);
+    }
+    
+    return tenant;
   }
 
   async getTenantBySubdomain(subdomain: string): Promise<Tenant | undefined> {
-    return Array.from(this.tenants.values()).find(
+    // Check cache first for better performance and resilience
+    const cachedTenant = this.tenantBySubdomainCache.get(subdomain);
+    if (cachedTenant) {
+      console.log(`Tenant cache hit for subdomain: ${subdomain}`);
+      return cachedTenant;
+    }
+    
+    // Cache miss, look up in the map
+    const tenant = Array.from(this.tenants.values()).find(
       (tenant) => tenant.subdomain === subdomain
     );
+    
+    // If found, add to cache for future requests
+    if (tenant) {
+      this.tenantBySubdomainCache.set(subdomain, tenant);
+      
+      // Clear cache entry after 30 minutes to avoid stale data
+      setTimeout(() => {
+        this.tenantBySubdomainCache.delete(subdomain);
+      }, 30 * 60 * 1000);
+    }
+    
+    return tenant;
   }
 
   async getAllTenants(): Promise<Tenant[]> {
@@ -450,7 +513,25 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     
+    // Update in the main Map
     this.tenants.set(id, updatedTenant);
+    
+    // Clear any cached entries to ensure fresh data is retrieved next time
+    this.tenantCache.delete(`tenant:${id}`);
+    
+    // If apiKey or subdomain are being changed, clear cache entries for both old and new values
+    if (updates.apiKey && updates.apiKey !== tenant.apiKey) {
+      this.tenantByApiKeyCache.delete(tenant.apiKey); // Clear old apiKey cache
+      this.tenantByApiKeyCache.delete(updates.apiKey); // Clear new apiKey cache just in case
+    }
+    
+    if (updates.subdomain && updates.subdomain !== tenant.subdomain) {
+      this.tenantBySubdomainCache.delete(tenant.subdomain); // Clear old subdomain cache
+      this.tenantBySubdomainCache.delete(updates.subdomain); // Clear new subdomain cache just in case
+    }
+    
+    console.log(`Cache entries cleared for tenant ID: ${id}`);
+    
     return updatedTenant;
   }
   
@@ -564,7 +645,25 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     
+    // Update in the main Map
     this.users.set(id, updatedUser);
+    
+    // Clear any cached entries to ensure fresh data is retrieved next time
+    this.userCache.delete(`user:${id}`);
+    
+    // If username is being changed, clear cache entries for both old and new usernames
+    if (updates.username && updates.username !== user.username) {
+      // Clear old username cache
+      const oldCacheKey = user.tenantId ? `${user.username}:${user.tenantId}` : user.username;
+      this.userCache.delete(oldCacheKey);
+      
+      // Clear new username cache just in case it exists
+      const newCacheKey = user.tenantId ? `${updates.username}:${user.tenantId}` : updates.username;
+      this.userCache.delete(newCacheKey);
+    }
+    
+    console.log(`Cache entries cleared for user ID: ${id}`);
+    
     return updatedUser;
   }
   
@@ -655,10 +754,34 @@ export class MemStorage implements IStorage {
   }
   
   async getTicketById(id: number, tenantId?: number): Promise<Ticket | undefined> {
+    // Generate a cache key with both id and optional tenantId
+    const cacheKey = tenantId ? `ticket:${id}:${tenantId}` : `ticket:${id}`;
+    
+    // Check cache first for better performance and resilience
+    const cachedTicket = this.ticketCache.get(cacheKey);
+    if (cachedTicket) {
+      console.log(`Ticket cache hit for ID: ${id}`);
+      return cachedTicket;
+    }
+    
+    // Cache miss, look up in the map
     const ticket = this.tickets.get(id);
+    
+    // If tenantId provided, verify ticket belongs to that tenant
     if (tenantId && ticket && ticket.tenantId !== tenantId) {
       return undefined; // Don't return tickets from other tenants
     }
+    
+    // If found and passes tenant check, add to cache for future requests
+    if (ticket) {
+      this.ticketCache.set(cacheKey, ticket);
+      
+      // Clear cache entry after 15 minutes to avoid stale data
+      setTimeout(() => {
+        this.ticketCache.delete(cacheKey);
+      }, 15 * 60 * 1000);
+    }
+    
     return ticket;
   }
   
@@ -681,7 +804,22 @@ export class MemStorage implements IStorage {
       resolvedAt: null
     } as Ticket;
     
+    // Store in main storage
     this.tickets.set(id, ticket);
+    
+    // Cache the new ticket for future lookups with both cache key formats
+    const cacheKey = `ticket:${id}`;
+    const tenantCacheKey = `ticket:${id}:${ticket.tenantId}`;
+    
+    this.ticketCache.set(cacheKey, ticket);
+    this.ticketCache.set(tenantCacheKey, ticket);
+    
+    // Set expiration for cache entries (15 minutes)
+    setTimeout(() => {
+      this.ticketCache.delete(cacheKey);
+      this.ticketCache.delete(tenantCacheKey);
+    }, 15 * 60 * 1000);
+    
     return ticket;
   }
   
@@ -702,15 +840,51 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     
+    // Update the ticket in the Map
     this.tickets.set(id, updatedTicket);
+    
+    // Clear cache entries for this ticket to ensure fresh data is retrieved next time
+    // We clear both versions of the cache key (with and without tenantId)
+    this.ticketCache.delete(`ticket:${id}`);
+    if (tenantId) {
+      this.ticketCache.delete(`ticket:${id}:${tenantId}`);
+    }
+    
+    // If the ticket has a tenantId, also clear the cache entry with that tenantId
+    if (ticket.tenantId) {
+      this.ticketCache.delete(`ticket:${id}:${ticket.tenantId}`);
+    }
+    
+    console.log(`Cache entries cleared for ticket ID: ${id}`);
+    
     return updatedTicket;
   }
   
   // Message operations
+  // Create a cache for messages by ticket ID
+  private messagesByTicketCache: Map<number, Message[]> = new Map();
+  
   async getMessagesByTicketId(ticketId: number): Promise<Message[]> {
-    return Array.from(this.messages.values())
+    // Check cache first
+    if (this.messagesByTicketCache.has(ticketId)) {
+      console.log(`Message cache hit for ticket ID: ${ticketId}`);
+      return this.messagesByTicketCache.get(ticketId) || [];
+    }
+    
+    // Cache miss, look up in the map
+    const messages = Array.from(this.messages.values())
       .filter(message => message.ticketId === ticketId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
+    // Store in cache for future lookups
+    this.messagesByTicketCache.set(ticketId, messages);
+    
+    // Set cache expiration (5 minutes)
+    setTimeout(() => {
+      this.messagesByTicketCache.delete(ticketId);
+    }, 5 * 60 * 1000);
+    
+    return messages;
   }
   
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
@@ -723,7 +897,29 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now
     } as Message;
+    
+    // Store in main storage
     this.messages.set(id, message);
+    
+    // Update message cache for the related ticket if it exists
+    const ticketId = message.ticketId;
+    if (this.messagesByTicketCache.has(ticketId)) {
+      const cachedMessages = this.messagesByTicketCache.get(ticketId) || [];
+      cachedMessages.push(message);
+      
+      // Re-sort messages by creation time
+      cachedMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      
+      // Update the cache
+      this.messagesByTicketCache.set(ticketId, cachedMessages);
+      console.log(`Message cache updated for ticket ID: ${ticketId}`);
+    }
+    
+    // Invalidate ticket cache for this ticket to ensure updated ticket data is fetched
+    // when ticket details are requested next time (to show updated message count, etc.)
+    this.ticketCache.delete(`ticket:${ticketId}`);
+    this.ticketCache.delete(`ticket:${ticketId}:${message.tenantId}`);
+    
     return message;
   }
   
@@ -1012,6 +1208,7 @@ export class DatabaseStorage implements IStorage {
   private tenantCache: Map<number, Tenant> = new Map();
   private tenantByApiKeyCache: Map<string, Tenant> = new Map();
   private tenantBySubdomainCache: Map<string, Tenant> = new Map();
+  private ticketCache: Map<string, Ticket> = new Map();
   
   // Helper method to clear all cached data for a user by ID
   private clearUserFromCache(userId: number): void {

@@ -486,8 +486,10 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", async (req, res) => {
     try {
-      console.log("API user request - Session ID:", req.session.id);
-      console.log("API user request - Session data:", {
+      // Add request trace ID for better debugging in production
+      const traceId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+      console.log(`API user request [${traceId}] - Session ID:`, req.session.id);
+      console.log(`API user request [${traceId}] - Session data:`, {
         userId: req.session.userId,
         cookie: JSON.stringify(req.session.cookie),
         sessionStore: req.sessionStore ? 'Session store available' : 'No session store found'
@@ -570,6 +572,26 @@ export function setupAuth(app: Express) {
       return res.status(401).json({ message: "Not authenticated" });
     } catch (error) {
       console.error("Get user error:", error);
+      
+      // Handle database connection errors specially for better debugging
+      if (error && typeof error === 'object' && 
+          (error.code === 'ECONNREFUSED' || error.code === '57P01' || 
+           error.code === '08006' || error.code === 'ETIMEDOUT')) {
+        console.error("Database connection error in auth endpoint, attempting reconnection...");
+        // Try to reconnect the database
+        import('./db').then(db => {
+          db.reconnectDb().catch(e => console.error("Failed to reconnect DB:", e));
+        }).catch(e => console.error("Failed to import db module:", e));
+        
+        // Return a specific error for database issues
+        return res.status(500).json({ 
+          message: "Error fetching user account",
+          error_type: "database_connection",
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+      }
+      
+      // Generic error handling
       res.status(500).json({ 
         message: "Internal server error",
         details: error.message,

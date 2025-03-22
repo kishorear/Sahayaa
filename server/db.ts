@@ -34,14 +34,26 @@ function createDbPool() {
   // Create PostgreSQL connection pool with SSL support for production
   const pool = new Pool(dbConfig);
 
-  // Add error handler to the pool
+  // Add enhanced error handler to the pool
   pool.on('error', (err: any) => {
     console.error('Unexpected error on idle client', err);
     
-    // Don't crash the application on connection errors
+    // Check for all known types of connection errors including termination by admin
     if (err && typeof err === 'object' && 
-        (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND')) {
+        (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND' || 
+         err.code === '57P01' || // terminating connection due to administrator command
+         err.code === '08006' || // connection failure
+         err.code === '08001')) { // unable to connect
       console.error('Database connection error, but continuing execution:', err.message);
+      
+      // Add automatic reconnection attempt for terminated connections
+      if (err.code === '57P01') {
+        console.log('Database connection terminated by administrator, scheduling reconnection...');
+        setTimeout(() => {
+          console.log('Attempting database reconnection after termination...');
+          reconnectDb().catch(e => console.error('Reconnection failed:', e));
+        }, 5000); // Wait 5 seconds before attempting reconnection
+      }
     }
   });
 

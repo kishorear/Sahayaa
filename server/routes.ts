@@ -25,6 +25,37 @@ import { registerAiProviderRoutes } from "./routes/ai-provider-routes";
 import { getSsoService } from "./sso-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Add enhanced error handlers for database-related errors in all routes
+  const handleDatabaseError = (error: any, res: Response) => {
+    console.error("Route handler database error:", error);
+    
+    // Check if this is a database connection error
+    if (error && typeof error === 'object' && 
+        (error.code === 'ECONNREFUSED' || error.code === '57P01' || 
+         error.code === '08006' || error.code === 'ETIMEDOUT' || 
+         error.code === '08001')) {
+      
+      console.error("Database connection error in route handler:", error);
+      
+      // Try to reconnect the database
+      import('./db').then(db => {
+        db.reconnectDb().catch(e => console.error("Failed to reconnect DB:", e));
+      }).catch(e => console.error("Failed to import db module:", e));
+      
+      return res.status(503).json({
+        message: "Database service temporarily unavailable",
+        error_type: "database_connection",
+        retry_after: 5 // Suggest client to retry after 5 seconds
+      });
+    }
+    
+    // Default error response for non-database errors
+    return res.status(500).json({ 
+      message: "Internal server error",
+      error_type: "server_error"
+    });
+  };
+  
   // Setup authentication routes and middleware
   const { requireAuth, requireRole } = setupAuth(app);
   
@@ -63,7 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tickets = await storage.getAllTickets();
       res.status(200).json(tickets);
     } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
+      handleDatabaseError(error, res);
     }
   });
 

@@ -9,8 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
+import WidgetAnalyticsComponent from "@/components/admin/WidgetAnalytics";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, ClipboardCopy, Download, Code } from "lucide-react";
+import { ArrowRight, ClipboardCopy, Download, Code, BarChart } from "lucide-react";
 
 export default function ChatWidgetPage() {
   const { user } = useAuth();

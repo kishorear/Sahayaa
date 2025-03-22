@@ -1,112 +1,122 @@
-import { Express, Request, Response } from 'express';
-import { storage } from '../storage';
-import { tenantApiKeyAuth } from '../tenant-middleware';
-import { InsertWidgetAnalytics } from '@shared/schema';
-import { z } from 'zod';
-import { insertWidgetAnalyticsSchema } from '@shared/schema';
+import { Express, Request, Response } from "express";
+import { storage } from "../storage";
+import { tenantApiKeyAuth } from "../tenant-middleware";
+import { insertWidgetAnalyticsSchema } from "@shared/schema";
+import { z } from "zod";
 
-// Create a validation schema for widget analytics update
-const updateWidgetAnalyticsSchema = z.object({
-  interactions: z.number().optional(),
-  messagesReceived: z.number().optional(),
-  messagesSent: z.number().optional(),
-  ticketsCreated: z.number().optional(),
-  lastActivity: z.date().optional(),
-  lastClientIp: z.string().optional(),
-  metadata: z.record(z.unknown()).optional()
-});
-
+/**
+ * Register routes for Widget Analytics
+ */
 export function registerWidgetAnalyticsRoutes(app: Express, requireAuth: any) {
-  // Get analytics for a specific API key
-  // Public route used by the widget to fetch its own analytics
+  // Get analytics for a specific widget via API key
+  // This endpoint is used by the widget itself to get its own analytics
   app.get('/api/widget-analytics/:apiKey', async (req: Request, res: Response) => {
     try {
-      const apiKey = req.params.apiKey;
+      const { apiKey } = req.params;
+      
+      if (!apiKey) {
+        return res.status(400).json({ message: "API key is required" });
+      }
+      
       const analytics = await storage.getWidgetAnalyticsByApiKey(apiKey);
       
       if (!analytics) {
-        return res.status(404).json({ message: 'Widget analytics not found' });
+        return res.status(404).json({ message: "Widget analytics not found" });
       }
       
-      return res.json(analytics);
+      res.status(200).json(analytics);
     } catch (error) {
-      console.error('Error fetching widget analytics:', error);
-      return res.status(500).json({ message: 'Internal server error' });
+      res.status(500).json({ message: "Internal server error" });
     }
   });
   
-  // Create or update widget analytics
-  // Public route used by the widget to update its analytics
+  // Update widget analytics - this is called by the widget itself
+  // Uses tenantApiKeyAuth middleware to authenticate based on API key
   app.post('/api/widget-analytics/:apiKey', tenantApiKeyAuth, async (req: Request, res: Response) => {
     try {
-      const apiKey = req.params.apiKey;
-      const tenant = req.tenant;
+      const { apiKey } = req.params;
       
-      if (!tenant) {
-        return res.status(401).json({ message: 'Unauthorized' });
+      if (!apiKey) {
+        return res.status(400).json({ message: "API key is required" });
       }
       
-      // Check if analytics already exist for this API key
+      // Get existing analytics or create new ones
       let analytics = await storage.getWidgetAnalyticsByApiKey(apiKey);
       
-      if (analytics) {
-        // Validate update data
-        const validatedData = updateWidgetAnalyticsSchema.parse(req.body);
+      if (!analytics) {
+        if (!req.tenant) {
+          return res.status(404).json({ message: "Tenant not found for this API key" });
+        }
         
-        // Update existing analytics
-        analytics = await storage.updateWidgetAnalytics(analytics.id, {
-          ...validatedData,
-          lastActivity: new Date(),
-          lastClientIp: req.ip || null
-        });
-        
-        return res.json(analytics);
-      } else {
-        // Validate create data
-        const validatedData: InsertWidgetAnalytics = {
+        // Create new analytics record
+        const validatedData = {
           apiKey,
-          tenantId: tenant.id,
-          adminId: req.body.adminId,
-          clientWebsite: req.body.clientWebsite || null,
-          interactions: req.body.interactions || 0,
-          messagesReceived: req.body.messagesReceived || 0,
-          messagesSent: req.body.messagesSent || 0,
-          ticketsCreated: req.body.ticketsCreated || 0,
+          tenantId: req.tenant.id,
+          adminId: req.tenant.adminId || 1, // Default to admin ID 1 if not specified
+          clientWebsite: req.get('Referer') || null,
+          interactions: 1,
+          messagesReceived: 0,
+          messagesSent: 0,
+          ticketsCreated: 0,
           lastActivity: new Date(),
           lastClientIp: req.ip || null,
-          metadata: req.body.metadata || {}
+          clientInfo: req.headers['user-agent'] || null,
+          metadata: {}
         };
         
-        // Create new analytics
         analytics = await storage.createWidgetAnalytics(validatedData);
+      } else {
+        // Update existing analytics
+        const updates = {
+          interactions: (analytics.interactions || 0) + 1,
+          lastActivity: new Date(),
+          lastClientIp: req.ip || null,
+          clientInfo: req.headers['user-agent'] || null
+        };
         
-        return res.status(201).json(analytics);
+        // Update specific counters based on action type
+        const { action } = req.body;
+        if (action === 'message_received') {
+          updates['messagesReceived'] = (analytics.messagesReceived || 0) + 1;
+        } else if (action === 'message_sent') {
+          updates['messagesSent'] = (analytics.messagesSent || 0) + 1;
+        } else if (action === 'ticket_created') {
+          updates['ticketsCreated'] = (analytics.ticketsCreated || 0) + 1;
+        }
+        
+        // If the referer has changed, update the website
+        const referer = req.get('Referer');
+        if (referer && (!analytics.clientWebsite || analytics.clientWebsite !== referer)) {
+          updates['clientWebsite'] = referer;
+        }
+        
+        analytics = await storage.updateWidgetAnalytics(analytics.id, updates);
       }
+      
+      res.status(200).json(analytics);
     } catch (error) {
-      console.error('Error updating widget analytics:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid data format', errors: error.errors });
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
-      return res.status(500).json({ message: 'Internal server error' });
+      res.status(500).json({ message: "Internal server error" });
     }
   });
   
-  // Get all analytics for an admin user
-  // Protected route used by the admin dashboard
+  // Admin endpoint - get all analytics for the current admin's tenant
   app.get('/api/admin/widget-analytics', requireAuth, async (req: Request, res: Response) => {
     try {
-      const userId = req.user?.id;
-      const tenantId = req.user?.tenantId;
-      
-      if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const analytics = await storage.getWidgetAnalyticsByAdminId(userId, tenantId);
-      return res.json(analytics);
+      const analyticsData = await storage.getWidgetAnalyticsByAdminId(
+        req.user.id, 
+        req.user.tenantId
+      );
+      
+      res.status(200).json(analyticsData);
     } catch (error) {
-      console.error('Error fetching admin widget analytics:', error);
-      return res.status(500).json({ message: 'Internal server error' });
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 }

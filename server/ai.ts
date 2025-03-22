@@ -119,19 +119,19 @@ export async function classifyTicket(title: string, description: string): Promis
 }
 
 // Attempt to resolve a ticket automatically
-export async function attemptAutoResolve(title: string, description: string, previousMessages: ChatMessage[] = []): Promise<{resolved: boolean; response: string}> {
+export async function attemptAutoResolve(title: string, description: string, previousMessages: ChatMessage[] = [], tenantId?: number): Promise<{resolved: boolean; response: string}> {
   // Use OpenAI if available
   if (USE_OPENAI) {
     try {
       // Get relevant knowledge from data sources
       const combinedText = `${title} ${description}`;
-      const knowledgeContext = await buildAIContext(combinedText);
+      const knowledgeContext = await buildAIContext(combinedText, tenantId);
       
       // Log if knowledge context was found
       if (knowledgeContext) {
-        console.log(`Using knowledge context for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"`);
+        console.log(`Using knowledge context for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       } else {
-        console.log(`No relevant knowledge context found for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"`);
+        console.log(`No relevant knowledge context found for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       }
       
       return await attemptAutoResolveWithAI(title, description, previousMessages, knowledgeContext);
@@ -223,21 +223,21 @@ export async function attemptAutoResolve(title: string, description: string, pre
 
 // Generate a response to a user message in an ongoing chat
 export async function generateChatResponse(
-  ticketContext: { id: number; title: string; description: string; category: string },
+  ticketContext: { id: number; title: string; description: string; category: string; tenantId?: number },
   messageHistory: ChatMessage[],
   userMessage: string
 ): Promise<string> {
   // Use OpenAI if available
   if (USE_OPENAI) {
     try {
-      // Get relevant knowledge from data sources
-      const knowledgeContext = await buildAIContext(userMessage);
+      // Get relevant knowledge from data sources with tenant context if available
+      const knowledgeContext = await buildAIContext(userMessage, ticketContext.tenantId);
       
       // Log if knowledge context was found
       if (knowledgeContext) {
-        console.log(`Using knowledge context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"`);
+        console.log(`Using knowledge context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
       } else {
-        console.log(`No relevant knowledge context found for chat response. Ticket ID: ${ticketContext.id}`);
+        console.log(`No relevant knowledge context found for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
       }
       
       return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
@@ -338,19 +338,19 @@ export async function generateChatResponse(
 }
 
 // Generate a summary of multiple messages for ticket context
-export async function summarizeConversation(messages: ChatMessage[]): Promise<string> {
+export async function summarizeConversation(messages: ChatMessage[], tenantId?: number): Promise<string> {
   // Use OpenAI if available
   if (USE_OPENAI) {
     try {
       // Get conversation content to build context
       const conversationText = messages.map(m => m.content).join(' ');
-      const knowledgeContext = await buildAIContext(conversationText);
+      const knowledgeContext = await buildAIContext(conversationText, tenantId);
       
       // Log if knowledge context was found
       if (knowledgeContext) {
-        console.log(`Using knowledge context for conversation summary. Message count: ${messages.length}`);
+        console.log(`Using knowledge context for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       } else {
-        console.log(`No relevant knowledge context found for conversation summary. Message count: ${messages.length}`);
+        console.log(`No relevant knowledge context found for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       }
       
       // If we have knowledge context, add it as a system message

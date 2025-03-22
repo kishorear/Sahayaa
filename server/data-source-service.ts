@@ -5,19 +5,20 @@ import axios from 'axios';
 /**
  * Fetches knowledge relevant to a query from all enabled data sources
  * @param query The user's question or message to search knowledge for
+ * @param tenantId Optional tenant ID to filter data sources by tenant
  * @returns Aggregated context from all data sources based on relevance
  */
-export async function getKnowledgeForQuery(query: string): Promise<string> {
+export async function getKnowledgeForQuery(query: string, tenantId?: number): Promise<string> {
   try {
-    // Get all enabled data sources, sorted by priority
-    const dataSources = await storage.getEnabledDataSources();
+    // Get all enabled data sources, sorted by priority, filtered by tenant if provided
+    const dataSources = await storage.getEnabledDataSources(tenantId);
     
     if (!dataSources.length) {
-      console.log('No enabled data sources found for knowledge retrieval');
+      console.log(`No enabled data sources found for knowledge retrieval${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       return '';
     }
     
-    console.log(`Processing ${dataSources.length} data sources for query: "${query.substring(0, 50)}${query.length > 50 ? '...' : ''}"`);
+    console.log(`Processing ${dataSources.length} data sources for query: "${query.substring(0, 50)}${query.length > 50 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
     
     // Process each data source and collect knowledge
     const knowledgePromises = dataSources.map(dataSource => 
@@ -33,7 +34,7 @@ export async function getKnowledgeForQuery(query: string): Promise<string> {
     
     // Log how many sources returned knowledge
     const nonEmptyResults = knowledgeResults.filter(Boolean).length;
-    console.log(`Retrieved knowledge from ${nonEmptyResults} out of ${dataSources.length} data sources`);
+    console.log(`Retrieved knowledge from ${nonEmptyResults} out of ${dataSources.length} data sources${tenantId ? ` for tenant ${tenantId}` : ''}`);
     
     const combinedKnowledge = knowledgeResults
       .filter(Boolean) // Remove empty results
@@ -41,7 +42,7 @@ export async function getKnowledgeForQuery(query: string): Promise<string> {
       
     return combinedKnowledge;
   } catch (error) {
-    console.error('Error fetching knowledge:', error);
+    console.error(`Error fetching knowledge${tenantId ? ` for tenant ${tenantId}` : ''}:`, error);
     return '';
   }
 }
@@ -270,9 +271,12 @@ function processCustomData(dataSource: DataSource, query: string): string {
 
 /**
  * Format all knowledge sources into a single context string for AI
+ * @param query The user's query
+ * @param tenantId Optional tenant ID to filter knowledge sources
+ * @returns Formatted context string with relevant knowledge
  */
-export async function buildAIContext(query: string): Promise<string> {
-  const knowledge = await getKnowledgeForQuery(query);
+export async function buildAIContext(query: string, tenantId?: number): Promise<string> {
+  const knowledge = await getKnowledgeForQuery(query, tenantId);
   
   if (!knowledge) {
     return '';

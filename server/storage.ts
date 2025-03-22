@@ -1115,27 +1115,52 @@ export class DatabaseStorage implements IStorage {
   
   // Identity Provider operations
   async getIdentityProviders(tenantId: number): Promise<IdentityProvider[]> {
-    return await db
-      .select()
-      .from(identityProviders)
-      .where(eq(identityProviders.tenantId, tenantId))
-      .orderBy(asc(identityProviders.name));
+    // Using SQL directly due to column name inconsistency
+    const result = await db.execute(
+      sql`SELECT * FROM identity_providers WHERE tenantid = ${tenantId} ORDER BY name ASC`
+    );
+    
+    return result.map(provider => ({
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      enabled: provider.enabled,
+      config: provider.config,
+      tenantId: provider.tenantid,
+      createdAt: provider.createdat,
+      updatedAt: provider.updatedat
+    } as IdentityProvider));
   }
   
   async getIdentityProviderById(id: number, tenantId?: number): Promise<IdentityProvider | undefined> {
-    let query;
+    let result;
     
     if (tenantId) {
-      query = and(
-        eq(identityProviders.id, id),
-        eq(identityProviders.tenantId, tenantId)
+      // Using SQL directly due to column name inconsistency
+      result = await db.execute(
+        sql`SELECT * FROM identity_providers WHERE id = ${id} AND tenantid = ${tenantId}`
       );
     } else {
-      query = eq(identityProviders.id, id);
+      result = await db.execute(
+        sql`SELECT * FROM identity_providers WHERE id = ${id}`
+      );
     }
     
-    const results = await db.select().from(identityProviders).where(query);
-    return results[0];
+    if (result.length === 0) {
+      return undefined;
+    }
+    
+    const provider = result[0];
+    return {
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      enabled: provider.enabled,
+      config: provider.config,
+      tenantId: provider.tenantid,
+      createdAt: provider.createdat,
+      updatedAt: provider.updatedat
+    } as IdentityProvider;
   }
   
   async createIdentityProvider(provider: InsertIdentityProvider): Promise<IdentityProvider> {
@@ -1145,53 +1170,97 @@ export class DatabaseStorage implements IStorage {
       enabled: provider.enabled === undefined ? true : provider.enabled
     };
     
-    const [identityProvider] = await db
-      .insert(identityProviders)
-      .values(providerWithDefaults)
-      .returning();
-      
-    return identityProvider;
+    // We need to rename keys to match database column names
+    const values = {
+      tenantid: providerWithDefaults.tenantId,
+      name: providerWithDefaults.name,
+      type: providerWithDefaults.type,
+      enabled: providerWithDefaults.enabled,
+      config: providerWithDefaults.config
+    };
+    
+    // Using SQL directly due to column name inconsistency
+    const result = await db.execute(
+      sql`INSERT INTO identity_providers (tenantid, name, type, enabled, config, createdat, updatedat)
+          VALUES (${values.tenantid}, ${values.name}, ${values.type}, ${values.enabled}, ${values.config}, NOW(), NOW())
+          RETURNING *`
+    );
+    
+    const newProvider = result[0];
+    return {
+      id: newProvider.id,
+      name: newProvider.name,
+      type: newProvider.type,
+      enabled: newProvider.enabled,
+      config: newProvider.config,
+      tenantId: newProvider.tenantid,
+      createdAt: newProvider.createdat,
+      updatedAt: newProvider.updatedat
+    } as IdentityProvider;
   }
   
   async updateIdentityProvider(id: number, updates: Partial<IdentityProvider>, tenantId?: number): Promise<IdentityProvider> {
-    let query;
+    // We need a separate object for SQL params to handle column name differences
+    const updateValues: any = {};
     
+    if (updates.name !== undefined) updateValues.name = updates.name;
+    if (updates.type !== undefined) updateValues.type = updates.type;
+    if (updates.enabled !== undefined) updateValues.enabled = updates.enabled;
+    if (updates.config !== undefined) updateValues.config = updates.config;
+    
+    // Always update the updated_at timestamp
+    updateValues.updatedat = new Date();
+    
+    // Build the SQL SET clause
+    let setClauses = Object.keys(updateValues).map(key => `${key} = $${key}`).join(', ');
+    let query = `UPDATE identity_providers SET ${setClauses}`;
+    
+    // Build the WHERE clause
     if (tenantId) {
-      query = and(
-        eq(identityProviders.id, id),
-        eq(identityProviders.tenantId, tenantId)
-      );
+      query += ` WHERE id = $id AND tenantid = $tenantid RETURNING *`;
+      updateValues.id = id;
+      updateValues.tenantid = tenantId;
     } else {
-      query = eq(identityProviders.id, id);
+      query += ` WHERE id = $id RETURNING *`;
+      updateValues.id = id;
     }
     
-    const [updated] = await db
-      .update(identityProviders)
-      .set({...updates, updatedAt: new Date()})
-      .where(query)
-      .returning();
-      
-    if (!updated) {
+    // Execute the update
+    const result = await db.execute(
+      sql.unsafe(query, updateValues)
+    );
+    
+    if (result.length === 0) {
       throw new Error(`Identity provider with ID ${id} not found`);
     }
     
-    return updated;
+    const provider = result[0];
+    return {
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      enabled: provider.enabled,
+      config: provider.config,
+      tenantId: provider.tenantid,
+      createdAt: provider.createdat,
+      updatedAt: provider.updatedat
+    } as IdentityProvider;
   }
   
   async deleteIdentityProvider(id: number, tenantId?: number): Promise<boolean> {
-    let query;
+    let result;
     
     if (tenantId) {
-      query = and(
-        eq(identityProviders.id, id),
-        eq(identityProviders.tenantId, tenantId)
+      result = await db.execute(
+        sql`DELETE FROM identity_providers WHERE id = ${id} AND tenantid = ${tenantId}`
       );
     } else {
-      query = eq(identityProviders.id, id);
+      result = await db.execute(
+        sql`DELETE FROM identity_providers WHERE id = ${id}`
+      );
     }
     
-    const result = await db.delete(identityProviders).where(query);
-    return result.rowCount !== null && result.rowCount > 0;
+    return result.rowCount && result.rowCount > 0;
   }
 
   // Ticket operations

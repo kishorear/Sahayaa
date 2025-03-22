@@ -388,6 +388,22 @@ initSupportAI({
             </div>
           </CardContent>
         </Card>
+
+        {/* Widget Analytics */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BarChart className="h-6 w-6 mr-2" />
+              Widget Analytics
+            </CardTitle>
+            <CardDescription>
+              Track usage and performance of your chat widget deployments
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WidgetAnalyticsComponent />
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   );

@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { storage } from "../storage";
 import { tenantApiKeyAuth } from "../tenant-middleware";
-import { insertWidgetAnalyticsSchema } from "@shared/schema";
+import { insertWidgetAnalyticsSchema, WidgetAnalytics } from "@shared/schema";
 import { z } from "zod";
 
 /**
@@ -67,7 +67,7 @@ export function registerWidgetAnalyticsRoutes(app: Express, requireAuth: any) {
         analytics = await storage.createWidgetAnalytics(validatedData);
       } else {
         // Update existing analytics
-        const updates = {
+        const updates: Partial<WidgetAnalytics> = {
           interactions: (analytics.interactions || 0) + 1,
           lastActivity: new Date(),
           lastClientIp: req.ip || null,
@@ -77,17 +77,17 @@ export function registerWidgetAnalyticsRoutes(app: Express, requireAuth: any) {
         // Update specific counters based on action type
         const { action } = req.body;
         if (action === 'message_received') {
-          updates['messagesReceived'] = (analytics.messagesReceived || 0) + 1;
+          updates.messagesReceived = (analytics.messagesReceived || 0) + 1;
         } else if (action === 'message_sent') {
-          updates['messagesSent'] = (analytics.messagesSent || 0) + 1;
+          updates.messagesSent = (analytics.messagesSent || 0) + 1;
         } else if (action === 'ticket_created') {
-          updates['ticketsCreated'] = (analytics.ticketsCreated || 0) + 1;
+          updates.ticketsCreated = (analytics.ticketsCreated || 0) + 1;
         }
         
         // If the referer has changed, update the website
         const referer = req.get('Referer');
         if (referer && (!analytics.clientWebsite || analytics.clientWebsite !== referer)) {
-          updates['clientWebsite'] = referer;
+          updates.clientWebsite = referer;
         }
         
         analytics = await storage.updateWidgetAnalytics(analytics.id, updates);

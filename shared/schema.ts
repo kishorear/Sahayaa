@@ -8,6 +8,7 @@ export const tenants = pgTable("tenants", {
   name: text("name").notNull(),
   subdomain: text("subdomain").notNull().unique(),
   apiKey: text("apiKey").notNull().unique(),
+  adminId: integer("adminId").default(1), // Reference to the admin user for this tenant
   settings: json("settings").default({}).notNull(), // Tenant-specific settings
   branding: json("branding").default({
     primaryColor: '#4F46E5',

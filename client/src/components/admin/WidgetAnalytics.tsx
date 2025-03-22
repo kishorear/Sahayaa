@@ -19,8 +19,17 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { WidgetAnalytics } from "@shared/schema";
-import { formatDate } from "@/lib/utils";
+import { format } from "date-fns";
 import { Loader2, RefreshCw } from "lucide-react";
+
+// Helper function to format dates
+const formatDate = (date: Date): string => {
+  try {
+    return format(date, 'MMM dd, yyyy HH:mm');
+  } catch (e) {
+    return 'Invalid date';
+  }
+};
 
 export default function WidgetAnalyticsComponent() {
   const { 

@@ -59,8 +59,7 @@ export default function LandingPage() {
               <Link href="/pricing">
                 <Button 
                   size="lg" 
-                  variant="outline" 
-                  className="border-white text-white hover:bg-indigo-700"
+                  className="bg-primary text-white hover:bg-primary/90"
                 >
                   View Pricing
                 </Button>
@@ -249,8 +248,7 @@ export default function LandingPage() {
             <Link href="/pricing">
               <Button 
                 size="lg" 
-                variant="outline" 
-                className="border-white text-white hover:bg-indigo-700"
+                className="bg-primary text-white hover:bg-primary/90"
               >
                 View Pricing
               </Button>

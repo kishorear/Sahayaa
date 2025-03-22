@@ -73,9 +73,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <nav className="flex-1 space-y-2 mt-5">
               {routes.map((route) => (
                 <Link key={route.path} href={route.path}>
-                  <a
+                  <div
                     className={cn(
-                      "flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                      "flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer",
                       isActive(route.path)
                         ? "text-white bg-gray-900"
                         : "text-gray-300 hover:bg-gray-700 hover:text-white"
@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   >
                     <route.icon className="w-6 h-6 mr-3 text-gray-300" />
                     {route.label}
-                  </a>
+                  </div>
                 </Link>
               ))}
               <button className="flex w-full items-center px-2 py-2 mt-8 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">
@@ -141,9 +141,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <nav className="flex flex-col px-4 py-4 space-y-2">
               {routes.map((route) => (
                 <Link key={route.path} href={route.path}>
-                  <a
+                  <div
                     className={cn(
-                      "flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                      "flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer",
                       isActive(route.path)
                         ? "text-white bg-gray-900"
                         : "text-gray-300 hover:bg-gray-700 hover:text-white"
@@ -152,7 +152,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   >
                     <route.icon className="w-6 h-6 mr-3 text-gray-300" />
                     {route.label}
-                  </a>
+                  </div>
                 </Link>
               ))}
               <button className="flex w-full items-center px-2 py-2 mt-4 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">

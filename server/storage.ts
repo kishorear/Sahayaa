@@ -7,6 +7,7 @@ import {
   tenants,
   identityProviders,
   widgetAnalytics,
+  aiProviders,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -22,7 +23,9 @@ import {
   type IdentityProvider,
   type InsertIdentityProvider,
   type WidgetAnalytics,
-  type InsertWidgetAnalytics
+  type InsertWidgetAnalytics,
+  type AiProvider,
+  type InsertAiProvider
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -78,6 +81,15 @@ export interface IStorage {
   updateDataSource(id: number, updates: Partial<DataSource>, tenantId?: number): Promise<DataSource>;
   deleteDataSource(id: number, tenantId?: number): Promise<boolean>;
   
+  // AI provider operations
+  getAiProviders(tenantId: number): Promise<AiProvider[]>;
+  getAiProviderById(id: number, tenantId?: number): Promise<AiProvider | undefined>;
+  getAiProvidersByType(type: string, tenantId: number): Promise<AiProvider[]>;
+  getPrimaryAiProvider(tenantId: number): Promise<AiProvider | undefined>;
+  createAiProvider(provider: InsertAiProvider): Promise<AiProvider>;
+  updateAiProvider(id: number, updates: Partial<AiProvider>, tenantId?: number): Promise<AiProvider>;
+  deleteAiProvider(id: number, tenantId?: number): Promise<boolean>;
+  
   // Widget analytics operations
   getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined>;
   getWidgetAnalyticsByAdminId(adminId: number, tenantId?: number): Promise<WidgetAnalytics[]>;
@@ -96,6 +108,7 @@ export class MemStorage implements IStorage {
   private attachments: Map<number, Attachment>;
   private dataSources: Map<number, DataSource>;
   private widgetAnalyticsData: Map<number, WidgetAnalytics>;
+  private aiProviders: Map<number, AiProvider>;
   private tenantIdCounter: number;
   private userIdCounter: number;
   private ticketIdCounter: number;
@@ -103,6 +116,7 @@ export class MemStorage implements IStorage {
   private attachmentIdCounter: number;
   private dataSourceIdCounter: number;
   private widgetAnalyticsIdCounter: number;
+  private aiProviderIdCounter: number;
   public sessionStore: session.Store;
 
   constructor() {
@@ -113,6 +127,7 @@ export class MemStorage implements IStorage {
     this.attachments = new Map();
     this.dataSources = new Map();
     this.widgetAnalyticsData = new Map();
+    this.aiProviders = new Map();
     this.tenantIdCounter = 1;
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
@@ -120,6 +135,7 @@ export class MemStorage implements IStorage {
     this.attachmentIdCounter = 1;
     this.dataSourceIdCounter = 1;
     this.widgetAnalyticsIdCounter = 1;
+    this.aiProviderIdCounter = 1;
     
     // Initialize memory session store
     const MemoryStore = createMemoryStore(session);

@@ -3,8 +3,8 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
-import createMemoryStore from "memorystore";
+import { User, users } from "@shared/schema";
+import { db } from "./db";
 
 // Extend the session type to include our custom fields
 declare module 'express-session' {
@@ -13,7 +13,14 @@ declare module 'express-session' {
   }
 }
 
-const MemoryStore = createMemoryStore(session);
+// Extend the Request type to include the user property
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
 
 // Using scrypt for password hashing
 const scryptAsync = promisify(scrypt);
@@ -36,9 +43,7 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || "super-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStore({
-      checkPeriod: 86400000 // prune expired entries every 24h
-    }),
+    store: storage.sessionStore,
     cookie: { 
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       secure: process.env.NODE_ENV === "production",
@@ -48,13 +53,45 @@ export function setupAuth(app: Express) {
 
   app.use(session(sessionSettings));
 
-  // Authentication middleware
-  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+  // Authentication middleware - adds the user to the request if logged in
+  app.use(async (req: Request, res: Response, next: NextFunction) => {
     if (req.session.userId) {
+      try {
+        const user = await storage.getUser(req.session.userId);
+        if (user) {
+          req.user = user;
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
+    }
+    next();
+  });
+
+  // Middleware to require authentication
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+    if (req.user) {
       next();
     } else {
       res.status(401).json({ message: "Unauthorized" });
     }
+  };
+
+  // Middleware to require specific roles
+  const requireRole = (roles: string | string[]) => {
+    const allowedRoles = Array.isArray(roles) ? roles : [roles];
+    
+    return (req: Request, res: Response, next: NextFunction) => {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (allowedRoles.includes(req.user.role) || req.user.role === 'admin') {
+        next();
+      } else {
+        res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+      }
+    };
   };
 
   // Register routes
@@ -72,6 +109,12 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Username is already taken" });
       }
 
+      // Validate role - only allow admin users to create other admins
+      const requestedRole = role || "user";
+      if (requestedRole === "admin" && (!req.user || req.user.role !== "admin")) {
+        return res.status(403).json({ message: "Only admins can create admin accounts" });
+      }
+
       // Create new user with hashed password
       const hashedPassword = await hashPassword(password);
       const user = await storage.createUser({
@@ -79,7 +122,7 @@ export function setupAuth(app: Express) {
         password: hashedPassword,
         name: name || null,
         email: email || null,
-        role: role || "user"
+        role: requestedRole
       });
 
       // Login the user (set session)
@@ -137,21 +180,12 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      if (!req.user) {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        // User no longer exists, clear session
-        req.session.destroy((err) => {
-          if (err) console.error("Session destruction error:", err);
-        });
-        return res.status(401).json({ message: "User not found" });
-      }
-
       // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
+      const { password: _, ...userWithoutPassword } = req.user;
       res.status(200).json(userWithoutPassword);
     } catch (error) {
       console.error("Get user error:", error);
@@ -159,5 +193,25 @@ export function setupAuth(app: Express) {
     }
   });
 
-  return { requireAuth };
+  // List users - admin only
+  app.get("/api/users", requireRole("admin"), async (req, res) => {
+    try {
+      // Get all users from database - implementation depends on your storage interface
+      const allUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        role: users.role,
+        name: users.name,
+        email: users.email,
+        createdAt: users.createdAt
+      }).from(users);
+      
+      res.status(200).json(allUsers);
+    } catch (error) {
+      console.error("List users error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  return { requireAuth, requireRole };
 }

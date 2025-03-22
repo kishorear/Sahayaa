@@ -21,7 +21,7 @@ import { registerDataSourceRoutes } from "./routes/data-source-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes and middleware
-  const { requireAuth } = setupAuth(app);
+  const { requireAuth, requireRole } = setupAuth(app);
   
   // Register email-related routes
   registerEmailRoutes(app, requireAuth);
@@ -32,8 +32,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register data source routes
   registerDataSourceRoutes(app, requireAuth);
 
-  // TICKET ROUTES - Protected admin routes
-  app.get("/api/tickets", requireAuth, async (req, res) => {
+  // TICKET ROUTES - Protected routes for support staff and admins
+  app.get("/api/tickets", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
     try {
       const tickets = await storage.getAllTickets();
       res.status(200).json(tickets);
@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tickets/:id", requireAuth, async (req, res) => {
+  app.get("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const ticket = await storage.getTicketById(id);
@@ -108,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/tickets/:id", requireAuth, async (req, res) => {
+  app.patch("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const ticket = await storage.getTicketById(id);
@@ -256,8 +256,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DASHBOARD METRICS - All require auth
-  app.get("/api/metrics/summary", requireAuth, async (req, res) => {
+  // DASHBOARD METRICS - Require admin or support-agent roles
+  app.get("/api/metrics/summary", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const tickets = await storage.getAllTickets();
       
@@ -299,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/metrics/categories", requireAuth, async (req, res) => {
+  app.get("/api/metrics/categories", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const tickets = await storage.getAllTickets();
       
@@ -323,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/metrics/recent", requireAuth, async (req, res) => {
+  app.get("/api/metrics/recent", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 5;
       const tickets = await storage.getAllTickets();

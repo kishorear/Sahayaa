@@ -17,10 +17,9 @@ import {
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import * as createMemoryStore from "memorystore";
-import { Pool } from 'pg';
+import createMemoryStore from "memorystore";
 import { eq, and, desc, asc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { db, pool } from "./db";
 
 // Interface for all storage operations
 export interface IStorage {
@@ -67,6 +66,7 @@ export class MemStorage implements IStorage {
   private messageIdCounter: number;
   private attachmentIdCounter: number;
   private dataSourceIdCounter: number;
+  public sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
@@ -79,6 +79,12 @@ export class MemStorage implements IStorage {
     this.messageIdCounter = 1;
     this.attachmentIdCounter = 1;
     this.dataSourceIdCounter = 1;
+    
+    // Initialize memory session store
+    const MemoryStore = createMemoryStore(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // Prune expired entries every 24h
+    });
     
     // Add a default admin user
     this.createUser({
@@ -438,5 +444,136 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Create and export a singleton instance
-export const storage = new MemStorage();
+// Database Storage implementation
+export class DatabaseStorage implements IStorage {
+  public sessionStore: session.Store;
+
+  constructor() {
+    // Initialize PostgreSQL session store
+    const PostgresStore = connectPg(session);
+    this.sessionStore = new PostgresStore({
+      pool,
+      tableName: 'session', // Default table name for sessions
+      createTableIfMissing: true
+    });
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const results = await db.select().from(users).where(eq(users.id, id));
+    return results[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const results = await db.select().from(users).where(eq(users.username, username));
+    return results[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  // Ticket operations
+  async getAllTickets(): Promise<Ticket[]> {
+    return await db.select().from(tickets).orderBy(desc(tickets.createdAt));
+  }
+
+  async getTicketById(id: number): Promise<Ticket | undefined> {
+    const results = await db.select().from(tickets).where(eq(tickets.id, id));
+    return results[0];
+  }
+
+  async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
+    const [ticket] = await db.insert(tickets).values(insertTicket).returning();
+    return ticket;
+  }
+
+  async updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket> {
+    const [updatedTicket] = await db
+      .update(tickets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tickets.id, id))
+      .returning();
+    return updatedTicket;
+  }
+
+  // Message operations
+  async getMessagesByTicketId(ticketId: number): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.ticketId, ticketId))
+      .orderBy(asc(messages.createdAt));
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const [message] = await db.insert(messages).values(insertMessage).returning();
+    return message;
+  }
+
+  // Attachment operations
+  async getAttachmentsByTicketId(ticketId: number): Promise<Attachment[]> {
+    return await db
+      .select()
+      .from(attachments)
+      .where(eq(attachments.ticketId, ticketId))
+      .orderBy(asc(attachments.createdAt));
+  }
+
+  async getAttachmentById(id: number): Promise<Attachment | undefined> {
+    const results = await db.select().from(attachments).where(eq(attachments.id, id));
+    return results[0];
+  }
+
+  async createAttachment(insertAttachment: InsertAttachment): Promise<Attachment> {
+    const [attachment] = await db.insert(attachments).values(insertAttachment).returning();
+    return attachment;
+  }
+
+  // Data source operations
+  async getAllDataSources(): Promise<DataSource[]> {
+    return await db
+      .select()
+      .from(dataSources)
+      .orderBy(asc(dataSources.priority));
+  }
+
+  async getEnabledDataSources(): Promise<DataSource[]> {
+    return await db
+      .select()
+      .from(dataSources)
+      .where(eq(dataSources.enabled, true))
+      .orderBy(asc(dataSources.priority));
+  }
+
+  async getDataSourceById(id: number): Promise<DataSource | undefined> {
+    const results = await db.select().from(dataSources).where(eq(dataSources.id, id));
+    return results[0];
+  }
+
+  async createDataSource(insertDataSource: InsertDataSource): Promise<DataSource> {
+    const [dataSource] = await db.insert(dataSources).values(insertDataSource).returning();
+    return dataSource;
+  }
+
+  async updateDataSource(id: number, updates: Partial<DataSource>): Promise<DataSource> {
+    const [updatedDataSource] = await db
+      .update(dataSources)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(dataSources.id, id))
+      .returning();
+    return updatedDataSource;
+  }
+
+  async deleteDataSource(id: number): Promise<boolean> {
+    const result = await db.delete(dataSources).where(eq(dataSources.id, id));
+    return !!result;
+  }
+}
+
+// Create a PostgreSQL storage implementation for production
+export const storage = new DatabaseStorage();
+
+// If you need to use in-memory storage for development, uncomment this line
+// export const storage = new MemStorage();

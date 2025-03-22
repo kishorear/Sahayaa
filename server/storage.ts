@@ -3,6 +3,7 @@ import {
   tickets, 
   messages,
   attachments,
+  dataSources,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -10,7 +11,9 @@ import {
   type Message, 
   type InsertMessage,
   type Attachment,
-  type InsertAttachment
+  type InsertAttachment,
+  type DataSource,
+  type InsertDataSource
 } from "@shared/schema";
 
 // Interface for all storage operations
@@ -34,6 +37,14 @@ export interface IStorage {
   getAttachmentsByTicketId(ticketId: number): Promise<Attachment[]>;
   getAttachmentById(id: number): Promise<Attachment | undefined>;
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
+  
+  // Data source operations
+  getAllDataSources(): Promise<DataSource[]>;
+  getEnabledDataSources(): Promise<DataSource[]>;
+  getDataSourceById(id: number): Promise<DataSource | undefined>;
+  createDataSource(dataSource: InsertDataSource): Promise<DataSource>;
+  updateDataSource(id: number, updates: Partial<DataSource>): Promise<DataSource>;
+  deleteDataSource(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -41,20 +52,24 @@ export class MemStorage implements IStorage {
   private tickets: Map<number, Ticket>;
   private messages: Map<number, Message>;
   private attachments: Map<number, Attachment>;
+  private dataSources: Map<number, DataSource>;
   private userIdCounter: number;
   private ticketIdCounter: number;
   private messageIdCounter: number;
   private attachmentIdCounter: number;
+  private dataSourceIdCounter: number;
 
   constructor() {
     this.users = new Map();
     this.tickets = new Map();
     this.messages = new Map();
     this.attachments = new Map();
+    this.dataSources = new Map();
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
     this.messageIdCounter = 1;
     this.attachmentIdCounter = 1;
+    this.dataSourceIdCounter = 1;
     
     // Add a default admin user
     this.createUser({
@@ -65,8 +80,47 @@ export class MemStorage implements IStorage {
       name: "Admin User"
     });
     
-    // Initialize with sample tickets
+    // Initialize with sample tickets and data sources
     this.initSampleTickets();
+    this.initSampleDataSources();
+  }
+  
+  private async initSampleDataSources() {
+    // Import the existing knowledge base from knowledgeBase.ts
+    const { knowledgeBase } = await import('./knowledgeBase');
+    
+    // Create a default knowledge base data source
+    await this.createDataSource({
+      name: "Default Knowledge Base",
+      type: "kb",
+      description: "Built-in knowledge base with common support solutions",
+      content: JSON.stringify(knowledgeBase),
+      enabled: true,
+      priority: 1
+    });
+    
+    // Create other sample data sources
+    await this.createDataSource({
+      name: "Product Documentation",
+      type: "url",
+      description: "Official product documentation",
+      content: "https://docs.example.com/api",
+      enabled: true,
+      priority: 2
+    });
+    
+    await this.createDataSource({
+      name: "FAQ Database",
+      type: "custom",
+      description: "Frequently asked questions and answers",
+      content: JSON.stringify([
+        { question: "What are the system requirements?", answer: "Our software requires Windows 10/macOS 10.15 or later, 8GB RAM, and 1GB free disk space." },
+        { question: "How do I upgrade my subscription?", answer: "You can upgrade your subscription from the Account page. Click on 'Subscription' and select the new plan you want." },
+        { question: "Is there a mobile app?", answer: "Yes, our mobile app is available on iOS and Android. You can download it from the App Store or Google Play." }
+      ]),
+      enabled: true,
+      priority: 3
+    });
   }
   
   private async initSampleTickets() {
@@ -316,6 +370,62 @@ export class MemStorage implements IStorage {
     } as Attachment;
     this.attachments.set(id, attachment);
     return attachment;
+  }
+
+  // Data source operations
+  async getAllDataSources(): Promise<DataSource[]> {
+    return Array.from(this.dataSources.values())
+      .sort((a, b) => a.priority - b.priority);
+  }
+
+  async getEnabledDataSources(): Promise<DataSource[]> {
+    return Array.from(this.dataSources.values())
+      .filter(source => source.enabled)
+      .sort((a, b) => a.priority - b.priority);
+  }
+
+  async getDataSourceById(id: number): Promise<DataSource | undefined> {
+    return this.dataSources.get(id);
+  }
+
+  async createDataSource(insertDataSource: InsertDataSource): Promise<DataSource> {
+    const id = this.dataSourceIdCounter++;
+    const now = new Date();
+    const dataSource: DataSource = {
+      ...insertDataSource,
+      id,
+      description: insertDataSource.description || null,
+      content: insertDataSource.content || null,
+      enabled: insertDataSource.enabled ?? true,
+      priority: insertDataSource.priority ?? 10,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.dataSources.set(id, dataSource);
+    return dataSource;
+  }
+
+  async updateDataSource(id: number, updates: Partial<DataSource>): Promise<DataSource> {
+    const dataSource = this.dataSources.get(id);
+    if (!dataSource) {
+      throw new Error(`Data source with id ${id} not found`);
+    }
+    
+    const updatedDataSource: DataSource = {
+      ...dataSource,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.dataSources.set(id, updatedDataSource);
+    return updatedDataSource;
+  }
+
+  async deleteDataSource(id: number): Promise<boolean> {
+    if (!this.dataSources.has(id)) {
+      return false;
+    }
+    return this.dataSources.delete(id);
   }
 }
 

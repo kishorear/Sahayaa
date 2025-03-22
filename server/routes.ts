@@ -17,6 +17,7 @@ import {
 import { setupAuth } from "./auth";
 import { registerEmailRoutes } from "./routes/email-routes";
 import { registerIntegrationRoutes } from "./routes/integration-routes";
+import { registerDataSourceRoutes } from "./routes/data-source-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes and middleware
@@ -27,6 +28,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register third-party integration routes
   registerIntegrationRoutes(app, requireAuth);
+  
+  // Register data source routes
+  registerDataSourceRoutes(app, requireAuth);
 
   // TICKET ROUTES - Protected admin routes
   app.get("/api/tickets", requireAuth, async (req, res) => {

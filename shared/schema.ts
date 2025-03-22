@@ -109,3 +109,25 @@ export type ChatbotResponse = {
     data: any;
   };
 };
+
+// Data sources schema
+export const dataSources = pgTable("data_sources", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // "kb" (knowledge base), "url", "doc", "custom"
+  description: text("description"),
+  content: text("content"), // JSON string for KB entries, URL for web sources, etc.
+  enabled: boolean("enabled").default(true).notNull(),
+  priority: integer("priority").default(10).notNull(), // Lower values = higher priority
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDataSourceSchema = createInsertSchema(dataSources).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export type DataSource = typeof dataSources.$inferSelect;
+export type InsertDataSource = z.infer<typeof insertDataSourceSchema>;

@@ -399,6 +399,7 @@ export class MemStorage implements IStorage {
       role: insertUser.role || "user",
       name: insertUser.name || null,
       email: insertUser.email || null,
+      tenantId: insertUser.tenantId || 1, // Default to tenant ID 1 if not specified
       createdAt: now,
       updatedAt: now
     };
@@ -407,12 +408,19 @@ export class MemStorage implements IStorage {
   }
   
   // Ticket operations
-  async getAllTickets(): Promise<Ticket[]> {
+  async getAllTickets(tenantId?: number): Promise<Ticket[]> {
+    if (tenantId) {
+      return Array.from(this.tickets.values()).filter(ticket => ticket.tenantId === tenantId);
+    }
     return Array.from(this.tickets.values());
   }
   
-  async getTicketById(id: number): Promise<Ticket | undefined> {
-    return this.tickets.get(id);
+  async getTicketById(id: number, tenantId?: number): Promise<Ticket | undefined> {
+    const ticket = this.tickets.get(id);
+    if (tenantId && ticket && ticket.tenantId !== tenantId) {
+      return undefined; // Don't return tickets from other tenants
+    }
+    return ticket;
   }
   
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
@@ -423,6 +431,7 @@ export class MemStorage implements IStorage {
     const ticket = {
       ...insertTicket,
       id,
+      tenantId: insertTicket.tenantId || 1, // Default to tenant ID 1 if not specified
       status: insertTicket.status || "new",
       aiResolved: insertTicket.aiResolved || false,
       complexity: insertTicket.complexity || "medium",
@@ -437,10 +446,15 @@ export class MemStorage implements IStorage {
     return ticket;
   }
   
-  async updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket> {
+  async updateTicket(id: number, updates: Partial<Ticket>, tenantId?: number): Promise<Ticket> {
     const ticket = this.tickets.get(id);
     if (!ticket) {
       throw new Error(`Ticket with id ${id} not found`);
+    }
+    
+    // If tenantId is provided, ensure ticket belongs to that tenant
+    if (tenantId && ticket.tenantId !== tenantId) {
+      throw new Error(`Ticket with id ${id} does not belong to tenant ${tenantId}`);
     }
     
     const updatedTicket: Ticket = {
@@ -498,19 +512,35 @@ export class MemStorage implements IStorage {
   }
 
   // Data source operations
-  async getAllDataSources(): Promise<DataSource[]> {
+  async getAllDataSources(tenantId?: number): Promise<DataSource[]> {
+    if (tenantId) {
+      return Array.from(this.dataSources.values())
+        .filter(source => source.tenantId === tenantId)
+        .sort((a, b) => a.priority - b.priority);
+    }
     return Array.from(this.dataSources.values())
       .sort((a, b) => a.priority - b.priority);
   }
 
-  async getEnabledDataSources(): Promise<DataSource[]> {
-    return Array.from(this.dataSources.values())
-      .filter(source => source.enabled)
-      .sort((a, b) => a.priority - b.priority);
+  async getEnabledDataSources(tenantId?: number): Promise<DataSource[]> {
+    let sources = Array.from(this.dataSources.values())
+      .filter(source => source.enabled);
+    
+    if (tenantId) {
+      sources = sources.filter(source => source.tenantId === tenantId);
+    }
+    
+    return sources.sort((a, b) => a.priority - b.priority);
   }
 
-  async getDataSourceById(id: number): Promise<DataSource | undefined> {
-    return this.dataSources.get(id);
+  async getDataSourceById(id: number, tenantId?: number): Promise<DataSource | undefined> {
+    const dataSource = this.dataSources.get(id);
+    
+    if (tenantId && dataSource && dataSource.tenantId !== tenantId) {
+      return undefined; // Don't return data sources from other tenants
+    }
+    
+    return dataSource;
   }
 
   async createDataSource(insertDataSource: InsertDataSource): Promise<DataSource> {
@@ -523,6 +553,7 @@ export class MemStorage implements IStorage {
       content: insertDataSource.content || null,
       enabled: insertDataSource.enabled ?? true,
       priority: insertDataSource.priority ?? 10,
+      tenantId: insertDataSource.tenantId || 1, // Default to tenant ID 1 if not specified
       createdAt: now,
       updatedAt: now
     };
@@ -530,10 +561,15 @@ export class MemStorage implements IStorage {
     return dataSource;
   }
 
-  async updateDataSource(id: number, updates: Partial<DataSource>): Promise<DataSource> {
+  async updateDataSource(id: number, updates: Partial<DataSource>, tenantId?: number): Promise<DataSource> {
     const dataSource = this.dataSources.get(id);
     if (!dataSource) {
       throw new Error(`Data source with id ${id} not found`);
+    }
+    
+    // If tenantId is provided, ensure data source belongs to that tenant
+    if (tenantId && dataSource.tenantId !== tenantId) {
+      throw new Error(`Data source with id ${id} does not belong to tenant ${tenantId}`);
     }
     
     const updatedDataSource: DataSource = {
@@ -546,10 +582,18 @@ export class MemStorage implements IStorage {
     return updatedDataSource;
   }
 
-  async deleteDataSource(id: number): Promise<boolean> {
-    if (!this.dataSources.has(id)) {
+  async deleteDataSource(id: number, tenantId?: number): Promise<boolean> {
+    const dataSource = this.dataSources.get(id);
+    
+    if (!dataSource) {
       return false;
     }
+    
+    // If tenantId is provided, ensure data source belongs to that tenant
+    if (tenantId && dataSource.tenantId !== tenantId) {
+      throw new Error(`Data source with id ${id} does not belong to tenant ${tenantId}`);
+    }
+    
     return this.dataSources.delete(id);
   }
 }
@@ -639,11 +683,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Ticket operations
-  async getAllTickets(): Promise<Ticket[]> {
-    return await db.select().from(tickets).orderBy(desc(tickets.createdAt));
+  async getAllTickets(tenantId?: number): Promise<Ticket[]> {
+    if (tenantId) {
+      return await db
+        .select()
+        .from(tickets)
+        .where(eq(tickets.tenantId, tenantId))
+        .orderBy(desc(tickets.createdAt));
+    }
+    return await db
+      .select()
+      .from(tickets)
+      .orderBy(desc(tickets.createdAt));
   }
 
-  async getTicketById(id: number): Promise<Ticket | undefined> {
+  async getTicketById(id: number, tenantId?: number): Promise<Ticket | undefined> {
+    if (tenantId) {
+      const results = await db
+        .select()
+        .from(tickets)
+        .where(and(
+          eq(tickets.id, id),
+          eq(tickets.tenantId, tenantId)
+        ));
+      return results[0];
+    }
     const results = await db.select().from(tickets).where(eq(tickets.id, id));
     return results[0];
   }
@@ -653,12 +717,31 @@ export class DatabaseStorage implements IStorage {
     return ticket;
   }
 
-  async updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket> {
+  async updateTicket(id: number, updates: Partial<Ticket>, tenantId?: number): Promise<Ticket> {
+    let condition;
+    if (tenantId) {
+      condition = and(
+        eq(tickets.id, id),
+        eq(tickets.tenantId, tenantId)
+      );
+    } else {
+      condition = eq(tickets.id, id);
+    }
+    
     const [updatedTicket] = await db
       .update(tickets)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(tickets.id, id))
+      .where(condition)
       .returning();
+    
+    if (!updatedTicket) {
+      if (tenantId) {
+        throw new Error(`Ticket with id ${id} not found for tenant ${tenantId}`);
+      } else {
+        throw new Error(`Ticket with id ${id} not found`);
+      }
+    }
+    
     return updatedTicket;
   }
 
@@ -696,22 +779,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Data source operations
-  async getAllDataSources(): Promise<DataSource[]> {
+  async getAllDataSources(tenantId?: number): Promise<DataSource[]> {
+    if (tenantId) {
+      return await db
+        .select()
+        .from(dataSources)
+        .where(eq(dataSources.tenantId, tenantId))
+        .orderBy(asc(dataSources.priority));
+    }
     return await db
       .select()
       .from(dataSources)
       .orderBy(asc(dataSources.priority));
   }
 
-  async getEnabledDataSources(): Promise<DataSource[]> {
-    return await db
-      .select()
-      .from(dataSources)
-      .where(eq(dataSources.enabled, true))
-      .orderBy(asc(dataSources.priority));
+  async getEnabledDataSources(tenantId?: number): Promise<DataSource[]> {
+    if (tenantId) {
+      return await db
+        .select()
+        .from(dataSources)
+        .where(and(
+          eq(dataSources.enabled, true),
+          eq(dataSources.tenantId, tenantId)
+        ))
+        .orderBy(asc(dataSources.priority));
+    } else {
+      return await db
+        .select()
+        .from(dataSources)
+        .where(eq(dataSources.enabled, true))
+        .orderBy(asc(dataSources.priority));
+    }
   }
 
-  async getDataSourceById(id: number): Promise<DataSource | undefined> {
+  async getDataSourceById(id: number, tenantId?: number): Promise<DataSource | undefined> {
+    if (tenantId) {
+      const results = await db
+        .select()
+        .from(dataSources)
+        .where(and(
+          eq(dataSources.id, id),
+          eq(dataSources.tenantId, tenantId)
+        ));
+      return results[0];
+    }
     const results = await db.select().from(dataSources).where(eq(dataSources.id, id));
     return results[0];
   }
@@ -721,17 +832,49 @@ export class DatabaseStorage implements IStorage {
     return dataSource;
   }
 
-  async updateDataSource(id: number, updates: Partial<DataSource>): Promise<DataSource> {
+  async updateDataSource(id: number, updates: Partial<DataSource>, tenantId?: number): Promise<DataSource> {
+    let condition;
+    if (tenantId) {
+      condition = and(
+        eq(dataSources.id, id),
+        eq(dataSources.tenantId, tenantId)
+      );
+    } else {
+      condition = eq(dataSources.id, id);
+    }
+    
     const [updatedDataSource] = await db
       .update(dataSources)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(dataSources.id, id))
+      .where(condition)
       .returning();
+    
+    if (!updatedDataSource) {
+      if (tenantId) {
+        throw new Error(`Data source with id ${id} not found for tenant ${tenantId}`);
+      } else {
+        throw new Error(`Data source with id ${id} not found`);
+      }
+    }
+    
     return updatedDataSource;
   }
 
-  async deleteDataSource(id: number): Promise<boolean> {
-    const result = await db.delete(dataSources).where(eq(dataSources.id, id));
+  async deleteDataSource(id: number, tenantId?: number): Promise<boolean> {
+    let condition;
+    if (tenantId) {
+      condition = and(
+        eq(dataSources.id, id),
+        eq(dataSources.tenantId, tenantId)
+      );
+    } else {
+      condition = eq(dataSources.id, id);
+    }
+    
+    const result = await db
+      .delete(dataSources)
+      .where(condition);
+      
     return !!result;
   }
 }

@@ -241,7 +241,7 @@ export default function LandingPage() {
             <Link href="/auth">
               <Button 
                 size="lg" 
-                className="bg-white text-primary hover:bg-opacity-90"
+                className="bg-primary text-white hover:bg-primary/90"
               >
                 Sign Up Now
               </Button>

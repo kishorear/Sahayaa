@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -96,7 +96,8 @@ export default function IntegrationSettings() {
   });
 
   // Set form values when integrations data is loaded
-  useState(() => {
+  // Using useEffect instead of useState for side effects
+  React.useEffect(() => {
     if (integrations) {
       if (integrations.zendesk) {
         zendeskForm.reset({
@@ -117,7 +118,7 @@ export default function IntegrationSettings() {
         });
       }
     }
-  }, [integrations]);
+  }, [integrations, zendeskForm, jiraForm]);
 
   // Mutation for saving Zendesk configuration
   const zendeskMutation = useMutation({

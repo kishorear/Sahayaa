@@ -92,6 +92,7 @@ export default function SettingsPage() {
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="ai">AI Settings</TabsTrigger>
             <TabsTrigger value="tickets">Ticket Settings</TabsTrigger>
+            <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
@@ -456,6 +457,10 @@ export default function SettingsPage() {
                 <Button onClick={updateAssignmentSettings}>Save Ticket Settings</Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="integrations">
+            <IntegrationSettings />
           </TabsContent>
         </Tabs>
       </div>

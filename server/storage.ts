@@ -15,6 +15,12 @@ import {
   type DataSource,
   type InsertDataSource
 } from "@shared/schema";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import * as createMemoryStore from "memorystore";
+import { Pool } from 'pg';
+import { eq, and, desc, asc } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 
 // Interface for all storage operations
 export interface IStorage {
@@ -45,6 +51,9 @@ export interface IStorage {
   createDataSource(dataSource: InsertDataSource): Promise<DataSource>;
   updateDataSource(id: number, updates: Partial<DataSource>): Promise<DataSource>;
   deleteDataSource(id: number): Promise<boolean>;
+  
+  // Session management
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {

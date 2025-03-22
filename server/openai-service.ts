@@ -1,7 +1,11 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI();  // Will automatically use OPENAI_API_KEY environment variable
+// Initialize OpenAI client directly with the environment variable
+// The SDK will automatically look for the OPENAI_API_KEY environment variable
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 export type OpenAIMessage = {
   role: 'user' | 'assistant' | 'system';

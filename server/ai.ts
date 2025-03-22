@@ -7,7 +7,7 @@ import {
 } from './openai-service';
 
 // Determine if we're using OpenAI or local implementation
-const USE_OPENAI = process.env.OPENAI_API_KEY ? true : false;
+const USE_OPENAI = typeof process.env.OPENAI_API_KEY === 'string' && process.env.OPENAI_API_KEY.startsWith('sk-');
 
 console.log(USE_OPENAI ? "OpenAI implementation initialized" : "Local AI implementation initialized");
 

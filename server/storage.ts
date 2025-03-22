@@ -727,9 +727,62 @@ export class MemStorage implements IStorage {
     
     return this.dataSources.delete(id);
   }
+  
+  // Widget analytics operations
+  async getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined> {
+    return Array.from(this.widgetAnalyticsData.values()).find(
+      (analytics) => analytics.apiKey === apiKey
+    );
+  }
+  
+  async getWidgetAnalyticsByAdminId(adminId: number, tenantId?: number): Promise<WidgetAnalytics[]> {
+    return Array.from(this.widgetAnalyticsData.values()).filter(
+      (analytics) => 
+        analytics.adminId === adminId && 
+        (!tenantId || analytics.tenantId === tenantId)
+    );
+  }
+  
+  async createWidgetAnalytics(insertAnalytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
+    const id = this.widgetAnalyticsIdCounter++;
+    const now = new Date();
+    
+    const analytics: WidgetAnalytics = {
+      ...insertAnalytics,
+      id,
+      interactions: insertAnalytics.interactions || 0,
+      messagesReceived: insertAnalytics.messagesReceived || 0,
+      messagesSent: insertAnalytics.messagesSent || 0,
+      ticketsCreated: insertAnalytics.ticketsCreated || 0,
+      lastActivity: insertAnalytics.lastActivity || now,
+      metadata: insertAnalytics.metadata || {},
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.widgetAnalyticsData.set(id, analytics);
+    return analytics;
+  }
+  
+  async updateWidgetAnalytics(id: number, updates: Partial<WidgetAnalytics>): Promise<WidgetAnalytics> {
+    const analytics = this.widgetAnalyticsData.get(id);
+    if (!analytics) {
+      throw new Error(`Widget analytics with id ${id} not found`);
+    }
+    
+    const updatedAnalytics: WidgetAnalytics = {
+      ...analytics,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.widgetAnalyticsData.set(id, updatedAnalytics);
+    return updatedAnalytics;
+  }
 }
 
 // Database Storage implementation
+
 export class DatabaseStorage implements IStorage {
   public sessionStore: session.Store;
 

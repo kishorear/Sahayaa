@@ -584,17 +584,19 @@ export default function ChatbotInterface() {
       
       <div className="fixed bottom-6 right-6 flex flex-col z-40">
         {/* Chat bubble (when closed) */}
-        <Button
-          onClick={toggleChat}
-          className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          size="icon"
-        >
-          <MessageSquare className="w-8 h-8 text-white" />
-        </Button>
+        {!isChatOpen && (
+          <Button
+            onClick={toggleChat}
+            className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            size="icon"
+          >
+            <MessageSquare className="w-8 h-8 text-white" />
+          </Button>
+        )}
 
         {/* Chat window */}
         {isChatOpen && (
-          <div className="mb-4 w-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden" style={{ height: "500px" }}>
+          <div className="w-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden" style={{ height: "550px" }}>
             {/* Chat header */}
             <div className="bg-primary text-white px-4 py-4 flex justify-between items-center">
               <div className="flex items-center">
@@ -602,15 +604,6 @@ export default function ChatbotInterface() {
                 <h3 className="font-semibold">Support Chat</h3>
               </div>
               <div className="flex items-center">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setShowImageUploadOptions(!showImageUploadOptions)}
-                  className="text-white hover:bg-primary/80 mr-2"
-                  title="Attach Files"
-                >
-                  <Paperclip className="w-5 h-5" />
-                </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -630,34 +623,34 @@ export default function ChatbotInterface() {
 
             {/* Image Upload Options */}
             {showImageUploadOptions && (
-              <div className="border-t border-gray-200 bg-gray-50 p-2">
-                <div className="flex items-center justify-around">
+              <div className="border-t border-gray-200 bg-gray-50 p-3">
+                <div className="grid grid-cols-3 gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1"
+                    className="flex flex-col items-center gap-1 py-2 h-auto"
                   >
                     <Image className="w-4 h-4" />
-                    Upload Image
+                    <span className="text-xs">Upload Image</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={captureScreenshot}
-                    className="flex items-center gap-1"
+                    className="flex flex-col items-center gap-1 py-2 h-auto"
                   >
                     <Camera className="w-4 h-4" />
-                    Screenshot
+                    <span className="text-xs">Screenshot</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowRecorder(true)}
-                    className="flex items-center gap-1"
+                    className="flex flex-col items-center gap-1 py-2 h-auto"
                   >
                     <Video className="w-4 h-4" />
-                    Record Screen
+                    <span className="text-xs">Record Screen</span>
                   </Button>
                 </div>
                 <input
@@ -672,11 +665,25 @@ export default function ChatbotInterface() {
 
             {/* Chat input area */}
             <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
+              <div className="flex items-center mb-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowImageUploadOptions(!showImageUploadOptions)}
+                  className="text-gray-500 hover:text-primary px-1"
+                  title="Attach Files"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+                <span className="text-xs text-gray-500 ml-1">
+                  {showImageUploadOptions ? "Hide options" : "Add attachments"}
+                </span>
+              </div>
               <form className="flex items-center" onSubmit={handleSendMessage}>
                 <Textarea
                   id="message-input"
-                  placeholder="Type your message..."
-                  className="flex-1 border border-gray-300 rounded-l-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[40px] max-h-[120px]"
+                  placeholder="Type your message... (Enter to send)"
+                  className="flex-1 border border-gray-300 rounded-l-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[40px] max-h-[100px]"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={(e) => {
@@ -689,7 +696,7 @@ export default function ChatbotInterface() {
                 />
                 <Button
                   type="submit"
-                  className="bg-primary text-white rounded-r-md px-4 py-2 text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 h-[40px]"
+                  className="bg-primary text-white rounded-r-md px-3 py-2 text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 h-[40px]"
                   disabled={!inputMessage.trim() || chatbotMutation.isPending}
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

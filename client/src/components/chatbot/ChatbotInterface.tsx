@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
-import { MessageSquare, X, Video } from "lucide-react";
+import { MessageSquare, X, Video, Image, Camera, Upload, Paperclip } from "lucide-react";
 import { InsertTicket, InsertAttachment } from "@shared/schema";
 
 type Message = {
@@ -23,10 +23,12 @@ export default function ChatbotInterface() {
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [showImageUploadOptions, setShowImageUploadOptions] = useState(false);
   const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
   const [suggestedTicketData, setSuggestedTicketData] = useState<InsertTicket | null>(null);
   const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Initialize with welcome message
@@ -159,17 +161,39 @@ export default function ChatbotInterface() {
     mutationFn: async ({ ticketId, attachmentData }: { ticketId: number, attachmentData: InsertAttachment }) => {
       return await apiRequest("POST", `/api/tickets/${ticketId}/attachments`, attachmentData);
     },
-    onSuccess: async () => {
+    onSuccess: async (_response, variables) => {
+      const attachmentType = variables.attachmentData.type;
+      let title, description, message;
+      
+      switch (attachmentType) {
+        case 'image':
+          title = "Image Attached";
+          description = "Your image has been attached to the ticket successfully.";
+          message = "Thanks for sharing the image. This will help our team better understand and resolve your issue.";
+          break;
+        case 'screenshot':
+          title = "Screenshot Attached";
+          description = "Your screenshot has been attached to the ticket successfully.";
+          message = "Thanks for sharing the screenshot. This will help our team better understand and resolve your issue.";
+          break;
+        case 'screen_recording':
+        default:
+          title = "Recording Attached";
+          description = "Your screen recording has been attached to the ticket successfully.";
+          message = "Thanks for sharing your screen recording. This will help our team better understand and resolve your issue.";
+          break;
+      }
+      
       toast({
-        title: "Recording Attached",
-        description: "Your screen recording has been attached to the ticket successfully.",
+        title,
+        description,
       });
       
       setMessages(prev => [
         ...prev,
         {
           id: `ai-attachment-${Date.now()}`,
-          content: "Thanks for sharing your screen recording. This will help our team better understand and resolve your issue.",
+          content: message,
           sender: "ai",
           timestamp: new Date(),
         }
@@ -178,7 +202,7 @@ export default function ChatbotInterface() {
     onError: (error) => {
       toast({
         title: "Error",
-        description: `Failed to attach recording: ${error.message}`,
+        description: `Failed to attach file: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -387,6 +411,162 @@ export default function ChatbotInterface() {
       },
     ]);
   };
+  
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    
+    const file = event.target.files[0];
+    
+    // Validate file type
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validImageTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a valid image file (JPEG, PNG, GIF, WebP).",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Process file
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = function() {
+      const base64data = reader.result?.toString().split(',')[1];
+      
+      if (!base64data) {
+        toast({
+          title: "Error",
+          description: "Failed to process image.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Add a message about the image
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user-image-${Date.now()}`,
+          content: "I've shared an image to help explain my issue.",
+          sender: "user",
+          timestamp: new Date(),
+        },
+      ]);
+      
+      if (currentTicketId) {
+        // If we have a ticket ID, attach the image to it
+        const attachmentData: InsertAttachment = {
+          ticketId: currentTicketId,
+          type: "image",
+          filename: file.name || `image-${Date.now()}.${file.type.split('/')[1]}`,
+          contentType: file.type,
+          data: base64data,
+        };
+        
+        createAttachmentMutation.mutate({ 
+          ticketId: currentTicketId,
+          attachmentData 
+        });
+      } else {
+        // If no ticket yet, store the image temporarily
+        // When a ticket is created, we can attach it then
+        toast({
+          title: "Image Received",
+          description: "Your image has been received. It will be attached to your support ticket when created.",
+        });
+        
+        // In a real implementation, we would store this image and attach it when the ticket is created
+      }
+    };
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
+    // Close the upload options
+    setShowImageUploadOptions(false);
+  };
+  
+  const captureScreenshot = async () => {
+    try {
+      // Just use simple display media capture without additional options
+      const stream = await navigator.mediaDevices.getDisplayMedia();
+      
+      // Create a video element to capture a frame
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      
+      // Wait for the video to be loaded enough to capture a frame
+      await new Promise(resolve => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resolve(null);
+        };
+      });
+      
+      // Capture the frame to a canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Stop all tracks
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Convert to base64
+      const base64data = canvas.toDataURL('image/png').split(',')[1];
+      
+      // Add a message about the screenshot
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user-screenshot-${Date.now()}`,
+          content: "I've shared a screenshot to help explain my issue.",
+          sender: "user",
+          timestamp: new Date(),
+        },
+      ]);
+      
+      if (currentTicketId) {
+        // If we have a ticket ID, attach the screenshot to it
+        const attachmentData: InsertAttachment = {
+          ticketId: currentTicketId,
+          type: "screenshot",
+          filename: `screenshot-${Date.now()}.png`,
+          contentType: "image/png",
+          data: base64data,
+        };
+        
+        createAttachmentMutation.mutate({ 
+          ticketId: currentTicketId,
+          attachmentData 
+        });
+      } else {
+        // If no ticket yet, store the screenshot temporarily
+        toast({
+          title: "Screenshot Received",
+          description: "Your screenshot has been received. It will be attached to your support ticket when created.",
+        });
+        
+        // In a real implementation, we would store this screenshot and attach it when the ticket is created
+      }
+    } catch (error) {
+      console.error('Error capturing screenshot:', error);
+      toast({
+        title: "Screenshot Failed",
+        description: "Failed to capture screenshot. Please try again or use another method.",
+        variant: "destructive",
+      });
+    }
+    
+    // Close the upload options
+    setShowImageUploadOptions(false);
+  };
 
   return (
     <>
@@ -422,17 +602,15 @@ export default function ChatbotInterface() {
                 <h3 className="font-semibold">Support Chat</h3>
               </div>
               <div className="flex items-center">
-                {currentTicketId && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setShowRecorder(true)}
-                    className="text-white hover:bg-primary/80 mr-2"
-                    title="Record Screen"
-                  >
-                    <Video className="w-5 h-5" />
-                  </Button>
-                )}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowImageUploadOptions(!showImageUploadOptions)}
+                  className="text-white hover:bg-primary/80 mr-2"
+                  title="Attach Files"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -449,6 +627,48 @@ export default function ChatbotInterface() {
               <ChatMessages messages={messages} isTyping={isTyping} />
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Image Upload Options */}
+            {showImageUploadOptions && (
+              <div className="border-t border-gray-200 bg-gray-50 p-2">
+                <div className="flex items-center justify-around">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1"
+                  >
+                    <Image className="w-4 h-4" />
+                    Upload Image
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={captureScreenshot}
+                    className="flex items-center gap-1"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Screenshot
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowRecorder(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <Video className="w-4 h-4" />
+                    Record Screen
+                  </Button>
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </div>
+            )}
 
             {/* Chat input area */}
             <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">

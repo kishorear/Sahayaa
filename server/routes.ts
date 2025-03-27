@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation } from "./ai";
+import { reloadProvidersFromDatabase } from "./ai/service";
 import type { ChatMessage } from "./ai";
 import { z } from "zod";
 import { 
@@ -123,6 +124,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use AI to classify the ticket
       // Pass tenant context if available (from middleware or user)
       const tenantId = req.tenant?.id || req.user?.tenantId;
+      
+      // Pre-load the AI providers to ensure we're using the latest configuration
+      try {
+        await reloadProvidersFromDatabase(tenantId || 1);
+      } catch (error) {
+        console.warn('Failed to reload AI providers before ticket classification:', error);
+        // Continue with request even if provider reload fails
+      }
+      
       const classification = await classifyTicket(ticketData.title, ticketData.description, tenantId);
       
       const newTicket: InsertTicket = {
@@ -139,6 +149,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Attempt to auto-resolve if AI thinks it can
       if (classification.canAutoResolve) {
+        // Double check that we have the latest AI provider config
+        try {
+          await reloadProvidersFromDatabase(ticket.tenantId || 1);
+        } catch (error) {
+          console.warn('Failed to reload AI providers before auto-resolve attempt:', error);
+        }
+        
         const { resolved, response } = await attemptAutoResolve(ticket.title, ticket.description, [], ticket.tenantId);
         
         // Store AI response as a message
@@ -209,6 +226,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If message is from user and ticket is still active, generate AI response
       if (messageData.sender === "user" && ticket.status !== "resolved") {
+        // Pre-load the AI providers to ensure we're using the latest configuration
+        try {
+          await reloadProvidersFromDatabase(ticket.tenantId || 1);
+        } catch (error) {
+          console.warn('Failed to reload AI providers before generating response:', error);
+          // Continue with request even if provider reload fails
+        }
+        
         const messages = await storage.getMessagesByTicketId(ticketId);
         
         // Convert to the format expected by the AI
@@ -273,7 +298,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get tenant context from middleware or request
-      const tenantId = req.tenant?.id || req.user?.tenantId;
+      const tenantId = req.tenant?.id || req.user?.tenantId || 1; // Default to tenant 1 if not specified
+      
+      // Pre-load the AI providers to ensure we're using the latest configuration
+      try {
+        await reloadProvidersFromDatabase(tenantId);
+      } catch (error) {
+        console.warn('Failed to reload AI providers before chatbot request:', error);
+        // Continue with request even if provider reload fails
+      }
       
       // Handle simple greetings and common phrases without creating a ticket
       const lowerMessage = message.toLowerCase().trim();
@@ -292,6 +325,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let response: ChatbotResponse;
       
       if (initialClassification.canAutoResolve) {
+        // Make sure we have the latest provider config before attempting auto-resolve
+        try {
+          await reloadProvidersFromDatabase(tenantId);
+        } catch (error) {
+          console.warn('Failed to reload AI providers before auto-resolve attempt:', error);
+        }
+        
         // Try to auto-resolve without creating a ticket
         const { resolved, response: aiResponse } = await attemptAutoResolve("New chat request", message, [], tenantId);
         
@@ -320,6 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(200).json(response);
     } catch (error) {
+      console.error('Error processing chatbot request:', error);
       res.status(500).json({ 
         message: "I'm having trouble processing your request right now. Please try again shortly."
       });

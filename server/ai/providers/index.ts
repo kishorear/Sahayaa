@@ -4,6 +4,32 @@ import { GeminiProvider } from './GeminiProvider';
 import { AnthropicProvider } from './AnthropicProvider';
 import { BedrockProvider } from './BedrockProvider';
 import { CustomProvider } from './CustomProvider';
+import { AiProvider } from '@shared/schema';
+
+/**
+ * Convert database provider model to provider config
+ */
+function convertDbProviderToConfig(provider: AiProvider): AIProviderConfig {
+  // Ensure provider type is one of the valid types before conversion
+  // This prevents runtime type errors from invalid data
+  const validTypes = ['openai', 'gemini', 'anthropic', 'aws-bedrock', 'custom'];
+  const providerType = validTypes.includes(provider.type) 
+    ? provider.type as 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'custom'
+    : 'custom'; // Fallback to custom if type is invalid
+    
+  return {
+    type: providerType,
+    apiKey: provider.apiKey || undefined,
+    baseUrl: provider.baseUrl || undefined,
+    model: provider.model || undefined,
+    settings: provider.settings as Record<string, any>,
+    isPrimary: Boolean(provider.isPrimary),
+    useForClassification: Boolean(provider.useForClassification),
+    useForAutoResolve: Boolean(provider.useForAutoResolve),
+    useForChat: Boolean(provider.useForChat),
+    useForEmail: Boolean(provider.useForEmail),
+  };
+}
 
 /**
  * Factory class to create and manage AI providers
@@ -32,11 +58,12 @@ export class AIProviderFactory {
     this.configs.set(tenantId, configs);
     
     // Clear existing providers for this tenant
-    for (const [key] of this.providers.entries()) {
-      if (key.startsWith(`${tenantId}:`)) {
+    const tenantPrefix = `${tenantId}:`;
+    Array.from(this.providers.keys()).forEach(key => {
+      if (key.startsWith(tenantPrefix)) {
         this.providers.delete(key);
       }
-    }
+    });
   }
   
   /**
@@ -246,5 +273,28 @@ export class AIProviderFactory {
    */
   static clearProviders(): void {
     this.providers.clear();
+  }
+  
+  /**
+   * Load AI provider configurations from database
+   * 
+   * @param tenantId Tenant ID to load providers for
+   * @param providers Array of provider configurations from database
+   */
+  static loadProvidersFromDatabase(tenantId: number, providers: AiProvider[]): void {
+    if (!providers || providers.length === 0) {
+      console.log(`No AI providers found in database for tenant ${tenantId}`);
+      return;
+    }
+    
+    // Convert database models to provider configs
+    const configs = providers
+      .filter(p => p.enabled)
+      .map(convertDbProviderToConfig);
+    
+    console.log(`Loaded ${configs.length} AI providers from database for tenant ${tenantId}`);
+    
+    // Set the configurations
+    this.setProviderConfigs(tenantId, configs);
   }
 }

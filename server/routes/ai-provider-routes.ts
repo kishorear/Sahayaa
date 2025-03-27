@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, Express } from "express";
 import { storage } from "../storage";
 import { AiProviderTypeEnum, insertAiProviderSchema } from "@shared/schema";
 import { getAIProviderStatus } from "../ai/service";
+import { AIProviderFactory } from "../ai/providers";
 
 declare global {
   namespace Express {
@@ -14,9 +15,119 @@ declare global {
 }
 
 /**
+ * Load AI provider configurations from database
+ * 
+ * @param specificTenantId Optional tenant ID to load providers for (loads all tenants if not specified)
+ */
+export async function loadAiProviders(specificTenantId?: number) {
+  try {
+    if (specificTenantId) {
+      // Load providers for specific tenant
+      try {
+        const providers = await storage.getAiProviders(specificTenantId);
+        
+        // Initialize the factory with these configurations
+        AIProviderFactory.loadProvidersFromDatabase(specificTenantId, providers);
+        
+        console.log(`Loaded ${providers.length} AI providers from database for tenant ${specificTenantId}`);
+      } catch (tenantError) {
+        console.error(`Error loading providers for tenant ${specificTenantId}:`, tenantError);
+        
+        // Try loading default providers for this tenant as fallback
+        try {
+          // Get OpenAI provider from environment
+          if (process.env.OPENAI_API_KEY) {
+            console.log(`Setting up default OpenAI provider for tenant ${specificTenantId} from environment`);
+            AIProviderFactory.addProviderConfig(specificTenantId, {
+              id: 0,
+              tenantId: specificTenantId,
+              name: "Default OpenAI",
+              type: "openai",
+              apiKey: process.env.OPENAI_API_KEY,
+              options: { model: "gpt-4o" },
+              isPrimary: true,
+              isEnabled: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+          }
+        } catch (fallbackError) {
+          console.error(`Failed to set up fallback providers for tenant ${specificTenantId}:`, fallbackError);
+        }
+      }
+    } else {
+      // Try to load providers for all tenants, but fall back to default tenant if there's an error
+      try {
+        const tenants = await storage.getAllTenants();
+        
+        for (const tenant of tenants) {
+          try {
+            const providers = await storage.getAiProviders(tenant.id);
+            
+            // Initialize the factory with these configurations
+            AIProviderFactory.loadProvidersFromDatabase(tenant.id, providers);
+            
+            console.log(`Loaded ${providers.length} AI providers from database for tenant ${tenant.id}`);
+          } catch (tenantError) {
+            console.error(`Error loading providers for tenant ${tenant.id}:`, tenantError);
+          }
+        }
+        
+        // Always include default tenant (1) in case it wasn't in the list
+        if (!tenants.some(t => t.id === 1)) {
+          try {
+            const providers = await storage.getAiProviders(1);
+            AIProviderFactory.loadProvidersFromDatabase(1, providers);
+          } catch (defaultTenantError) {
+            console.error('Error loading providers for default tenant:', defaultTenantError);
+          }
+        }
+      } catch (tenantsError) {
+        console.error('Error fetching tenants:', tenantsError);
+        
+        // If we can't fetch tenants, try to load providers just for tenant ID 1
+        try {
+          const providers = await storage.getAiProviders(1);
+          AIProviderFactory.loadProvidersFromDatabase(1, providers);
+          console.log(`Loaded ${providers.length} AI providers for default tenant (ID: 1)`);
+        } catch (defaultProviderError) {
+          console.error('Error loading providers for default tenant:', defaultProviderError);
+          
+          // Last resort: Try setting up a default provider from environment
+          try {
+            // Get OpenAI provider from environment
+            if (process.env.OPENAI_API_KEY) {
+              console.log('Setting up default OpenAI provider from environment');
+              AIProviderFactory.addProviderConfig(1, {
+                id: 0,
+                tenantId: 1,
+                name: "Default OpenAI",
+                type: "openai",
+                apiKey: process.env.OPENAI_API_KEY,
+                options: { model: "gpt-4o" },
+                isPrimary: true,
+                isEnabled: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              });
+            }
+          } catch (fallbackError) {
+            console.error('Failed to set up fallback providers:', fallbackError);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load AI providers from database:', error);
+  }
+}
+
+/**
  * Register routes for AI Provider management
  */
 export function registerAiProviderRoutes(app: Express, requireAuth: any, requireRole: any) {
+  // Load AI providers at startup
+  loadAiProviders();
   /**
    * Get all AI providers for the current tenant
    */
@@ -60,10 +171,7 @@ export function registerAiProviderRoutes(app: Express, requireAuth: any, require
         tenantId: req.user!.tenantId
       });
       
-      // Ensure type is valid
-      if (!Object.values(AiProviderTypeEnum.Values).includes(validatedData.type)) {
-        return res.status(400).json({ error: "Invalid provider type" });
-      }
+      // Type is already validated by zod schema
       
       // If setting as primary, update all other providers to not be primary
       if (validatedData.isPrimary) {
@@ -76,6 +184,10 @@ export function registerAiProviderRoutes(app: Express, requireAuth: any, require
       }
       
       const newProvider = await storage.createAiProvider(validatedData);
+      
+      // Reload AI provider configurations for this tenant
+      await loadAiProviders(req.user!.tenantId);
+      
       res.status(201).json(newProvider);
     } catch (error) {
       console.error("Error creating AI provider:", error);
@@ -107,6 +219,10 @@ export function registerAiProviderRoutes(app: Express, requireAuth: any, require
       
       // Update the provider
       const updatedProvider = await storage.updateAiProvider(providerId, req.body, req.user!.tenantId);
+      
+      // Reload AI provider configurations for this tenant
+      await loadAiProviders(req.user!.tenantId);
+      
       res.json(updatedProvider);
     } catch (error) {
       console.error("Error updating AI provider:", error);
@@ -134,6 +250,9 @@ export function registerAiProviderRoutes(app: Express, requireAuth: any, require
       const deleted = await storage.deleteAiProvider(providerId, req.user!.tenantId);
       
       if (deleted) {
+        // Reload AI provider configurations for this tenant
+        await loadAiProviders(req.user!.tenantId);
+        
         res.json({ success: true });
       } else {
         res.status(500).json({ error: "Failed to delete AI provider" });

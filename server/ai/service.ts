@@ -233,11 +233,41 @@ export async function summarizeConversation(
 }
 
 /**
+ * Load AI providers for a tenant from the database
+ * Similar to the function in routes, but kept here to avoid circular dependencies
+ */
+export async function reloadProvidersFromDatabase(tenantId: number): Promise<void> {
+  try {
+    // Import storage directly to avoid circular dependencies
+    const { storage } = await import('../storage');
+    
+    // Get providers for this tenant
+    const providers = await storage.getAiProviders(tenantId);
+    
+    // Initialize the factory with these configurations
+    AIProviderFactory.loadProvidersFromDatabase(tenantId, providers);
+    
+    console.log(`Reloaded ${providers.length} AI providers from database for tenant ${tenantId}`);
+  } catch (error) {
+    console.error(`Failed to reload AI providers for tenant ${tenantId}:`, error);
+  }
+}
+
+/**
  * Get the status of all configured AI providers for a tenant
  * 
  * @param tenantId Tenant ID
  * @returns Status of each provider
  */
 export async function getAIProviderStatus(tenantId: number = 1): Promise<Record<string, boolean>> {
-  return await AIProviderFactory.checkAllProviders(tenantId);
+  try {
+    // Reload providers before checking - this ensures we have the latest configurations
+    await reloadProvidersFromDatabase(tenantId);
+    
+    // Now check the providers
+    return await AIProviderFactory.checkAllProviders(tenantId);
+  } catch (error) {
+    console.error('Error checking AI provider status:', error);
+    return {};
+  }
 }

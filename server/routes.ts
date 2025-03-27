@@ -340,11 +340,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           action: resolved ? { type: 'resolve_ticket', data: null } : undefined
         };
       } else {
-        // Need to create a ticket
+        // Suggest creating a ticket (ask for user confirmation first)
         response = {
-          message: "I'll need to create a support ticket for this issue. Our team will follow up with you.",
+          message: "It looks like this issue needs our support team's assistance. I can help you create a support ticket for faster resolution.",
           action: {
-            type: 'create_ticket',
+            type: 'suggest_ticket',
             data: {
               title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
               description: message,

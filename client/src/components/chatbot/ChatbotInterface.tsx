@@ -24,6 +24,8 @@ export default function ChatbotInterface() {
   const [isTyping, setIsTyping] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
+  const [suggestedTicketData, setSuggestedTicketData] = useState<InsertTicket | null>(null);
+  const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -69,7 +71,26 @@ export default function ChatbotInterface() {
       // Handle actions returned by the API
       if (data.action) {
         switch (data.action.type) {
+          case "suggest_ticket":
+            // Just store the ticket data for later confirmation
+            // Ask the user if they want to proceed with ticket creation
+            setMessages(prev => [
+              ...prev,
+              {
+                id: `ai-confirm-${Date.now()}`,
+                content: "Would you like me to create a support ticket for this issue? Please reply with 'yes' or 'no'.",
+                sender: "ai",
+                timestamp: new Date(),
+              }
+            ]);
+            
+            // Store ticket data in a ref or state
+            setSuggestedTicketData(data.action.data as InsertTicket);
+            setAwaitingTicketConfirmation(true);
+            break;
+            
           case "create_ticket":
+            // Legacy direct ticket creation (we'll update the backend to use suggest_ticket instead)
             const ticketData = data.action.data as InsertTicket;
             createTicketMutation.mutate(ticketData);
             break;
@@ -175,18 +196,96 @@ export default function ChatbotInterface() {
     
     if (!inputMessage.trim()) return;
     
+    const message = inputMessage.toLowerCase().trim();
+    
+    // Handle ticket confirmation if we're awaiting it
+    if (suggestedTicketData) {
+      // Add user message to chat
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          content: inputMessage,
+          sender: "user",
+          timestamp: new Date(),
+        },
+      ]);
+      
+      // Check if user has confirmed creating a ticket
+      if (message === 'yes' || message.includes('yes') || message.includes('create ticket') || message.includes('submit ticket')) {
+        // User confirmed, create the ticket
+        createTicketMutation.mutate(suggestedTicketData);
+        
+        // Reset confirmation state
+        setSuggestedTicketData(null);
+        setAwaitingTicketConfirmation(false);
+        
+        // Add AI confirmation message
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `ai-creating-${Date.now()}`,
+            content: "I'm creating a support ticket for you now...",
+            sender: "ai",
+            timestamp: new Date(),
+          },
+        ]);
+      } else if (message === 'no' || message.includes('no') || message.includes("don't create") || message.includes('do not create')) {
+        // User declined, reset the suggested ticket data
+        setSuggestedTicketData(null);
+        setAwaitingTicketConfirmation(false);
+        
+        // Add AI acknowledgment
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `ai-cancel-${Date.now()}`,
+            content: "I understand. I won't create a ticket. Is there anything else I can help you with?",
+            sender: "ai",
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        // The user's response was unclear, ask again
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `ai-clarify-${Date.now()}`,
+            content: "I'm not sure if you want me to create a support ticket. Please reply with 'yes' or 'no'.",
+            sender: "ai",
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      
+      // Clear input
+      setInputMessage("");
+      return;
+    }
+    
     // Check if message contains keywords for screen recording
     const recordingKeywords = ['record', 'screen', 'show', 'yes', 'share'];
-    const message = inputMessage.toLowerCase();
     
     if (currentTicketId && recordingKeywords.some(keyword => message.includes(keyword))) {
       // If user wants to record the screen and we have a ticket
       setShowRecorder(true);
       setInputMessage("");
+      
+      // Add user message to chat first
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          content: inputMessage,
+          sender: "user",
+          timestamp: new Date(),
+        },
+      ]);
+      
       return;
     }
     
-    // Add user message to chat
+    // Regular message flow - add user message to chat
     setMessages((prev) => [
       ...prev,
       {

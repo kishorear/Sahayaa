@@ -1,7 +1,7 @@
 import { apiRequest } from "./queryClient";
 
 export type ChatbotAction = {
-  type: 'create_ticket' | 'resolve_ticket';
+  type: 'create_ticket' | 'resolve_ticket' | 'suggest_ticket';
   data: any;
 };
 

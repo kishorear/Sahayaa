@@ -161,7 +161,7 @@ export type TicketCategoryDistribution = {
 export type ChatbotResponse = {
   message: string;
   action?: {
-    type: 'create_ticket' | 'resolve_ticket' | 'update_ticket';
+    type: 'create_ticket' | 'resolve_ticket' | 'update_ticket' | 'suggest_ticket';
     data: any;
   };
 };

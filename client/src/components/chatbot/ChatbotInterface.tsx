@@ -49,8 +49,8 @@ export default function ChatbotInterface() {
   }, [messages]);
 
   const chatbotMutation = useMutation({
-    mutationFn: async (message: string) => {
-      return await apiRequest("POST", "/api/chatbot", { message });
+    mutationFn: async (payload: { message: string, messageHistory: Message[] }) => {
+      return await apiRequest("POST", "/api/chatbot", payload);
     },
     onSuccess: async (response) => {
       const data = await response.json();
@@ -299,8 +299,19 @@ export default function ChatbotInterface() {
     // Show typing indicator
     setIsTyping(true);
     
-    // Send to API
-    chatbotMutation.mutate(inputMessage);
+    // Send to API with message history
+    // Filter out the AI confirmation messages to keep only the conversation
+    const messageHistory = messages.filter(msg => 
+      !msg.id.includes('confirm') && 
+      !msg.id.includes('clarify') && 
+      !msg.id.includes('creating') &&
+      !msg.id.includes('cancel')
+    );
+    
+    chatbotMutation.mutate({
+      message: inputMessage,
+      messageHistory: messageHistory
+    });
     
     // Clear input
     setInputMessage("");

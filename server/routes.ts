@@ -3,7 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation } from "./ai";
 import { reloadProvidersFromDatabase } from "./ai/service";
+import { AIProviderFactory } from "./ai/providers";
 import type { ChatMessage } from "./ai";
+import { buildAIContext } from "./data-source-service";
 import { z } from "zod";
 import { 
   insertTicketSchema, 
@@ -291,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CHATBOT API - For direct interactions without creating a ticket first
   app.post("/api/chatbot", async (req, res) => {
     try {
-      const { message } = req.body;
+      const { message, messageHistory = [] } = req.body;
       
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
@@ -308,32 +310,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue with request even if provider reload fails
       }
       
-      // Handle simple greetings and common phrases without creating a ticket
+      // Convert client message history to ChatMessage format
+      const chatHistory: ChatMessage[] = messageHistory.map((msg: any) => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+      
+      // Handle simple greetings only if it's the first message in the conversation
       const lowerMessage = message.toLowerCase().trim();
       const isSimpleGreeting = /^(hi|hello|hey|greetings|howdy|hola|what's up|sup|good (morning|afternoon|evening)|how are you|how's it going|how is it going|how are things)[\s\?\!\.]*$/i.test(lowerMessage);
       
-      if (isSimpleGreeting) {
+      if (isSimpleGreeting && chatHistory.length === 0) {
         return res.status(200).json({
           message: "Hello! I'm your AI support assistant. How can I help you today?",
           action: undefined
         });
       }
       
-      // First determine if we need to create a ticket
+      // Get the appropriate AI provider for chat
+      const provider = AIProviderFactory.getProviderForOperation(tenantId, 'chat');
+      
+      if (!provider) {
+        return res.status(500).json({ 
+          message: "I'm having trouble connecting to our AI service right now. Please try again shortly."
+        });
+      }
+      
+      // If this is not a first message, use the full conversation context with the AI provider
+      if (chatHistory.length > 0) {
+        try {
+          // Get knowledge context
+          const knowledgeContext = await buildAIContext(message, tenantId);
+          
+          // Create a system message for the AI
+          const systemPrompt = 
+            `You are a helpful AI customer support assistant. Provide useful, accurate information to the user's questions.
+             Be concise but thorough in your explanations. If you don't know something, say so clearly rather than making up information.
+             If the user's question is complex or can't be resolved through chat, offer to create a support ticket to connect them with our support team.`;
+          
+          // Add the current message to the history
+          const allMessages = [
+            ...chatHistory,
+            { role: 'user', content: message }
+          ];
+          
+          // Get AI response
+          const aiResponse = await provider.generateChatResponse(allMessages, knowledgeContext, systemPrompt);
+          
+          // For complex issues not automatically handled in the chat flow, suggest creating a ticket
+          const needsTicket = aiResponse.toLowerCase().includes("support ticket") || 
+                             aiResponse.toLowerCase().includes("contact support") ||
+                             aiResponse.toLowerCase().includes("create a ticket");
+          
+          if (needsTicket) {
+            // Classify message to get appropriate category/complexity
+            const classification = await classifyTicket("New chat request", message, tenantId);
+            
+            return res.status(200).json({
+              message: aiResponse,
+              action: {
+                type: 'suggest_ticket',
+                data: {
+                  title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+                  description: message,
+                  category: classification.category,
+                  complexity: classification.complexity,
+                  assignedTo: classification.assignedTo,
+                  aiNotes: classification.aiNotes,
+                  tenantId: tenantId
+                }
+              }
+            });
+          }
+          
+          // Standard response with no action
+          return res.status(200).json({
+            message: aiResponse,
+            action: undefined
+          });
+        } catch (error) {
+          console.error('Error processing conversation with AI:', error);
+          // Fall through to legacy flow on error
+        }
+      }
+      
+      // Legacy flow for first messages or if conversation handling fails
       const initialClassification = await classifyTicket("New chat request", message, tenantId);
       
       let response: ChatbotResponse;
       
       if (initialClassification.canAutoResolve) {
-        // Make sure we have the latest provider config before attempting auto-resolve
-        try {
-          await reloadProvidersFromDatabase(tenantId);
-        } catch (error) {
-          console.warn('Failed to reload AI providers before auto-resolve attempt:', error);
-        }
-        
         // Try to auto-resolve without creating a ticket
-        const { resolved, response: aiResponse } = await attemptAutoResolve("New chat request", message, [], tenantId);
+        const { resolved, response: aiResponse } = await attemptAutoResolve("New chat request", message, chatHistory, tenantId);
         
         response = {
           message: aiResponse,

@@ -259,24 +259,57 @@ export default function ChatbotInterface() {
       !msg.id.includes('cancel')
     );
     
-    // Find the first user message which likely describes their issue
-    const firstUserMessage = conversationMessages.find(msg => msg.sender === 'user');
-    if (firstUserMessage) {
-      // Limit to a reasonable length (60 chars) and add ellipsis if needed
-      const content = firstUserMessage.content;
-      const maxLength = 60;
-      
-      if (content.length <= maxLength) {
-        return content;
+    // Combine all messages to analyze the conversation
+    const fullConversation = conversationMessages
+      .map(msg => msg.content)
+      .join(" ");
+    
+    // Common issue keywords to look for
+    const errorKeywords = [
+      "error", "issue", "problem", "bug", "crash", "fail", "not working",
+      "broken", "stuck", "down", "unavailable", "timeout", "cannot access"
+    ];
+    
+    // Look for error codes (like HTTP status codes)
+    const errorCodeMatch = fullConversation.match(/(\b[45]\d{2}\b|error code)/i);
+    
+    // Look for specific error keywords
+    let foundKeyword = "";
+    for (const keyword of errorKeywords) {
+      if (fullConversation.toLowerCase().includes(keyword)) {
+        foundKeyword = keyword;
+        break;
       }
-      
-      // Try to find sentence boundaries for a more natural cut-off
-      const firstSentence = content.split(/[.!?]/)[0];
-      if (firstSentence && firstSentence.length + 1 < maxLength) {
-        return firstSentence + ".";
+    }
+    
+    // Construct a descriptive title
+    if (errorCodeMatch) {
+      // If we found an error code like 500, 404, etc.
+      return `${errorCodeMatch[0]} Error - ${foundKeyword ? foundKeyword.charAt(0).toUpperCase() + foundKeyword.slice(1) : "Server"} Issue`;
+    } else if (foundKeyword) {
+      // If we found a keyword but no error code
+      return `${foundKeyword.charAt(0).toUpperCase() + foundKeyword.slice(1)} Issue`;
+    }
+    
+    // Try to find a good user message with the issue
+    const userMessages = conversationMessages.filter(msg => msg.sender === 'user');
+    for (const msg of userMessages) {
+      // Skip very short messages like "hi" or "hello"
+      if (msg.content.length > 5 && !["hi", "hello", "hey"].includes(msg.content.toLowerCase())) {
+        const content = msg.content;
+        const maxLength = 60;
+        
+        // Try to find sentence boundaries for a more natural title
+        const firstSentence = content.split(/[.!?]/)[0];
+        if (firstSentence && firstSentence.length + 1 < maxLength) {
+          return firstSentence;
+        }
+        
+        // Truncate if too long
+        return content.length > maxLength
+          ? content.substring(0, maxLength) + "..."
+          : content;
       }
-      
-      return content.substring(0, maxLength) + "...";
     }
     
     return "Support Request"; // Fallback title

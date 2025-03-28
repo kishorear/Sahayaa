@@ -195,10 +195,37 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       
       // Create a temporary service specifically for testing with the provided credentials
       if (type === 'jira') {
+        console.log('========= JIRA TEST CONNECTION =========');
         // Log the request body for debugging
-        console.log('Jira test connection request body:', req.body);
+        console.log('Jira test connection request body:', JSON.stringify(req.body));
         
-        // Parse and validate the request body
+        // Directly check all required fields to better diagnose the issue
+        if (!req.body.baseUrl) {
+          return res.status(400).json({ 
+            message: 'Invalid configuration', 
+            errors: [{ path: ['baseUrl'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+          });
+        }
+        if (!req.body.email) {
+          return res.status(400).json({ 
+            message: 'Invalid configuration', 
+            errors: [{ path: ['email'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+          });
+        }
+        if (!req.body.apiToken) {
+          return res.status(400).json({ 
+            message: 'Invalid configuration', 
+            errors: [{ path: ['apiToken'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+          });
+        }
+        if (!req.body.projectKey) {
+          return res.status(400).json({ 
+            message: 'Invalid configuration', 
+            errors: [{ path: ['projectKey'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+          });
+        }
+        
+        // All fields are present, try parsing with zod
         try {
           const testConfig = jiraConfigSchema.parse(req.body);
           console.log('Parsed Jira configuration:', {
@@ -222,8 +249,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
           const connected = await tempJiraService.verifyConnection();
           
           if (connected) {
+            console.log('Jira connection successful!');
             res.status(200).json({ message: `Successfully connected to Jira` });
           } else {
+            console.log('Jira connection failed');
             res.status(400).json({ message: `Could not connect to Jira. Please check your configuration.` });
           }
         } catch (validationError) {

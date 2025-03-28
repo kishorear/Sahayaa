@@ -215,6 +215,70 @@ export default function ChatbotInterface() {
     }
   };
 
+  // Function to generate a comprehensive summary of the conversation
+  const generateConversationSummary = (messages: Message[]) => {
+    // Filter out UI-specific messages
+    const conversationMessages = messages.filter(msg => 
+      !msg.id.includes('confirm') && 
+      !msg.id.includes('clarify') && 
+      !msg.id.includes('creating') &&
+      !msg.id.includes('cancel')
+    );
+    
+    // Start building the summary
+    let summary = "## Issue Summary\n\n";
+    
+    // Extract initial user query (first message from the user)
+    const firstUserMessage = conversationMessages.find(msg => msg.sender === 'user');
+    if (firstUserMessage) {
+      summary += `**Initial Issue:** ${firstUserMessage.content}\n\n`;
+    }
+    
+    // Summarize the conversation
+    summary += "## Conversation History\n\n";
+    
+    conversationMessages.forEach(msg => {
+      const role = msg.sender === 'user' ? 'User' : 'AI Support';
+      summary += `**${role}:** ${msg.content}\n\n`;
+    });
+    
+    // Add steps tried section
+    summary += "## Troubleshooting Steps Attempted\n\n";
+    
+    // Extract suggestions from AI responses
+    const aiMessages = conversationMessages.filter(msg => msg.sender === 'ai');
+    let stepsFound = false;
+    
+    aiMessages.forEach(msg => {
+      // Look for messages that contain instructions or suggestions
+      if (
+        msg.content.includes("try") || 
+        msg.content.includes("steps") || 
+        msg.content.includes("follow") ||
+        msg.content.includes("suggest") ||
+        msg.content.includes("recommend") ||
+        msg.content.includes("please") ||
+        msg.content.includes("could") ||
+        msg.content.includes("would") ||
+        msg.content.toLowerCase().includes("you should") ||
+        msg.content.toLowerCase().includes("you can")
+      ) {
+        summary += `- ${msg.content}\n\n`;
+        stepsFound = true;
+      }
+    });
+    
+    if (!stepsFound) {
+      summary += "No specific troubleshooting steps were identified in the conversation.\n\n";
+    }
+    
+    // Add resolution status
+    summary += "## Resolution Status\n\n";
+    summary += "The issue could not be resolved through the chat interface and requires further assistance from the support team.\n\n";
+    
+    return summary;
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -237,8 +301,17 @@ export default function ChatbotInterface() {
       
       // Check if user has confirmed creating a ticket
       if (message === 'yes' || message.includes('yes') || message.includes('create ticket') || message.includes('submit ticket')) {
-        // User confirmed, create the ticket
-        createTicketMutation.mutate(suggestedTicketData);
+        // Generate a comprehensive summary of the conversation
+        const conversationSummary = generateConversationSummary(messages);
+        
+        // Update the ticket description with the conversation summary
+        const enhancedTicketData = {
+          ...suggestedTicketData,
+          description: conversationSummary
+        };
+        
+        // User confirmed, create the ticket with the enhanced description
+        createTicketMutation.mutate(enhancedTicketData);
         
         // Reset confirmation state
         setSuggestedTicketData(null);
@@ -249,7 +322,7 @@ export default function ChatbotInterface() {
           ...prev,
           {
             id: `ai-creating-${Date.now()}`,
-            content: "I'm creating a support ticket for you now...",
+            content: "I'm creating a support ticket for you now with a detailed summary of our conversation...",
             sender: "ai",
             timestamp: new Date(),
           },

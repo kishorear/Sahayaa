@@ -169,7 +169,9 @@ export default function IntegrationSettings() {
   // Test connection mutations
   const testZendeskMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/integrations/zendesk/test");
+      // Use the current form values to test the connection
+      const formValues = zendeskForm.getValues();
+      const res = await apiRequest("POST", "/api/integrations/zendesk/test", formValues);
       return await res.json();
     },
     onSuccess: () => {
@@ -190,7 +192,9 @@ export default function IntegrationSettings() {
 
   const testJiraMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/integrations/jira/test");
+      // Use the current form values to test the connection
+      const formValues = jiraForm.getValues();
+      const res = await apiRequest("POST", "/api/integrations/jira/test", formValues);
       return await res.json();
     },
     onSuccess: () => {

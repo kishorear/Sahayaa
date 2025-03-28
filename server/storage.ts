@@ -52,6 +52,7 @@ export interface IStorage {
   getUsersByTenantId(tenantId: number): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
+  deleteUser(id: number): Promise<void>;
   getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined>;
   
   // Identity provider operations
@@ -665,6 +666,27 @@ export class MemStorage implements IStorage {
     console.log(`Cache entries cleared for user ID: ${id}`);
     
     return updatedUser;
+  }
+  
+  async deleteUser(id: number): Promise<void> {
+    const user = this.users.get(id);
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    
+    // Delete the user from the main Map
+    this.users.delete(id);
+    
+    // Clear any cached entries
+    this.userCache.delete(`user:${id}`);
+    
+    // Clear username cache entries
+    if (user.username) {
+      const cacheKey = user.tenantId ? `${user.username}:${user.tenantId}` : user.username;
+      this.userCache.delete(cacheKey);
+    }
+    
+    console.log(`User with ID ${id} has been deleted`);
   }
   
   async getUserBySsoId(provider: string, providerId: string, tenantId?: number): Promise<User | undefined> {
@@ -2186,6 +2208,37 @@ export class DatabaseStorage implements IStorage {
       } as User;
     } catch (error) {
       console.error("Error updating user:", error);
+      throw error;
+    }
+  }
+  
+  async deleteUser(id: number): Promise<void> {
+    try {
+      // First, ensure the user exists
+      const existingUserResult = await db.select().from(users).where(eq(users.id, id));
+      if (existingUserResult.length === 0) {
+        throw new Error(`User with id ${id} not found`);
+      }
+      
+      const existingUser = existingUserResult[0];
+      
+      // Delete the user from the database
+      await db.delete(users).where(eq(users.id, id));
+      
+      // Clear cache entries for this user
+      this.userCache.delete(`user:${id}`);
+      
+      // Clear username cache entries
+      if (existingUser.username) {
+        const cacheKey = existingUser.tenantId 
+          ? `username:${existingUser.username}:${existingUser.tenantId}` 
+          : `username:${existingUser.username}`;
+        this.userCache.delete(cacheKey);
+      }
+      
+      console.log(`User with ID ${id} has been deleted`);
+    } catch (error) {
+      console.error('Error deleting user:', error);
       throw error;
     }
   }

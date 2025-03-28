@@ -19,6 +19,16 @@ export class JiraService {
   private enabled: boolean;
 
   constructor(config: JiraConfig) {
+    if (!config.baseUrl || !config.email || !config.apiToken || !config.projectKey) {
+      console.error("Invalid Jira configuration - missing required fields:", {
+        baseUrl: config.baseUrl ? "provided" : "missing",
+        email: config.email ? "provided" : "missing",
+        apiToken: config.apiToken ? "provided" : "missing",
+        projectKey: config.projectKey ? "provided" : "missing"
+      });
+      throw new Error("Invalid Jira configuration - missing required fields");
+    }
+
     console.log("Initializing Jira Service with config:", {
       baseUrl: config.baseUrl,
       email: config.email,
@@ -221,35 +231,88 @@ export class JiraService {
       console.log(`Attempting to verify Jira connection to: ${this.apiUrl}/myself`);
       console.log(`Using credentials: ${this.auth.username}, token: [REDACTED]`);
       
+      // First validate that we have all required fields
+      if (!this.apiUrl || !this.auth.username || !this.auth.password || !this.projectKey) {
+        console.error("Missing required Jira configuration:", {
+          apiUrl: !!this.apiUrl,
+          username: !!this.auth.username,
+          password: !!this.auth.password,
+          projectKey: !!this.projectKey
+        });
+        return false;
+      }
+      
+      // Use basic authentication with the API token
       const response = await axios.get(`${this.apiUrl}/myself`, {
         auth: this.auth,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout for connection issues
+      });
+      
+      // Verify we got a successful response with user data
+      if (response.status === 200 && response.data) {
+        console.log("Jira connection successful, authenticated as:", {
+          displayName: response.data.displayName || 'Unknown',
+          accountId: response.data.accountId || 'Unknown',
+          emailAddress: response.data.emailAddress || 'Unknown'
+        });
+        
+        // Now verify we can access the project
+        try {
+          const projectResponse = await axios.get(`${this.apiUrl}/project/${this.projectKey}`, {
+            auth: this.auth,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          console.log(`Project ${this.projectKey} exists and is accessible:`, {
+            name: projectResponse.data.name || 'Unknown',
+            key: projectResponse.data.key || 'Unknown'
+          });
+          
+          return true;
+        } catch (projectError) {
+          console.error(`Error accessing project ${this.projectKey}:`, 
+            projectError.response?.status || projectError.message);
+          console.error("Make sure the project key is correct and the user has access to it");
+          return false;
         }
-      });
+      }
       
-      console.log("Jira connection successful, response:", {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data ? 'Data received' : 'No data'
-      });
-      
-      return true;
+      return false;
     } catch (error) {
       console.error("Error verifying Jira connection:", error.message);
+      
+      // Handle different error types for better debugging
       if (error.response) {
-        console.error("Response details:", {
+        // The request was made and the server responded with a status code outside of 2xx
+        console.error("Response error details:", {
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data
         });
+        
+        // Provide more specific error messages based on status code
+        if (error.response.status === 401) {
+          console.error("Authentication failed. Please check your email and API token.");
+        } else if (error.response.status === 404) {
+          console.error("The URL is invalid or the resource doesn't exist. Check your base URL.");
+        } else if (error.response.status === 403) {
+          console.error("Permission denied. Your API token may not have the necessary permissions.");
+        }
       } else if (error.request) {
-        console.error("Request made but no response received:", error.request);
+        // The request was made but no response was received
+        console.error("No response received from server. Check your network connection and Jira base URL.");
       } else {
+        // Something happened in setting up the request
         console.error("Error setting up request:", error.message);
       }
-      console.error("Complete error:", error);
+      
       return false;
     }
   }

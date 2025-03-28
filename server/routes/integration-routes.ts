@@ -126,6 +126,19 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         config = zendeskConfigSchema.parse(req.body);
       } else if (type === 'jira') {
         config = jiraConfigSchema.parse(req.body);
+        
+        // Validate required fields
+        if (!config.baseUrl || !config.email || !config.apiToken || !config.projectKey) {
+          return res.status(400).json({ 
+            message: 'Missing required fields for Jira integration',
+            errors: [
+              { field: 'baseUrl', present: !!config.baseUrl },
+              { field: 'email', present: !!config.email },
+              { field: 'apiToken', present: !!config.apiToken },
+              { field: 'projectKey', present: !!config.projectKey }
+            ]
+          });
+        }
       } else {
         return res.status(400).json({ message: 'Invalid integration type' });
       }
@@ -201,7 +214,21 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         // Parse and validate the request body
         try {
           const testConfig = jiraConfigSchema.parse(req.body);
-          console.log('Parsed Jira configuration:', {
+          
+          // Validate required fields before proceeding
+          if (!testConfig.baseUrl || !testConfig.email || !testConfig.apiToken || !testConfig.projectKey) {
+            return res.status(400).json({ 
+              message: 'Missing required fields for Jira integration',
+              errors: [
+                { field: 'baseUrl', present: !!testConfig.baseUrl },
+                { field: 'email', present: !!testConfig.email },
+                { field: 'apiToken', present: !!testConfig.apiToken },
+                { field: 'projectKey', present: !!testConfig.projectKey }
+              ]
+            });
+          }
+          
+          console.log('Testing Jira connection with:', {
             baseUrl: testConfig.baseUrl,
             email: testConfig.email,
             apiToken: testConfig.apiToken ? '[REDACTED]' : 'missing',
@@ -224,11 +251,25 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
           if (connected) {
             res.status(200).json({ message: `Successfully connected to Jira` });
           } else {
-            res.status(400).json({ message: `Could not connect to Jira. Please check your configuration.` });
+            res.status(400).json({ 
+              message: `Could not connect to Jira. Please verify your credentials and Jira URL.`,
+              details: "Make sure your API token is correct and has the necessary permissions."
+            });
           }
         } catch (validationError) {
           console.error('Jira config validation error:', validationError);
-          throw validationError;
+          
+          if (validationError instanceof z.ZodError) {
+            return res.status(400).json({ 
+              message: 'Invalid Jira configuration', 
+              errors: validationError.errors 
+            });
+          }
+          
+          return res.status(400).json({ 
+            message: 'Could not connect to Jira',
+            error: validationError instanceof Error ? validationError.message : 'Unknown error'
+          });
         }
       } 
       else if (type === 'zendesk') {

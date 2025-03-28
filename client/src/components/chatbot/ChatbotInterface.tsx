@@ -322,13 +322,18 @@ export default function ChatbotInterface() {
         const conversationHistory = prepareChatHistory(messages);
         
         // Generate the AI summary for the ticket
+        console.log("Preparing to generate AI summary with conversation history:", conversationHistory);
         summaryMutation.mutate(conversationHistory, {
           onSuccess: (data) => {
+            console.log("AI summary generated successfully:", data);
+            
             // Use the AI-generated summary instead of the templated one
             const enhancedTicketData = {
               ...suggestedTicketData,
               description: data.summary || "Support ticket created via chat interface."
             };
+            
+            console.log("Creating ticket with enhanced data:", enhancedTicketData);
             
             // Create the ticket with the enhanced data
             createTicketMutation.mutate(enhancedTicketData);

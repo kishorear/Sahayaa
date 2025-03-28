@@ -505,18 +505,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const knowledgeContext = await buildAIContext("summarize conversation", tenantId);
       
       // Generate summary using the AI provider
-      const aiResponse = await provider.generateChatResponse(promptedMessages, knowledgeContext);
+      const summary = await provider.generateChatResponse(promptedMessages, knowledgeContext);
+      
+      console.log("AI generated summary:", summary);
       
       // Return the generated summary
       res.json({
-        summary: aiResponse.message,
+        summary: summary || "Support ticket created via chat interface.",
         success: true
       });
     } catch (error) {
       console.error("Error generating ticket summary:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       res.status(500).json({ 
         success: false, 
-        error: error.message,
+        error: errorMessage,
         summary: "Support ticket created via chat. A summary could not be generated."
       });
     }

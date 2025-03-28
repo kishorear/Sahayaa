@@ -438,6 +438,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint for generating AI-powered ticket summaries
+  app.post("/api/chatbot/summarize", async (req, res) => {
+    try {
+      const { messages, purpose = "ticket_creation" } = req.body;
+      
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Messages array is required",
+          summary: "Support ticket created via chat. A summary could not be generated."
+        });
+      }
+      
+      // Get tenant context from middleware or request
+      const tenantId = req.tenant?.id || req.user?.tenantId || 1; // Default to tenant 1 if not specified
+      
+      // Pre-load the AI providers to ensure we're using the latest configuration
+      try {
+        await reloadProvidersFromDatabase(tenantId);
+      } catch (error) {
+        console.warn('Failed to reload AI providers before summary request:', error);
+        // Continue with request even if provider reload fails
+      }
+      
+      // Get the appropriate AI provider for summarization
+      const provider = AIProviderFactory.getProviderForOperation(tenantId, 'chat');
+      
+      if (!provider) {
+        return res.status(500).json({ 
+          success: false, 
+          error: "AI provider not available",
+          summary: "Support ticket created via chat. A summary could not be generated due to AI service unavailability."
+        });
+      }
+      
+      // Create a system prompt for summarization based on purpose
+      let systemPrompt = "You are an AI assistant tasked with summarizing a customer support conversation.";
+      
+      if (purpose === "ticket_creation") {
+        systemPrompt = `You are an AI assistant tasked with creating a support ticket summary from a conversation. 
+        Create a concise, well-structured summary for a support agent to understand the issue.
+        Include: 
+        1. A clear description of the problem
+        2. Steps the user has already tried
+        3. Technical details or error messages mentioned
+        4. The current status (resolved or not)
+        
+        Format your response professionally using Markdown with appropriate headings.`;
+      }
+      
+      // Convert client messages to ChatMessage format
+      const formattedMessages: ChatMessage[] = messages.map((msg: any) => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+      
+      // Add the system message at the beginning
+      const promptedMessages: ChatMessage[] = [
+        { role: 'system', content: systemPrompt },
+        ...formattedMessages,
+        { role: 'user', content: 'Please summarize this conversation for a support ticket.' }
+      ];
+      
+      // Get knowledge context
+      const knowledgeContext = await buildAIContext("summarize conversation", tenantId);
+      
+      // Generate summary using the AI provider
+      const aiResponse = await provider.generateChatResponse(promptedMessages, knowledgeContext);
+      
+      // Return the generated summary
+      res.json({
+        summary: aiResponse.message,
+        success: true
+      });
+    } catch (error) {
+      console.error("Error generating ticket summary:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message,
+        summary: "Support ticket created via chat. A summary could not be generated."
+      });
+    }
+  });
+
   // DASHBOARD METRICS - Require admin or support-agent roles
   app.get("/api/metrics/summary", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {

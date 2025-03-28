@@ -50,6 +50,18 @@ export default function ChatbotInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Create a mutation for generating AI summaries for tickets
+  const summaryMutation = useMutation({
+    mutationFn: async (chatHistory: { role: string, content: string }[]) => {
+      const response = await apiRequest("POST", "/api/chatbot/summarize", {
+        messages: chatHistory,
+        purpose: "ticket_creation"
+      });
+      
+      return await response.json();
+    }
+  });
+  
   const chatbotMutation = useMutation({
     mutationFn: async (payload: { message: string, messageHistory: Message[] }) => {
       return await apiRequest("POST", "/api/chatbot", payload);
@@ -74,7 +86,6 @@ export default function ChatbotInterface() {
       if (data.action) {
         switch (data.action.type) {
           case "suggest_ticket":
-            // Just store the ticket data for later confirmation
             // Ask the user if they want to proceed with ticket creation
             setMessages(prev => [
               ...prev,
@@ -86,8 +97,17 @@ export default function ChatbotInterface() {
               }
             ]);
             
+            // Get a better title from the first user message
+            const betterTitle = extractIssueTitle(messages);
+            
+            // Create enhanced ticket data with a better title
+            const enhancedTicketData = {
+              ...data.action.data,
+              title: betterTitle || data.action.data.title || "Support Request"
+            };
+            
             // Store ticket data in a ref or state
-            setSuggestedTicketData(data.action.data as InsertTicket);
+            setSuggestedTicketData(enhancedTicketData as InsertTicket);
             setAwaitingTicketConfirmation(true);
             break;
             
@@ -215,8 +235,22 @@ export default function ChatbotInterface() {
     }
   };
 
-  // Function to generate a comprehensive summary of the conversation
-  const generateConversationSummary = (messages: Message[]) => {
+  // Processing messages before sending them to the AI for ticket creation
+  const prepareChatHistory = (messages: Message[]) => {
+    // Filter out UI-specific messages to get just the conversation
+    return messages.filter(msg => 
+      !msg.id.includes('confirm') && 
+      !msg.id.includes('clarify') && 
+      !msg.id.includes('creating') &&
+      !msg.id.includes('cancel')
+    ).map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.content
+    }));
+  };
+  
+  // Extract a proper title from the conversation that describes the issue
+  const extractIssueTitle = (messages: Message[]): string => {
     // Filter out UI-specific messages
     const conversationMessages = messages.filter(msg => 
       !msg.id.includes('confirm') && 
@@ -225,58 +259,27 @@ export default function ChatbotInterface() {
       !msg.id.includes('cancel')
     );
     
-    // Start building the summary
-    let summary = "## Issue Summary\n\n";
-    
-    // Extract initial user query (first message from the user)
+    // Find the first user message which likely describes their issue
     const firstUserMessage = conversationMessages.find(msg => msg.sender === 'user');
     if (firstUserMessage) {
-      summary += `**Initial Issue:** ${firstUserMessage.content}\n\n`;
-    }
-    
-    // Summarize the conversation
-    summary += "## Conversation History\n\n";
-    
-    conversationMessages.forEach(msg => {
-      const role = msg.sender === 'user' ? 'User' : 'AI Support';
-      summary += `**${role}:** ${msg.content}\n\n`;
-    });
-    
-    // Add steps tried section
-    summary += "## Troubleshooting Steps Attempted\n\n";
-    
-    // Extract suggestions from AI responses
-    const aiMessages = conversationMessages.filter(msg => msg.sender === 'ai');
-    let stepsFound = false;
-    
-    aiMessages.forEach(msg => {
-      // Look for messages that contain instructions or suggestions
-      if (
-        msg.content.includes("try") || 
-        msg.content.includes("steps") || 
-        msg.content.includes("follow") ||
-        msg.content.includes("suggest") ||
-        msg.content.includes("recommend") ||
-        msg.content.includes("please") ||
-        msg.content.includes("could") ||
-        msg.content.includes("would") ||
-        msg.content.toLowerCase().includes("you should") ||
-        msg.content.toLowerCase().includes("you can")
-      ) {
-        summary += `- ${msg.content}\n\n`;
-        stepsFound = true;
+      // Limit to a reasonable length (60 chars) and add ellipsis if needed
+      const content = firstUserMessage.content;
+      const maxLength = 60;
+      
+      if (content.length <= maxLength) {
+        return content;
       }
-    });
-    
-    if (!stepsFound) {
-      summary += "No specific troubleshooting steps were identified in the conversation.\n\n";
+      
+      // Try to find sentence boundaries for a more natural cut-off
+      const firstSentence = content.split(/[.!?]/)[0];
+      if (firstSentence && firstSentence.length + 1 < maxLength) {
+        return firstSentence + ".";
+      }
+      
+      return content.substring(0, maxLength) + "...";
     }
     
-    // Add resolution status
-    summary += "## Resolution Status\n\n";
-    summary += "The issue could not be resolved through the chat interface and requires further assistance from the support team.\n\n";
-    
-    return summary;
+    return "Support Request"; // Fallback title
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -301,23 +304,10 @@ export default function ChatbotInterface() {
       
       // Check if user has confirmed creating a ticket
       if (message === 'yes' || message.includes('yes') || message.includes('create ticket') || message.includes('submit ticket')) {
-        // Generate a comprehensive summary of the conversation
-        const conversationSummary = generateConversationSummary(messages);
+        // Generate a ticket with AI-summarized description
+        setIsTyping(true);
         
-        // Update the ticket description with the conversation summary
-        const enhancedTicketData = {
-          ...suggestedTicketData,
-          description: conversationSummary
-        };
-        
-        // User confirmed, create the ticket with the enhanced description
-        createTicketMutation.mutate(enhancedTicketData);
-        
-        // Reset confirmation state
-        setSuggestedTicketData(null);
-        setAwaitingTicketConfirmation(false);
-        
-        // Add AI confirmation message
+        // Add a message that we're generating the ticket
         setMessages((prev) => [
           ...prev,
           {
@@ -327,6 +317,41 @@ export default function ChatbotInterface() {
             timestamp: new Date(),
           },
         ]);
+        
+        // Prepare the conversation history in the right format for AI
+        const conversationHistory = prepareChatHistory(messages);
+        
+        // Generate the AI summary for the ticket
+        summaryMutation.mutate(conversationHistory, {
+          onSuccess: (data) => {
+            // Use the AI-generated summary instead of the templated one
+            const enhancedTicketData = {
+              ...suggestedTicketData,
+              description: data.summary || "Support ticket created via chat interface."
+            };
+            
+            // Create the ticket with the enhanced data
+            createTicketMutation.mutate(enhancedTicketData);
+            setIsTyping(false);
+          },
+          onError: (error) => {
+            console.error("Failed to generate summary:", error);
+            
+            // Fallback to a simple description if AI summary fails
+            const enhancedTicketData = {
+              ...suggestedTicketData,
+              description: `Support ticket from chat interface.\n\nIssue: ${extractIssueTitle(messages)}`
+            };
+            
+            // Still create the ticket even if summary fails
+            createTicketMutation.mutate(enhancedTicketData);
+            setIsTyping(false);
+          }
+        });
+        
+        // Reset confirmation state
+        setSuggestedTicketData(null);
+        setAwaitingTicketConfirmation(false);
       } else if (message === 'no' || message.includes('no') || message.includes("don't create") || message.includes('do not create')) {
         // User declined, reset the suggested ticket data
         setSuggestedTicketData(null);

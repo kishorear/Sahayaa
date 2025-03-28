@@ -199,51 +199,59 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         // Log the request body for debugging
         console.log('Jira test connection request body:', JSON.stringify(req.body));
         
+        // Ensure all fields are strings
+        const baseUrl = String(req.body.baseUrl || '');
+        const email = String(req.body.email || '');
+        const apiToken = String(req.body.apiToken || '');
+        const projectKey = String(req.body.projectKey || '');
+        const enabled = Boolean(req.body.enabled !== false);
+        
         // Directly check all required fields to better diagnose the issue
-        if (!req.body.baseUrl) {
+        if (!baseUrl) {
           return res.status(400).json({ 
             message: 'Invalid configuration', 
-            errors: [{ path: ['baseUrl'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+            errors: [{ path: ['baseUrl'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'empty' }] 
           });
         }
-        if (!req.body.email) {
+        if (!email) {
           return res.status(400).json({ 
             message: 'Invalid configuration', 
-            errors: [{ path: ['email'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+            errors: [{ path: ['email'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'empty' }] 
           });
         }
-        if (!req.body.apiToken) {
+        if (!apiToken) {
           return res.status(400).json({ 
             message: 'Invalid configuration', 
-            errors: [{ path: ['apiToken'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+            errors: [{ path: ['apiToken'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'empty' }] 
           });
         }
-        if (!req.body.projectKey) {
+        if (!projectKey) {
           return res.status(400).json({ 
             message: 'Invalid configuration', 
-            errors: [{ path: ['projectKey'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'undefined' }] 
+            errors: [{ path: ['projectKey'], message: 'Required', code: 'invalid_type', expected: 'string', received: 'empty' }] 
           });
         }
         
-        // All fields are present, try parsing with zod
+        // All fields are present, create configuration object
+        const config = {
+          baseUrl,
+          email,
+          apiToken,
+          projectKey,
+          enabled
+        };
+        
+        console.log('Using Jira configuration:', {
+          baseUrl,
+          email,
+          apiToken: apiToken ? '[REDACTED]' : 'missing',
+          projectKey,
+          enabled
+        });
+        
         try {
-          const testConfig = jiraConfigSchema.parse(req.body);
-          console.log('Parsed Jira configuration:', {
-            baseUrl: testConfig.baseUrl,
-            email: testConfig.email,
-            apiToken: testConfig.apiToken ? '[REDACTED]' : 'missing',
-            projectKey: testConfig.projectKey,
-            enabled: testConfig.enabled
-          });
-          
           // Create a temporary Jira service instance for testing
-          const tempJiraService = new JiraService({
-            baseUrl: testConfig.baseUrl,
-            email: testConfig.email,
-            apiToken: testConfig.apiToken,
-            projectKey: testConfig.projectKey,
-            enabled: true
-          });
+          const tempJiraService = new JiraService(config);
           
           // Test the connection
           const connected = await tempJiraService.verifyConnection();
@@ -256,8 +264,11 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
             res.status(400).json({ message: `Could not connect to Jira. Please check your configuration.` });
           }
         } catch (validationError) {
-          console.error('Jira config validation error:', validationError);
-          throw validationError;
+          console.error('Jira connection error:', validationError);
+          return res.status(400).json({ 
+            message: 'Could not connect to Jira', 
+            error: validationError instanceof Error ? validationError.message : 'Unknown error'
+          });
         }
       } 
       else if (type === 'zendesk') {

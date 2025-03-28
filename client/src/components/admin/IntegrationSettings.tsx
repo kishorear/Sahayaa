@@ -58,6 +58,15 @@ const jiraSchema = z.object({
 type ZendeskFormValues = z.infer<typeof zendeskSchema>;
 type JiraFormValues = z.infer<typeof jiraSchema>;
 
+// Define test configuration types
+interface TestConfigPayload {
+  baseUrl: string;
+  email: string;
+  apiToken: string;
+  projectKey: string;
+  enabled: boolean;
+}
+
 export default function IntegrationSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -222,18 +231,15 @@ export default function IntegrationSettings() {
     },
   });
 
-  const testJiraMutation = useMutation({
-    mutationFn: async () => {
-      // Use the current form values to test the connection
-      const formValues = jiraForm.getValues();
-      
-      // Explicitly create the payload to ensure all fields are present
+  const testJiraMutation = useMutation<any, Error, TestConfigPayload>({
+    mutationFn: async (data: TestConfigPayload) => {
+      // Explicitly create the payload to ensure all fields are present and values are strings
       const payload = {
-        baseUrl: formValues.baseUrl,
-        email: formValues.email,
-        apiToken: formValues.apiToken,
-        projectKey: formValues.projectKey,
-        enabled: true
+        baseUrl: String(data.baseUrl || ''),
+        email: String(data.email || ''),
+        apiToken: String(data.apiToken || ''),
+        projectKey: String(data.projectKey || ''),
+        enabled: Boolean(data.enabled)
       };
       
       console.log("Testing Jira connection with payload:", {
@@ -649,7 +655,15 @@ export default function IntegrationSettings() {
                           projectKey: formValues.projectKey,
                           enabled: formValues.enabled
                         });
-                        testJiraMutation.mutate();
+                        
+                        // Explicitly pass the form values to the mutation
+                        testJiraMutation.mutate({
+                          baseUrl: String(formValues.baseUrl || ''),
+                          email: String(formValues.email || ''),
+                          apiToken: String(formValues.apiToken || ''),
+                          projectKey: String(formValues.projectKey || ''),
+                          enabled: Boolean(formValues.enabled)
+                        });
                       }}
                       disabled={
                         testJiraMutation.isPending ||

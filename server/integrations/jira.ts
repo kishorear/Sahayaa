@@ -19,26 +19,33 @@ export class JiraService {
   private enabled: boolean;
 
   constructor(config: JiraConfig) {
+    // Ensure all values are strings where needed
+    const baseUrlStr = String(config.baseUrl || '');
+    const emailStr = String(config.email || '');
+    const apiTokenStr = String(config.apiToken || '');
+    const projectKeyStr = String(config.projectKey || '');
+    const enabledBool = Boolean(config.enabled);
+    
     console.log("Initializing Jira Service with config:", {
-      baseUrl: config.baseUrl,
-      email: config.email,
-      apiToken: config.apiToken ? "[REDACTED]" : "missing",
-      projectKey: config.projectKey,
-      enabled: config.enabled
+      baseUrl: baseUrlStr,
+      email: emailStr,
+      apiToken: apiTokenStr ? "[REDACTED]" : "missing",
+      projectKey: projectKeyStr,
+      enabled: enabledBool
     });
     
     // Make sure baseUrl doesn't have trailing slash
-    const baseUrl = config.baseUrl.endsWith('/') 
-      ? config.baseUrl.slice(0, -1) 
-      : config.baseUrl;
+    const baseUrl = baseUrlStr.endsWith('/') 
+      ? baseUrlStr.slice(0, -1) 
+      : baseUrlStr;
       
     this.apiUrl = `${baseUrl}/rest/api/3`;
     this.auth = {
-      username: config.email,
-      password: config.apiToken
+      username: emailStr,
+      password: apiTokenStr
     };
-    this.projectKey = config.projectKey;
-    this.enabled = config.enabled;
+    this.projectKey = projectKeyStr;
+    this.enabled = enabledBool;
     
     console.log("Jira Service initialized with API URL:", this.apiUrl);
   }

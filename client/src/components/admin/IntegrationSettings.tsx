@@ -261,14 +261,8 @@ export default function IntegrationSettings() {
         throw new Error("Project Key is required");
       }
       
-      // Direct fetch with explicit headers to ensure content type is set correctly
-      const response = await fetch('/api/integrations/jira/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      // Use apiRequest which correctly handles headers and serialization
+      const response = await apiRequest('POST', '/api/integrations/jira/test', payload);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -666,8 +660,8 @@ export default function IntegrationSettings() {
                         });
                       }}
                       disabled={
-                        testJiraMutation.isPending ||
-                        !jiraForm.watch("enabled")
+                        testJiraMutation.isPending
+                        // Removed the disabled check for enabled to allow testing even when disabled
                       }
                     >
                       {testJiraMutation.isPending ? "Testing..." : "Test Connection"}

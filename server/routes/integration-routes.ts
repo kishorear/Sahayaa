@@ -198,6 +198,8 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         console.log('========= JIRA TEST CONNECTION =========');
         // Log the request body for debugging
         console.log('Jira test connection request body:', JSON.stringify(req.body));
+        console.log('Content-Type:', req.headers['content-type']);
+        console.log('Request method:', req.method);
         
         // Ensure all fields are strings
         const baseUrl = String(req.body.baseUrl || '');

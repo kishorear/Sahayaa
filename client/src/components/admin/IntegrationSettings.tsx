@@ -58,15 +58,6 @@ const jiraSchema = z.object({
 type ZendeskFormValues = z.infer<typeof zendeskSchema>;
 type JiraFormValues = z.infer<typeof jiraSchema>;
 
-// Define test configuration types
-interface TestConfigPayload {
-  baseUrl: string;
-  email: string;
-  apiToken: string;
-  projectKey: string;
-  enabled: boolean;
-}
-
 export default function IntegrationSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -163,31 +154,22 @@ export default function IntegrationSettings() {
         enabled: data.enabled
       });
 
-      // Explicitly create the payload to ensure all fields are present
-      const payload = {
-        baseUrl: data.baseUrl,
-        email: data.email,
-        apiToken: data.apiToken,
-        projectKey: data.projectKey,
-        enabled: data.enabled
-      };
-      
-      // Direct fetch with explicit headers to ensure content type is set correctly
-      const response = await fetch('/api/integrations/jira', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error response:", errorData);
-        throw new Error(errorData.message || "Failed to save Jira configuration");
+      // Validate the form values manually before submission
+      if (!data.baseUrl) {
+        throw new Error("Base URL is required");
+      }
+      if (!data.email) {
+        throw new Error("Email is required");
+      }
+      if (!data.apiToken) {
+        throw new Error("API Token is required");
+      }
+      if (!data.projectKey) {
+        throw new Error("Project Key is required");
       }
       
-      return await response.json();
+      const res = await apiRequest("POST", "/api/integrations/jira", data);
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
@@ -231,46 +213,34 @@ export default function IntegrationSettings() {
     },
   });
 
-  const testJiraMutation = useMutation<any, Error, TestConfigPayload>({
-    mutationFn: async (data: TestConfigPayload) => {
-      // Explicitly create the payload to ensure all fields are present and values are strings
-      const payload = {
-        baseUrl: String(data.baseUrl || ''),
-        email: String(data.email || ''),
-        apiToken: String(data.apiToken || ''),
-        projectKey: String(data.projectKey || ''),
-        enabled: Boolean(data.enabled)
-      };
-      
-      console.log("Testing Jira connection with payload:", {
-        ...payload,
-        apiToken: payload.apiToken ? "[REDACTED]" : "missing"
+  const testJiraMutation = useMutation({
+    mutationFn: async () => {
+      // Use the current form values to test the connection
+      const formValues = jiraForm.getValues();
+      console.log("Testing Jira connection with values:", {
+        baseUrl: formValues.baseUrl,
+        email: formValues.email,
+        apiToken: formValues.apiToken ? "[REDACTED]" : "missing",
+        projectKey: formValues.projectKey,
+        enabled: formValues.enabled
       });
       
       // Validate the form values manually before submission
-      if (!payload.baseUrl) {
+      if (!formValues.baseUrl) {
         throw new Error("Base URL is required");
       }
-      if (!payload.email) {
+      if (!formValues.email) {
         throw new Error("Email is required");
       }
-      if (!payload.apiToken) {
+      if (!formValues.apiToken) {
         throw new Error("API Token is required");
       }
-      if (!payload.projectKey) {
+      if (!formValues.projectKey) {
         throw new Error("Project Key is required");
       }
       
-      // Use apiRequest which correctly handles headers and serialization
-      const response = await apiRequest('POST', '/api/integrations/jira/test', payload);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error response:", errorData);
-        throw new Error(errorData.message || "Failed to test Jira connection");
-      }
-      
-      return await response.json();
+      const res = await apiRequest("POST", "/api/integrations/jira/test", formValues);
+      return await res.json();
     },
     onSuccess: () => {
       toast({
@@ -295,45 +265,6 @@ export default function IntegrationSettings() {
   };
 
   const onJiraSubmit = (data: JiraFormValues) => {
-    console.log("Submitting Jira settings:", {
-      ...data,
-      apiToken: data.apiToken ? "[REDACTED]" : "missing"
-    });
-    
-    // Validate the form values manually before submission
-    if (!data.baseUrl) {
-      toast({
-        title: "Validation Error",
-        description: "Base URL is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!data.email) {
-      toast({
-        title: "Validation Error",
-        description: "Email is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!data.apiToken) {
-      toast({
-        title: "Validation Error",
-        description: "API Token is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!data.projectKey) {
-      toast({
-        title: "Validation Error",
-        description: "Project Key is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     jiraMutation.mutate(data);
   };
 
@@ -640,28 +571,11 @@ export default function IntegrationSettings() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
-                        const formValues = jiraForm.getValues();
-                        console.log("Testing connection with:", {
-                          baseUrl: formValues.baseUrl,
-                          email: formValues.email,
-                          apiToken: formValues.apiToken ? "[PRESENT]" : "[MISSING]",
-                          projectKey: formValues.projectKey,
-                          enabled: formValues.enabled
-                        });
-                        
-                        // Explicitly pass the form values to the mutation
-                        testJiraMutation.mutate({
-                          baseUrl: String(formValues.baseUrl || ''),
-                          email: String(formValues.email || ''),
-                          apiToken: String(formValues.apiToken || ''),
-                          projectKey: String(formValues.projectKey || ''),
-                          enabled: Boolean(formValues.enabled)
-                        });
-                      }}
+                      onClick={() => testJiraMutation.mutate()}
                       disabled={
-                        testJiraMutation.isPending
-                        // Removed the disabled check for enabled to allow testing even when disabled
+                        testJiraMutation.isPending ||
+                        !jiraForm.watch("enabled") ||
+                        !jiraForm.formState.isValid
                       }
                     >
                       {testJiraMutation.isPending ? "Testing..." : "Test Connection"}

@@ -19,33 +19,26 @@ export class JiraService {
   private enabled: boolean;
 
   constructor(config: JiraConfig) {
-    // Ensure all values are strings where needed
-    const baseUrlStr = String(config.baseUrl || '');
-    const emailStr = String(config.email || '');
-    const apiTokenStr = String(config.apiToken || '');
-    const projectKeyStr = String(config.projectKey || '');
-    const enabledBool = Boolean(config.enabled);
-    
     console.log("Initializing Jira Service with config:", {
-      baseUrl: baseUrlStr,
-      email: emailStr,
-      apiToken: apiTokenStr ? "[REDACTED]" : "missing",
-      projectKey: projectKeyStr,
-      enabled: enabledBool
+      baseUrl: config.baseUrl,
+      email: config.email,
+      apiToken: config.apiToken ? "[REDACTED]" : "missing",
+      projectKey: config.projectKey,
+      enabled: config.enabled
     });
     
     // Make sure baseUrl doesn't have trailing slash
-    const baseUrl = baseUrlStr.endsWith('/') 
-      ? baseUrlStr.slice(0, -1) 
-      : baseUrlStr;
+    const baseUrl = config.baseUrl.endsWith('/') 
+      ? config.baseUrl.slice(0, -1) 
+      : config.baseUrl;
       
     this.apiUrl = `${baseUrl}/rest/api/3`;
     this.auth = {
-      username: emailStr,
-      password: apiTokenStr
+      username: config.email,
+      password: config.apiToken
     };
-    this.projectKey = projectKeyStr;
-    this.enabled = enabledBool;
+    this.projectKey = config.projectKey;
+    this.enabled = config.enabled;
     
     console.log("Jira Service initialized with API URL:", this.apiUrl);
   }
@@ -100,7 +93,7 @@ export class JiraService {
               name: "Task"
             },
             priority: {
-              name: this.mapComplexityToPriority(ticket.complexity || 'medium')
+              name: this.mapComplexityToPriority(ticket.complexity)
             },
             labels: [ticket.category]
           }
@@ -119,18 +112,8 @@ export class JiraService {
         key: response.data.key,
         url: `${this.apiUrl.replace('/rest/api/3', '')}/browse/${response.data.key}`
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error("Error creating issue in Jira:", errorMessage);
-      
-      if (axios.isAxiosError(error) && error.response) {
-        console.error("Response details:", {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
-        });
-      }
-      
+    } catch (error) {
+      console.error("Error creating issue in Jira:", error);
       return null;
     }
   }
@@ -170,18 +153,8 @@ export class JiraService {
         }
       );
       return true;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error("Error adding comment to Jira issue:", errorMessage);
-      
-      if (axios.isAxiosError(error) && error.response) {
-        console.error("Response details:", {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
-        });
-      }
-      
+    } catch (error) {
+      console.error("Error adding comment to Jira issue:", error);
       return false;
     }
   }
@@ -234,18 +207,8 @@ export class JiraService {
       );
 
       return true;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error("Error updating issue status in Jira:", errorMessage);
-      
-      if (axios.isAxiosError(error) && error.response) {
-        console.error("Response details:", {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
-        });
-      }
-      
+    } catch (error) {
+      console.error("Error updating issue status in Jira:", error);
       return false;
     }
   }
@@ -273,24 +236,18 @@ export class JiraService {
       });
       
       return true;
-    } catch (error: unknown) {
-      // Type safe error handling
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error("Error verifying Jira connection:", errorMessage);
-      
-      // Handle axios error types
-      if (axios.isAxiosError(error) && error.response) {
+    } catch (error) {
+      console.error("Error verifying Jira connection:", error.message);
+      if (error.response) {
         console.error("Response details:", {
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data
         });
-      } else if (axios.isAxiosError(error) && error.request) {
-        console.error("Request made but no response received");
-      } else if (error instanceof Error) {
-        console.error("Error setting up request:", error.message);
+      } else if (error.request) {
+        console.error("Request made but no response received:", error.request);
       } else {
-        console.error("Unknown error type encountered");
+        console.error("Error setting up request:", error.message);
       }
       console.error("Complete error:", error);
       return false;

@@ -195,25 +195,40 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       
       // Create a temporary service specifically for testing with the provided credentials
       if (type === 'jira') {
+        // Log the request body for debugging
+        console.log('Jira test connection request body:', req.body);
+        
         // Parse and validate the request body
-        const testConfig = jiraConfigSchema.parse(req.body);
-        
-        // Create a temporary Jira service instance for testing
-        const tempJiraService = new JiraService({
-          baseUrl: testConfig.baseUrl,
-          email: testConfig.email,
-          apiToken: testConfig.apiToken,
-          projectKey: testConfig.projectKey,
-          enabled: true
-        });
-        
-        // Test the connection
-        const connected = await tempJiraService.verifyConnection();
-        
-        if (connected) {
-          res.status(200).json({ message: `Successfully connected to Jira` });
-        } else {
-          res.status(400).json({ message: `Could not connect to Jira. Please check your configuration.` });
+        try {
+          const testConfig = jiraConfigSchema.parse(req.body);
+          console.log('Parsed Jira configuration:', {
+            baseUrl: testConfig.baseUrl,
+            email: testConfig.email,
+            apiToken: testConfig.apiToken ? '[REDACTED]' : 'missing',
+            projectKey: testConfig.projectKey,
+            enabled: testConfig.enabled
+          });
+          
+          // Create a temporary Jira service instance for testing
+          const tempJiraService = new JiraService({
+            baseUrl: testConfig.baseUrl,
+            email: testConfig.email,
+            apiToken: testConfig.apiToken,
+            projectKey: testConfig.projectKey,
+            enabled: true
+          });
+          
+          // Test the connection
+          const connected = await tempJiraService.verifyConnection();
+          
+          if (connected) {
+            res.status(200).json({ message: `Successfully connected to Jira` });
+          } else {
+            res.status(400).json({ message: `Could not connect to Jira. Please check your configuration.` });
+          }
+        } catch (validationError) {
+          console.error('Jira config validation error:', validationError);
+          throw validationError;
         }
       } 
       else if (type === 'zendesk') {

@@ -146,6 +146,28 @@ export default function IntegrationSettings() {
   // Mutation for saving Jira configuration
   const jiraMutation = useMutation({
     mutationFn: async (data: JiraFormValues) => {
+      console.log("Saving Jira configuration:", {
+        baseUrl: data.baseUrl,
+        email: data.email,
+        apiToken: data.apiToken ? "[REDACTED]" : "missing",
+        projectKey: data.projectKey,
+        enabled: data.enabled
+      });
+
+      // Validate the form values manually before submission
+      if (!data.baseUrl) {
+        throw new Error("Base URL is required");
+      }
+      if (!data.email) {
+        throw new Error("Email is required");
+      }
+      if (!data.apiToken) {
+        throw new Error("API Token is required");
+      }
+      if (!data.projectKey) {
+        throw new Error("Project Key is required");
+      }
+      
       const res = await apiRequest("POST", "/api/integrations/jira", data);
       return await res.json();
     },
@@ -158,6 +180,7 @@ export default function IntegrationSettings() {
       });
     },
     onError: (error: Error) => {
+      console.error("Error saving Jira settings:", error);
       toast({
         title: "Error Saving Jira Settings",
         description: error.message,
@@ -194,6 +217,28 @@ export default function IntegrationSettings() {
     mutationFn: async () => {
       // Use the current form values to test the connection
       const formValues = jiraForm.getValues();
+      console.log("Testing Jira connection with values:", {
+        baseUrl: formValues.baseUrl,
+        email: formValues.email,
+        apiToken: formValues.apiToken ? "[REDACTED]" : "missing",
+        projectKey: formValues.projectKey,
+        enabled: formValues.enabled
+      });
+      
+      // Validate the form values manually before submission
+      if (!formValues.baseUrl) {
+        throw new Error("Base URL is required");
+      }
+      if (!formValues.email) {
+        throw new Error("Email is required");
+      }
+      if (!formValues.apiToken) {
+        throw new Error("API Token is required");
+      }
+      if (!formValues.projectKey) {
+        throw new Error("Project Key is required");
+      }
+      
       const res = await apiRequest("POST", "/api/integrations/jira/test", formValues);
       return await res.json();
     },
@@ -205,6 +250,7 @@ export default function IntegrationSettings() {
       });
     },
     onError: (error: Error) => {
+      console.error("Jira connection test failed:", error);
       toast({
         title: "Jira Connection Failed",
         description: error.message,

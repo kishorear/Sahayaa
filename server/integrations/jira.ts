@@ -19,13 +19,28 @@ export class JiraService {
   private enabled: boolean;
 
   constructor(config: JiraConfig) {
-    this.apiUrl = `${config.baseUrl}/rest/api/3`;
+    console.log("Initializing Jira Service with config:", {
+      baseUrl: config.baseUrl,
+      email: config.email,
+      apiToken: config.apiToken ? "[REDACTED]" : "missing",
+      projectKey: config.projectKey,
+      enabled: config.enabled
+    });
+    
+    // Make sure baseUrl doesn't have trailing slash
+    const baseUrl = config.baseUrl.endsWith('/') 
+      ? config.baseUrl.slice(0, -1) 
+      : config.baseUrl;
+      
+    this.apiUrl = `${baseUrl}/rest/api/3`;
     this.auth = {
       username: config.email,
       password: config.apiToken
     };
     this.projectKey = config.projectKey;
     this.enabled = config.enabled;
+    
+    console.log("Jira Service initialized with API URL:", this.apiUrl);
   }
 
   /**
@@ -203,16 +218,38 @@ export class JiraService {
    */
   async verifyConnection(): Promise<boolean> {
     try {
-      await axios.get(`${this.apiUrl}/myself`, {
+      console.log(`Attempting to verify Jira connection to: ${this.apiUrl}/myself`);
+      console.log(`Using credentials: ${this.auth.username}, token: [REDACTED]`);
+      
+      const response = await axios.get(`${this.apiUrl}/myself`, {
         auth: this.auth,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       });
+      
+      console.log("Jira connection successful, response:", {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data ? 'Data received' : 'No data'
+      });
+      
       return true;
     } catch (error) {
-      console.error("Error verifying Jira connection:", error);
+      console.error("Error verifying Jira connection:", error.message);
+      if (error.response) {
+        console.error("Response details:", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      } else if (error.request) {
+        console.error("Request made but no response received:", error.request);
+      } else {
+        console.error("Error setting up request:", error.message);
+      }
+      console.error("Complete error:", error);
       return false;
     }
   }

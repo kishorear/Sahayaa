@@ -10,6 +10,7 @@ const openai = new OpenAI({
 export type OpenAIMessage = {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  name?: string; // Added to satisfy OpenAI SDK type requirements
 };
 
 /**
@@ -181,6 +182,55 @@ export async function generateChatResponseWithAI(
     console.error("Error calling OpenAI for chat response:", error);
     // Fall back to a generic response
     return "I apologize, but I'm experiencing difficulties processing your request right now. Let me connect you with a support representative who can assist you further.";
+  }
+}
+
+/**
+ * Generates a concise and accurate title for a support ticket based on conversation
+ */
+export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Promise<string> {
+  try {
+    console.log('Generating ticket title with OpenAI...');
+    const systemPrompt = `
+    You are an AI assistant tasked with creating a concise and descriptive title for a support ticket.
+    Analyze the conversation and create a short, specific title that clearly identifies the main issue.
+    
+    Guidelines for creating the title:
+    1. Focus on the core problem (error codes, specific failure points)
+    2. Be specific rather than generic (e.g., "Login 500 Error" instead of "Login Problem")
+    3. Include error codes if present (e.g., "404", "500", "INVALID_TOKEN")
+    4. Keep the title under 50 characters if possible
+    5. Do not use placeholders or generic titles like "Support Request" or "Help Needed"
+    
+    Return ONLY the title with no additional text, explanations or formatting.
+    `;
+    
+    // Filter out any system messages from the conversation
+    const conversationMessages = messages.filter(msg => msg.role !== 'system');
+    
+    const completionMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...conversationMessages.map(msg => ({ 
+        role: msg.role as 'system' | 'user' | 'assistant', 
+        content: msg.content 
+      })),
+      { role: 'user' as const, content: 'Generate a concise, descriptive ticket title for this conversation.' }
+    ];
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o", // Using the newest model for better title generation
+      messages: completionMessages,
+      temperature: 0.3, // Lower temperature for more focused, less creative responses
+      max_tokens: 50 // Short response as we just want a title
+    });
+    
+    const generatedTitle = completion.choices[0].message.content?.trim() || 'Support Request';
+    console.log('OpenAI generated ticket title:', generatedTitle);
+    
+    return generatedTitle;
+  } catch (error) {
+    console.error('Error generating AI ticket title:', error);
+    return 'Support Request'; // Fallback title
   }
 }
 

@@ -2,7 +2,8 @@ import { findRelevantKnowledgeBaseEntries } from './knowledgeBase';
 import { 
   classifyTicketWithAI, 
   attemptAutoResolveWithAI, 
-  generateChatResponseWithAI, 
+  generateChatResponseWithAI,
+  generateTicketTitleWithAI,
   summarizeConversationWithAI 
 } from './openai-service';
 import { buildAIContext } from './data-source-service';
@@ -349,6 +350,67 @@ export async function generateChatResponse(
 }
 
 // Generate a summary of multiple messages for ticket context
+// Generate a title for a ticket based on conversation
+export async function generateTicketTitle(messages: ChatMessage[], tenantId?: number): Promise<string> {
+  if (USE_OPENAI) {
+    try {
+      // Get relevant knowledge from data sources with tenant context if available
+      const allText = messages.map(m => m.content).join(' ');
+      const knowledgeContext = await buildAIContext(allText, tenantId);
+      
+      // Log if knowledge context was found
+      if (knowledgeContext) {
+        console.log(`Using knowledge context for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      } else {
+        console.log(`No relevant knowledge context found for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      }
+      
+      // If we have knowledge context, add it as a system message
+      let messagesToSend = messages;
+      if (knowledgeContext) {
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: knowledgeContext
+        };
+        
+        // Insert system message at the beginning
+        messagesToSend = [systemMessage, ...messages];
+      }
+      
+      return await generateTicketTitleWithAI(messagesToSend);
+    } catch (error) {
+      console.error("OpenAI title generation failed, falling back to local:", error);
+      // Fall back to local implementation
+    }
+  }
+  
+  // Local fallback implementation
+  // Extract title from first user message
+  const userMessages = messages.filter(m => m.role === 'user');
+  if (userMessages.length > 0) {
+    const firstMessage = userMessages[0].content;
+    
+    // Look for error codes
+    const errorCodeMatch = firstMessage.match(/(\b[45]\d{2}\b|error code)/i);
+    if (errorCodeMatch) {
+      return `${errorCodeMatch[0]} Error Issue`;
+    }
+    
+    // Try to extract first sentence if not too long
+    const firstSentence = firstMessage.split(/[.!?]/)[0];
+    if (firstSentence && firstSentence.length < 60) {
+      return firstSentence;
+    }
+    
+    // Just truncate if too long
+    return firstMessage.length > 50 
+      ? firstMessage.substring(0, 47) + '...'
+      : firstMessage;
+  }
+  
+  return "Support Request";
+}
+
 export async function summarizeConversation(messages: ChatMessage[], tenantId?: number): Promise<string> {
   // Use OpenAI if available
   if (USE_OPENAI) {

@@ -58,6 +58,18 @@ export interface AIProviderInterface {
   ): Promise<{resolved: boolean; response: string}>;
   
   /**
+   * Generate a concise and descriptive title for a support ticket
+   * 
+   * @param messages Conversation messages to analyze
+   * @param context Additional context to help with title generation
+   * @returns A concise title that accurately describes the issue
+   */
+  generateTicketTitle(
+    messages: Array<{ role: string; content: string }>,
+    context?: string
+  ): Promise<string>;
+  
+  /**
    * Summarize a conversation thread
    * 
    * @param messages Conversation messages to summarize

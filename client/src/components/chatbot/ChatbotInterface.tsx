@@ -27,6 +27,7 @@ export default function ChatbotInterface() {
   const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
   const [suggestedTicketData, setSuggestedTicketData] = useState<InsertTicket | null>(null);
   const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
+  const [ticketCreatedForSession, setTicketCreatedForSession] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -62,6 +63,17 @@ export default function ChatbotInterface() {
     }
   });
   
+  // Create a mutation for generating AI-powered ticket titles
+  const titleMutation = useMutation({
+    mutationFn: async (chatHistory: { role: string, content: string }[]) => {
+      const response = await apiRequest("POST", "/api/chatbot/title", {
+        messages: chatHistory
+      });
+      
+      return await response.json();
+    }
+  });
+  
   const chatbotMutation = useMutation({
     mutationFn: async (payload: { message: string, messageHistory: Message[] }) => {
       return await apiRequest("POST", "/api/chatbot", payload);
@@ -86,24 +98,36 @@ export default function ChatbotInterface() {
       if (data.action) {
         switch (data.action.type) {
           case "suggest_ticket":
+            // Skip ticket creation if one was already created for this session
+            if (ticketCreatedForSession) {
+              setMessages(prev => [
+                ...prev,
+                {
+                  id: `ai-already-created-${Date.now()}`,
+                  content: "I notice you already have an open ticket for this session. I'll continue to help you with your issue, but we don't need to create another ticket.",
+                  sender: "ai",
+                  timestamp: new Date(),
+                }
+              ]);
+              break;
+            }
+            
             // Ask the user if they want to proceed with ticket creation
             setMessages(prev => [
               ...prev,
               {
                 id: `ai-confirm-${Date.now()}`,
-                content: "Would you like me to create a support ticket for this issue? Please reply with 'yes' or 'no'.",
+                content: "Would you like me to create a support ticket for this issue? Please reply with 'yes' or 'no'. If yes, you'll be able to add screenshots or recordings after the ticket is created.",
                 sender: "ai",
                 timestamp: new Date(),
               }
             ]);
             
-            // Get a better title from the first user message
-            const betterTitle = extractIssueTitle(messages);
-            
-            // Create enhanced ticket data with a better title
+            // Create enhanced ticket data with temporary title
+            // We'll update it with AI-generated title when user confirms
             const enhancedTicketData = {
               ...data.action.data,
-              title: betterTitle || data.action.data.title || "Support Request"
+              title: data.action.data.title || "Support Request"
             };
             
             // Store ticket data in a ref or state
@@ -112,9 +136,43 @@ export default function ChatbotInterface() {
             break;
             
           case "create_ticket":
+            // Skip ticket creation if one was already created for this session
+            if (ticketCreatedForSession) {
+              setMessages(prev => [
+                ...prev,
+                {
+                  id: `ai-already-created-${Date.now()}`,
+                  content: "I notice you already have an open ticket for this session. I'll continue to help you with your issue, but we don't need to create another ticket.",
+                  sender: "ai",
+                  timestamp: new Date(),
+                }
+              ]);
+              break;
+            }
+            
             // Legacy direct ticket creation (we'll update the backend to use suggest_ticket instead)
             const ticketData = data.action.data as InsertTicket;
-            createTicketMutation.mutate(ticketData);
+            
+            // Use AI to generate a better title
+            const conversationHistory = prepareChatHistory(messages);
+            setIsTyping(true);
+            
+            titleMutation.mutate(conversationHistory, {
+              onSuccess: (titleData) => {
+                // Update the ticket with AI-generated title
+                ticketData.title = titleData.title || ticketData.title;
+                createTicketMutation.mutate(ticketData);
+                setIsTyping(false);
+              },
+              onError: (error) => {
+                console.error("Failed to generate title for direct creation:", error);
+                // Fallback to local title extraction
+                const fallbackTitle = extractIssueTitle(messages);
+                ticketData.title = fallbackTitle || ticketData.title;
+                createTicketMutation.mutate(ticketData);
+                setIsTyping(false);
+              }
+            });
             break;
             
           case "resolve_ticket":
@@ -152,17 +210,18 @@ export default function ChatbotInterface() {
     onSuccess: async (response) => {
       const ticket = await response.json();
       setCurrentTicketId(ticket.id);
+      setTicketCreatedForSession(true); // Mark that a ticket has been created for this session
       toast({
         title: "Ticket Created",
         description: `Support ticket #${ticket.id} has been created. Our team will follow up shortly.`,
       });
       
-      // Prompt user to record their screen
+      // Add a message about successful ticket creation with attachment reminder
       setMessages(prev => [
         ...prev,
         {
-          id: `ai-recorder-${Date.now()}`,
-          content: "Would you like to record your screen to better show us the issue?",
+          id: `ai-ticket-created-${Date.now()}`,
+          content: `Support ticket #${ticket.id} has been created successfully. You can add images or a screen recording now if that would help explain your issue better. Just let me know.`,
           sender: "ai",
           timestamp: new Date(),
         }
@@ -354,36 +413,75 @@ export default function ChatbotInterface() {
         // Prepare the conversation history in the right format for AI
         const conversationHistory = prepareChatHistory(messages);
         
-        // Generate the AI summary for the ticket
-        console.log("Preparing to generate AI summary with conversation history:", conversationHistory);
-        summaryMutation.mutate(conversationHistory, {
-          onSuccess: (data) => {
-            console.log("AI summary generated successfully:", data);
+        // Generate the AI summary and title for the ticket
+        console.log("Preparing to generate AI content with conversation history:", conversationHistory);
+        
+        // First, generate a better title using AI
+        titleMutation.mutate(conversationHistory, {
+          onSuccess: (titleData) => {
+            console.log("AI title generated successfully:", titleData);
             
-            // Use the AI-generated summary instead of the templated one
-            const enhancedTicketData = {
-              ...suggestedTicketData,
-              description: data.summary || "Support ticket created via chat interface."
-            };
-            
-            console.log("Creating ticket with enhanced data:", enhancedTicketData);
-            
-            // Create the ticket with the enhanced data
-            createTicketMutation.mutate(enhancedTicketData);
-            setIsTyping(false);
+            // Now generate a summary with the AI-generated title
+            summaryMutation.mutate(conversationHistory, {
+              onSuccess: (summaryData) => {
+                console.log("AI summary generated successfully:", summaryData);
+                
+                // Use both AI-generated title and summary
+                const enhancedTicketData = {
+                  ...suggestedTicketData,
+                  title: titleData.title || suggestedTicketData.title,
+                  description: summaryData.summary || "Support ticket created via chat interface."
+                };
+                
+                console.log("Creating ticket with AI-enhanced data:", enhancedTicketData);
+                
+                // Create the ticket with the enhanced data
+                createTicketMutation.mutate(enhancedTicketData);
+                setIsTyping(false);
+              },
+              onError: (error) => {
+                console.error("Failed to generate summary:", error);
+                
+                // Still create the ticket with the AI title but fallback description
+                const enhancedTicketData = {
+                  ...suggestedTicketData,
+                  title: titleData.title || suggestedTicketData.title,
+                  description: `Support ticket from chat interface.`
+                };
+                
+                createTicketMutation.mutate(enhancedTicketData);
+                setIsTyping(false);
+              }
+            });
           },
           onError: (error) => {
-            console.error("Failed to generate summary:", error);
+            console.error("Failed to generate title:", error);
             
-            // Fallback to a simple description if AI summary fails
-            const enhancedTicketData = {
-              ...suggestedTicketData,
-              description: `Support ticket from chat interface.\n\nIssue: ${extractIssueTitle(messages)}`
-            };
-            
-            // Still create the ticket even if summary fails
-            createTicketMutation.mutate(enhancedTicketData);
-            setIsTyping(false);
+            // Fall back to generating just the summary
+            summaryMutation.mutate(conversationHistory, {
+              onSuccess: (summaryData) => {
+                // Use AI summary but fallback title
+                const enhancedTicketData = {
+                  ...suggestedTicketData,
+                  description: summaryData.summary || "Support ticket created via chat interface."
+                };
+                
+                createTicketMutation.mutate(enhancedTicketData);
+                setIsTyping(false);
+              },
+              onError: (error) => {
+                console.error("Failed to generate summary after title failure:", error);
+                
+                // Complete fallback if both AI calls fail
+                const enhancedTicketData = {
+                  ...suggestedTicketData,
+                  description: `Support ticket from chat interface.\n\nIssue: ${extractIssueTitle(messages)}`
+                };
+                
+                createTicketMutation.mutate(enhancedTicketData);
+                setIsTyping(false);
+              }
+            });
           }
         });
         

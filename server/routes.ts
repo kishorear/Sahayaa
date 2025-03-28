@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { classifyTicket, attemptAutoResolve, generateChatResponse, summarizeConversation } from "./ai";
+import { classifyTicket, attemptAutoResolve, generateChatResponse, generateTicketTitle, summarizeConversation } from "./ai";
 import { reloadProvidersFromDatabase } from "./ai/service";
 import { AIProviderFactory } from "./ai/providers";
 import type { ChatMessage } from "./ai";
@@ -434,6 +434,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error processing chatbot request:', error);
       res.status(500).json({ 
         message: "I'm having trouble processing your request right now. Please try again shortly."
+      });
+    }
+  });
+
+  // Endpoint for generating AI-powered ticket titles
+  app.post("/api/chatbot/title", async (req, res) => {
+    try {
+      const { messages } = req.body;
+      
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Messages array is required",
+          title: "Support Request"
+        });
+      }
+      
+      // Get tenant context from middleware or request
+      const tenantId = req.tenant?.id || req.user?.tenantId || 1; // Default to tenant 1 if not specified
+      
+      // Pre-load the AI providers to ensure we're using the latest configuration
+      try {
+        await reloadProvidersFromDatabase(tenantId);
+      } catch (error) {
+        console.warn('Failed to reload AI providers before title generation request:', error);
+        // Continue with request even if provider reload fails
+      }
+      
+      // Generate a title for the ticket based on conversation
+      const title = await generateTicketTitle(messages, tenantId);
+      
+      return res.status(200).json({ 
+        success: true, 
+        title 
+      });
+    } catch (error) {
+      console.error('Error generating ticket title:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: "Failed to generate ticket title",
+        title: "Support Request"
       });
     }
   });

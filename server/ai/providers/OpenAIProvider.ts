@@ -221,6 +221,68 @@ export class OpenAIProvider implements AIProviderInterface {
     }
   }
   
+  async generateTicketTitle(
+    messages: Array<{ role: string; content: string }>,
+    context?: string
+  ): Promise<string> {
+    try {
+      // Filter out system messages for title generation
+      const userMessages = messages.filter(m => m.role === 'user');
+      
+      if (userMessages.length === 0) {
+        return "Support Request";
+      }
+      
+      const prompt = [
+        {
+          role: "system" as const,
+          content: "You are a support ticket assistant. Based on the conversation, generate a concise, specific title (maximum 60 characters) that accurately describes the technical issue. Focus on the actual problem, and include error codes if mentioned. The title should help support agents quickly understand the issue."
+        },
+        ...messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-5).map(msg => ({
+          role: msg.role as 'system' | 'user' | 'assistant',
+          content: msg.content
+        }))
+      ];
+      
+      // Add context if provided
+      if (context) {
+        prompt.unshift({
+          role: "system" as const,
+          content: `Additional context: ${context}`
+        });
+      }
+      
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: prompt,
+        temperature: 0.3,
+        max_tokens: 60
+      });
+      
+      let title = response.choices[0].message.content?.trim() || "Support Request";
+      
+      // Ensure title is not too long
+      if (title.length > 60) {
+        title = title.substring(0, 57) + '...';
+      }
+      
+      return title;
+    } catch (error) {
+      console.error("Error generating ticket title with OpenAI:", error);
+      
+      // Fallback to using first user message
+      const firstUserMessage = messages.find(m => m.role === 'user');
+      if (firstUserMessage) {
+        const firstSentence = firstUserMessage.content.split(/[.!?]/)[0];
+        return firstSentence.length > 60 
+          ? firstSentence.substring(0, 57) + '...' 
+          : firstSentence;
+      }
+      
+      return "Support Request";
+    }
+  }
+  
   async summarizeConversation(
     messages: Array<{ role: string; content: string }>,
     context?: string

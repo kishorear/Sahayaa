@@ -26,6 +26,7 @@ import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
 import { registerAiProviderRoutes } from "./routes/ai-provider-routes";
 import { getSsoService } from "./sso-service";
+import { getIntegrationService } from "./integrations";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Add enhanced error handlers for database-related errors in all routes
@@ -147,7 +148,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tenantId: tenantId || ticketData.tenantId
       };
       
+      // Create ticket in our system
       const ticket = await storage.createTicket(newTicket);
+      
+      // Create ticket in third-party systems based on integration settings
+      const externalTicketReferences: Record<string, any> = {};
+      try {
+        // Get the integration service to handle third-party ticket creation
+        const integrationService = getIntegrationService();
+        
+        // Create the ticket in any enabled third-party systems
+        const thirdPartyResults = await integrationService.createTicketInThirdParty(newTicket);
+        
+        // Save external references to metadata for future updates
+        if (thirdPartyResults.jira) {
+          externalTicketReferences.jira = thirdPartyResults.jira.key;
+          console.log(`Ticket created in Jira with key: ${thirdPartyResults.jira.key}, url: ${thirdPartyResults.jira.url}`);
+        }
+        
+        if (thirdPartyResults.zendesk) {
+          externalTicketReferences.zendesk = thirdPartyResults.zendesk.id;
+          console.log(`Ticket created in Zendesk with ID: ${thirdPartyResults.zendesk.id}, url: ${thirdPartyResults.zendesk.url}`);
+        }
+        
+        // If we created any external tickets, update our ticket with the references
+        if (Object.keys(externalTicketReferences).length > 0) {
+          await storage.updateTicket(ticket.id, {
+            externalIntegrations: externalTicketReferences
+          });
+          
+          // Update our ticket object for the response
+          ticket.externalIntegrations = externalTicketReferences;
+        }
+      } catch (integrationError) {
+        console.error('Error creating ticket in third-party systems:', integrationError);
+        // Continue processing - the ticket was already created in our system
+      }
       
       // Attempt to auto-resolve if AI thinks it can
       if (classification.canAutoResolve) {
@@ -160,21 +196,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const { resolved, response } = await attemptAutoResolve(ticket.title, ticket.description, [], ticket.tenantId);
         
-        // Store AI response as a message
-        await storage.createMessage({
+        // Create message in our system
+        const aiMessage = {
           ticketId: ticket.id,
           sender: "ai",
           content: response,
           metadata: { isAutoResolved: resolved }
-        });
+        };
         
+        await storage.createMessage(aiMessage);
+        
+        // If ticket was resolved, update status in our system and third-party systems
         if (resolved) {
-          // Update ticket as resolved by AI
+          // Update ticket as resolved by AI in our system
           await storage.updateTicket(ticket.id, { 
             status: "resolved",
             aiResolved: true,
             resolvedAt: new Date()
           });
+          
+          // Update status in third-party systems
+          if (Object.keys(externalTicketReferences).length > 0) {
+            try {
+              const integrationService = getIntegrationService();
+              await integrationService.updateStatusInThirdParty(
+                externalTicketReferences, 
+                "resolved"
+              );
+              
+              // Also add the AI response as a comment in third-party systems
+              // Create a proper InsertMessage type
+              const messageForThirdParty: InsertMessage = {
+                ticketId: aiMessage.ticketId,
+                sender: aiMessage.sender,
+                content: aiMessage.content,
+                metadata: aiMessage.metadata as any
+              };
+              
+              await integrationService.addCommentToThirdParty(
+                externalTicketReferences,
+                messageForThirdParty
+              );
+            } catch (updateError) {
+              console.error('Error updating ticket status in third-party systems:', updateError);
+            }
+          }
         }
       }
       
@@ -183,6 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      console.error('Error in ticket creation:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -224,7 +291,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
+      // Create message in our system
       const newMessage = await storage.createMessage(messageData);
+      
+      // Sync message to external ticketing systems if they exist
+      try {
+        if (ticket.externalIntegrations) {
+          const externalTickets = ticket.externalIntegrations;
+          if (Object.keys(externalTickets).length > 0) {
+            // Get integration service to handle syncing
+            const integrationService = getIntegrationService();
+            
+            // Add the message as a comment in third-party systems
+            await integrationService.addCommentToThirdParty(
+              externalTickets,
+              messageData
+            );
+            
+            console.log('Message synced to external ticketing systems:', 
+              Object.keys(externalTickets).join(', '));
+          }
+        }
+      } catch (syncError) {
+        console.error('Error syncing message to external ticketing systems:', syncError);
+        // Continue processing - the message was already created in our system
+      }
       
       // If message is from user and ticket is still active, generate AI response
       if (messageData.sender === "user" && ticket.status !== "resolved") {
@@ -262,17 +353,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ticketId,
           sender: "ai",
           content: aiResponse,
-          metadata: null
+          metadata: {} // Empty object instead of null
         });
         
+        // Sync AI response to external ticketing systems
+        try {
+          if (ticket.externalIntegrations) {
+            const externalTickets = ticket.externalIntegrations;
+            if (Object.keys(externalTickets).length > 0) {
+              const integrationService = getIntegrationService();
+              
+              // Add the AI response as a comment in third-party systems
+              // Create a proper InsertMessage type from the aiMessage
+              const messageForThirdParty: InsertMessage = {
+                ticketId: aiMessage.ticketId,
+                sender: aiMessage.sender,
+                content: aiMessage.content,
+                metadata: aiMessage.metadata as any
+              };
+              
+              await integrationService.addCommentToThirdParty(
+                externalTickets,
+                messageForThirdParty
+              );
+              
+              console.log('AI response synced to external ticketing systems');
+            }
+          }
+        } catch (syncError) {
+          console.error('Error syncing AI response to external ticketing systems:', syncError);
+        }
+        
         // Check if ticket should be marked as resolved
-        if (aiResponse.toLowerCase().includes("resolved") && 
-            !aiResponse.toLowerCase().includes("not resolved")) {
+        const shouldResolve = aiResponse.toLowerCase().includes("resolved") && 
+                           !aiResponse.toLowerCase().includes("not resolved");
+        
+        if (shouldResolve) {
+          // Update status in our system
           await storage.updateTicket(ticketId, { 
             status: "resolved",
             aiResolved: true,
             resolvedAt: new Date()
           });
+          
+          // Update status in third-party systems
+          try {
+            if (ticket.externalIntegrations) {
+              const externalTickets = ticket.externalIntegrations;
+              if (Object.keys(externalTickets).length > 0) {
+                const integrationService = getIntegrationService();
+                
+                // Update status in third-party systems
+                await integrationService.updateStatusInThirdParty(
+                  externalTickets, 
+                  "resolved"
+                );
+                
+                console.log('Ticket status updated to resolved in external systems');
+              }
+            }
+          } catch (updateError) {
+            console.error('Error updating status in external ticketing systems:', updateError);
+          }
         }
         
         return res.status(201).json({ 
@@ -286,6 +428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      console.error('Error handling message creation:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

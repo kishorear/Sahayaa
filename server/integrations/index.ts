@@ -3,10 +3,9 @@ import { JiraService, JiraConfig, setupJiraService, getJiraService } from './jir
 import { InsertTicket, InsertMessage } from '@shared/schema';
 
 // Interface for any third-party ticket system configuration
-export interface IntegrationConfig {
-  type: 'zendesk' | 'jira';
-  config: ZendeskConfig | JiraConfig;
-}
+export type IntegrationConfig = 
+  | { type: 'zendesk'; config: ZendeskConfig }
+  | { type: 'jira'; config: JiraConfig };
 
 /**
  * Main integration service that manages all third-party integrations
@@ -23,11 +22,66 @@ export class IntegrationService {
    * Configure integrations from settings
    */
   setupIntegrations(integrations: IntegrationConfig[]): void {
+    console.log('Setting up integrations:', integrations.map(i => ({
+      type: i.type,
+      config: {
+        ...i.config,
+        apiToken: i.config.apiToken ? '[REDACTED]' : 'missing'
+      }
+    })));
+    
     for (const integration of integrations) {
-      if (integration.type === 'zendesk' && integration.config) {
-        this.zendeskService = setupZendeskService(integration.config as ZendeskConfig);
-      } else if (integration.type === 'jira' && integration.config) {
-        this.jiraService = setupJiraService(integration.config as JiraConfig);
+      if (integration.type === 'zendesk') {
+        console.log('Setting up Zendesk integration with config:', {
+          subdomain: integration.config.subdomain,
+          email: integration.config.email,
+          enabled: integration.config.enabled,
+          apiToken: integration.config.apiToken ? '[REDACTED]' : 'missing'
+        });
+        
+        // Ensure all required fields are present
+        if (!integration.config.subdomain || !integration.config.email || !integration.config.apiToken) {
+          console.error('Missing required fields for Zendesk integration:', {
+            hasSubdomain: !!integration.config.subdomain,
+            hasEmail: !!integration.config.email,
+            hasApiToken: !!integration.config.apiToken
+          });
+          continue; // Skip this integration
+        }
+        
+        try {
+          this.zendeskService = setupZendeskService(integration.config);
+          console.log('Zendesk integration set up successfully');
+        } catch (error) {
+          console.error('Error setting up Zendesk integration:', error);
+        }
+      } else if (integration.type === 'jira') {
+        console.log('Setting up Jira integration with config:', {
+          baseUrl: integration.config.baseUrl,
+          email: integration.config.email,
+          projectKey: integration.config.projectKey,
+          enabled: integration.config.enabled,
+          apiToken: integration.config.apiToken ? '[REDACTED]' : 'missing'
+        });
+        
+        // Ensure all required fields are present
+        if (!integration.config.baseUrl || !integration.config.email || 
+            !integration.config.apiToken || !integration.config.projectKey) {
+          console.error('Missing required fields for Jira integration:', {
+            hasBaseUrl: !!integration.config.baseUrl,
+            hasEmail: !!integration.config.email,
+            hasApiToken: !!integration.config.apiToken,
+            hasProjectKey: !!integration.config.projectKey
+          });
+          continue; // Skip this integration
+        }
+        
+        try {
+          this.jiraService = setupJiraService(integration.config);
+          console.log('Jira integration set up successfully');
+        } catch (error) {
+          console.error('Error setting up Jira integration:', error);
+        }
       }
     }
   }

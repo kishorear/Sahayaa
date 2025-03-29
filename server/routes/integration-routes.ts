@@ -16,17 +16,26 @@ import {
 
 // Validation schemas for integration configurations
 const zendeskConfigSchema = z.object({
-  subdomain: z.string().min(1),
-  email: z.string().email(),
-  apiToken: z.string().min(1),
+  subdomain: z.string().min(1, "Subdomain is required"),
+  email: z.string().email("A valid email is required"),
+  apiToken: z.string().min(1, "API token is required"),
   enabled: z.boolean().default(true)
 });
 
+// Improve Jira schema with better error messages and stricter validation
 const jiraConfigSchema = z.object({
-  baseUrl: z.string().url(),
-  email: z.string().email(),
-  apiToken: z.string().min(1),
-  projectKey: z.string().min(1),
+  baseUrl: z.string()
+    .url("Base URL must be a valid URL (e.g., https://yourcompany.atlassian.net)")
+    .min(1, "Base URL is required"),
+  email: z.string()
+    .email("A valid email address is required")
+    .min(1, "Email is required"),
+  apiToken: z.string()
+    .min(1, "API token is required")
+    .refine(val => val.length > 5, "API token is too short - please provide a valid token"),
+  projectKey: z.string()
+    .min(1, "Project key is required")
+    .regex(/^[A-Z][A-Z0-9_]+$/, "Project key must be in uppercase and contain only letters, numbers and underscores"),
   enabled: z.boolean().default(true)
 });
 
@@ -117,73 +126,196 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   // Configure a specific integration
   app.post('/api/integrations/:type', requireAuth, async (req: Request, res: Response) => {
     try {
+      console.log('Received integration configuration request:', {
+        type: req.params.type,
+        body: {
+          ...req.body,
+          apiToken: req.body.apiToken ? '[REDACTED]' : undefined
+        }
+      });
+      
       const type = integrationTypeSchema.parse(req.params.type);
       
-      // Validate based on integration type
+      // Check for empty or null request body
+      if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({ 
+          message: 'Empty request body. Configuration data is required.',
+          requiredFields: type === 'jira' 
+            ? ['baseUrl', 'email', 'apiToken', 'projectKey', 'enabled'] 
+            : ['subdomain', 'email', 'apiToken', 'enabled']
+        });
+      }
+      
+      // Validate based on integration type with explicit error handling
       let config: ZendeskConfig | JiraConfig;
       
       if (type === 'zendesk') {
-        config = zendeskConfigSchema.parse(req.body);
+        try {
+          config = zendeskConfigSchema.parse(req.body);
+          console.log('Zendesk configuration validated successfully');
+        } catch (validationError) {
+          if (validationError instanceof z.ZodError) {
+            console.error('Zendesk validation errors:', validationError.errors);
+            return res.status(400).json({ 
+              message: 'Invalid Zendesk configuration', 
+              errors: validationError.errors 
+            });
+          }
+          throw validationError;
+        }
       } else if (type === 'jira') {
-        config = jiraConfigSchema.parse(req.body);
+        try {
+          config = jiraConfigSchema.parse(req.body);
+          console.log('Jira configuration validated successfully');
+        } catch (validationError) {
+          if (validationError instanceof z.ZodError) {
+            console.error('Jira validation errors:', validationError.errors);
+            const fieldErrors = validationError.errors.map(err => ({
+              field: err.path.join('.'),
+              message: err.message
+            }));
+            
+            return res.status(400).json({ 
+              message: 'Invalid Jira configuration',
+              errors: fieldErrors
+            });
+          }
+          throw validationError;
+        }
         
-        // Validate required fields
-        if (!config.baseUrl || !config.email || !config.apiToken || !config.projectKey) {
+        // Double-check required fields (defense in depth)
+        const missingFields = [];
+        if (!config.baseUrl) missingFields.push('baseUrl');
+        if (!config.email) missingFields.push('email');
+        if (!config.apiToken) missingFields.push('apiToken');
+        if (!config.projectKey) missingFields.push('projectKey');
+        
+        if (missingFields.length > 0) {
+          console.error('Missing required fields for Jira integration:', missingFields);
           return res.status(400).json({ 
             message: 'Missing required fields for Jira integration',
-            errors: [
-              { field: 'baseUrl', present: !!config.baseUrl },
-              { field: 'email', present: !!config.email },
-              { field: 'apiToken', present: !!config.apiToken },
-              { field: 'projectKey', present: !!config.projectKey }
-            ]
+            missingFields
           });
         }
       } else {
         return res.status(400).json({ message: 'Invalid integration type' });
       }
 
-      // Save the configuration
+      if (type === 'jira') {
+        const jiraConfig = config as JiraConfig;
+        console.log(`Saving Jira integration configuration with values:`, {
+          baseUrl: jiraConfig.baseUrl, 
+          email: jiraConfig.email,
+          projectKey: jiraConfig.projectKey, 
+          enabled: jiraConfig.enabled,
+          apiToken: jiraConfig.apiToken ? '[REDACTED]' : 'missing'
+        });
+      } else {
+        const zendeskConfig = config as ZendeskConfig;
+        console.log(`Saving Zendesk integration configuration with values:`, {
+          subdomain: zendeskConfig.subdomain,
+          email: zendeskConfig.email,
+          enabled: zendeskConfig.enabled,
+          apiToken: zendeskConfig.apiToken ? '[REDACTED]' : 'missing'
+        });
+      }
+
+      // Create a deep copy of the configuration to avoid reference issues
+      // Save the configuration in memory
       if (type === 'jira') {
         const jiraConfig = config as JiraConfig;
         integrationSettings.jira = {
           enabled: jiraConfig.enabled,
-          baseUrl: jiraConfig.baseUrl,
-          email: jiraConfig.email,
+          baseUrl: jiraConfig.baseUrl.trim(),
+          email: jiraConfig.email.trim(),
           apiToken: jiraConfig.apiToken,
           maskedToken: '********',
-          projectKey: jiraConfig.projectKey
+          projectKey: jiraConfig.projectKey.trim()
         };
+        
+        // Log the saved configuration (without sensitive data)
+        console.log('Saved Jira configuration:', {
+          enabled: integrationSettings.jira.enabled,
+          baseUrl: integrationSettings.jira.baseUrl,
+          email: integrationSettings.jira.email,
+          projectKey: integrationSettings.jira.projectKey,
+          apiToken: '[REDACTED]'
+        });
       } else if (type === 'zendesk') {
         const zendeskConfig = config as ZendeskConfig;
         integrationSettings.zendesk = {
           enabled: zendeskConfig.enabled,
-          subdomain: zendeskConfig.subdomain,
-          email: zendeskConfig.email,
+          subdomain: zendeskConfig.subdomain.trim(),
+          email: zendeskConfig.email.trim(),
           apiToken: zendeskConfig.apiToken,
           maskedToken: '********'
         };
+        
+        // Log the saved configuration (without sensitive data)
+        console.log('Saved Zendesk configuration:', {
+          enabled: integrationSettings.zendesk.enabled,
+          subdomain: integrationSettings.zendesk.subdomain,
+          email: integrationSettings.zendesk.email,
+          apiToken: '[REDACTED]'
+        });
       }
 
+      console.log(`Setting up ${type} integration service...`);
+      
       // Configure the integration service
       const integrationService = setupIntegrationService();
       
-      const integrations: IntegrationConfig[] = [{
-        type,
-        config
-      }];
+      console.log(`Integration configuration being set up for ${type}`);
       
-      integrationService.setupIntegrations(integrations);
+      // Type-safe creation of integration config
+      if (type === 'jira') {
+        const jiraConfig = config as JiraConfig;
+        console.log('Jira config prepared:', {
+          baseUrl: jiraConfig.baseUrl,
+          email: jiraConfig.email,
+          projectKey: jiraConfig.projectKey,
+          enabled: jiraConfig.enabled,
+          apiToken: '[REDACTED]'
+        });
+        
+        const integrations: IntegrationConfig[] = [{
+          type: 'jira',
+          config: { ...jiraConfig }
+        }];
+        
+        integrationService.setupIntegrations(integrations);
+      } else if (type === 'zendesk') {
+        const zendeskConfig = config as ZendeskConfig;
+        console.log('Zendesk config prepared:', {
+          subdomain: zendeskConfig.subdomain,
+          email: zendeskConfig.email,
+          enabled: zendeskConfig.enabled,
+          apiToken: '[REDACTED]'
+        });
+        
+        const integrations: IntegrationConfig[] = [{
+          type: 'zendesk',
+          config: { ...zendeskConfig }
+        }];
+        
+        integrationService.setupIntegrations(integrations);
+      }
       
       // Test the connection if enabled
       if (config.enabled) {
+        console.log(`Testing connection to ${type}...`);
         const connectionResult = await integrationService.verifyConnections();
+        
+        console.log(`Connection test results for ${type}:`, connectionResult);
         
         if (!connectionResult[type]) {
           return res.status(400).json({ 
-            message: `Could not connect to ${type}. Please check your configuration.` 
+            message: `Could not connect to ${type}. Please check your configuration and ensure your credentials are correct.`,
+            details: `The service could not authenticate with the provided credentials. Verify that your API token has the necessary permissions.`
           });
         }
+        
+        console.log(`Successfully connected to ${type}`);
       }
       
       // In a real production app, you would save this configuration to a database
@@ -194,75 +326,145 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid configuration', errors: error.errors });
+        // Format Zod validation errors in a user-friendly way
+        const formattedErrors = error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }));
+        
+        return res.status(400).json({ 
+          message: 'Invalid configuration', 
+          errors: formattedErrors 
+        });
       }
+      
+      // Log the full error for debugging
       console.error(`Error configuring ${req.params.type} integration:`, error);
-      res.status(500).json({ message: 'Error configuring integration' });
+      
+      // Return a user-friendly error message
+      res.status(500).json({ 
+        message: 'Error configuring integration',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
   // Test integration connection
   app.post('/api/integrations/:type/test', requireAuth, async (req: Request, res: Response) => {
     try {
+      // Log the test request with safe redaction
+      console.log('Received integration test request:', {
+        type: req.params.type,
+        body: {
+          ...req.body,
+          apiToken: req.body.apiToken ? '[REDACTED]' : undefined
+        }
+      });
+      
       const type = integrationTypeSchema.parse(req.params.type);
+      
+      // Check for empty or null request body
+      if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({ 
+          message: 'Empty request body. Configuration data is required for testing.',
+          requiredFields: type === 'jira' 
+            ? ['baseUrl', 'email', 'apiToken', 'projectKey'] 
+            : ['subdomain', 'email', 'apiToken']
+        });
+      }
       
       // Create a temporary service specifically for testing with the provided credentials
       if (type === 'jira') {
-        // Log the request body for debugging
-        console.log('Jira test connection request body:', req.body);
-        
-        // Parse and validate the request body
         try {
+          // Parse and validate using our enhanced schema
+          console.log('Validating Jira configuration for testing...');
           const testConfig = jiraConfigSchema.parse(req.body);
           
-          // Validate required fields before proceeding
-          if (!testConfig.baseUrl || !testConfig.email || !testConfig.apiToken || !testConfig.projectKey) {
+          // Double-check required fields to be absolutely certain (defense in depth)
+          const missingFields = [];
+          if (!testConfig.baseUrl) missingFields.push('baseUrl');
+          if (!testConfig.email) missingFields.push('email');
+          if (!testConfig.apiToken) missingFields.push('apiToken');
+          if (!testConfig.projectKey) missingFields.push('projectKey');
+          
+          if (missingFields.length > 0) {
+            console.error('Missing required fields for Jira integration test:', missingFields);
             return res.status(400).json({ 
-              message: 'Missing required fields for Jira integration',
-              errors: [
-                { field: 'baseUrl', present: !!testConfig.baseUrl },
-                { field: 'email', present: !!testConfig.email },
-                { field: 'apiToken', present: !!testConfig.apiToken },
-                { field: 'projectKey', present: !!testConfig.projectKey }
-              ]
+              message: 'Missing required fields for Jira integration test',
+              missingFields: missingFields
             });
           }
           
+          // Trim any whitespace in string values
+          const sanitizedConfig = {
+            ...testConfig,
+            baseUrl: testConfig.baseUrl.trim(),
+            email: testConfig.email.trim(),
+            projectKey: testConfig.projectKey.trim(),
+            enabled: true // Always enable for testing
+          };
+          
           console.log('Testing Jira connection with:', {
-            baseUrl: testConfig.baseUrl,
-            email: testConfig.email,
-            apiToken: testConfig.apiToken ? '[REDACTED]' : 'missing',
-            projectKey: testConfig.projectKey,
-            enabled: testConfig.enabled
+            baseUrl: sanitizedConfig.baseUrl,
+            email: sanitizedConfig.email,
+            apiToken: sanitizedConfig.apiToken ? '[REDACTED]' : 'missing',
+            projectKey: sanitizedConfig.projectKey
           });
           
           // Create a temporary Jira service instance for testing
+          console.log('Creating Jira service instance for testing...');
           const tempJiraService = new JiraService({
-            baseUrl: testConfig.baseUrl,
-            email: testConfig.email,
-            apiToken: testConfig.apiToken,
-            projectKey: testConfig.projectKey,
+            baseUrl: sanitizedConfig.baseUrl,
+            email: sanitizedConfig.email,
+            apiToken: sanitizedConfig.apiToken,
+            projectKey: sanitizedConfig.projectKey,
             enabled: true
           });
           
-          // Test the connection
-          const connected = await tempJiraService.verifyConnection();
+          // Test the connection with timeouts
+          console.log('Verifying Jira connection...');
+          const connectionPromise = tempJiraService.verifyConnection();
+          
+          // Set a timeout for the connection test (30 seconds)
+          const timeoutPromise = new Promise<false>((resolve) => {
+            setTimeout(() => resolve(false), 30000);
+          });
+          
+          // Use Promise.race to handle timeouts
+          const connected = await Promise.race([connectionPromise, timeoutPromise]);
           
           if (connected) {
-            res.status(200).json({ message: `Successfully connected to Jira` });
+            console.log('Jira connection test successful!');
+            res.status(200).json({ 
+              message: `Successfully connected to Jira`,
+              details: `Connection verified with ${sanitizedConfig.baseUrl}`
+            });
           } else {
+            console.error('Jira connection test failed');
             res.status(400).json({ 
               message: `Could not connect to Jira. Please verify your credentials and Jira URL.`,
-              details: "Make sure your API token is correct and has the necessary permissions."
+              details: "Make sure your API token is correct and has the necessary permissions.",
+              suggestions: [
+                "Verify your Jira URL is correct (e.g., https://yourcompany.atlassian.net)",
+                "Check that your API token has not expired and has the correct permissions",
+                "Ensure your network allows connections to Jira",
+                "Verify the project key exists in your Jira instance"
+              ]
             });
           }
         } catch (validationError) {
-          console.error('Jira config validation error:', validationError);
+          console.error('Jira test config validation error:', validationError);
           
           if (validationError instanceof z.ZodError) {
+            // Format Zod validation errors in a user-friendly way
+            const formattedErrors = validationError.errors.map(err => ({
+              field: err.path.join('.'),
+              message: err.message
+            }));
+            
             return res.status(400).json({ 
               message: 'Invalid Jira configuration', 
-              errors: validationError.errors 
+              errors: formattedErrors 
             });
           }
           
@@ -273,35 +475,113 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         }
       } 
       else if (type === 'zendesk') {
-        // Parse and validate the request body
-        const testConfig = zendeskConfigSchema.parse(req.body);
-        
-        // Create a temporary Zendesk service instance for testing
-        const tempZendeskService = new ZendeskService({
-          subdomain: testConfig.subdomain,
-          email: testConfig.email,
-          apiToken: testConfig.apiToken,
-          enabled: true
-        });
-        
-        // Test the connection
-        const connected = await tempZendeskService.verifyConnection();
-        
-        if (connected) {
-          res.status(200).json({ message: `Successfully connected to Zendesk` });
-        } else {
-          res.status(400).json({ message: `Could not connect to Zendesk. Please check your configuration.` });
+        try {
+          // Parse and validate the request body
+          console.log('Validating Zendesk configuration for testing...');
+          const testConfig = zendeskConfigSchema.parse(req.body);
+          
+          // Trim any whitespace in string values
+          const sanitizedConfig = {
+            ...testConfig,
+            subdomain: testConfig.subdomain.trim(),
+            email: testConfig.email.trim(),
+            enabled: true // Always enable for testing
+          };
+          
+          console.log('Testing Zendesk connection with:', {
+            subdomain: sanitizedConfig.subdomain,
+            email: sanitizedConfig.email,
+            apiToken: sanitizedConfig.apiToken ? '[REDACTED]' : 'missing'
+          });
+          
+          // Create a temporary Zendesk service instance for testing
+          console.log('Creating Zendesk service instance for testing...');
+          const tempZendeskService = new ZendeskService({
+            subdomain: sanitizedConfig.subdomain,
+            email: sanitizedConfig.email,
+            apiToken: sanitizedConfig.apiToken,
+            enabled: true
+          });
+          
+          // Test the connection with timeouts
+          console.log('Verifying Zendesk connection...');
+          const connectionPromise = tempZendeskService.verifyConnection();
+          
+          // Set a timeout for the connection test (30 seconds)
+          const timeoutPromise = new Promise<false>((resolve) => {
+            setTimeout(() => resolve(false), 30000);
+          });
+          
+          // Use Promise.race to handle timeouts
+          const connected = await Promise.race([connectionPromise, timeoutPromise]);
+          
+          if (connected) {
+            console.log('Zendesk connection test successful!');
+            res.status(200).json({ 
+              message: `Successfully connected to Zendesk`,
+              details: `Connection verified with ${sanitizedConfig.subdomain}.zendesk.com`
+            });
+          } else {
+            console.error('Zendesk connection test failed');
+            res.status(400).json({ 
+              message: `Could not connect to Zendesk. Please verify your credentials and subdomain.`,
+              suggestions: [
+                "Verify your Zendesk subdomain is correct (just the subdomain, not the full URL)",
+                "Check that your API token is valid",
+                "Ensure your email address has access to Zendesk"
+              ]
+            });
+          }
+        } catch (validationError) {
+          console.error('Zendesk test config validation error:', validationError);
+          
+          if (validationError instanceof z.ZodError) {
+            // Format Zod validation errors in a user-friendly way
+            const formattedErrors = validationError.errors.map(err => ({
+              field: err.path.join('.'),
+              message: err.message
+            }));
+            
+            return res.status(400).json({ 
+              message: 'Invalid Zendesk configuration', 
+              errors: formattedErrors
+            });
+          }
+          
+          return res.status(400).json({
+            message: 'Could not connect to Zendesk',
+            error: validationError instanceof Error ? validationError.message : 'Unknown error'
+          });
         }
       }
       else {
-        return res.status(400).json({ message: `Unsupported integration type: ${type}` });
+        return res.status(400).json({ 
+          message: `Unsupported integration type: ${type}`,
+          supportedTypes: ['jira', 'zendesk']
+        });
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid configuration', errors: error.errors });
+        // Format Zod validation errors in a user-friendly way
+        const formattedErrors = error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }));
+        
+        return res.status(400).json({ 
+          message: 'Invalid configuration', 
+          errors: formattedErrors
+        });
       }
+      
+      // Log the full error for debugging
       console.error(`Error testing ${req.params.type} integration:`, error);
-      res.status(500).json({ message: 'Error testing integration connection' });
+      
+      // Return a user-friendly error message
+      res.status(500).json({ 
+        message: 'Error testing integration connection',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 }

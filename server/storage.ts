@@ -2006,27 +2006,90 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUsersByTenantId(tenantId: number): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.tenantId, tenantId));
+    try {
+      // Use SQL directly to avoid case sensitivity issues
+      const result = await db.execute(sql`
+        SELECT * FROM users WHERE "tenantId" = ${tenantId}
+      `);
+      
+      if (!result.rows || result.rows.length === 0) {
+        return [];
+      }
+      
+      // Transform the database rows to match our User type
+      return result.rows.map(row => ({
+        id: row.id,
+        tenantId: row.tenantid,
+        username: row.username,
+        password: row.password,
+        role: row.role,
+        name: row.name,
+        email: row.email,
+        mfaEnabled: row.mfaenabled || false,
+        mfaSecret: row.mfasecret || null,
+        mfaBackupCodes: row.mfabackupcodes || [],
+        ssoEnabled: row.ssoenabled || false,
+        ssoProvider: row.ssoprovider || null,
+        ssoProviderId: row.ssoproviderid || null,
+        ssoProviderData: row.ssoproviderdata || {},
+        createdAt: row.createdat,
+        updatedAt: row.updatedat
+      })) as User[];
+    } catch (error) {
+      console.error("Error fetching users by tenant ID:", error);
+      throw error;
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      // Instead of raw SQL, use Drizzle ORM
-      const [user] = await db
-        .insert(users)
-        .values({
-          username: insertUser.username, 
-          password: insertUser.password, 
-          role: insertUser.role || 'user', 
-          name: insertUser.name || null, 
-          email: insertUser.email || null, 
-          tenantId: insertUser.tenantId || 1, 
-          mfaEnabled: false, 
-          mfaBackupCodes: [], 
-          ssoEnabled: false,
-          ssoProviderData: {}
-        })
-        .returning();
+      // Create a SQL query that explicitly names the columns to avoid case sensitivity issues
+      // Use drizzle SQL helpers instead of raw execute to properly handle parameter binding
+      const result = await db.execute(sql`
+        INSERT INTO users (
+          username, password, role, name, email, "tenantId", 
+          mfaenabled, mfabackupcodes, ssoenabled, ssoproviderdata
+        ) 
+        VALUES (
+          ${insertUser.username},
+          ${insertUser.password},
+          ${insertUser.role || 'user'},
+          ${insertUser.name || null},
+          ${insertUser.email || null},
+          ${insertUser.tenantId || 1},
+          ${false}, 
+          ${'[]'}, 
+          ${false}, 
+          ${'{}'}
+        )
+        RETURNING *
+      `);
+      
+      if (!result.rows || result.rows.length === 0) {
+        throw new Error('Failed to create user');
+      }
+      
+      const rawUser = result.rows[0];
+      
+      // Map the database field names to match our expected User type
+      const user = {
+        id: rawUser.id,
+        tenantId: rawUser.tenantid || 1,
+        username: rawUser.username,
+        password: rawUser.password,
+        role: rawUser.role,
+        name: rawUser.name,
+        email: rawUser.email,
+        mfaEnabled: rawUser.mfaenabled || false,
+        mfaSecret: rawUser.mfasecret || null,
+        mfaBackupCodes: rawUser.mfabackupcodes || [],
+        ssoEnabled: rawUser.ssoenabled || false,
+        ssoProvider: rawUser.ssoprovider || null,
+        ssoProviderId: rawUser.ssoproviderid || null,
+        ssoProviderData: rawUser.ssoproviderdata || {},
+        createdAt: rawUser.createdat,
+        updatedAt: rawUser.updatedat
+      } as User;
       
       // Add the new user to the cache immediately for better performance
       try {
@@ -2160,16 +2223,13 @@ export class DatabaseStorage implements IStorage {
         } as User;
       }
       
-      // Execute the update
-      const updateQuery = `
-        UPDATE users
-        SET ${setClauses.join(', ')}
-        WHERE id = $${paramIndex}
-        RETURNING *
-      `;
-      
+      // Execute the update using the PostgreSQL node driver directly
+      // since we're building our own parameterized query
+      const queryText = `UPDATE users SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
       params.push(id);
-      const result = await db.execute(sql.raw(updateQuery).params(params));
+      
+      // Use the pg driver's query method through db.query
+      const result = await db.query(queryText, params);
       
       if (result.rows.length === 0) {
         throw new Error(`User with ID ${id} not found`);
@@ -2214,29 +2274,40 @@ export class DatabaseStorage implements IStorage {
   
   async deleteUser(id: number): Promise<void> {
     try {
-      // First, ensure the user exists
-      const existingUserResult = await db.select().from(users).where(eq(users.id, id));
-      if (existingUserResult.length === 0) {
+      // First, ensure the user exists and get their data for cache cleanup
+      const existingUserResult = await db.execute(sql`
+        SELECT * FROM users WHERE id = ${id}
+      `);
+      
+      if (!existingUserResult.rows || existingUserResult.rows.length === 0) {
         throw new Error(`User with id ${id} not found`);
       }
       
-      const existingUser = existingUserResult[0];
+      const existingUser = existingUserResult.rows[0];
       
       // Delete the user from the database
-      await db.delete(users).where(eq(users.id, id));
+      await db.execute(sql`
+        DELETE FROM users WHERE id = ${id}
+      `);
       
       // Clear cache entries for this user
-      this.userCache.delete(`user:${id}`);
-      
-      // Clear username cache entries
-      if (existingUser.username) {
-        const cacheKey = existingUser.tenantId 
-          ? `username:${existingUser.username}:${existingUser.tenantId}` 
-          : `username:${existingUser.username}`;
-        this.userCache.delete(cacheKey);
+      try {
+        this.userCache.delete(id);
+        
+        // Clear username cache entries
+        if (existingUser.username) {
+          const tenantId = existingUser.tenantid || existingUser.tenantId;
+          const usernameKey = tenantId 
+            ? `${existingUser.username}:${tenantId}` 
+            : existingUser.username;
+          this.userByUsernameCache.delete(usernameKey);
+        }
+        
+        console.log(`User with ID ${id} has been deleted and removed from cache`);
+      } catch (cacheError) {
+        // Non-fatal error - just log it
+        console.error(`Failed to clear cache for deleted user ${id}:`, cacheError);
       }
-      
-      console.log(`User with ID ${id} has been deleted`);
     } catch (error) {
       console.error('Error deleting user:', error);
       throw error;
@@ -2861,6 +2932,15 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.getUsersByTenantId(tenantId);
     } catch (error) {
       console.error(`Error in getUsersByTenantId(${tenantId}):`, error);
+      throw error;
+    }
+  }
+  
+  async deleteUser(id: number): Promise<void> {
+    try {
+      return await this.storageImpl.deleteUser(id);
+    } catch (error) {
+      console.error(`Error in deleteUser(${id}):`, error);
       throw error;
     }
   }

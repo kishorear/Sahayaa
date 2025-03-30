@@ -2,6 +2,22 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { insertUserSchema, User } from "@shared/schema";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
+
+// Hash password function
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string) {
+  try {
+    const salt = randomBytes(16).toString("hex");
+    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+    return `${buf.toString("hex")}.${salt}`;
+  } catch (error) {
+    console.error('Error hashing password:', error);
+    throw new Error('Failed to hash password');
+  }
+}
 
 export function registerTeamMemberRoutes(app: Express, requireRole: (roles: string[]) => any) {
   // Get all team members (users)
@@ -69,8 +85,21 @@ export function registerTeamMemberRoutes(app: Express, requireRole: (roles: stri
         return res.status(400).json({ message: "Username already exists" });
       }
       
+      // Hash the password before storing it
+      if (userData.password) {
+        try {
+          console.log(`Hashing password for new user ${userData.username}`);
+          userData.password = await hashPassword(userData.password);
+          console.log("Password hashed successfully");
+        } catch (hashError) {
+          console.error("Error hashing password:", hashError);
+          return res.status(500).json({ message: "Error processing password" });
+        }
+      }
+      
       // Create the user
       const newUser = await storage.createUser(userData);
+      console.log(`New user created with ID: ${newUser.id}`);
       
       // Remove sensitive information
       const { password, mfaSecret, mfaBackupCodes, ...safeUser } = newUser;
@@ -118,8 +147,21 @@ export function registerTeamMemberRoutes(app: Express, requireRole: (roles: stri
         }
       }
       
+      // Hash the password if it's being updated
+      if (updateData.password) {
+        try {
+          console.log(`Hashing updated password for user ${existingUser.username} (ID: ${id})`);
+          updateData.password = await hashPassword(updateData.password);
+          console.log("Password hashed successfully");
+        } catch (hashError) {
+          console.error("Error hashing password:", hashError);
+          return res.status(500).json({ message: "Error processing password" });
+        }
+      }
+      
       // Update the user
       const updatedUser = await storage.updateUser(id, updateData);
+      console.log(`User ${updatedUser.username} (ID: ${updatedUser.id}) updated successfully`);
       
       // Remove sensitive information
       const { password, mfaSecret, mfaBackupCodes, ...safeUser } = updatedUser;

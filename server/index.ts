@@ -16,7 +16,37 @@ process.on('uncaughtException', (error) => {
 });
 
 const app = express();
-app.use(express.json());
+// Enhanced JSON body parser with better error handling
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: any, res, buf, encoding) => {
+    // Store raw body for debugging
+    if (req.url.includes('/integrations')) {
+      // Using a safe default encoding if none provided
+      const enc = encoding || 'utf8';
+      req.rawBody = buf.toString(enc as any);
+    }
+  },
+  // Handle JSON parsing errors
+  reviver: (key, value) => {
+    // Special handling for specific keys if needed
+    return value;
+  }
+}));
+
+app.use((err: any, req: any, res: Response, next: NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    // JSON parse error
+    console.error('JSON Parse Error:', err.message);
+    console.log('Raw request body:', req.rawBody);
+    return res.status(400).json({ 
+      message: 'Invalid JSON in request body',
+      error: err.message
+    });
+  }
+  next(err);
+});
+
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {

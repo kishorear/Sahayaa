@@ -42,6 +42,36 @@ const jiraConfigSchema = z.object({
 const integrationTypeSchema = z.enum(['zendesk', 'jira']);
 
 export function registerIntegrationRoutes(app: Express, requireAuth: any) {
+  // Special debug endpoint to validate request body handling
+  app.post('/api/integrations/debug', requireAuth, (req: Request, res: Response) => {
+    console.log('Integration debug endpoint hit with:', {
+      method: req.method,
+      url: req.url,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'content-length': req.headers['content-length'],
+      },
+      bodyType: typeof req.body,
+      body: req.body ? {
+        ...req.body,
+        apiToken: req.body.apiToken ? '[REDACTED]' : undefined
+      } : null,
+      rawBody: (req as any).rawBody ? '[available]' : '[not available]'
+    });
+    
+    if (!(req as any).rawBody && req.headers['content-type']?.includes('application/json')) {
+      console.warn('Raw body not captured for JSON request - verify express.json middleware setup');
+    }
+    
+    return res.status(200).json({
+      success: true,
+      received: {
+        contentType: req.headers['content-type'],
+        bodyKeys: req.body ? Object.keys(req.body) : [],
+        bodySize: req.body ? JSON.stringify(req.body).length : 0,
+      }
+    });
+  });
   // In-memory integrations storage for this example (would be database in production)
   let integrationSettings = {
     zendesk: {
@@ -352,24 +382,56 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   // Test integration connection
   app.post('/api/integrations/:type/test', requireAuth, async (req: Request, res: Response) => {
     try {
-      // Log the test request with safe redaction
-      console.log('Received integration test request:', {
-        type: req.params.type,
-        body: {
-          ...req.body,
-          apiToken: req.body.apiToken ? '[REDACTED]' : undefined
+      // Debug the raw request before it's processed by any middleware
+      console.log('Integration test endpoint hit:', {
+        method: req.method,
+        url: req.url,
+        headers: {
+          'content-type': req.headers['content-type'],
+          'content-length': req.headers['content-length'],
         }
       });
       
+      // Safe logging of the request body
+      console.log('Received integration test request:', {
+        type: req.params.type,
+        bodyType: typeof req.body,
+        bodyIsObject: req.body !== null && typeof req.body === 'object',
+        contentType: req.headers['content-type'],
+        hasApiToken: req.body && req.body.apiToken ? 'yes' : 'no',
+        bodyKeys: req.body ? Object.keys(req.body) : [],
+        body: req.body ? {
+          ...req.body,
+          apiToken: req.body.apiToken ? '[REDACTED]' : undefined
+        } : null
+      });
+      
+      // Make sure type is valid
       const type = integrationTypeSchema.parse(req.params.type);
       
-      // Check for empty or null request body
-      if (!req.body || Object.keys(req.body).length === 0) {
+      // Defensive check for various body issues
+      if (!req.body) {
+        return res.status(400).json({ 
+          message: 'Missing request body. Configuration data is required for testing.',
+          requestInfo: {
+            contentType: req.headers['content-type'],
+            contentLength: req.headers['content-length']
+          },
+          requiredFields: type === 'jira' 
+            ? ['baseUrl', 'email', 'apiToken', 'projectKey'] 
+            : ['subdomain', 'email', 'apiToken'],
+          tip: "Make sure you're sending a JSON request body with 'Content-Type: application/json' header"
+        });
+      }
+      
+      // Check for empty object
+      if (Object.keys(req.body).length === 0) {
         return res.status(400).json({ 
           message: 'Empty request body. Configuration data is required for testing.',
           requiredFields: type === 'jira' 
             ? ['baseUrl', 'email', 'apiToken', 'projectKey'] 
-            : ['subdomain', 'email', 'apiToken']
+            : ['subdomain', 'email', 'apiToken'],
+          tip: "Ensure all required fields are included in your request"
         });
       }
       

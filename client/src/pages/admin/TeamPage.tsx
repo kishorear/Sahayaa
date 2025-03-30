@@ -18,11 +18,13 @@ import { Loader2, Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 
-// Define the team member type
+// Define the team member type and valid roles
+type Role = "admin" | "support-agent" | "engineer" | "user";
+
 type TeamMember = {
   id: number;
   username: string;
-  role: string;
+  role: Role;
   name: string | null;
   email: string | null;
   tenantId: number;
@@ -105,7 +107,12 @@ export default function TeamPage() {
   useEffect(() => {
     if (selectedMember && isEditDialogOpen) {
       editForm.setValue("username", selectedMember.username);
-      editForm.setValue("role", selectedMember.role);
+      // Make sure we set a valid role value with proper type casting
+      if (["admin", "support-agent", "engineer", "user"].includes(selectedMember.role)) {
+        editForm.setValue("role", selectedMember.role as "admin" | "support-agent" | "engineer" | "user");
+      } else {
+        editForm.setValue("role", "user"); // Default to user role if invalid
+      }
       editForm.setValue("name", selectedMember.name || "");
       editForm.setValue("email", selectedMember.email || "");
       // Don't set password - it should be blank for security

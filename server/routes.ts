@@ -25,6 +25,7 @@ import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
 import { registerAiProviderRoutes } from "./routes/ai-provider-routes";
+import { registerTeamMemberRoutes } from "./routes/team-member-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -83,6 +84,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register AI provider routes
   registerAiProviderRoutes(app, requireAuth, requireRole);
+  
+  // Register team member routes
+  registerTeamMemberRoutes(app, requireRole);
   
   // Initialize SSO service for all tenants
   try {

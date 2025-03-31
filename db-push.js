@@ -29,6 +29,7 @@ async function createTables() {
         view_count INTEGER DEFAULT 0,
         created_by INTEGER NOT NULL,
         last_edited_by INTEGER,
+        metadata JSONB DEFAULT '{}',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
         published_at TIMESTAMP WITH TIME ZONE

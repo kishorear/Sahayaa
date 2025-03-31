@@ -288,6 +288,7 @@ export const supportDocuments = pgTable("support_documents", {
   viewCount: integer("viewCount").default(0), // Analytics for document usage
   createdBy: integer("createdBy").notNull(), // User ID of document creator
   lastEditedBy: integer("lastEditedBy"), // User ID of last editor
+  metadata: json("metadata").default({}), // Additional document metadata
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   publishedAt: timestamp("publishedAt"), // When the document was published

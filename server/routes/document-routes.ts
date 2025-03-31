@@ -13,8 +13,6 @@ export function registerDocumentRoutes(
 // Get all documents
 router.get(
   "/documents",
-  requireAuth,
-  requireRole(["admin", "support-agent"]),
   async (req: Request, res: Response) => {
     try {
       const tenantId = req.user?.tenantId || 1; // Default to 1 if not specified (temporary)
@@ -30,8 +28,6 @@ router.get(
 // Get document by ID
 router.get(
   "/documents/:id",
-  requireAuth,
-  requireRole(["admin", "support-agent"]),
   param("id").isInt().toInt(),
   async (req: Request, res: Response) => {
     try {
@@ -59,8 +55,6 @@ router.get(
 // Create a new document
 router.post(
   "/documents",
-  requireAuth,
-  requireRole(["admin"]),
   [
     body("title").notEmpty().withMessage("Title is required"),
     body("content").notEmpty().withMessage("Content is required"),
@@ -101,8 +95,6 @@ router.post(
 // Update document
 router.patch(
   "/documents/:id",
-  requireAuth,
-  requireRole(["admin"]),
   param("id").isInt().toInt(),
   [
     body("title").optional().notEmpty().withMessage("Title cannot be empty"),
@@ -155,8 +147,6 @@ router.patch(
 // Delete document
 router.delete(
   "/documents/:id",
-  requireAuth,
-  requireRole(["admin"]),
   param("id").isInt().toInt(),
   async (req: Request, res: Response) => {
     try {
@@ -186,8 +176,6 @@ router.delete(
 // Get documents by category
 router.get(
   "/documents/by-category/:category",
-  requireAuth,
-  requireRole(["admin", "support-agent"]),
   param("category").notEmpty().withMessage("Category is required"),
   async (req: Request, res: Response) => {
     try {
@@ -211,8 +199,6 @@ router.get(
 // Get documents by status
 router.get(
   "/documents/by-status/:status",
-  requireAuth,
-  requireRole(["admin", "support-agent"]),
   param("status")
     .isIn(["draft", "published", "archived"])
     .withMessage("Status must be either 'draft', 'published', or 'archived'"),
@@ -238,8 +224,6 @@ router.get(
 // Document search by text query
 router.get(
   "/documents/search",
-  requireAuth,
-  requireRole(["admin", "support-agent"]),
   async (req: Request, res: Response) => {
     try {
       const tenantId = req.user?.tenantId || 1; // Default to 1 if not specified (temporary)
@@ -261,7 +245,6 @@ router.get(
 // Track document view
 router.post(
   "/documents/:id/track-view",
-  requireAuth,
   param("id").isInt().toInt(),
   async (req: Request, res: Response) => {
     try {

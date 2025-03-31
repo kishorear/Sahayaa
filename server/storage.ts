@@ -8,6 +8,8 @@ import {
   identityProviders,
   widgetAnalytics,
   aiProviders,
+  supportDocuments,
+  documentUsage,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -25,7 +27,11 @@ import {
   type WidgetAnalytics,
   type InsertWidgetAnalytics,
   type AiProvider,
-  type InsertAiProvider
+  type InsertAiProvider,
+  type SupportDocument,
+  type InsertSupportDocument,
+  type DocumentUsage,
+  type InsertDocumentUsage
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -100,6 +106,23 @@ export interface IStorage {
   createWidgetAnalytics(analytics: InsertWidgetAnalytics): Promise<WidgetAnalytics>;
   updateWidgetAnalytics(id: number, updates: Partial<WidgetAnalytics>): Promise<WidgetAnalytics>;
   
+  // Support document operations
+  getAllSupportDocuments(tenantId?: number): Promise<SupportDocument[]>;
+  getSupportDocumentById(id: number, tenantId?: number): Promise<SupportDocument | undefined>;
+  getSupportDocumentsByCategory(category: string, tenantId?: number): Promise<SupportDocument[]>;
+  getSupportDocumentsByStatus(status: string, tenantId?: number): Promise<SupportDocument[]>;
+  searchSupportDocuments(query: string, tenantId?: number): Promise<SupportDocument[]>;
+  createSupportDocument(document: InsertSupportDocument): Promise<SupportDocument>;
+  updateSupportDocument(id: number, updates: Partial<SupportDocument>, tenantId?: number): Promise<SupportDocument>;
+  deleteSupportDocument(id: number, tenantId?: number): Promise<boolean>;
+  incrementDocumentViewCount(id: number): Promise<void>;
+  
+  // Document usage operations
+  logDocumentUsage(usage: InsertDocumentUsage): Promise<DocumentUsage>;
+  getDocumentUsageById(id: number): Promise<DocumentUsage | undefined>;
+  getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]>;
+  getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any>;
+  
   // Session management
   sessionStore: session.Store;
 }
@@ -113,6 +136,8 @@ export class MemStorage implements IStorage {
   private dataSources: Map<number, DataSource>;
   private widgetAnalyticsData: Map<number, WidgetAnalytics>;
   private aiProviders: Map<number, AiProvider>;
+  private supportDocuments: Map<number, SupportDocument>;
+  private documentUsageData: Map<number, DocumentUsage>;
   private tenantIdCounter: number;
   private userIdCounter: number;
   private ticketIdCounter: number;
@@ -121,6 +146,8 @@ export class MemStorage implements IStorage {
   private dataSourceIdCounter: number;
   private widgetAnalyticsIdCounter: number;
   private aiProviderIdCounter: number;
+  private supportDocumentIdCounter: number;
+  private documentUsageIdCounter: number;
   
   // Add caches for critical data in production
   private userCache: Map<string, User> = new Map();
@@ -128,6 +155,7 @@ export class MemStorage implements IStorage {
   private tenantByApiKeyCache: Map<string, Tenant> = new Map();
   private tenantBySubdomainCache: Map<string, Tenant> = new Map();
   private ticketCache: Map<string, Ticket> = new Map();
+  private supportDocumentCache: Map<string, SupportDocument> = new Map();
   
   public sessionStore: session.Store;
 
@@ -140,6 +168,8 @@ export class MemStorage implements IStorage {
     this.dataSources = new Map();
     this.widgetAnalyticsData = new Map();
     this.aiProviders = new Map();
+    this.supportDocuments = new Map();
+    this.documentUsageData = new Map();
     this.tenantIdCounter = 1;
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
@@ -148,6 +178,11 @@ export class MemStorage implements IStorage {
     this.dataSourceIdCounter = 1;
     this.widgetAnalyticsIdCounter = 1;
     this.aiProviderIdCounter = 1;
+    this.supportDocumentIdCounter = 1;
+    this.documentUsageIdCounter = 1;
+    
+    // Initialize sample documents in the constructor
+    this.initSampleSupportDocuments();
     
     // Initialize memory session store
     const MemoryStore = createMemoryStore(session);
@@ -185,10 +220,11 @@ export class MemStorage implements IStorage {
       tenantId: 1 // Default tenant ID
     });
     
-    // Initialize with sample tickets and data sources
+    // Initialize with sample tickets, data sources, and support documents
     this.initSampleTickets();
     this.initSampleDataSources();
     this.initSampleAiProviders();
+    this.initSampleSupportDocuments();
   }
   
   private async initSampleAiProviders() {
@@ -225,6 +261,170 @@ export class MemStorage implements IStorage {
         systemPrompt: "You are a helpful customer support assistant. Your goal is to resolve customer issues efficiently and professionally."
       }
     });
+  }
+  
+  private async initSampleSupportDocuments() {
+    // Sample documents with different categories, statuses, and content types
+    const sampleDocuments: InsertSupportDocument[] = [
+      {
+        title: "Getting Started Guide",
+        content: "This guide will help you get started with our product. Follow these steps to set up your account and begin using the platform.",
+        category: "guide",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "1.0",
+          author: "Admin User",
+          tags: ["onboarding", "introduction", "setup"],
+          priority: 1
+        }
+      },
+      {
+        title: "API Documentation",
+        content: "Our REST API provides programmatic access to our services. This document outlines all available endpoints, authentication methods, and example requests.",
+        category: "technical",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "2.1",
+          author: "Engineering Team",
+          tags: ["api", "development", "integration"],
+          priority: 2
+        }
+      },
+      {
+        title: "Password Reset Process",
+        content: "If you've forgotten your password, you can reset it by clicking the 'Forgot Password' link on the login page. You'll receive an email with instructions to create a new password.",
+        category: "faq",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "1.0",
+          author: "Support Team",
+          tags: ["password", "account", "security"],
+          priority: 1
+        }
+      },
+      {
+        title: "Billing and Subscription FAQ",
+        content: "Find answers to common questions about billing cycles, payment methods, upgrading or downgrading plans, and managing your subscription.",
+        category: "faq",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "1.2",
+          author: "Billing Department",
+          tags: ["billing", "payments", "subscription"],
+          priority: 2
+        }
+      },
+      {
+        title: "Security Best Practices",
+        content: "Learn how to keep your account secure with strong passwords, two-factor authentication, and regular security audits.",
+        category: "guide",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "1.1",
+          author: "Security Team",
+          tags: ["security", "2fa", "passwords"],
+          priority: 3
+        }
+      },
+      {
+        title: "Advanced Feature Tutorial",
+        content: "This advanced tutorial covers the more complex features of our platform, including automation rules, custom integrations, and advanced reporting.",
+        category: "tutorial",
+        status: "draft",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "0.8",
+          author: "Product Team",
+          tags: ["advanced", "tutorial", "features"],
+          priority: 4
+        }
+      },
+      {
+        title: "Mobile App User Guide",
+        content: "A comprehensive guide to using our mobile application on iOS and Android devices, including offline functionality and mobile-specific features.",
+        category: "guide",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "1.0",
+          author: "Mobile Development Team",
+          tags: ["mobile", "ios", "android"],
+          priority: 2
+        }
+      },
+      {
+        title: "Data Import/Export Guide",
+        content: "Learn how to import your existing data into our platform and export data for backup or analysis purposes.",
+        category: "technical",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "1.1",
+          author: "Data Team",
+          tags: ["data", "import", "export", "migration"],
+          priority: 3
+        }
+      },
+      {
+        title: "Team Collaboration Features",
+        content: "Discover how to effectively collaborate with your team using our platform's sharing, commenting, and permission features.",
+        category: "tutorial",
+        status: "published",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "1.0",
+          author: "Product Team",
+          tags: ["collaboration", "teams", "sharing"],
+          priority: 2
+        }
+      },
+      {
+        title: "Upcoming Features Preview",
+        content: "Get a sneak peek at the new features we're developing for our next major release, including enhanced reporting and AI-powered recommendations.",
+        category: "announcement",
+        status: "draft",
+        tenantId: 1,
+        createdBy: 1, // Admin user
+        metadata: {
+          version: "0.5",
+          author: "Product Management",
+          tags: ["roadmap", "preview", "upcoming"],
+          priority: 5
+        }
+      }
+    ];
+    
+    // Create the sample documents
+    for (const documentData of sampleDocuments) {
+      // Use the private Map directly to avoid the issue with missing method
+      const id = this.supportDocumentIdCounter++;
+      const now = new Date();
+      
+      const newDocument: SupportDocument = {
+        ...documentData,
+        id,
+        createdAt: now,
+        updatedAt: now,
+        viewCount: 0,
+        status: documentData.status || "draft"
+      };
+      
+      this.supportDocuments.set(id, newDocument);
+    }
   }
   
   private async initSampleDataSources() {
@@ -1210,6 +1410,289 @@ export class MemStorage implements IStorage {
     
     this.widgetAnalyticsData.set(id, updatedAnalytics);
     return updatedAnalytics;
+  }
+  
+  // Support document operations
+  async getAllSupportDocuments(tenantId?: number): Promise<SupportDocument[]> {
+    let documents = Array.from(this.supportDocuments.values());
+    
+    if (tenantId) {
+      documents = documents.filter(doc => doc.tenantId === tenantId);
+    }
+    
+    // Sort by priority (highest first)
+    return documents.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+  }
+  
+  async getSupportDocumentById(id: number, tenantId?: number): Promise<SupportDocument | undefined> {
+    // Check cache first for better performance
+    const cacheKey = `document:${id}`;
+    const cachedDocument = this.supportDocumentCache.get(cacheKey);
+    
+    if (cachedDocument) {
+      console.log(`Document cache hit for ID: ${id}`);
+      // If tenantId is provided, ensure the cached document belongs to that tenant
+      if (tenantId && cachedDocument.tenantId !== tenantId) {
+        return undefined;
+      }
+      return cachedDocument;
+    }
+    
+    // Cache miss, look up in the map
+    const document = this.supportDocuments.get(id);
+    
+    // If tenantId is provided, ensure the document belongs to that tenant
+    if (document && (!tenantId || document.tenantId === tenantId)) {
+      // Add to cache for future requests
+      this.supportDocumentCache.set(cacheKey, document);
+      
+      // Clear cache entry after 10 minutes to avoid stale data
+      setTimeout(() => {
+        this.supportDocumentCache.delete(cacheKey);
+      }, 10 * 60 * 1000);
+      
+      return document;
+    }
+    
+    return undefined;
+  }
+  
+  async getSupportDocumentsByCategory(category: string, tenantId?: number): Promise<SupportDocument[]> {
+    let documents = Array.from(this.supportDocuments.values());
+    
+    // Filter by category and optionally by tenant
+    documents = documents.filter(doc => 
+      doc.category === category && 
+      (!tenantId || doc.tenantId === tenantId)
+    );
+    
+    // Sort by priority (highest first)
+    return documents.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+  }
+  
+  async getSupportDocumentsByStatus(status: string, tenantId?: number): Promise<SupportDocument[]> {
+    let documents = Array.from(this.supportDocuments.values());
+    
+    // Filter by status and optionally by tenant
+    documents = documents.filter(doc => 
+      doc.status === status && 
+      (!tenantId || doc.tenantId === tenantId)
+    );
+    
+    // Sort by priority (highest first)
+    return documents.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+  }
+  
+  async searchSupportDocuments(query: string, tenantId?: number): Promise<SupportDocument[]> {
+    if (!query) {
+      return this.getAllSupportDocuments(tenantId);
+    }
+    
+    const lowercaseQuery = query.toLowerCase();
+    let documents = Array.from(this.supportDocuments.values());
+    
+    // Filter by tenant if specified
+    if (tenantId) {
+      documents = documents.filter(doc => doc.tenantId === tenantId);
+    }
+    
+    // Search across title, content, category, and tags in metadata
+    documents = documents.filter(doc => 
+      doc.title.toLowerCase().includes(lowercaseQuery) || 
+      doc.content.toLowerCase().includes(lowercaseQuery) || 
+      doc.category.toLowerCase().includes(lowercaseQuery) ||
+      // Check tags in metadata if they exist
+      (doc.metadata && 
+       doc.metadata.tags && 
+       Array.isArray(doc.metadata.tags) && 
+       doc.metadata.tags.some((tag: string) => 
+         tag.toLowerCase().includes(lowercaseQuery)
+       ))
+    );
+    
+    // Sort by relevance (currently just priority) and then by view count if available
+    return documents.sort((a, b) => {
+      // First sort by priority
+      const priorityDiff = (a.priority || 0) - (b.priority || 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      
+      // Then by view count if available
+      return (b.viewCount || 0) - (a.viewCount || 0);
+    });
+  }
+  
+  async createSupportDocument(document: InsertSupportDocument): Promise<SupportDocument> {
+    const id = this.supportDocumentIdCounter++;
+    const now = new Date();
+    
+    const newDocument: SupportDocument = {
+      ...document,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      viewCount: 0,
+      status: document.status || "draft"
+    };
+    
+    this.supportDocuments.set(id, newDocument);
+    
+    // Clear any category-based caches
+    // In a real application, we might have category-based caches to clear
+    
+    return newDocument;
+  }
+  
+  async updateSupportDocument(id: number, updates: Partial<SupportDocument>, tenantId?: number): Promise<SupportDocument> {
+    const document = this.supportDocuments.get(id);
+    
+    if (!document) {
+      throw new Error(`Support document with id ${id} not found`);
+    }
+    
+    // If tenantId is provided, ensure the document belongs to that tenant
+    if (tenantId && document.tenantId !== tenantId) {
+      throw new Error(`Support document with id ${id} not found in tenant ${tenantId}`);
+    }
+    
+    const updatedDocument: SupportDocument = {
+      ...document,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.supportDocuments.set(id, updatedDocument);
+    
+    // Clear document from cache to ensure fresh data is retrieved next time
+    this.supportDocumentCache.delete(`document:${id}`);
+    
+    return updatedDocument;
+  }
+  
+  async deleteSupportDocument(id: number, tenantId?: number): Promise<boolean> {
+    const document = this.supportDocuments.get(id);
+    
+    if (!document) {
+      return false;
+    }
+    
+    // If tenantId is provided, ensure the document belongs to that tenant
+    if (tenantId && document.tenantId !== tenantId) {
+      return false;
+    }
+    
+    // Delete the document
+    const result = this.supportDocuments.delete(id);
+    
+    // Clear document from cache
+    this.supportDocumentCache.delete(`document:${id}`);
+    
+    return result;
+  }
+  
+  async incrementDocumentViewCount(id: number): Promise<void> {
+    const document = this.supportDocuments.get(id);
+    
+    if (!document) {
+      throw new Error(`Support document with id ${id} not found`);
+    }
+    
+    // Increment view count
+    const updatedDocument: SupportDocument = {
+      ...document,
+      viewCount: (document.viewCount || 0) + 1,
+      updatedAt: new Date()
+    };
+    
+    this.supportDocuments.set(id, updatedDocument);
+    
+    // Update cache if document is cached
+    const cacheKey = `document:${id}`;
+    if (this.supportDocumentCache.has(cacheKey)) {
+      this.supportDocumentCache.set(cacheKey, updatedDocument);
+    }
+    
+    // Log document usage
+    await this.logDocumentUsage({
+      documentId: id,
+      tenantId: document.tenantId,
+      timestamp: new Date(),
+      userId: null,
+      context: 'view',
+      metadata: null
+    });
+  }
+  
+  // Document usage operations
+  async logDocumentUsage(usage: InsertDocumentUsage): Promise<DocumentUsage> {
+    const id = this.documentUsageIdCounter++;
+    const now = new Date();
+    
+    const newUsage: DocumentUsage = {
+      ...usage,
+      id,
+      createdAt: now
+    };
+    
+    this.documentUsageData.set(id, newUsage);
+    return newUsage;
+  }
+  
+  async getDocumentUsageById(id: number): Promise<DocumentUsage | undefined> {
+    return this.documentUsageData.get(id);
+  }
+  
+  async getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]> {
+    const usages = Array.from(this.documentUsageData.values());
+    return usages.filter(usage => usage.documentId === documentId);
+  }
+  
+  async getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any> {
+    let usages = Array.from(this.documentUsageData.values());
+    
+    // Filter by date range
+    usages = usages.filter(usage => 
+      usage.timestamp >= startDate && 
+      usage.timestamp <= endDate
+    );
+    
+    // Filter by tenant if specified
+    if (tenantId) {
+      usages = usages.filter(usage => usage.tenantId === tenantId);
+    }
+    
+    // Build analytics data
+    const viewsByDocument = new Map<number, number>();
+    const viewsByCategory = new Map<string, number>();
+    const viewsByDay = new Map<string, number>();
+    
+    for (const usage of usages) {
+      // Count by document
+      const docViews = viewsByDocument.get(usage.documentId) || 0;
+      viewsByDocument.set(usage.documentId, docViews + 1);
+      
+      // Count by category (needs document lookup)
+      const document = await this.getSupportDocumentById(usage.documentId);
+      if (document) {
+        const categoryViews = viewsByCategory.get(document.category) || 0;
+        viewsByCategory.set(document.category, categoryViews + 1);
+      }
+      
+      // Count by day
+      const day = usage.timestamp.toISOString().split('T')[0];
+      const dayViews = viewsByDay.get(day) || 0;
+      viewsByDay.set(day, dayViews + 1);
+    }
+    
+    return {
+      totalViews: usages.length,
+      viewsByDocument: Object.fromEntries(viewsByDocument),
+      viewsByCategory: Object.fromEntries(viewsByCategory),
+      viewsByDay: Object.fromEntries(viewsByDay),
+      timeframe: {
+        start: startDate,
+        end: endDate
+      }
+    };
   }
 }
 
@@ -3238,6 +3721,125 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.updateWidgetAnalytics(id, updates);
     } catch (error) {
       console.error(`Error in updateWidgetAnalytics():`, error);
+      throw error;
+    }
+  }
+
+  // Support document operations
+  async getAllSupportDocuments(tenantId?: number): Promise<SupportDocument[]> {
+    try {
+      return await this.storageImpl.getAllSupportDocuments(tenantId);
+    } catch (error) {
+      console.error(`Error in getAllSupportDocuments():`, error);
+      throw error;
+    }
+  }
+
+  async getSupportDocumentById(id: number, tenantId?: number): Promise<SupportDocument | undefined> {
+    try {
+      return await this.storageImpl.getSupportDocumentById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getSupportDocumentById():`, error);
+      throw error;
+    }
+  }
+
+  async getSupportDocumentsByCategory(category: string, tenantId?: number): Promise<SupportDocument[]> {
+    try {
+      return await this.storageImpl.getSupportDocumentsByCategory(category, tenantId);
+    } catch (error) {
+      console.error(`Error in getSupportDocumentsByCategory():`, error);
+      throw error;
+    }
+  }
+
+  async getSupportDocumentsByStatus(status: string, tenantId?: number): Promise<SupportDocument[]> {
+    try {
+      return await this.storageImpl.getSupportDocumentsByStatus(status, tenantId);
+    } catch (error) {
+      console.error(`Error in getSupportDocumentsByStatus():`, error);
+      throw error;
+    }
+  }
+
+  async searchSupportDocuments(query: string, tenantId?: number): Promise<SupportDocument[]> {
+    try {
+      return await this.storageImpl.searchSupportDocuments(query, tenantId);
+    } catch (error) {
+      console.error(`Error in searchSupportDocuments():`, error);
+      throw error;
+    }
+  }
+
+  async createSupportDocument(document: InsertSupportDocument): Promise<SupportDocument> {
+    try {
+      return await this.storageImpl.createSupportDocument(document);
+    } catch (error) {
+      console.error(`Error in createSupportDocument():`, error);
+      throw error;
+    }
+  }
+
+  async updateSupportDocument(id: number, updates: Partial<SupportDocument>, tenantId?: number): Promise<SupportDocument> {
+    try {
+      return await this.storageImpl.updateSupportDocument(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateSupportDocument():`, error);
+      throw error;
+    }
+  }
+
+  async deleteSupportDocument(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteSupportDocument(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteSupportDocument():`, error);
+      throw error;
+    }
+  }
+
+  async incrementDocumentViewCount(id: number): Promise<void> {
+    try {
+      return await this.storageImpl.incrementDocumentViewCount(id);
+    } catch (error) {
+      console.error(`Error in incrementDocumentViewCount():`, error);
+      throw error;
+    }
+  }
+
+  // Document usage operations
+  async logDocumentUsage(usage: InsertDocumentUsage): Promise<DocumentUsage> {
+    try {
+      return await this.storageImpl.logDocumentUsage(usage);
+    } catch (error) {
+      console.error(`Error in logDocumentUsage():`, error);
+      throw error;
+    }
+  }
+
+  async getDocumentUsageById(id: number): Promise<DocumentUsage | undefined> {
+    try {
+      return await this.storageImpl.getDocumentUsageById(id);
+    } catch (error) {
+      console.error(`Error in getDocumentUsageById():`, error);
+      throw error;
+    }
+  }
+
+  async getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]> {
+    try {
+      return await this.storageImpl.getDocumentUsageByDocumentId(documentId);
+    } catch (error) {
+      console.error(`Error in getDocumentUsageByDocumentId():`, error);
+      throw error;
+    }
+  }
+
+  async getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any> {
+    try {
+      return await this.storageImpl.getDocumentUsageAnalytics(startDate, endDate, tenantId);
+    } catch (error) {
+      console.error(`Error in getDocumentUsageAnalytics():`, error);
       throw error;
     }
   }

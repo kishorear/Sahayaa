@@ -11,6 +11,13 @@ export const AiProviderTypeEnum = z.enum([
   'custom'
 ]);
 
+// Document status types
+export const DocumentStatusEnum = z.enum([
+  'draft',
+  'published',
+  'archived'
+]);
+
 // Tenant table for multi-tenant support
 export const tenants = pgTable("tenants", {
   id: serial("id").primaryKey(),
@@ -265,3 +272,49 @@ export const insertAiProviderSchema = createInsertSchema(aiProviders)
 
 export type AiProvider = typeof aiProviders.$inferSelect;
 export type InsertAiProvider = z.infer<typeof insertAiProviderSchema>;
+
+// Support document schema
+export const supportDocuments = pgTable("support_documents", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull().default(1),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"), // A short summary of the document for quick reference
+  category: text("category").notNull(), // Product category or feature area this document relates to
+  tags: text("tags").array().default([]), // Tags for better searchability
+  status: text("status").notNull().default("draft"), // draft, published, archived
+  errorCodes: text("errorCodes").array().default([]), // Specific error codes this document addresses
+  keywords: text("keywords").array().default([]), // Important keywords for search matching
+  viewCount: integer("viewCount").default(0), // Analytics for document usage
+  createdBy: integer("createdBy").notNull(), // User ID of document creator
+  lastEditedBy: integer("lastEditedBy"), // User ID of last editor
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  publishedAt: timestamp("publishedAt"), // When the document was published
+});
+
+export const insertSupportDocumentSchema = createInsertSchema(supportDocuments)
+  .omit({ id: true, createdAt: true, updatedAt: true, publishedAt: true });
+
+export type SupportDocument = typeof supportDocuments.$inferSelect;
+export type InsertSupportDocument = z.infer<typeof insertSupportDocumentSchema>;
+
+// Document usage analytics schema
+export const documentUsage = pgTable("document_usage", {
+  id: serial("id").primaryKey(),
+  documentId: integer("documentId").notNull(),
+  ticketId: integer("ticketId"), // If used in a specific ticket
+  aiRequestId: text("aiRequestId"), // Unique identifier for AI request
+  queryText: text("queryText"), // The query that triggered this document use
+  usageType: text("usageType").notNull(), // 'chat', 'ticket', 'admin_preview', etc.
+  relevanceScore: integer("relevanceScore"), // How relevant the document was (1-100)
+  aiModel: text("aiModel"), // Which AI model used the document
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  metadata: json("metadata").default({}), // Additional usage metadata
+});
+
+export const insertDocumentUsageSchema = createInsertSchema(documentUsage)
+  .omit({ id: true, timestamp: true });
+
+export type DocumentUsage = typeof documentUsage.$inferSelect;
+export type InsertDocumentUsage = z.infer<typeof insertDocumentUsageSchema>;

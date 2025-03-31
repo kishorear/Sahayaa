@@ -2117,85 +2117,68 @@ export class DatabaseStorage implements IStorage {
   
   async updateUser(id: number, updates: Partial<User>): Promise<User> {
     try {
-      // Instead of using Drizzle's update and set, we'll use SQL directly
-      // Build the SET part of the query manually
-      let setClauses = [];
-      const params = [];
-      let paramIndex = 1;
+      // Create a dynamic SQL query with only the fields that need to be updated
+      const updateFields = [];
       
       // Convert camelCase property names to lowercase for PostgreSQL
       if (updates.mfaEnabled !== undefined) {
-        setClauses.push(`mfaenabled = $${paramIndex++}`);
-        params.push(updates.mfaEnabled);
+        updateFields.push(sql`mfaenabled = ${updates.mfaEnabled}`);
       }
       
       if (updates.mfaSecret !== undefined) {
-        setClauses.push(`mfasecret = $${paramIndex++}`);
-        params.push(updates.mfaSecret);
+        updateFields.push(sql`mfasecret = ${updates.mfaSecret}`);
       }
       
       if (updates.mfaBackupCodes !== undefined) {
-        setClauses.push(`mfabackupcodes = $${paramIndex++}`);
-        params.push(JSON.stringify(updates.mfaBackupCodes));
+        updateFields.push(sql`mfabackupcodes = ${JSON.stringify(updates.mfaBackupCodes)}`);
       }
       
       if (updates.ssoEnabled !== undefined) {
-        setClauses.push(`ssoenabled = $${paramIndex++}`);
-        params.push(updates.ssoEnabled);
+        updateFields.push(sql`ssoenabled = ${updates.ssoEnabled}`);
       }
       
       if (updates.ssoProvider !== undefined) {
-        setClauses.push(`ssoprovider = $${paramIndex++}`);
-        params.push(updates.ssoProvider);
+        updateFields.push(sql`ssoprovider = ${updates.ssoProvider}`);
       }
       
       if (updates.ssoProviderId !== undefined) {
-        setClauses.push(`ssoproviderid = $${paramIndex++}`);
-        params.push(updates.ssoProviderId);
+        updateFields.push(sql`ssoproviderid = ${updates.ssoProviderId}`);
       }
       
       if (updates.ssoProviderData !== undefined) {
-        setClauses.push(`ssoproviderdata = $${paramIndex++}`);
-        params.push(JSON.stringify(updates.ssoProviderData));
+        updateFields.push(sql`ssoproviderdata = ${JSON.stringify(updates.ssoProviderData)}`);
       }
       
       // Add other fields that don't need case conversion
       if (updates.username !== undefined) {
-        setClauses.push(`username = $${paramIndex++}`);
-        params.push(updates.username);
+        updateFields.push(sql`username = ${updates.username}`);
       }
       
       if (updates.password !== undefined) {
-        setClauses.push(`password = $${paramIndex++}`);
-        params.push(updates.password);
+        updateFields.push(sql`password = ${updates.password}`);
       }
       
       if (updates.role !== undefined) {
-        setClauses.push(`role = $${paramIndex++}`);
-        params.push(updates.role);
+        updateFields.push(sql`role = ${updates.role}`);
       }
       
       if (updates.name !== undefined) {
-        setClauses.push(`name = $${paramIndex++}`);
-        params.push(updates.name);
+        updateFields.push(sql`name = ${updates.name}`);
       }
       
       if (updates.email !== undefined) {
-        setClauses.push(`email = $${paramIndex++}`);
-        params.push(updates.email);
+        updateFields.push(sql`email = ${updates.email}`);
       }
       
       if (updates.tenantId !== undefined) {
-        setClauses.push(`"tenantId" = $${paramIndex++}`);
-        params.push(updates.tenantId);
+        updateFields.push(sql`"tenantId" = ${updates.tenantId}`);
       }
       
-      // Add updatedAt timestamp
-      setClauses.push(`"updatedAt" = $${paramIndex++}`);
-      params.push(new Date());
+      // Always update the updated_at timestamp
+      updateFields.push(sql`"updatedAt" = ${new Date()}`);
       
       // If there's nothing to update, return the existing user
-      if (setClauses.length === 0) {
+      if (updateFields.length === 0) {
         const existingUserResult = await db.execute(sql`SELECT * FROM users WHERE id = ${id}`);
         if (existingUserResult.rows.length === 0) {
           throw new Error(`User with ID ${id} not found`);
@@ -2223,13 +2206,14 @@ export class DatabaseStorage implements IStorage {
         } as User;
       }
       
-      // Execute the update using the PostgreSQL node driver directly
-      // since we're building our own parameterized query
-      const queryText = `UPDATE users SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
-      params.push(id);
+      // Combine the update fields with commas
+      const setClause = sql.join(updateFields, sql`, `);
       
-      // Use the pg driver's query method through db.query
-      const result = await db.query(queryText, params);
+      // Build the complete query with WHERE clause
+      const query = sql`UPDATE users SET ${setClause} WHERE id = ${id} RETURNING *`;
+      
+      // Execute the query
+      const result = await db.execute(query);
       
       if (result.rows.length === 0) {
         throw new Error(`User with ID ${id} not found`);

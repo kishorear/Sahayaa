@@ -16,6 +16,7 @@ import SettingsPage from "@/pages/admin/SettingsPage";
 import IntegrationsPage from "@/pages/admin/IntegrationsPage"; // New Integrations Page component
 import ChatWidgetPage from "@/pages/admin/ChatWidgetPage"; // New Chat Widget Page component
 import AISettingsPage from "@/pages/admin/AISettingsPage"; // AI Provider Settings Page
+import DocumentsPage from "@/pages/admin/DocumentsPage"; // Knowledge base documents management
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
@@ -40,6 +41,7 @@ function Router() {
       <ProtectedRoute path="/admin/tickets/:id" component={TicketDetailsPage} />
       <ProtectedRoute path="/admin/team" component={TeamPage} />
       <ProtectedRoute path="/admin/integrations" component={IntegrationsPage} />
+      <ProtectedRoute path="/admin/documents" component={DocumentsPage} />
       <ProtectedRoute path="/admin/settings" component={SettingsPage} />
       <ProtectedRoute path="/admin/widget" component={ChatWidgetPage} />
       <ProtectedRoute path="/admin/ai-settings" component={AISettingsPage} />

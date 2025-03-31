@@ -10,7 +10,8 @@ import {
   Bell, 
   Menu,
   Link2,
-  Bot 
+  Bot,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -44,6 +45,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/team", 
       label: "Team", 
       icon: Users 
+    },
+    { 
+      path: "/admin/documents", 
+      label: "Documents", 
+      icon: FileText 
     },
     { 
       path: "/admin/integrations", 

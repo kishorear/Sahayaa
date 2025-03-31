@@ -48,16 +48,18 @@ interface Document {
   content: string;
   category: string;
   status: 'draft' | 'published' | 'archived';
-  createdAt: string;
-  updatedAt: string;
-  createdBy: number;
-  lastEditedBy?: number;
-  publishedAt?: string;
-  viewCount: number;
-  summary?: string;
-  tags?: string[];
-  errorCodes?: string[];
-  keywords?: string[];
+  created_at: string; // Using snake_case to match database column
+  updated_at: string; // Using snake_case to match database column
+  created_by: number; // Using snake_case to match database column
+  last_edited_by?: number; // Using snake_case to match database column
+  published_at?: string; // Using snake_case to match database column
+  view_count: number; // Using snake_case to match database column
+  tenant_id: number; // Using snake_case to match database column
+  summary?: string | null;
+  tags?: string[] | null;
+  error_codes?: string[] | null; // Using snake_case to match database column
+  keywords?: string[] | null;
+  metadata?: any;
 }
 
 // Form validation schema for creating/editing documents
@@ -68,6 +70,7 @@ const documentSchema = z.object({
   status: z.enum(["draft", "published", "archived"]),
   summary: z.string().nullable().optional(),
   tags: z.string().optional().transform(val => val ? val.split(',').map(tag => tag.trim()) : []),
+  // Frontend uses camelCase, but database uses snake_case (error_codes)
   errorCodes: z.string().optional().transform(val => val ? val.split(',').map(code => code.trim()) : []),
   keywords: z.string().optional().transform(val => val ? val.split(',').map(keyword => keyword.trim()) : []),
 });
@@ -102,7 +105,9 @@ export default function DocumentsPage() {
   });
 
   // Get categories for filtering
-  const uniqueCategories = Array.from(new Set(documents.map((doc: Document) => doc.category)));
+  const uniqueCategories = Array.from(
+    new Set(documents.filter((doc: Document) => doc.category).map((doc: Document) => doc.category))
+  );
 
   // Create document mutation
   const createDocumentMutation = useMutation({
@@ -258,7 +263,7 @@ export default function DocumentsPage() {
         status: currentDocument.status,
         summary: currentDocument.summary || "",
         tags: currentDocument.tags ? currentDocument.tags.join(', ') : "",
-        errorCodes: currentDocument.errorCodes ? currentDocument.errorCodes.join(', ') : "",
+        errorCodes: currentDocument.error_codes ? currentDocument.error_codes.join(', ') : "",
         keywords: currentDocument.keywords ? currentDocument.keywords.join(', ') : "",
       });
     }
@@ -363,7 +368,7 @@ export default function DocumentsPage() {
                   />
                 </div>
               </div>
-              <Select value={statusFilter || ""} onValueChange={(value) => setStatusFilter(value || null)}>
+              <Select value={statusFilter || "all"} onValueChange={(value) => setStatusFilter(value === "all" ? null : value)}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <div className="flex items-center gap-2">
                     <Filter size={16} />
@@ -371,13 +376,13 @@ export default function DocumentsPage() {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={categoryFilter || ""} onValueChange={(value) => setCategoryFilter(value || null)}>
+              <Select value={categoryFilter || "all"} onValueChange={(value) => setCategoryFilter(value === "all" ? null : value)}>
                 <SelectTrigger className="w-full md:w-[200px]">
                   <div className="flex items-center gap-2">
                     <Tag size={16} />
@@ -385,7 +390,7 @@ export default function DocumentsPage() {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {uniqueCategories.map((category) => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
@@ -424,8 +429,8 @@ export default function DocumentsPage() {
                         {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatDate(doc.createdAt)}</TableCell>
-                    <TableCell>{doc.viewCount}</TableCell>
+                    <TableCell>{formatDate(doc.created_at)}</TableCell>
+                    <TableCell>{doc.view_count}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleViewClick(doc.id)}>
@@ -760,20 +765,20 @@ export default function DocumentsPage() {
                   </div>
                   <div>
                     <p className="font-semibold">Created</p>
-                    <p>{formatDate(currentDocument.createdAt)}</p>
+                    <p>{formatDate(currentDocument.created_at)}</p>
                   </div>
                   <div>
                     <p className="font-semibold">Last Updated</p>
-                    <p>{formatDate(currentDocument.updatedAt)}</p>
+                    <p>{formatDate(currentDocument.updated_at)}</p>
                   </div>
                   <div>
                     <p className="font-semibold">View Count</p>
-                    <p>{currentDocument.viewCount}</p>
+                    <p>{currentDocument.view_count}</p>
                   </div>
-                  {currentDocument.publishedAt && (
+                  {currentDocument.published_at && (
                     <div>
                       <p className="font-semibold">Published Date</p>
-                      <p>{formatDate(currentDocument.publishedAt)}</p>
+                      <p>{formatDate(currentDocument.published_at)}</p>
                     </div>
                   )}
                 </div>
@@ -803,11 +808,11 @@ export default function DocumentsPage() {
                   </div>
                 )}
                 
-                {currentDocument.errorCodes && currentDocument.errorCodes.length > 0 && (
+                {currentDocument.error_codes && currentDocument.error_codes.length > 0 && (
                   <div>
                     <h3 className="font-semibold text-lg">Error Codes</h3>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {currentDocument.errorCodes.map((code: string, index: number) => (
+                      {currentDocument.error_codes.map((code: string, index: number) => (
                         <Badge key={index} variant="outline" className="bg-red-50">{code}</Badge>
                       ))}
                     </div>

@@ -3289,17 +3289,22 @@ export class DatabaseStorage implements IStorage {
 
   // Support document operations
   async getAllSupportDocuments(tenantId?: number): Promise<SupportDocument[]> {
-    // Start with base query
-    let query = db.select().from(supportDocuments);
-    
-    // Add tenant filter if provided
-    if (tenantId) {
-      query = query.where(eq(supportDocuments.tenantId, tenantId));
+    try {
+      // Start with base query
+      let query = db.select().from(supportDocuments);
+      
+      // Add tenant filter if provided
+      if (tenantId) {
+        query = query.where(eq(supportDocuments.tenantId, tenantId));
+      }
+      
+      // Sort by creation date
+      const documents = await query.orderBy(desc(supportDocuments.createdAt));
+      return documents;
+    } catch (error) {
+      console.error('Error in getAllSupportDocuments():', error);
+      throw error;
     }
-    
-    // Sort by creation date
-    const documents = await query.orderBy(desc(supportDocuments.createdAt));
-    return documents;
   }
   
   async getSupportDocumentById(id: number, tenantId?: number): Promise<SupportDocument | undefined> {

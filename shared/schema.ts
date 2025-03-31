@@ -276,22 +276,22 @@ export type InsertAiProvider = z.infer<typeof insertAiProviderSchema>;
 // Support document schema
 export const supportDocuments = pgTable("support_documents", {
   id: serial("id").primaryKey(),
-  tenantId: integer("tenantId").notNull().default(1),
+  tenantId: integer("tenant_id").notNull().default(1), // Using snake_case to match database column
   title: text("title").notNull(),
-  content: text("content").notNull(),
+  content: text("content").notNull(), 
   summary: text("summary"), // A short summary of the document for quick reference
   category: text("category").notNull(), // Product category or feature area this document relates to
   tags: text("tags").array().default([]), // Tags for better searchability
   status: text("status").notNull().default("draft"), // draft, published, archived
-  errorCodes: text("errorCodes").array().default([]), // Specific error codes this document addresses
+  errorCodes: text("error_codes").array().default([]), // Specific error codes this document addresses
   keywords: text("keywords").array().default([]), // Important keywords for search matching
-  viewCount: integer("viewCount").default(0), // Analytics for document usage
-  createdBy: integer("createdBy").notNull(), // User ID of document creator
-  lastEditedBy: integer("lastEditedBy"), // User ID of last editor
+  viewCount: integer("view_count").default(0), // Analytics for document usage
+  createdBy: integer("created_by").notNull(), // User ID of document creator
+  lastEditedBy: integer("last_edited_by"), // User ID of last editor
   metadata: json("metadata").default({}), // Additional document metadata
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-  publishedAt: timestamp("publishedAt"), // When the document was published
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  publishedAt: timestamp("published_at"), // When the document was published
 });
 
 export const insertSupportDocumentSchema = createInsertSchema(supportDocuments)
@@ -303,13 +303,13 @@ export type InsertSupportDocument = z.infer<typeof insertSupportDocumentSchema>;
 // Document usage analytics schema
 export const documentUsage = pgTable("document_usage", {
   id: serial("id").primaryKey(),
-  documentId: integer("documentId").notNull(),
-  ticketId: integer("ticketId"), // If used in a specific ticket
-  aiRequestId: text("aiRequestId"), // Unique identifier for AI request
-  queryText: text("queryText"), // The query that triggered this document use
-  usageType: text("usageType").notNull(), // 'chat', 'ticket', 'admin_preview', etc.
-  relevanceScore: integer("relevanceScore"), // How relevant the document was (1-100)
-  aiModel: text("aiModel"), // Which AI model used the document
+  documentId: integer("document_id").notNull(),
+  ticketId: integer("ticket_id"), // If used in a specific ticket
+  aiRequestId: text("ai_request_id"), // Unique identifier for AI request
+  queryText: text("query_text"), // The query that triggered this document use
+  usageType: text("usage_type").notNull(), // 'chat', 'ticket', 'admin_preview', etc.
+  relevanceScore: integer("relevance_score"), // How relevant the document was (1-100)
+  aiModel: text("ai_model"), // Which AI model used the document
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   metadata: json("metadata").default({}), // Additional usage metadata
 });

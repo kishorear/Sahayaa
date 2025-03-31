@@ -3286,6 +3286,313 @@ export class DatabaseStorage implements IStorage {
     
     return updated;
   }
+
+  // Support document operations
+  async getAllSupportDocuments(tenantId?: number): Promise<SupportDocument[]> {
+    // Start with base query
+    let query = db.select().from(supportDocuments);
+    
+    // Add tenant filter if provided
+    if (tenantId) {
+      query = query.where(eq(supportDocuments.tenantId, tenantId));
+    }
+    
+    // Sort by creation date
+    const documents = await query.orderBy(desc(supportDocuments.createdAt));
+    return documents;
+  }
+  
+  async getSupportDocumentById(id: number, tenantId?: number): Promise<SupportDocument | undefined> {
+    // Build query with conditions
+    let conditions = [eq(supportDocuments.id, id)];
+    
+    // Add tenant filter if provided
+    if (tenantId) {
+      conditions.push(eq(supportDocuments.tenantId, tenantId));
+    }
+    
+    const [document] = await db
+      .select()
+      .from(supportDocuments)
+      .where(and(...conditions));
+      
+    return document;
+  }
+  
+  async getSupportDocumentsByCategory(category: string, tenantId?: number): Promise<SupportDocument[]> {
+    // Build query with conditions
+    let conditions = [eq(supportDocuments.category, category)];
+    
+    // Add tenant filter if provided
+    if (tenantId) {
+      conditions.push(eq(supportDocuments.tenantId, tenantId));
+    }
+    
+    const documents = await db
+      .select()
+      .from(supportDocuments)
+      .where(and(...conditions));
+      
+    return documents;
+  }
+  
+  async getSupportDocumentsByStatus(status: string, tenantId?: number): Promise<SupportDocument[]> {
+    // Build query with conditions
+    let conditions = [eq(supportDocuments.status, status)];
+    
+    // Add tenant filter if provided
+    if (tenantId) {
+      conditions.push(eq(supportDocuments.tenantId, tenantId));
+    }
+    
+    const documents = await db
+      .select()
+      .from(supportDocuments)
+      .where(and(...conditions));
+      
+    return documents;
+  }
+  
+  async searchSupportDocuments(query: string, tenantId?: number): Promise<SupportDocument[]> {
+    // If no query is provided, return all documents
+    if (!query) {
+      return this.getAllSupportDocuments(tenantId);
+    }
+    
+    const lowercaseQuery = `%${query.toLowerCase()}%`;
+    
+    // Build the base condition for search
+    let searchCondition = sql`LOWER(${supportDocuments.title}) LIKE ${lowercaseQuery} OR 
+                               LOWER(${supportDocuments.content}) LIKE ${lowercaseQuery} OR 
+                               LOWER(${supportDocuments.category}) LIKE ${lowercaseQuery}`;
+                               
+    // Add tenant filter if provided
+    if (tenantId) {
+      const documents = await db
+        .select()
+        .from(supportDocuments)
+        .where(
+          sql`(${searchCondition}) AND ${supportDocuments.tenantId} = ${tenantId}`
+        )
+        .orderBy(desc(supportDocuments.viewCount), desc(supportDocuments.createdAt));
+        
+      return documents;
+    } else {
+      const documents = await db
+        .select()
+        .from(supportDocuments)
+        .where(searchCondition)
+        .orderBy(desc(supportDocuments.viewCount), desc(supportDocuments.createdAt));
+        
+      return documents;
+    }
+  }
+  
+  async createSupportDocument(document: InsertSupportDocument): Promise<SupportDocument> {
+    const now = new Date();
+    
+    // Insert the document
+    const [newDocument] = await db
+      .insert(supportDocuments)
+      .values({
+        ...document,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: document.status === 'published' ? now : null,
+        viewCount: 0,
+        status: document.status || "draft"
+      })
+      .returning();
+    
+    return newDocument;
+  }
+  
+  async updateSupportDocument(id: number, updates: Partial<SupportDocument>, tenantId?: number): Promise<SupportDocument> {
+    // Build conditions for the update
+    let conditions = [eq(supportDocuments.id, id)];
+    
+    // Add tenant filter if provided
+    if (tenantId) {
+      conditions.push(eq(supportDocuments.tenantId, tenantId));
+    }
+    
+    // Set publishedAt field if status is changing to published
+    const updatesWithMetadata = {
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    // If status is changing to published and publishedAt is not set, set it now
+    if (updates.status === 'published') {
+      updatesWithMetadata.publishedAt = updatesWithMetadata.publishedAt || new Date();
+    }
+    
+    // Apply the update
+    const [updated] = await db
+      .update(supportDocuments)
+      .set(updatesWithMetadata)
+      .where(and(...conditions))
+      .returning();
+    
+    if (!updated) {
+      if (tenantId) {
+        throw new Error(`Support document with id ${id} not found in tenant ${tenantId}`);
+      } else {
+        throw new Error(`Support document with id ${id} not found`);
+      }
+    }
+    
+    return updated;
+  }
+  
+  async deleteSupportDocument(id: number, tenantId?: number): Promise<boolean> {
+    // Build conditions for the delete
+    let conditions = [eq(supportDocuments.id, id)];
+    
+    // Add tenant filter if provided
+    if (tenantId) {
+      conditions.push(eq(supportDocuments.tenantId, tenantId));
+    }
+    
+    // Execute the delete
+    const result = await db
+      .delete(supportDocuments)
+      .where(and(...conditions));
+      
+    // Check if a row was deleted
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+  
+  async incrementDocumentViewCount(id: number): Promise<void> {
+    // Get the current document to ensure it exists
+    const [document] = await db
+      .select()
+      .from(supportDocuments)
+      .where(eq(supportDocuments.id, id));
+    
+    if (!document) {
+      throw new Error(`Support document with id ${id} not found`);
+    }
+    
+    // Increment view count
+    await db
+      .update(supportDocuments)
+      .set({
+        viewCount: (document.viewCount || 0) + 1,
+        updatedAt: new Date()
+      })
+      .where(eq(supportDocuments.id, id));
+    
+    // Log document usage
+    await this.logDocumentUsage({
+      documentId: id,
+      usageType: 'view',
+      // Add any optional fields you need
+      metadata: {}
+    });
+  }
+  
+  // Document usage operations
+  async logDocumentUsage(usage: InsertDocumentUsage): Promise<DocumentUsage> {
+    const now = new Date();
+    
+    // Insert the usage record with timestamp
+    const usageWithDefaults = {
+      ...usage,
+      // Make sure any required fields have defaults
+      metadata: usage.metadata || {}
+    };
+    
+    const [newUsage] = await db
+      .insert(documentUsage)
+      .values(usageWithDefaults)
+      .returning();
+    
+    return newUsage;
+  }
+  
+  async getDocumentUsageById(id: number): Promise<DocumentUsage | undefined> {
+    const [usage] = await db
+      .select()
+      .from(documentUsage)
+      .where(eq(documentUsage.id, id));
+    
+    return usage;
+  }
+  
+  async getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]> {
+    const usages = await db
+      .select()
+      .from(documentUsage)
+      .where(eq(documentUsage.documentId, documentId))
+      .orderBy(desc(documentUsage.timestamp));
+    
+    return usages;
+  }
+  
+  async getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any> {
+    // Get document usage within the date range
+    let query = db
+      .select()
+      .from(documentUsage)
+      .where(
+        sql`${documentUsage.timestamp} >= ${startDate} AND ${documentUsage.timestamp} <= ${endDate}`
+      );
+    
+    const usages = await query;
+    
+    // Get all documents
+    let documentQuery = db.select().from(supportDocuments);
+    if (tenantId) {
+      documentQuery = documentQuery.where(eq(supportDocuments.tenantId, tenantId));
+    }
+    const documents = await documentQuery;
+    
+    // Build the document map for quick lookups
+    const documentMap = new Map(documents.map(doc => [doc.id, doc]));
+    
+    // Filter usages by tenant if needed (matching document tenantId)
+    const filteredUsages = tenantId 
+      ? usages.filter(usage => {
+          const doc = documentMap.get(usage.documentId);
+          return doc && doc.tenantId === tenantId;
+        })
+      : usages;
+    
+    // Build analytics data
+    const viewsByDocument = new Map<number, number>();
+    const viewsByCategory = new Map<string, number>();
+    const viewsByDay = new Map<string, number>();
+    
+    for (const usage of filteredUsages) {
+      // Count by document
+      const docViews = viewsByDocument.get(usage.documentId) || 0;
+      viewsByDocument.set(usage.documentId, docViews + 1);
+      
+      // Count by category (if document exists)
+      const document = documentMap.get(usage.documentId);
+      if (document) {
+        const categoryViews = viewsByCategory.get(document.category) || 0;
+        viewsByCategory.set(document.category, categoryViews + 1);
+      }
+      
+      // Count by day
+      const day = usage.timestamp.toISOString().split('T')[0];
+      const dayViews = viewsByDay.get(day) || 0;
+      viewsByDay.set(day, dayViews + 1);
+    }
+    
+    return {
+      totalViews: filteredUsages.length,
+      viewsByDocument: Object.fromEntries(viewsByDocument),
+      viewsByCategory: Object.fromEntries(viewsByCategory),
+      viewsByDay: Object.fromEntries(viewsByDay),
+      timeframe: {
+        start: startDate,
+        end: endDate
+      }
+    };
+  }
 }
 
 // Create a function to initialize storage with fallback to in-memory if database fails
@@ -3840,6 +4147,15 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.getDocumentUsageAnalytics(startDate, endDate, tenantId);
     } catch (error) {
       console.error(`Error in getDocumentUsageAnalytics():`, error);
+      throw error;
+    }
+  }
+  
+  async incrementDocumentViewCount(id: number): Promise<void> {
+    try {
+      return await this.storageImpl.incrementDocumentViewCount(id);
+    } catch (error) {
+      console.error(`Error in incrementDocumentViewCount(${id}):`, error);
       throw error;
     }
   }

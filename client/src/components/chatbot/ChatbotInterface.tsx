@@ -17,6 +17,25 @@ type Message = {
   timestamp: Date;
 };
 
+// Check if a ticket already exists for a given issue
+const isDuplicateTicket = (title: string, createdTickets: { id: number, issue: string }[]): boolean => {
+  // Convert title to lowercase for case-insensitive comparison
+  const normalizedTitle = title.toLowerCase();
+  
+  // Check if any existing ticket has a similar title
+  return createdTickets.some(ticket => {
+    // Check for exact match
+    if (ticket.issue === normalizedTitle) return true;
+    
+    // Check for significant overlap (e.g., "payment error" vs "payment processing error")
+    const words = normalizedTitle.split(/\s+/).filter(word => word.length > 3);
+    const matchingWords = words.filter(word => ticket.issue.includes(word));
+    
+    // If more than 50% of the significant words match, consider it a duplicate
+    return matchingWords.length > 0 && matchingWords.length >= Math.ceil(words.length * 0.5);
+  });
+};
+
 export default function ChatbotInterface() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -27,7 +46,8 @@ export default function ChatbotInterface() {
   const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
   const [suggestedTicketData, setSuggestedTicketData] = useState<InsertTicket | null>(null);
   const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
-  const [ticketCreatedForSession, setTicketCreatedForSession] = useState(false);
+  // Track created tickets with their issues to prevent duplicates
+  const [createdTickets, setCreatedTickets] = useState<{id: number, issue: string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -98,13 +118,13 @@ export default function ChatbotInterface() {
       if (data.action) {
         switch (data.action.type) {
           case "suggest_ticket":
-            // Skip ticket creation if one was already created for this session
-            if (ticketCreatedForSession) {
+            // Check if this would be a duplicate ticket
+            if (data.action.data && data.action.data.title && isDuplicateTicket(data.action.data.title, createdTickets)) {
               setMessages(prev => [
                 ...prev,
                 {
-                  id: `ai-already-created-${Date.now()}`,
-                  content: "I notice you already have an open ticket for this session. I'll continue to help you with your issue, but we don't need to create another ticket.",
+                  id: `ai-duplicate-${Date.now()}`,
+                  content: "I notice you already have an open ticket for a similar issue. I'll continue to help you with your problem, but we don't need to create another ticket for the same issue.",
                   sender: "ai",
                   timestamp: new Date(),
                 }
@@ -136,22 +156,22 @@ export default function ChatbotInterface() {
             break;
             
           case "create_ticket":
-            // Skip ticket creation if one was already created for this session
-            if (ticketCreatedForSession) {
+            // Legacy direct ticket creation
+            const ticketData = data.action.data as InsertTicket;
+            
+            // Check if this would be a duplicate ticket
+            if (ticketData && ticketData.title && isDuplicateTicket(ticketData.title, createdTickets)) {
               setMessages(prev => [
                 ...prev,
                 {
-                  id: `ai-already-created-${Date.now()}`,
-                  content: "I notice you already have an open ticket for this session. I'll continue to help you with your issue, but we don't need to create another ticket.",
+                  id: `ai-duplicate-${Date.now()}`,
+                  content: "I notice you already have an open ticket for a similar issue. I'll continue to help you with your problem, but we don't need to create another ticket for the same issue.",
                   sender: "ai",
                   timestamp: new Date(),
                 }
               ]);
               break;
             }
-            
-            // Legacy direct ticket creation (we'll update the backend to use suggest_ticket instead)
-            const ticketData = data.action.data as InsertTicket;
             
             // Use AI to generate a better title
             const conversationHistory = prepareChatHistory(messages);
@@ -210,7 +230,13 @@ export default function ChatbotInterface() {
     onSuccess: async (response) => {
       const ticket = await response.json();
       setCurrentTicketId(ticket.id);
-      setTicketCreatedForSession(true); // Mark that a ticket has been created for this session
+      
+      // Add this ticket to our list of created tickets
+      setCreatedTickets(prev => [...prev, {
+        id: ticket.id,
+        issue: ticket.title.toLowerCase() // Store the title in lowercase for case-insensitive comparison
+      }]);
+      
       toast({
         title: "Ticket Created",
         description: `Support ticket #${ticket.id} has been created. Our team will follow up shortly.`,
@@ -381,43 +407,45 @@ export default function ChatbotInterface() {
     
     const message = inputMessage.toLowerCase().trim();
     
-    // Handle ticket confirmation if we're awaiting it
-    if (suggestedTicketData) {
-      // Add user message to chat
+  
+  
+  // Handle ticket confirmation if we're awaiting it
+  if (suggestedTicketData) {
+    // Add user message to chat
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `user-${Date.now()}`,
+        content: inputMessage,
+        sender: "user",
+        timestamp: new Date(),
+      },
+    ]);
+    
+    // Check if user has confirmed creating a ticket
+    if (message === 'yes' || message.includes('yes') || message.includes('create ticket') || message.includes('submit ticket')) {
+      // Generate a ticket with AI-summarized description
+      setIsTyping(true);
+      
+      // Add a message that we're generating the ticket
       setMessages((prev) => [
         ...prev,
         {
-          id: `user-${Date.now()}`,
-          content: inputMessage,
-          sender: "user",
+          id: `ai-creating-${Date.now()}`,
+          content: "I'm creating a support ticket for you now with a detailed summary of our conversation...",
+          sender: "ai",
           timestamp: new Date(),
         },
       ]);
       
-      // Check if user has confirmed creating a ticket
-      if (message === 'yes' || message.includes('yes') || message.includes('create ticket') || message.includes('submit ticket')) {
-        // Generate a ticket with AI-summarized description
-        setIsTyping(true);
-        
-        // Add a message that we're generating the ticket
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `ai-creating-${Date.now()}`,
-            content: "I'm creating a support ticket for you now with a detailed summary of our conversation...",
-            sender: "ai",
-            timestamp: new Date(),
-          },
-        ]);
-        
-        // Prepare the conversation history in the right format for AI
-        const conversationHistory = prepareChatHistory(messages);
-        
-        // Generate the AI summary and title for the ticket
-        console.log("Preparing to generate AI content with conversation history:", conversationHistory);
-        
-        // First, generate a better title using AI
-        titleMutation.mutate(conversationHistory, {
+      // Prepare the conversation history in the right format for AI
+      const conversationHistory = prepareChatHistory(messages);
+      
+      // Generate the AI summary and title for the ticket
+      console.log("Preparing to generate AI content with conversation history:", conversationHistory);
+      
+      // First, generate a better title using AI
+      titleMutation.mutate(conversationHistory, {
           onSuccess: (titleData) => {
             console.log("AI title generated successfully:", titleData);
             
@@ -544,7 +572,7 @@ export default function ChatbotInterface() {
     }
     
     // Check if user indicates they don't need more help after ticket creation
-    if (ticketCreatedForSession) {
+    if (createdTickets.length > 0) {
       const noMoreHelpKeywords = [
         'no', 'that\'s all', 'that is all', 'nothing else', 'i\'m good', 'im good', 
         'that\'s it', 'that is it', 'no thanks', 'nothing more', 'i\'m done', 'im done'
@@ -587,7 +615,7 @@ export default function ChatbotInterface() {
             },
           ]);
           setCurrentTicketId(null);
-          setTicketCreatedForSession(false);
+          setCreatedTickets([]);
           setSuggestedTicketData(null);
           setAwaitingTicketConfirmation(false);
         }, 5000);
@@ -906,7 +934,7 @@ export default function ChatbotInterface() {
                       },
                     ]);
                     setCurrentTicketId(null);
-                    setTicketCreatedForSession(false);
+                    setCreatedTickets([]);
                     setSuggestedTicketData(null);
                     setAwaitingTicketConfirmation(false);
                     setInputMessage("");

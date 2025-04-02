@@ -165,25 +165,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Get the integration service to handle third-party ticket creation
         const integrationService = getIntegrationService();
-        console.log(`Creating ticket "${newTicket.title}" in third-party systems...`);
+        
+        // Add more detailed logging
+        console.log(`Creating ticket #${ticket.id} "${newTicket.title}" in third-party systems...`);
+        console.log(`Ticket details: category=${newTicket.category}, complexity=${newTicket.complexity}`);
+        console.log(`Assigned to: ${newTicket.assignedTo || 'Unassigned'}`);
         
         // Create the ticket in any enabled third-party systems
         const thirdPartyResults = await integrationService.createTicketInThirdParty(newTicket);
         console.log(`Third-party ticket creation results:`, thirdPartyResults);
         
         // Save external references to metadata for future updates
-        if (thirdPartyResults.jira && !thirdPartyResults.jira.error) {
-          externalTicketReferences.jira = thirdPartyResults.jira.key;
-          console.log(`Ticket created in Jira with key: ${thirdPartyResults.jira.key}, url: ${thirdPartyResults.jira.url}`);
-        } else if (thirdPartyResults.jira?.error) {
-          console.error(`Failed to create ticket in Jira: ${thirdPartyResults.jira.error}`);
+        if (thirdPartyResults.jira) {
+          if (!thirdPartyResults.jira.error) {
+            externalTicketReferences.jira = thirdPartyResults.jira.key;
+            console.log(`Ticket created in Jira with key: ${thirdPartyResults.jira.key}, url: ${thirdPartyResults.jira.url}`);
+          } else {
+            console.error(`Failed to create ticket in Jira: ${thirdPartyResults.jira.error}`);
+            // Add error information to the ticket in our system for future reference/troubleshooting
+            await storage.updateTicket(ticket.id, {
+              clientMetadata: {
+                ...(ticket.clientMetadata || {}),
+                jiraError: thirdPartyResults.jira.error
+              }
+            });
+          }
         }
         
-        if (thirdPartyResults.zendesk && !thirdPartyResults.zendesk.error) {
-          externalTicketReferences.zendesk = thirdPartyResults.zendesk.id;
-          console.log(`Ticket created in Zendesk with ID: ${thirdPartyResults.zendesk.id}, url: ${thirdPartyResults.zendesk.url}`);
-        } else if (thirdPartyResults.zendesk?.error) {
-          console.error(`Failed to create ticket in Zendesk: ${thirdPartyResults.zendesk.error}`);
+        if (thirdPartyResults.zendesk) {
+          if (!thirdPartyResults.zendesk.error) {
+            externalTicketReferences.zendesk = thirdPartyResults.zendesk.id;
+            console.log(`Ticket created in Zendesk with ID: ${thirdPartyResults.zendesk.id}, url: ${thirdPartyResults.zendesk.url}`);
+          } else {
+            console.error(`Failed to create ticket in Zendesk: ${thirdPartyResults.zendesk.error}`);
+            // Add error information to the ticket in our system for future reference/troubleshooting
+            await storage.updateTicket(ticket.id, {
+              clientMetadata: {
+                ...(ticket.clientMetadata || {}),
+                zendeskError: thirdPartyResults.zendesk.error
+              }
+            });
+          }
         }
         
         // If we created any external tickets, update our ticket with the references

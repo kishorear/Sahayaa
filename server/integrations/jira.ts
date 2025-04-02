@@ -69,68 +69,131 @@ export class JiraService {
   /**
    * Create an issue in Jira from a local ticket
    */
-  async createIssue(ticket: InsertTicket): Promise<{ id: string; key: string; url: string } | null> {
-    if (!this.enabled) return null;
+  async createIssue(ticket: InsertTicket): Promise<{ id: string; key: string; url: string; error?: string } | null> {
+    if (!this.enabled) {
+      console.log('Jira service not enabled, skipping issue creation');
+      return null;
+    }
 
     try {
+      console.log(`Creating Jira issue for ticket: "${ticket.title}"`);
+      console.log(`Using Jira project key: "${this.projectKey}"`);
+      
+      // Create the issue data
+      const issueData = {
+        fields: {
+          project: {
+            key: this.projectKey
+          },
+          summary: ticket.title,
+          description: {
+            type: "doc",
+            version: 1,
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "text",
+                    text: ticket.description || "No description provided."
+                  }
+                ]
+              },
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "text",
+                    text: `AI Notes: ${ticket.aiNotes || 'None'}`
+                  }
+                ]
+              }
+            ]
+          },
+          issuetype: {
+            name: "Task"
+          },
+          priority: {
+            name: this.mapComplexityToPriority(ticket.complexity)
+          },
+          labels: [ticket.category]
+        }
+      };
+      
+      console.log(`Sending API request to Jira at ${this.apiUrl}/issue`);
+      console.log('Issue data:', JSON.stringify(issueData, null, 2));
+      
+      // Make the API request with a timeout
       const response = await axios.post(
         `${this.apiUrl}/issue`,
-        {
-          fields: {
-            project: {
-              key: this.projectKey
-            },
-            summary: ticket.title,
-            description: {
-              type: "doc",
-              version: 1,
-              content: [
-                {
-                  type: "paragraph",
-                  content: [
-                    {
-                      type: "text",
-                      text: ticket.description
-                    }
-                  ]
-                },
-                {
-                  type: "paragraph",
-                  content: [
-                    {
-                      type: "text",
-                      text: `AI Notes: ${ticket.aiNotes || 'None'}`
-                    }
-                  ]
-                }
-              ]
-            },
-            issuetype: {
-              name: "Task"
-            },
-            priority: {
-              name: this.mapComplexityToPriority(ticket.complexity)
-            },
-            labels: [ticket.category]
-          }
-        },
+        issueData,
         {
           auth: this.auth,
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-          }
+          },
+          timeout: 10000 // 10 second timeout
         }
       );
-
-      return {
-        id: response.data.id,
-        key: response.data.key,
-        url: `${this.apiUrl.replace('/rest/api/3', '')}/browse/${response.data.key}`
-      };
+      
+      console.log('Jira API response:', response.status, response.statusText);
+      
+      if (response.data && response.data.key) {
+        console.log(`Successfully created Jira issue with key: ${response.data.key}`);
+        return {
+          id: response.data.id,
+          key: response.data.key,
+          url: `${this.apiUrl.replace('/rest/api/3', '')}/browse/${response.data.key}`
+        };
+      } else {
+        console.error('Invalid response from Jira API:', response.data);
+        return {
+          id: '',
+          key: '',
+          url: '',
+          error: 'Invalid response from Jira API'
+        };
+      }
     } catch (error) {
       console.error("Error creating issue in Jira:", error);
-      return null;
+      
+      // Extract detailed error information
+      let errorMessage = 'Unknown error occurred';
+      let errorDetails = {};
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx
+        errorMessage = `Jira API error: ${error.response.status} ${error.response.statusText}`;
+        errorDetails = {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        };
+        
+        if (error.response.data && error.response.data.errorMessages) {
+          errorMessage += ` - ${error.response.data.errorMessages.join(', ')}`;
+        } else if (error.response.data && error.response.data.errors) {
+          errorMessage += ` - ${JSON.stringify(error.response.data.errors)}`;
+        }
+        
+        console.error('Jira API error details:', errorDetails);
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorMessage = 'No response received from Jira API';
+        console.error('No response received from Jira API:', error.request);
+      } else {
+        // Something happened in setting up the request
+        errorMessage = `Error setting up request: ${error.message}`;
+        console.error('Error setting up Jira API request:', error.message);
+      }
+      
+      return {
+        id: '',
+        key: '',
+        url: '',
+        error: errorMessage
+      };
     }
   }
 
@@ -273,21 +336,25 @@ export class JiraService {
           });
 
           if (jiraIssue) {
-            console.log(`Created Jira issue ${jiraIssue.key} for ticket #${ticket.id}`);
-            results[ticket.id] = jiraIssue;
+            if (!jiraIssue.error) {
+              console.log(`Created Jira issue ${jiraIssue.key} for ticket #${ticket.id}`);
+              results[ticket.id] = jiraIssue;
 
-            // Sync messages if available
-            if (ticket.messages && ticket.messages.length > 0) {
-              console.log(`Syncing ${ticket.messages.length} messages for ticket #${ticket.id}`);
-              for (const message of ticket.messages) {
-                await this.addComment(jiraIssue.key, {
-                  content: message.content,
-                  sender: message.sender,
-                  senderName: message.senderName || message.sender,
-                  ticketId: ticket.id,
-                  tenantId: ticket.tenantId
-                });
+              // Sync messages if available and issue was created successfully (no error)
+              if (ticket.messages && ticket.messages.length > 0) {
+                console.log(`Syncing ${ticket.messages.length} messages for ticket #${ticket.id}`);
+                for (const message of ticket.messages) {
+                  await this.addComment(jiraIssue.key, {
+                    content: message.content,
+                    sender: message.sender,
+                    senderName: message.senderName || message.sender,
+                    ticketId: ticket.id,
+                    tenantId: ticket.tenantId
+                  });
+                }
               }
+            } else {
+              console.error(`Failed to create Jira issue for ticket #${ticket.id}: ${jiraIssue.error}`);
             }
           }
         } catch (error) {

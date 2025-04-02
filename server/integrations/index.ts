@@ -103,17 +103,25 @@ export class IntegrationService {
    */
   async createTicketInThirdParty(ticket: InsertTicket): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
+    let anyServiceEnabled = false;
 
     // Log what we're trying to do
     console.log(`Creating ticket in third-party systems: "${ticket.title}"`);
+    console.log(`Ticket details: category=${ticket.category}, complexity=${ticket.complexity}, assignedTo=${ticket.assignedTo || 'Unassigned'}`);
     
     // Create ticket in Zendesk if enabled
     if (this.zendeskService?.isEnabled()) {
+      anyServiceEnabled = true;
       try {
         console.log(`Attempting to create ticket in Zendesk: "${ticket.title}"`);
+        console.log(`Zendesk is properly configured and enabled`);
         result.zendesk = await this.zendeskService.createTicket(ticket);
         if (result.zendesk) {
-          console.log(`Successfully created ticket in Zendesk with ID: ${result.zendesk.id}`);
+          if (!result.zendesk.error) {
+            console.log(`Successfully created ticket in Zendesk with ID: ${result.zendesk.id}`);
+          } else {
+            console.error(`Failed to create ticket in Zendesk: ${result.zendesk.error}`);
+          }
         } else {
           console.error(`Failed to create ticket in Zendesk: No result returned`);
         }
@@ -127,11 +135,17 @@ export class IntegrationService {
 
     // Create ticket in Jira if enabled
     if (this.jiraService?.isEnabled()) {
+      anyServiceEnabled = true;
       try {
         console.log(`Attempting to create issue in Jira: "${ticket.title}"`);
+        console.log(`Jira is properly configured and enabled`);
         result.jira = await this.jiraService.createIssue(ticket);
         if (result.jira) {
-          console.log(`Successfully created issue in Jira with key: ${result.jira.key}`);
+          if (!result.jira.error) {
+            console.log(`Successfully created issue in Jira with key: ${result.jira.key}`);
+          } else {
+            console.error(`Failed to create issue in Jira: ${result.jira.error}`);
+          }
         } else {
           console.error(`Failed to create issue in Jira: No result returned`);
         }
@@ -142,11 +156,16 @@ export class IntegrationService {
     } else {
       console.log('Jira integration not enabled or not properly configured - skipping issue creation');
     }
+    
+    // If no services were enabled, add a warning
+    if (!anyServiceEnabled) {
+      console.warn('WARNING: No third-party integration services were enabled. Make sure services are properly configured.');
+    }
 
     // Log the overall result
     console.log(`Third-party ticket creation results:`, {
-      zendesk: result.zendesk ? 'success' : 'not created',
-      jira: result.jira ? 'success' : 'not created'
+      zendesk: result.zendesk ? (result.zendesk.error ? `error: ${result.zendesk.error}` : 'success') : 'not created',
+      jira: result.jira ? (result.jira.error ? `error: ${result.jira.error}` : 'success') : 'not created'
     });
 
     return result;
@@ -160,15 +179,38 @@ export class IntegrationService {
     message: InsertMessage
   ): Promise<Record<string, boolean>> {
     const result: Record<string, boolean> = {};
-
+    
+    console.log(`Adding comment to external ticketing systems for ticket #${message.ticketId}`);
+    console.log(`External references: ${JSON.stringify(externalIds)}`);
+    
+    // Add comment to Zendesk if enabled and we have an external ID
     if (this.zendeskService?.isEnabled() && externalIds.zendesk) {
-      result.zendesk = await this.zendeskService.addComment(externalIds.zendesk, message);
+      try {
+        console.log(`Adding comment to Zendesk ticket #${externalIds.zendesk}`);
+        result.zendesk = await this.zendeskService.addComment(externalIds.zendesk, message);
+        console.log(`Comment ${result.zendesk ? 'successfully added' : 'failed to add'} to Zendesk ticket`);
+      } catch (error) {
+        console.error(`Error adding comment to Zendesk ticket:`, error);
+        result.zendesk = false;
+      }
+    } else if (this.zendeskService?.isEnabled()) {
+      console.log(`Zendesk integration is enabled but no external ID found for ticket #${message.ticketId}`);
     }
 
+    // Add comment to Jira if enabled and we have an external ID
     if (this.jiraService?.isEnabled() && externalIds.jira) {
-      result.jira = await this.jiraService.addComment(externalIds.jira, message);
+      try {
+        console.log(`Adding comment to Jira issue ${externalIds.jira}`);
+        result.jira = await this.jiraService.addComment(externalIds.jira, message);
+        console.log(`Comment ${result.jira ? 'successfully added' : 'failed to add'} to Jira issue`);
+      } catch (error) {
+        console.error(`Error adding comment to Jira issue:`, error);
+        result.jira = false;
+      }
+    } else if (this.jiraService?.isEnabled()) {
+      console.log(`Jira integration is enabled but no external ID found for ticket #${message.ticketId}`);
     }
-
+    
     return result;
   }
 
@@ -180,15 +222,38 @@ export class IntegrationService {
     status: string
   ): Promise<Record<string, boolean>> {
     const result: Record<string, boolean> = {};
-
+    
+    console.log(`Updating status to "${status}" in external ticketing systems`);
+    console.log(`External references: ${JSON.stringify(externalIds)}`);
+    
+    // Update Zendesk status if enabled and we have an external ID
     if (this.zendeskService?.isEnabled() && externalIds.zendesk) {
-      result.zendesk = await this.zendeskService.updateTicketStatus(externalIds.zendesk, status);
+      try {
+        console.log(`Updating Zendesk ticket #${externalIds.zendesk} status to "${status}"`);
+        result.zendesk = await this.zendeskService.updateTicketStatus(externalIds.zendesk, status);
+        console.log(`Status ${result.zendesk ? 'successfully updated' : 'failed to update'} in Zendesk ticket`);
+      } catch (error) {
+        console.error(`Error updating status in Zendesk ticket:`, error);
+        result.zendesk = false;
+      }
+    } else if (this.zendeskService?.isEnabled()) {
+      console.log(`Zendesk integration is enabled but no external ID found to update status`);
     }
 
+    // Update Jira status if enabled and we have an external ID
     if (this.jiraService?.isEnabled() && externalIds.jira) {
-      result.jira = await this.jiraService.updateIssueStatus(externalIds.jira, status);
+      try {
+        console.log(`Updating Jira issue ${externalIds.jira} status to "${status}"`);
+        result.jira = await this.jiraService.updateIssueStatus(externalIds.jira, status);
+        console.log(`Status ${result.jira ? 'successfully updated' : 'failed to update'} in Jira issue`);
+      } catch (error) {
+        console.error(`Error updating status in Jira issue:`, error);
+        result.jira = false;
+      }
+    } else if (this.jiraService?.isEnabled()) {
+      console.log(`Jira integration is enabled but no external ID found to update status`);
     }
-
+    
     return result;
   }
 
@@ -197,15 +262,45 @@ export class IntegrationService {
    */
   async verifyConnections(): Promise<Record<string, boolean>> {
     const result: Record<string, boolean> = {};
-
+    let anyServiceEnabled = false;
+    
+    console.log(`Verifying connections to third-party ticketing systems...`);
+    
+    // Verify Zendesk connection if enabled
     if (this.zendeskService?.isEnabled()) {
-      result.zendesk = await this.zendeskService.verifyConnection();
+      anyServiceEnabled = true;
+      try {
+        console.log(`Verifying connection to Zendesk...`);
+        result.zendesk = await this.zendeskService.verifyConnection();
+        console.log(`Zendesk connection ${result.zendesk ? 'successful' : 'failed'}`);
+      } catch (error) {
+        console.error(`Error verifying Zendesk connection:`, error);
+        result.zendesk = false;
+      }
+    } else {
+      console.log(`Zendesk integration is not enabled - skipping connection verification`);
     }
 
+    // Verify Jira connection if enabled
     if (this.jiraService?.isEnabled()) {
-      result.jira = await this.jiraService.verifyConnection();
+      anyServiceEnabled = true;
+      try {
+        console.log(`Verifying connection to Jira...`);
+        result.jira = await this.jiraService.verifyConnection();
+        console.log(`Jira connection ${result.jira ? 'successful' : 'failed'}`);
+      } catch (error) {
+        console.error(`Error verifying Jira connection:`, error);
+        result.jira = false;
+      }
+    } else {
+      console.log(`Jira integration is not enabled - skipping connection verification`);
     }
-
+    
+    // If no services were enabled, add a warning
+    if (!anyServiceEnabled) {
+      console.warn('WARNING: No third-party integration services were enabled. Make sure services are properly configured.');
+    }
+    
     return result;
   }
   
@@ -225,17 +320,47 @@ export class IntegrationService {
       zendesk: {},
       jira: {}
     };
-
+    let anyServiceEnabled = false;
+    
+    console.log(`Syncing ${tickets.length} tickets to third-party systems...`);
+    
+    // Sync to Zendesk if enabled
     if (this.zendeskService?.isEnabled()) {
-      console.log('Syncing tickets to Zendesk...');
-      result.zendesk = await this.zendeskService.syncExistingTickets(tickets);
+      anyServiceEnabled = true;
+      try {
+        console.log(`Syncing ${tickets.length} tickets to Zendesk...`);
+        result.zendesk = await this.zendeskService.syncExistingTickets(tickets);
+        const syncedCount = Object.keys(result.zendesk).length;
+        console.log(`Successfully synced ${syncedCount} tickets to Zendesk`);
+      } catch (error) {
+        console.error(`Error syncing tickets to Zendesk:`, error);
+        result.zendesk = {};
+      }
+    } else {
+      console.log(`Zendesk integration is not enabled - skipping ticket synchronization`);
     }
 
+    // Sync to Jira if enabled
     if (this.jiraService?.isEnabled()) {
-      console.log('Syncing tickets to Jira...');
-      result.jira = await this.jiraService.syncExistingTickets(tickets);
+      anyServiceEnabled = true;
+      try {
+        console.log(`Syncing ${tickets.length} tickets to Jira...`);
+        result.jira = await this.jiraService.syncExistingTickets(tickets);
+        const syncedCount = Object.keys(result.jira).length;
+        console.log(`Successfully synced ${syncedCount} tickets to Jira`);
+      } catch (error) {
+        console.error(`Error syncing tickets to Jira:`, error);
+        result.jira = {};
+      }
+    } else {
+      console.log(`Jira integration is not enabled - skipping ticket synchronization`);
     }
-
+    
+    // If no services were enabled, add a warning
+    if (!anyServiceEnabled) {
+      console.warn('WARNING: No third-party integration services were enabled. Make sure services are properly configured.');
+    }
+    
     return result;
   }
 }

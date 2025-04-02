@@ -41,33 +41,98 @@ export class ZendeskService {
   /**
    * Create a ticket in Zendesk from the local system
    */
-  async createTicket(ticket: InsertTicket): Promise<{ id: number; url: string } | null> {
-    if (!this.enabled) return null;
+  async createTicket(ticket: InsertTicket): Promise<{ id: number; url: string; error?: string } | null> {
+    if (!this.enabled) {
+      console.log('Zendesk service not enabled, skipping ticket creation');
+      return null;
+    }
 
     try {
+      console.log(`Creating Zendesk ticket for ticket: "${ticket.title}"`);
+      
+      // Create the ticket data
+      const ticketData = {
+        ticket: {
+          subject: ticket.title,
+          comment: { 
+            body: ticket.description || "No description provided." 
+          },
+          priority: this.mapComplexityToPriority(ticket.complexity),
+          tags: [ticket.category],
+          custom_fields: [
+            // Replace with actual custom field IDs or remove if not needed
+            { id: 123456789, value: ticket.aiNotes }, 
+          ],
+        }
+      };
+      
+      console.log(`Sending API request to Zendesk at ${this.apiUrl}/tickets`);
+      console.log('Ticket data:', JSON.stringify(ticketData, null, 2));
+      
+      // Make the API request with a timeout
       const response = await axios.post(
         `${this.apiUrl}/tickets`,
-        {
-          ticket: {
-            subject: ticket.title,
-            comment: { body: ticket.description },
-            priority: this.mapComplexityToPriority(ticket.complexity),
-            tags: [ticket.category],
-            custom_fields: [
-              { id: 123456789, value: ticket.aiNotes }, // Replace with actual custom field IDs
-            ],
-          }
-        },
-        { auth: this.auth }
+        ticketData,
+        { 
+          auth: this.auth,
+          timeout: 10000 // 10 second timeout 
+        }
       );
-
-      return {
-        id: response.data.ticket.id,
-        url: `https://${this.apiUrl.split('//')[1].split('/')[0]}/agent/tickets/${response.data.ticket.id}`
-      };
+      
+      console.log('Zendesk API response:', response.status, response.statusText);
+      
+      if (response.data && response.data.ticket && response.data.ticket.id) {
+        console.log(`Successfully created Zendesk ticket with ID: ${response.data.ticket.id}`);
+        return {
+          id: response.data.ticket.id,
+          url: `https://${this.apiUrl.split('//')[1].split('/')[0]}/agent/tickets/${response.data.ticket.id}`
+        };
+      } else {
+        console.error('Invalid response from Zendesk API:', response.data);
+        return {
+          id: 0,
+          url: '',
+          error: 'Invalid response from Zendesk API'
+        };
+      }
     } catch (error) {
       console.error("Error creating ticket in Zendesk:", error);
-      return null;
+      
+      // Extract detailed error information
+      let errorMessage = 'Unknown error occurred';
+      let errorDetails = {};
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx
+        errorMessage = `Zendesk API error: ${error.response.status} ${error.response.statusText}`;
+        errorDetails = {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        };
+        
+        if (error.response.data && error.response.data.error) {
+          errorMessage += ` - ${error.response.data.error}`;
+        } else if (error.response.data && error.response.data.details) {
+          errorMessage += ` - ${JSON.stringify(error.response.data.details)}`;
+        }
+        
+        console.error('Zendesk API error details:', errorDetails);
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorMessage = 'No response received from Zendesk API';
+        console.error('No response received from Zendesk API:', error.request);
+      } else {
+        // Something happened in setting up the request
+        errorMessage = `Error setting up request: ${error.message}`;
+        console.error('Error setting up Zendesk API request:', error.message);
+      }
+      
+      return {
+        id: 0,
+        url: '',
+        error: errorMessage
+      };
     }
   }
 
@@ -165,11 +230,15 @@ export class ZendeskService {
           });
 
           if (zendeskTicket) {
-            console.log(`Created Zendesk ticket ID ${zendeskTicket.id} for ticket #${ticket.id}`);
-            results[ticket.id] = zendeskTicket;
+            if (!zendeskTicket.error) {
+              console.log(`Created Zendesk ticket ID ${zendeskTicket.id} for ticket #${ticket.id}`);
+              results[ticket.id] = zendeskTicket;
+            } else {
+              console.error(`Failed to create Zendesk ticket for ticket #${ticket.id}: ${zendeskTicket.error}`);
+            }
 
-            // Sync messages if available
-            if (ticket.messages && ticket.messages.length > 0) {
+            // Sync messages if available and ticket was created successfully (no error)
+            if (!zendeskTicket.error && ticket.messages && ticket.messages.length > 0) {
               console.log(`Syncing ${ticket.messages.length} messages for ticket #${ticket.id}`);
               for (const message of ticket.messages) {
                 await this.addComment(zendeskTicket.id, {
@@ -205,10 +274,65 @@ export class ZendeskService {
    */
   async verifyConnection(): Promise<boolean> {
     try {
-      await axios.get(`${this.apiUrl}/users/me`, { auth: this.auth });
-      return true;
+      console.log(`Attempting to verify Zendesk connection to: ${this.apiUrl}/users/me`);
+      console.log(`Using credentials: ${this.auth.username}, token: [REDACTED]`);
+      
+      // First validate that we have all required fields
+      if (!this.apiUrl || !this.auth.username || !this.auth.password) {
+        console.error("Missing required Zendesk configuration:", {
+          apiUrl: !!this.apiUrl,
+          email: !!this.auth.username,
+          apiToken: !!this.auth.password
+        });
+        return false;
+      }
+      
+      // Make the request with a timeout
+      const response = await axios.get(`${this.apiUrl}/users/me`, { 
+        auth: this.auth,
+        timeout: 10000 // 10 second timeout for connection issues
+      });
+      
+      // Verify we got a successful response with user data
+      if (response.status === 200 && response.data && response.data.user) {
+        console.log("Zendesk connection successful, authenticated as:", {
+          name: response.data.user.name || 'Unknown',
+          email: response.data.user.email || 'Unknown',
+          role: response.data.user.role || 'Unknown'
+        });
+        return true;
+      }
+      
+      console.error("Unexpected response format from Zendesk API:", response.data);
+      return false;
     } catch (error) {
-      console.error("Error verifying Zendesk connection:", error);
+      console.error("Error verifying Zendesk connection:", error.message);
+      
+      // Handle different error types for better debugging
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx
+        console.error("Response error details:", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+        
+        // Provide more specific error messages based on status code
+        if (error.response.status === 401) {
+          console.error("Authentication failed. Please check your email and API token.");
+        } else if (error.response.status === 404) {
+          console.error("The URL is invalid or the resource doesn't exist. Check your subdomain.");
+        } else if (error.response.status === 403) {
+          console.error("Permission denied. Your API token may not have the necessary permissions.");
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error("No response received from server. Check your network connection and Zendesk subdomain.");
+      } else {
+        // Something happened in setting up the request
+        console.error("Error setting up request:", error.message);
+      }
+      
       return false;
     }
   }

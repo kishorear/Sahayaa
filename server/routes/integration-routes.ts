@@ -405,62 +405,26 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       try {
         // Check if storage has the getAllTickets method available
         if (!storage.getAllTickets) {
-          // For backwards compatibility or testing, use mock tickets if real storage is not available
-          console.log('getAllTickets method not found in storage, using mock tickets for sync demonstration');
-          tickets = [
-            { 
-              id: 1, 
-              title: 'Sample Ticket 1', 
-              description: 'This is a sample ticket for testing synchronization',
-              status: 'open',
-              priority: 'medium',
-              assignedTo: 'support',
-              createdAt: new Date(),
-              tenantId: 1
-            },
-            {
-              id: 2,
-              title: 'Sample Ticket 2',
-              description: 'Another sample ticket for testing synchronization',
-              status: 'in_progress',
-              priority: 'high',
-              assignedTo: 'engineer',
-              createdAt: new Date(),
-              tenantId: 1
-            }
-          ];
-          console.log('Using mock tickets for demonstration:', tickets);
-        } else {
-          tickets = await storage.getAllTickets();
-          console.log(`Retrieved ${tickets.length} tickets for synchronization`);
+          console.error('getAllTickets method not found in storage');
+          return res.status(500).json({
+            message: 'Database error: getAllTickets method not available'
+          });
+        }
+        
+        tickets = await storage.getAllTickets();
+        console.log(`Retrieved ${tickets.length} tickets for synchronization`);
+        
+        if (!tickets || tickets.length === 0) {
+          return res.status(404).json({
+            message: 'No tickets found to synchronize'
+          });
         }
       } catch (error) {
         console.error(`Error retrieving tickets for synchronization:`, error);
-        
-        // Use mock tickets for demonstration if real storage fails
-        console.log('Using mock tickets since storage retrieval failed');
-        tickets = [
-          { 
-            id: 1, 
-            title: 'Sample Ticket 1', 
-            description: 'This is a sample ticket for testing synchronization',
-            status: 'open',
-            priority: 'medium',
-            assignedTo: 'support',
-            createdAt: new Date(),
-            tenantId: 1
-          },
-          {
-            id: 2,
-            title: 'Sample Ticket 2',
-            description: 'Another sample ticket for testing synchronization',
-            status: 'in_progress',
-            priority: 'high',
-            assignedTo: 'engineer',
-            createdAt: new Date(),
-            tenantId: 1
-          }
-        ];
+        return res.status(500).json({
+          message: 'Failed to retrieve tickets from database',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
       
       // Get the integration service
@@ -477,18 +441,29 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       if (syncedTickets > 0) {
         for (const [ticketId, externalInfo] of Object.entries(results[type] || {})) {
           try {
-            // In a real implementation, you would update the ticket in the database
-            // Here we'll just log the mapping
             console.log(`Updating ticket ${ticketId} with external ${type} reference:`, externalInfo);
             
-            // Example of how you would update the ticket in the database:
-            /* 
-            await storage.updateTicketExternalReference(
+            // Get the current ticket to access its existing externalIntegrations
+            const ticket = await storage.getTicketById(parseInt(ticketId));
+            if (!ticket) {
+              console.error(`Could not find ticket with ID ${ticketId} in database`);
+              continue;
+            }
+            
+            // Create or update the externalIntegrations field
+            const currentExternalIntegrations = ticket.externalIntegrations || {};
+            const updatedExternalIntegrations = {
+              ...currentExternalIntegrations,
+              [type]: type === 'jira' ? (externalInfo as any).key : (externalInfo as any).id
+            };
+            
+            // Update the ticket in the database with new external references
+            await storage.updateTicket(
               parseInt(ticketId),
-              type,
-              type === 'jira' ? (externalInfo as any).key : (externalInfo as any).id
+              { externalIntegrations: updatedExternalIntegrations }
             );
-            */
+            
+            console.log(`Successfully updated ticket ${ticketId} with ${type} reference: ${JSON.stringify(updatedExternalIntegrations)}`);
           } catch (error) {
             console.error(`Error updating external reference for ticket ${ticketId}:`, error);
           }

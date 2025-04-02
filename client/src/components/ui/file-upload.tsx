@@ -18,7 +18,7 @@ export function FileUpload({
   currentFile,
   label = 'Upload a file',
   acceptedFileTypes = '.txt,.pdf,.doc,.docx,.md',
-  maxSize = 10, // Default max size 10MB
+  maxSize = 1024, // Default max size 1GB
   className,
   ...props
 }: FileUploadProps) {
@@ -47,7 +47,7 @@ export function FileUpload({
     }
 
     if (!isFileSizeValid) {
-      setError(`File size exceeds the maximum limit of ${maxSize}MB`);
+      setError(`File size exceeds the maximum limit of 1GB`);
       return;
     }
 
@@ -125,7 +125,7 @@ export function FileUpload({
               Drag & drop a file here or click to browse
             </p>
             <p className="text-xs text-muted-foreground">
-              Max file size: {maxSize}MB
+              Max file size: 1GB
             </p>
             <p className="text-xs text-muted-foreground">
               Supported formats: {acceptedFileTypes}

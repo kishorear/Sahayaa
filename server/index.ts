@@ -18,7 +18,7 @@ process.on('uncaughtException', (error) => {
 const app = express();
 // Enhanced JSON body parser with better error handling
 app.use(express.json({
-  limit: '10mb',
+  limit: '1gb',
   verify: (req: any, res, buf, encoding) => {
     // Store raw body for debugging
     if (req.url.includes('/integrations')) {
@@ -47,7 +47,7 @@ app.use((err: any, req: any, res: Response, next: NextFunction) => {
   next(err);
 });
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: '1gb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();

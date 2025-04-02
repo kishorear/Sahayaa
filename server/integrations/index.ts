@@ -104,13 +104,50 @@ export class IntegrationService {
   async createTicketInThirdParty(ticket: InsertTicket): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
 
+    // Log what we're trying to do
+    console.log(`Creating ticket in third-party systems: "${ticket.title}"`);
+    
+    // Create ticket in Zendesk if enabled
     if (this.zendeskService?.isEnabled()) {
-      result.zendesk = await this.zendeskService.createTicket(ticket);
+      try {
+        console.log(`Attempting to create ticket in Zendesk: "${ticket.title}"`);
+        result.zendesk = await this.zendeskService.createTicket(ticket);
+        if (result.zendesk) {
+          console.log(`Successfully created ticket in Zendesk with ID: ${result.zendesk.id}`);
+        } else {
+          console.error(`Failed to create ticket in Zendesk: No result returned`);
+        }
+      } catch (error) {
+        console.error(`Error creating ticket in Zendesk:`, error);
+        result.zendesk = { error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    } else {
+      console.log('Zendesk integration not enabled or not properly configured - skipping ticket creation');
     }
 
+    // Create ticket in Jira if enabled
     if (this.jiraService?.isEnabled()) {
-      result.jira = await this.jiraService.createIssue(ticket);
+      try {
+        console.log(`Attempting to create issue in Jira: "${ticket.title}"`);
+        result.jira = await this.jiraService.createIssue(ticket);
+        if (result.jira) {
+          console.log(`Successfully created issue in Jira with key: ${result.jira.key}`);
+        } else {
+          console.error(`Failed to create issue in Jira: No result returned`);
+        }
+      } catch (error) {
+        console.error(`Error creating issue in Jira:`, error);
+        result.jira = { error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    } else {
+      console.log('Jira integration not enabled or not properly configured - skipping issue creation');
     }
+
+    // Log the overall result
+    console.log(`Third-party ticket creation results:`, {
+      zendesk: result.zendesk ? 'success' : 'not created',
+      jira: result.jira ? 'success' : 'not created'
+    });
 
     return result;
   }

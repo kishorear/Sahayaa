@@ -1,6 +1,10 @@
 import { Router, Request, Response, Express, NextFunction } from "express";
 import { body, param, validationResult } from "express-validator";
 import { storage } from "../storage";
+import upload from "../upload";
+import { extractTextFromFile, extractFileMetadata } from "../document-parser";
+import fs from "fs";
+import path from "path";
 
 // This will be used when the module is imported
 export function registerDocumentRoutes(
@@ -261,6 +265,98 @@ router.post(
     } catch (error) {
       console.error("Error tracking document view:", error);
       res.status(500).json({ error: "Failed to track document view" });
+    }
+  }
+);
+
+// Upload document file
+router.post(
+  "/documents/upload",
+  upload.single('file'),
+  [
+    body("category").notEmpty().withMessage("Category is required"),
+    body("status")
+      .isIn(["draft", "published", "archived"])
+      .withMessage("Status must be either 'draft', 'published', or 'archived'"),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      // Check if file was uploaded successfully
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        // Delete the uploaded file if validation fails
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const tenantId = req.user?.tenantId || 1; // Default to 1 if not specified (temporary)
+      const userId = req.user?.id;
+      
+      // Extract file content
+      const fileContent = await extractTextFromFile(req.file.path);
+      const metadata = extractFileMetadata(req.file.path);
+      
+      // Auto-generate title from filename if not provided
+      const title = req.body.title || path.basename(req.file.originalname, path.extname(req.file.originalname));
+      
+      // Create document with extracted content and metadata
+      // Ensure we have a valid userId, default to 1 if not present
+      const createdBy = userId || 1;
+      
+      // Handle array fields properly - convert comma-separated strings to arrays if needed
+      let tags: string[] = [];
+      let errorCodes: string[] = [];
+      let keywords: string[] = [];
+      
+      if (req.body.tags) {
+        tags = typeof req.body.tags === 'string' ? req.body.tags.split(',').map((tag: string) => tag.trim()) : req.body.tags;
+      }
+      
+      if (req.body.errorCodes) {
+        errorCodes = typeof req.body.errorCodes === 'string' ? req.body.errorCodes.split(',').map((code: string) => code.trim()) : req.body.errorCodes;
+      }
+      
+      if (req.body.keywords) {
+        keywords = typeof req.body.keywords === 'string' ? req.body.keywords.split(',').map((keyword: string) => keyword.trim()) : req.body.keywords;
+      }
+
+      const documentData = {
+        title: String(title),
+        content: String(fileContent),
+        category: String(req.body.category),
+        status: String(req.body.status || 'draft'),
+        summary: req.body.summary ? String(req.body.summary) : '',
+        tags,
+        errorCodes,
+        keywords,
+        tenantId,
+        createdBy,
+        metadata: {
+          ...metadata,
+          originalFilename: req.file.originalname,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+          uploadedAt: new Date()
+        }
+      };
+
+      const newDocument = await storage.createSupportDocument(documentData);
+      
+      // Return the created document
+      res.status(201).json(newDocument);
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      // Clean up file on error
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: "Failed to upload document" });
     }
   }
 );

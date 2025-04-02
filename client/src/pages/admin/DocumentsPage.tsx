@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit, FileText, Search, Filter, Tag } from 'lucide-react';
+import { Plus, Trash2, Edit, FileText, Search, Filter, Tag, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import AdminLayout from '@/components/admin/AdminLayout';
+import { DocumentUploadDialog } from '@/components/admin/DocumentUploadDialog';
 
 // Define the document interface based on schema
 interface Document {
@@ -69,10 +70,19 @@ const documentSchema = z.object({
   category: z.string().min(1, "Category is required"),
   status: z.enum(["draft", "published", "archived"]),
   summary: z.string().nullable().optional(),
-  tags: z.string().optional().transform(val => val ? val.split(',').map(tag => tag.trim()) : []),
+  tags: z.union([
+    z.string().transform(val => val ? val.split(',').map(tag => tag.trim()) : []),
+    z.array(z.string())
+  ]),
   // Frontend uses camelCase, but database uses snake_case (error_codes)
-  errorCodes: z.string().optional().transform(val => val ? val.split(',').map(code => code.trim()) : []),
-  keywords: z.string().optional().transform(val => val ? val.split(',').map(keyword => keyword.trim()) : []),
+  errorCodes: z.union([
+    z.string().transform(val => val ? val.split(',').map(code => code.trim()) : []),
+    z.array(z.string())
+  ]),
+  keywords: z.union([
+    z.string().transform(val => val ? val.split(',').map(keyword => keyword.trim()) : []),
+    z.array(z.string())
+  ]),
 });
 
 type DocumentFormValues = z.infer<typeof documentSchema>;
@@ -85,6 +95,7 @@ export default function DocumentsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [currentDocumentId, setCurrentDocumentId] = useState<number | null>(null);
   const { toast } = useToast();
 
@@ -105,7 +116,7 @@ export default function DocumentsPage() {
   });
 
   // Get categories for filtering
-  const uniqueCategories = Array.from(
+  const uniqueCategories: string[] = Array.from(
     new Set(documents.filter((doc: Document) => doc.category).map((doc: Document) => doc.category))
   );
 
@@ -232,9 +243,9 @@ export default function DocumentsPage() {
       category: "",
       status: "draft",
       summary: "",
-      tags: "",
-      errorCodes: "",
-      keywords: "",
+      tags: [],
+      errorCodes: [],
+      keywords: [],
     }
   });
 
@@ -247,9 +258,9 @@ export default function DocumentsPage() {
       category: "",
       status: "draft",
       summary: "",
-      tags: "",
-      errorCodes: "",
-      keywords: "",
+      tags: [],
+      errorCodes: [],
+      keywords: [],
     }
   });
 
@@ -349,9 +360,14 @@ export default function DocumentsPage() {
       <>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Knowledge Base Documents</h1>
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-1">
-            <Plus size={16} /> New Document
-          </Button>
+          <div className="flex space-x-2">
+            <Button onClick={() => setIsUploadDialogOpen(true)} className="flex items-center gap-1">
+              <Upload size={16} /> Upload File
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-1">
+              <Plus size={16} /> New Document
+            </Button>
+          </div>
         </div>
 
         <Card className="mb-6">
@@ -391,7 +407,7 @@ export default function DocumentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {uniqueCategories.map((category) => (
+                  {uniqueCategories.map((category: string) => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
                 </SelectContent>
@@ -867,6 +883,9 @@ export default function DocumentsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Document Upload Dialog */}
+        <DocumentUploadDialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen} />
       </>
     );
   };

@@ -125,19 +125,65 @@ export default function IntegrationsSettings() {
   // Test integration connection
   const testIntegrationMutation = useMutation({
     mutationFn: async (type: IntegrationType) => {
-      const res = await apiRequest("POST", `/api/integrations/${type}/test`);
+      // Get the current form values based on the integration type
+      let formValues;
+      if (type === "zendesk") {
+        formValues = zendeskForm.getValues();
+      } else if (type === "jira") {
+        formValues = jiraForm.getValues();
+      } else {
+        throw new Error("Invalid integration type");
+      }
+
+      // Log what we're sending for debugging
+      console.log(`Testing ${type} connection with form values`, {
+        ...formValues,
+        apiToken: formValues.apiToken ? "[REDACTED]" : "missing"
+      });
+
+      // Send the current form values in the request body
+      const res = await apiRequest("POST", `/api/integrations/${type}/test`, formValues);
       return res.json();
     },
     onSuccess: (data) => {
       setTestResult({
         success: true,
-        message: data.message,
+        message: data.message || "Connection successful!",
+      });
+      
+      // Show a success toast
+      toast({
+        title: "Connection Test Successful",
+        description: "Successfully connected to " + activeTab.charAt(0).toUpperCase() + activeTab.slice(1),
       });
     },
     onError: (error: Error) => {
+      console.error(`Integration test error:`, error);
+      
+      // Display a more helpful message
+      let errorMessage = error.message;
+      
+      // Check for common error patterns and provide more helpful messages
+      if (errorMessage.includes("Missing required fields") || 
+          errorMessage.includes("Empty request body") ||
+          errorMessage.includes("required for testing")) {
+        errorMessage = "Please fill in all required fields before testing the connection.";
+      } else if (errorMessage.includes("API token")) {
+        errorMessage = "Invalid API token. Please check your credentials and try again.";
+      } else if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      }
+      
       setTestResult({
         success: false,
-        message: error.message,
+        message: errorMessage,
+      });
+
+      // Also show a toast for more visibility
+      toast({
+        variant: "destructive",
+        title: "Connection Test Failed",
+        description: errorMessage,
       });
     },
     onSettled: () => {
@@ -185,6 +231,24 @@ export default function IntegrationsSettings() {
       zendeskForm.handleSubmit(onZendeskSubmit)();
     } else {
       jiraForm.handleSubmit(onJiraSubmit)();
+    }
+  };
+  
+  // Check if the form is valid for testing (all required fields have values)
+  const isFormValidForTesting = () => {
+    if (activeTab === "zendesk") {
+      const values = zendeskForm.getValues();
+      return !!(values.enabled && 
+                values.subdomain && 
+                values.email && 
+                values.apiToken);
+    } else {
+      const values = jiraForm.getValues();
+      return !!(values.enabled && 
+                values.baseUrl && 
+                values.email && 
+                values.apiToken && 
+                values.projectKey);
     }
   };
 
@@ -403,7 +467,7 @@ export default function IntegrationsSettings() {
           type="button" 
           variant="outline" 
           onClick={testCurrentIntegration}
-          disabled={testingConnection || !form.getValues().enabled}
+          disabled={testingConnection || !isFormValidForTesting()}
         >
           {testingConnection && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Test Connection

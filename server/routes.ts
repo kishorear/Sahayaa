@@ -529,7 +529,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
              Only suggest creating a ticket if you cannot solve the problem directly.
              Be friendly, professional, and empathetic in your responses.
              When appropriate, ask if they would like to upload a screenshot or image to help explain their issue.
-             Never make up information. If you don't know something, be honest about it.`;
+             Never make up information. If you don't know something, be honest about it.
+             After creating a ticket, ALWAYS ask if the user needs more assistance with anything else. If they say no or indicate they're done, respond by saying you're ending the chat session and they can return anytime they need further help.`;
           
           // Add the current message to the history
           const allMessages = [

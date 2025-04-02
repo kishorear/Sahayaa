@@ -216,12 +216,12 @@ export default function ChatbotInterface() {
         description: `Support ticket #${ticket.id} has been created. Our team will follow up shortly.`,
       });
       
-      // Add a message about successful ticket creation with attachment reminder
+      // Add a message about successful ticket creation with attachment reminder and asking if they need more help
       setMessages(prev => [
         ...prev,
         {
           id: `ai-ticket-created-${Date.now()}`,
-          content: `Support ticket #${ticket.id} has been created successfully. You can add images or a screen recording now if that would help explain your issue better. Just let me know.`,
+          content: `Support ticket #${ticket.id} has been created successfully. You can add images or a screen recording now if that would help explain your issue better. Is there anything else I can assist you with today?`,
           sender: "ai",
           timestamp: new Date(),
         }
@@ -541,6 +541,41 @@ export default function ChatbotInterface() {
       ]);
       
       return;
+    }
+    
+    // Check if user indicates they don't need more help after ticket creation
+    if (ticketCreatedForSession) {
+      const noMoreHelpKeywords = [
+        'no', 'that\'s all', 'that is all', 'nothing else', 'i\'m good', 'im good', 
+        'that\'s it', 'that is it', 'no thanks', 'nothing more', 'i\'m done', 'im done'
+      ];
+      
+      const isEndingChat = noMoreHelpKeywords.some(keyword => 
+        message.includes(keyword) || message === keyword
+      );
+      
+      if (isEndingChat) {
+        // Add user message to chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `user-${Date.now()}`,
+            content: inputMessage,
+            sender: "user",
+            timestamp: new Date(),
+          },
+          {
+            id: `ai-end-chat-${Date.now()}`,
+            content: "Thank you for using our support chat. I'm ending this session now. Feel free to return anytime you need further assistance!",
+            sender: "ai",
+            timestamp: new Date(),
+          }
+        ]);
+        
+        // Clear input and return without sending to the API
+        setInputMessage("");
+        return;
+      }
     }
     
     // Regular message flow - add user message to chat

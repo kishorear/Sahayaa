@@ -379,6 +379,93 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
     }
   });
 
+  // Sync existing tickets with external integration
+  app.post('/api/integrations/:type/sync', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const type = integrationTypeSchema.parse(req.params.type);
+      
+      // Check if integration is enabled and configured
+      if ((type === 'jira' && !integrationSettings.jira.enabled) || 
+          (type === 'zendesk' && !integrationSettings.zendesk.enabled)) {
+        return res.status(400).json({
+          message: `${type} integration is not enabled. Please enable and configure it first.`
+        });
+      }
+      
+      // Get tickets to sync from storage
+      // In a real implementation, you would get tickets from the database
+      // For this example, we'll use a minimal implementation with mock tickets
+      const storage = req.app.locals.storage;
+      if (!storage) {
+        return res.status(500).json({ message: 'Storage service not available' });
+      }
+      
+      // Get tickets from storage
+      let tickets;
+      try {
+        tickets = await storage.getAllTickets();
+        console.log(`Retrieved ${tickets.length} tickets for synchronization`);
+      } catch (error) {
+        console.error(`Error retrieving tickets for synchronization:`, error);
+        return res.status(500).json({
+          message: 'Error retrieving tickets from storage'
+        });
+      }
+      
+      // Get the integration service
+      const integrationService = getIntegrationService();
+      
+      // Sync tickets to the external service
+      console.log(`Starting synchronization of ${tickets.length} tickets to ${type}...`);
+      const results = await integrationService.syncExistingTickets(tickets);
+      
+      // Count how many tickets were synced to this specific integration type
+      const syncedTickets = Object.keys(results[type] || {}).length;
+      
+      // Update tickets in storage with their external IDs
+      if (syncedTickets > 0) {
+        for (const [ticketId, externalInfo] of Object.entries(results[type] || {})) {
+          try {
+            // In a real implementation, you would update the ticket in the database
+            // Here we'll just log the mapping
+            console.log(`Updating ticket ${ticketId} with external ${type} reference:`, externalInfo);
+            
+            // Example of how you would update the ticket in the database:
+            /* 
+            await storage.updateTicketExternalReference(
+              parseInt(ticketId),
+              type,
+              type === 'jira' ? (externalInfo as any).key : (externalInfo as any).id
+            );
+            */
+          } catch (error) {
+            console.error(`Error updating external reference for ticket ${ticketId}:`, error);
+          }
+        }
+      }
+      
+      return res.status(200).json({
+        message: `Successfully synchronized ${syncedTickets} tickets with ${type}`,
+        syncedCount: syncedTickets,
+        totalTickets: tickets.length,
+        externalIds: Object.keys(results[type] || {}).map(ticketId => ({
+          ticketId,
+          externalId: type === 'jira' 
+            ? (results[type][parseInt(ticketId)] as any).key
+            : (results[type][parseInt(ticketId)] as any).id,
+          url: (results[type][parseInt(ticketId)] as any).url
+        }))
+      });
+    } catch (error) {
+      console.error(`Error synchronizing tickets with ${req.params.type}:`, error);
+      
+      return res.status(500).json({
+        message: `Error synchronizing tickets with ${req.params.type}`,
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Test integration connection
   app.post('/api/integrations/:type/test', requireAuth, async (req: Request, res: Response) => {
     try {

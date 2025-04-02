@@ -171,6 +171,36 @@ export class IntegrationService {
 
     return result;
   }
+  
+  /**
+   * Sync existing tickets to all enabled third-party systems
+   * @param tickets Array of tickets to synchronize
+   * @returns Object mapping ticket IDs to their external reference IDs
+   */
+  async syncExistingTickets(tickets: any[]): Promise<{
+    zendesk: Record<number, { id: number; url: string }>;
+    jira: Record<number, { id: string; key: string; url: string }>;
+  }> {
+    const result: {
+      zendesk: Record<number, { id: number; url: string }>;
+      jira: Record<number, { id: string; key: string; url: string }>;
+    } = {
+      zendesk: {},
+      jira: {}
+    };
+
+    if (this.zendeskService?.isEnabled()) {
+      console.log('Syncing tickets to Zendesk...');
+      result.zendesk = await this.zendeskService.syncExistingTickets(tickets);
+    }
+
+    if (this.jiraService?.isEnabled()) {
+      console.log('Syncing tickets to Jira...');
+      result.jira = await this.jiraService.syncExistingTickets(tickets);
+    }
+
+    return result;
+  }
 }
 
 // Singleton instance

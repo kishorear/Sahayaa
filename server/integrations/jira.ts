@@ -1,6 +1,12 @@
 import { InsertTicket, InsertMessage } from "@shared/schema";
 import axios from "axios";
 
+// Extended InsertMessage type for integration purposes
+interface ExtendedInsertMessage extends InsertMessage {
+  senderName?: string;
+  tenantId?: number;
+}
+
 export interface JiraConfig {
   baseUrl: string;
   email: string;
@@ -131,7 +137,7 @@ export class JiraService {
   /**
    * Add a comment to a Jira issue
    */
-  async addComment(issueKey: string, message: InsertMessage): Promise<boolean> {
+  async addComment(issueKey: string, message: ExtendedInsertMessage): Promise<boolean> {
     if (!this.enabled) return false;
 
     try {
@@ -221,6 +227,85 @@ export class JiraService {
       console.error("Error updating issue status in Jira:", error);
       return false;
     }
+  }
+
+  /**
+   * Sync existing tickets to Jira
+   * @param tickets Array of tickets to synchronize with Jira
+   * @returns Object mapping ticket IDs to their Jira keys
+   */
+  async syncExistingTickets(tickets: any[]): Promise<Record<number, { id: string; key: string; url: string }>> {
+    if (!this.enabled) return {};
+
+    const results: Record<number, { id: string; key: string; url: string }> = {};
+
+    console.log(`Starting sync of ${tickets.length} tickets to Jira...`);
+
+    // Process tickets in batches to avoid overwhelming the API
+    const batchSize = 5;
+    for (let i = 0; i < tickets.length; i += batchSize) {
+      const batch = tickets.slice(i, i + batchSize);
+      
+      // Process each ticket in the batch
+      const batchPromises = batch.map(async (ticket) => {
+        try {
+          // Skip tickets that already have a Jira ID
+          if (ticket.externalIntegrations?.jira) {
+            console.log(`Ticket #${ticket.id} already synced to Jira (${ticket.externalIntegrations.jira})`);
+            results[ticket.id] = {
+              id: "",
+              key: ticket.externalIntegrations.jira,
+              url: `${this.apiUrl.replace('/rest/api/3', '')}/browse/${ticket.externalIntegrations.jira}`
+            };
+            return;
+          }
+
+          // Create new issue in Jira
+          console.log(`Creating Jira issue for ticket #${ticket.id}: ${ticket.title}`);
+          const jiraIssue = await this.createIssue({
+            title: ticket.title,
+            description: ticket.description,
+            category: ticket.category,
+            complexity: ticket.complexity,
+            assignedTo: ticket.assignedTo,
+            aiNotes: ticket.aiNotes,
+            tenantId: ticket.tenantId
+          });
+
+          if (jiraIssue) {
+            console.log(`Created Jira issue ${jiraIssue.key} for ticket #${ticket.id}`);
+            results[ticket.id] = jiraIssue;
+
+            // Sync messages if available
+            if (ticket.messages && ticket.messages.length > 0) {
+              console.log(`Syncing ${ticket.messages.length} messages for ticket #${ticket.id}`);
+              for (const message of ticket.messages) {
+                await this.addComment(jiraIssue.key, {
+                  content: message.content,
+                  sender: message.sender,
+                  senderName: message.senderName || message.sender,
+                  ticketId: ticket.id,
+                  tenantId: ticket.tenantId
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error syncing ticket #${ticket.id} to Jira:`, error);
+        }
+      });
+
+      // Wait for batch to complete
+      await Promise.all(batchPromises);
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < tickets.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    console.log(`Completed sync of ${Object.keys(results).length} tickets to Jira`);
+    return results;
   }
 
   /**

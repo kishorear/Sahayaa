@@ -41,6 +41,7 @@ export default function IntegrationsSettings() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"zendesk" | "jira">("zendesk");
   const [testingConnection, setTestingConnection] = useState(false);
+  const [syncingTickets, setSyncingTickets] = useState(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -119,6 +120,35 @@ export default function IntegrationsSettings() {
         title: "Failed to save settings",
         description: error.message,
       });
+    },
+  });
+
+  // Sync existing tickets with the integration
+  const syncTicketsMutation = useMutation({
+    mutationFn: async (type: IntegrationType) => {
+      // Send a request to sync tickets with the integration
+      const res = await apiRequest("POST", `/api/integrations/${type}/sync`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      // Show a success toast with details about how many tickets were synced
+      toast({
+        title: "Tickets Synchronized",
+        description: data.message || `Successfully synchronized tickets with ${activeTab}`,
+      });
+    },
+    onError: (error: Error) => {
+      console.error(`Ticket synchronization error:`, error);
+      
+      // Show an error toast
+      toast({
+        variant: "destructive",
+        title: "Synchronization Failed",
+        description: error.message || `Failed to synchronize tickets with ${activeTab}`,
+      });
+    },
+    onSettled: () => {
+      setSyncingTickets(false);
     },
   });
 
@@ -206,6 +236,12 @@ export default function IntegrationsSettings() {
     setTestingConnection(true);
     setTestResult(null);
     testIntegrationMutation.mutate(activeTab);
+  };
+  
+  // Handler for syncing tickets with the current integration
+  const syncCurrentIntegration = () => {
+    setSyncingTickets(true);
+    syncTicketsMutation.mutate(activeTab);
   };
 
   // If loading, show a loading state
@@ -462,16 +498,32 @@ export default function IntegrationsSettings() {
         )}
       </CardContent>
 
-      <CardFooter className="flex justify-between">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={testCurrentIntegration}
-          disabled={testingConnection || !isFormValidForTesting()}
-        >
-          {testingConnection && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Test Connection
-        </Button>
+      <CardFooter className="flex justify-between gap-2">
+        <div className="flex gap-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={testCurrentIntegration}
+            disabled={testingConnection || !isFormValidForTesting()}
+          >
+            {testingConnection && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Test Connection
+          </Button>
+          
+          {/* Only show sync button if integration is enabled */}
+          {((activeTab === "zendesk" && integrations?.zendesk.enabled) || 
+            (activeTab === "jira" && integrations?.jira.enabled)) && (
+            <Button 
+              type="button" 
+              variant="secondary"
+              onClick={syncCurrentIntegration}
+              disabled={syncingTickets}
+            >
+              {syncingTickets && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sync Tickets
+            </Button>
+          )}
+        </div>
         <Button 
           type="submit" 
           onClick={handleFormSubmit} 

@@ -1,6 +1,12 @@
 import { InsertTicket, InsertMessage } from "@shared/schema";
 import axios from "axios";
 
+// Extended InsertMessage type for integration purposes
+interface ExtendedInsertMessage extends InsertMessage {
+  senderName?: string;
+  tenantId?: number;
+}
+
 export interface ZendeskConfig {
   subdomain: string;
   email: string;
@@ -68,7 +74,7 @@ export class ZendeskService {
   /**
    * Add a comment to a Zendesk ticket
    */
-  async addComment(zendeskTicketId: number, message: InsertMessage): Promise<boolean> {
+  async addComment(zendeskTicketId: number, message: ExtendedInsertMessage): Promise<boolean> {
     if (!this.enabled) return false;
 
     try {
@@ -114,6 +120,84 @@ export class ZendeskService {
       console.error("Error updating ticket status in Zendesk:", error);
       return false;
     }
+  }
+
+  /**
+   * Sync existing tickets to Zendesk
+   * @param tickets Array of tickets to synchronize with Zendesk
+   * @returns Object mapping ticket IDs to their Zendesk IDs
+   */
+  async syncExistingTickets(tickets: any[]): Promise<Record<number, { id: number; url: string }>> {
+    if (!this.enabled) return {};
+
+    const results: Record<number, { id: number; url: string }> = {};
+
+    console.log(`Starting sync of ${tickets.length} tickets to Zendesk...`);
+
+    // Process tickets in batches to avoid overwhelming the API
+    const batchSize = 5;
+    for (let i = 0; i < tickets.length; i += batchSize) {
+      const batch = tickets.slice(i, i + batchSize);
+      
+      // Process each ticket in the batch
+      const batchPromises = batch.map(async (ticket) => {
+        try {
+          // Skip tickets that already have a Zendesk ID
+          if (ticket.externalIntegrations?.zendesk) {
+            console.log(`Ticket #${ticket.id} already synced to Zendesk (ID: ${ticket.externalIntegrations.zendesk})`);
+            results[ticket.id] = {
+              id: ticket.externalIntegrations.zendesk,
+              url: `https://${this.apiUrl.split('//')[1].split('/')[0]}/agent/tickets/${ticket.externalIntegrations.zendesk}`
+            };
+            return;
+          }
+
+          // Create new ticket in Zendesk
+          console.log(`Creating Zendesk ticket for ticket #${ticket.id}: ${ticket.title}`);
+          const zendeskTicket = await this.createTicket({
+            title: ticket.title,
+            description: ticket.description,
+            category: ticket.category,
+            complexity: ticket.complexity,
+            assignedTo: ticket.assignedTo,
+            aiNotes: ticket.aiNotes,
+            tenantId: ticket.tenantId
+          });
+
+          if (zendeskTicket) {
+            console.log(`Created Zendesk ticket ID ${zendeskTicket.id} for ticket #${ticket.id}`);
+            results[ticket.id] = zendeskTicket;
+
+            // Sync messages if available
+            if (ticket.messages && ticket.messages.length > 0) {
+              console.log(`Syncing ${ticket.messages.length} messages for ticket #${ticket.id}`);
+              for (const message of ticket.messages) {
+                await this.addComment(zendeskTicket.id, {
+                  content: message.content,
+                  sender: message.sender,
+                  senderName: message.senderName || message.sender,
+                  ticketId: ticket.id,
+                  tenantId: ticket.tenantId
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error syncing ticket #${ticket.id} to Zendesk:`, error);
+        }
+      });
+
+      // Wait for batch to complete
+      await Promise.all(batchPromises);
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < tickets.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    console.log(`Completed sync of ${Object.keys(results).length} tickets to Zendesk`);
+    return results;
   }
 
   /**

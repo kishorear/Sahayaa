@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
-import { MessageSquare, X, Video, Image, Camera, Upload, Paperclip } from "lucide-react";
+import { MessageSquare, X, Video, Image, Camera, Upload, Paperclip, RefreshCcw } from "lucide-react";
 import { InsertTicket, InsertAttachment } from "@shared/schema";
 
 type Message = {
@@ -555,7 +555,7 @@ export default function ChatbotInterface() {
       );
       
       if (isEndingChat) {
-        // Add user message to chat
+        // Add user message and end chat message
         setMessages((prev) => [
           ...prev,
           {
@@ -572,8 +572,26 @@ export default function ChatbotInterface() {
           }
         ]);
         
-        // Clear input and return without sending to the API
+        // Clear input
         setInputMessage("");
+        
+        // Reset chat after a short delay so user can read the message
+        setTimeout(() => {
+          // Reset the chat state for a new session
+          setMessages([
+            {
+              id: "ai-welcome",
+              content: "Hello! I'm your AI support assistant. How can I help you today?",
+              sender: "ai",
+              timestamp: new Date(),
+            },
+          ]);
+          setCurrentTicketId(null);
+          setTicketCreatedForSession(false);
+          setSuggestedTicketData(null);
+          setAwaitingTicketConfirmation(false);
+        }, 5000);
+        
         return;
       }
     }
@@ -873,6 +891,34 @@ export default function ChatbotInterface() {
                 <h3 className="font-semibold">Support Chat</h3>
               </div>
               <div className="flex items-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  title="New Chat"
+                  onClick={() => {
+                    // Reset the chat state for a new session
+                    setMessages([
+                      {
+                        id: "ai-welcome",
+                        content: "Hello! I'm your AI support assistant. How can I help you today?",
+                        sender: "ai",
+                        timestamp: new Date(),
+                      },
+                    ]);
+                    setCurrentTicketId(null);
+                    setTicketCreatedForSession(false);
+                    setSuggestedTicketData(null);
+                    setAwaitingTicketConfirmation(false);
+                    setInputMessage("");
+                    toast({
+                      title: "Chat Reset",
+                      description: "Starting a new chat session",
+                    });
+                  }} 
+                  className="text-white hover:bg-primary/80 mr-1"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 

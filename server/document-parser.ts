@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx';
 
 /**
  * Simple file content extractor that reads text from uploaded files
@@ -18,29 +18,43 @@ export async function extractTextFromFile(filePath: string): Promise<string> {
     } 
     // Excel file handling (.xlsx, .xls, .csv)
     else if (ext === '.xlsx' || ext === '.xls' || ext === '.csv') {
-      const workbook = XLSX.readFile(filePath);
-      const sheetNames = workbook.SheetNames;
-      let result = '';
-      
-      // Process each sheet
-      for (const sheetName of sheetNames) {
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      try {
+        // Try to use XLSX for Excel files
+        const workbook = XLSX.readFile(filePath);
+        const sheetNames = workbook.SheetNames;
+        let result = '';
         
-        // Add sheet name as header
-        result += `## Sheet: ${sheetName}\n\n`;
-        
-        // Convert sheet data to string
-        for (const row of json) {
-          if (Array.isArray(row) && row.length > 0) {
-            result += row.join('\t') + '\n';
+        // Process each sheet
+        for (const sheetName of sheetNames) {
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          // Add sheet name as header
+          result += `## Sheet: ${sheetName}\n\n`;
+          
+          // Convert sheet data to string
+          for (const row of json) {
+            if (Array.isArray(row) && row.length > 0) {
+              result += row.join('\t') + '\n';
+            }
           }
+          
+          result += '\n\n';
         }
         
-        result += '\n\n';
+        return result;
+      } catch (error: unknown) {
+        console.error('XLSX parsing error, falling back to raw text:', error);
+        
+        // Fallback: If CSV, try to read as text
+        if (ext === '.csv') {
+          return fs.readFileSync(filePath, 'utf8');
+        }
+        
+        // For other Excel formats, return error message
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return `[Excel file content could not be extracted. Error: ${errorMessage}]`;
       }
-      
-      return result;
     } 
     // For other formats, return a placeholder message
     else {
@@ -48,9 +62,11 @@ export async function extractTextFromFile(filePath: string): Promise<string> {
       // In a real app, you would use libraries like pdf-parse, mammoth, etc.
       return `[This is extracted content from ${path.basename(filePath)}. In a production environment, specialized parsers would be used for this file type.]`;
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error extracting text from file:', error);
-    return '';
+    // Return a more informative message about the error
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return `[Error extracting content from file: ${errorMessage}. Please ensure the file is not corrupted and is in the correct format.]`;
   }
 }
 
@@ -70,7 +86,7 @@ export function extractFileMetadata(filePath: string): Record<string, any> {
       lastModified: stats.mtime,
       created: stats.birthtime
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error extracting metadata from file:', error);
     return {};
   }

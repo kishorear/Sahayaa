@@ -1,22 +1,49 @@
 import fs from 'fs';
 import path from 'path';
+import * as XLSX from 'xlsx';
 
 /**
  * Simple file content extractor that reads text from uploaded files
- * In a production environment, you would want more robust parsers for
- * different file types (PDF, DOCX, XLSX, etc.) using specialized libraries
+ * Supports text files and Excel spreadsheets
  */
 export async function extractTextFromFile(filePath: string): Promise<string> {
   try {
     // Get file extension to determine how to parse it
     const ext = path.extname(filePath).toLowerCase();
     
-    // For now, we'll just implement basic text extraction
-    // In a production app, you would use specialized libraries for each format
+    // Text file handling
     if (ext === '.txt' || ext === '.md' || ext === '.html') {
       // For text files, simply read the content
       return fs.readFileSync(filePath, 'utf8');
-    } else {
+    } 
+    // Excel file handling (.xlsx, .xls, .csv)
+    else if (ext === '.xlsx' || ext === '.xls' || ext === '.csv') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetNames = workbook.SheetNames;
+      let result = '';
+      
+      // Process each sheet
+      for (const sheetName of sheetNames) {
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Add sheet name as header
+        result += `## Sheet: ${sheetName}\n\n`;
+        
+        // Convert sheet data to string
+        for (const row of json) {
+          if (Array.isArray(row) && row.length > 0) {
+            result += row.join('\t') + '\n';
+          }
+        }
+        
+        result += '\n\n';
+      }
+      
+      return result;
+    } 
+    // For other formats, return a placeholder message
+    else {
       // For other formats like PDF, DOCX, etc., return a placeholder
       // In a real app, you would use libraries like pdf-parse, mammoth, etc.
       return `[This is extracted content from ${path.basename(filePath)}. In a production environment, specialized parsers would be used for this file type.]`;

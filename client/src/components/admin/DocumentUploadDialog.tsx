@@ -121,7 +121,7 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
         <DialogHeader>
           <DialogTitle>Upload Document</DialogTitle>
           <DialogDescription>
-            Upload a document file to the knowledge base. The content will be automatically extracted.
+            Upload a document file to the knowledge base. Supports text files (.txt, .md, .html), Excel files (.xlsx, .xls, .csv), and other documents. The content will be automatically extracted.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -130,7 +130,7 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
               onFileSelect={setSelectedFile}
               currentFile={selectedFile}
               label="Upload a document file"
-              acceptedFileTypes=".txt,.pdf,.doc,.docx,.md,.html"
+              acceptedFileTypes=".txt,.pdf,.doc,.docx,.md,.html,.xlsx,.xls,.csv"
             />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

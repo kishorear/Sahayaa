@@ -1,5 +1,6 @@
 import { AIProviderFactory } from './providers';
 import { buildAIContext } from '../data-source-service';
+import { enhanceModelContextWithDocuments } from '../model-context-protocol';
 
 // Common type for message objects across all providers
 export type ChatMessage = {
@@ -38,10 +39,17 @@ export async function classifyTicket(
     }
     
     // Get knowledge context for this query
-    const knowledgeContext = await buildAIContext(`${title} ${description}`, tenantId);
+    const query = `${title} ${description}`;
+    const baseContext = await buildAIContext(query, tenantId);
+    
+    // Enhance with document context using Model Context Protocol
+    const { documents } = await enhanceModelContextWithDocuments(query, '', tenantId);
+    
+    // Combine contexts
+    const enhancedContext = documents ? `${baseContext}\n\n${documents}` : baseContext;
     
     // Call the provider's classification method
-    return await provider.classifyTicket(title, description, knowledgeContext);
+    return await provider.classifyTicket(title, description, enhancedContext);
   } catch (error) {
     console.error('Error in ticket classification:', error);
     
@@ -80,10 +88,17 @@ export async function attemptAutoResolve(
     }
     
     // Get knowledge context for this query
-    const knowledgeContext = await buildAIContext(`${title} ${description}`, tenantId);
+    const query = `${title} ${description}`;
+    const baseContext = await buildAIContext(query, tenantId);
+    
+    // Enhance with document context using Model Context Protocol
+    const { documents } = await enhanceModelContextWithDocuments(query, '', tenantId);
+    
+    // Combine contexts
+    const enhancedContext = documents ? `${baseContext}\n\n${documents}` : baseContext;
     
     // Call the provider's auto-resolve method
-    return await provider.attemptAutoResolve(title, description, previousMessages, knowledgeContext);
+    return await provider.attemptAutoResolve(title, description, previousMessages, enhancedContext);
   } catch (error) {
     console.error('Error in ticket auto-resolution:', error);
     
@@ -118,9 +133,6 @@ export async function generateChatResponse(
       throw new Error('No AI provider available for chat response');
     }
     
-    // Get knowledge context for this query
-    const knowledgeContext = await buildAIContext(userMessage, tenantId);
-    
     // Create a system message with ticket context
     const systemPrompt = `You are an AI support assistant for a SaaS product. You're currently helping with a ticket in the "${ticketContext.category}" category.
       Ticket #${ticketContext.id}: "${ticketContext.title}"
@@ -129,14 +141,27 @@ export async function generateChatResponse(
       Provide helpful, concise responses based on this context. If you can fully resolve the issue, indicate this clearly in your response.
       If you need more information or the issue requires human intervention, make that clear as well.`;
     
+    // Get basic knowledge context
+    const baseContext = await buildAIContext(userMessage, tenantId);
+    
+    // Enhance with document context using Model Context Protocol
+    const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
+      userMessage,
+      systemPrompt,
+      tenantId
+    );
+    
     // Prepare the messages array with history and current message
     const allMessages = [
       ...messageHistory,
       { role: 'user', content: userMessage }
     ];
     
-    // Call the provider's chat response method
-    return await provider.generateChatResponse(allMessages, knowledgeContext, systemPrompt);
+    // Combine contexts
+    const enhancedContext = documents ? `${baseContext}\n\n${documents}` : baseContext;
+    
+    // Call the provider's chat response method with enhanced prompt
+    return await provider.generateChatResponse(allMessages, enhancedContext, enhancedPrompt);
   } catch (error) {
     console.error('Error generating chat response:', error);
     
@@ -168,9 +193,6 @@ export async function generateEmailResponse(
       throw new Error('No AI provider available for email response');
     }
     
-    // Get knowledge context for this query
-    const knowledgeContext = await buildAIContext(userMessage, tenantId);
-    
     // Create a system message with ticket context
     const systemPrompt = `You are an AI support assistant for a SaaS product. You're currently helping with a support ticket #${ticketContext.id}.
       Ticket title: "${ticketContext.title}"
@@ -182,14 +204,27 @@ export async function generateEmailResponse(
       If you can fully resolve the issue, provide a complete solution.
       If you need more information or the issue requires human intervention, explain what next steps will be taken.`;
     
+    // Get basic knowledge context
+    const baseContext = await buildAIContext(userMessage, tenantId);
+    
+    // Enhance with document context using Model Context Protocol
+    const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
+      userMessage,
+      systemPrompt,
+      tenantId
+    );
+    
     // Prepare the messages array with history and current message
     const allMessages = [
       ...messageHistory,
       { role: 'user', content: userMessage }
     ];
     
-    // Call the provider's chat response method - email uses the same underlying method
-    return await provider.generateChatResponse(allMessages, knowledgeContext, systemPrompt);
+    // Combine contexts
+    const enhancedContext = documents ? `${baseContext}\n\n${documents}` : baseContext;
+    
+    // Call the provider's chat response method with enhanced prompt
+    return await provider.generateChatResponse(allMessages, enhancedContext, enhancedPrompt);
   } catch (error) {
     console.error('Error generating email response:', error);
     
@@ -219,10 +254,25 @@ export async function summarizeConversation(
     
     // Get relevant context for the conversation
     const conversationText = messages.map(m => m.content).join(' ');
-    const knowledgeContext = await buildAIContext(conversationText, tenantId);
+    const baseContext = await buildAIContext(conversationText, tenantId);
     
-    // Call the provider's summarize method
-    return await provider.summarizeConversation(messages, knowledgeContext);
+    // Basic system prompt for summarization
+    const systemPrompt = `Please summarize the provided conversation concisely, 
+    highlighting key points, questions, and resolutions. Identify any outstanding issues 
+    or action items that need follow-up.`;
+    
+    // Enhance with document context using Model Context Protocol
+    const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
+      conversationText,
+      systemPrompt,
+      tenantId
+    );
+    
+    // Combine contexts
+    const enhancedContext = documents ? `${baseContext}\n\n${documents}` : baseContext;
+    
+    // Call the provider's summarize method with enhanced context
+    return await provider.summarizeConversation(messages, enhancedContext);
   } catch (error) {
     console.error('Error summarizing conversation:', error);
     

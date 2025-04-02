@@ -17,6 +17,7 @@ import IntegrationsPage from "@/pages/admin/IntegrationsPage"; // New Integratio
 import ChatWidgetPage from "@/pages/admin/ChatWidgetPage"; // New Chat Widget Page component
 import AISettingsPage from "@/pages/admin/AISettingsPage"; // AI Provider Settings Page
 import DocumentsPage from "@/pages/admin/DocumentsPage"; // Knowledge base documents management
+import MCPTestPage from "@/pages/MCP-Test-Page"; // MCP Testing Page
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/docs" component={DocumentationPage} />
       <Route path="/api" component={ApiDocsPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/mcp-test" component={MCPTestPage} />
       
       {/* Protected Routes - Application */}
       <ProtectedRoute path="/dashboard" component={Dashboard} />

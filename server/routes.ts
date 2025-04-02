@@ -851,6 +851,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Add a direct MCP test endpoint
+  app.post("/api/mcp-test", async (req, res) => {
+    try {
+      const { query } = req.body;
+      if (!query) {
+        return res.status(400).json({ error: "Query is required" });
+      }
+
+      console.log("MCP Test Query:", query);
+      
+      // Use the Model Context Protocol to enhance the response
+      const context = await import("./model-context-protocol").then(mcp => {
+        return mcp.getContextForQuery(query);
+      });
+      
+      console.log("MCP Context Found:", !!context);
+      
+      // Get the AI provider
+      const aiProvider = AIProviderFactory.getProvider(1, "openai"); // Default tenant ID and provider
+      
+      // If we have context, use it to enhance the response
+      let systemPrompt = `You are a helpful support assistant that provides accurate information about technical issues. `;
+      
+      if (context) {
+        systemPrompt += `\nI'm providing you with relevant documentation that matches this query. Use this information to give a detailed, accurate response.\n\nRELEVANT DOCUMENTATION:\n${context}\n\nBased on this documentation, answer the user's question:`;
+      }
+      
+      // Format as chat message
+      const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: query }
+      ];
+      
+      // Generate response
+      if (!aiProvider) {
+        throw new Error("No AI provider available. Please configure an AI provider in settings.");
+      }
+      
+      const response = await aiProvider.generateChatResponse(messages, context || "", systemPrompt);
+      
+      res.json({ response, hasContext: !!context });
+    } catch (error) {
+      console.error("Error in MCP test endpoint:", error);
+      res.status(500).json({ error: "Failed to generate response" });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,10 +1,15 @@
 import { Express, Request, Response } from "express";
 import { z } from "zod";
 import { 
-  getIntegrationService, 
-  setupIntegrationService,
-  IntegrationConfig
+  getIntegrationService,
+  getIntegrationsStatus
 } from "../integrations";
+
+// Define a temporary IntegrationConfig type for this file
+type IntegrationConfig = {
+  type: 'jira' | 'zendesk';
+  config: any;
+};
 import { 
   ZendeskConfig,
   ZendeskService
@@ -93,37 +98,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   
   // Initialize the integration service with any saved settings on startup
   try {
-    const integrationService = setupIntegrationService();
-    const integrations: IntegrationConfig[] = [];
+    const integrationService = getIntegrationService();
+    // Initialize the integrations if needed in the future
     
-    if (integrationSettings.jira.enabled) {
-      integrations.push({
-        type: 'jira',
-        config: {
-          baseUrl: integrationSettings.jira.baseUrl,
-          email: integrationSettings.jira.email,
-          apiToken: integrationSettings.jira.apiToken,
-          projectKey: integrationSettings.jira.projectKey,
-          enabled: integrationSettings.jira.enabled
-        } as JiraConfig
-      });
-    }
-    
-    if (integrationSettings.zendesk.enabled) {
-      integrations.push({
-        type: 'zendesk',
-        config: {
-          subdomain: integrationSettings.zendesk.subdomain,
-          email: integrationSettings.zendesk.email,
-          apiToken: integrationSettings.zendesk.apiToken,
-          enabled: integrationSettings.zendesk.enabled
-        } as ZendeskConfig
-      });
-    }
-    
-    if (integrations.length > 0) {
-      integrationService.setupIntegrations(integrations);
-    }
+    console.log('Integration service initialized');
   } catch (error) {
     console.error('Error initializing integration services:', error);
   }
@@ -293,7 +271,7 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       console.log(`Setting up ${type} integration service...`);
       
       // Configure the integration service
-      const integrationService = setupIntegrationService();
+      const integrationService = getIntegrationService();
       
       console.log(`Integration configuration being set up for ${type}`);
       

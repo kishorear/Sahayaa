@@ -18,6 +18,7 @@ export interface JiraConfig {
   apiToken: string;
   projectKey: string;
   issueType: string;
+  enabled?: boolean; // Added to match usage in integration-routes.ts
 }
 
 export interface ZendeskConfig {

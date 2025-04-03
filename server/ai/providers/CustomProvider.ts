@@ -141,6 +141,32 @@ export class CustomProvider implements AIProviderInterface {
     }
   }
   
+  async generateTicketTitle(
+    messages: Array<{ role: string; content: string }>,
+    context?: string
+  ): Promise<string> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/generate-title`, 
+        {
+          messages,
+          context
+        },
+        { headers: this.headers }
+      );
+      
+      // Validate the response
+      if (!response.data || typeof response.data.title !== 'string') {
+        throw new Error('Invalid title generation response from custom AI provider');
+      }
+      
+      return response.data.title;
+    } catch (error) {
+      console.error("Error calling custom AI provider for ticket title generation:", error);
+      throw new Error(`Failed to generate ticket title with custom AI provider: ${error.message}`);
+    }
+  }
+  
   async summarizeConversation(
     messages: Array<{ role: string; content: string }>,
     context?: string

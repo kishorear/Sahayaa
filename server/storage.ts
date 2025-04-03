@@ -2011,34 +2011,62 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`AI provider with id ${id} does not belong to tenant ${tenantId}`);
     }
     
-    // If this is being set as primary, clear any existing primary providers for this tenant
-    if (updates.isPrimary) {
-      await db.update(aiProviders)
-        .set({ isPrimary: false })
-        .where(
-          and(
-            eq(aiProviders.tenantId, provider.tenantId),
-            eq(aiProviders.id, id, "!="), // Not this provider
-            eq(aiProviders.isPrimary, true)
+    try {
+      // If this is being set as primary, we need to handle the unique constraint
+      if (updates.isPrimary === true) {
+        console.log(`Updating provider ${id} to be primary`);
+        
+        // First clear all primary providers for this tenant in a single transaction
+        await db.transaction(async (tx) => {
+          // Step 1: Clear primary flag on all providers except this one
+          await tx.update(aiProviders)
+            .set({ isPrimary: false })
+            .where(
+              and(
+                eq(aiProviders.tenantId, provider.tenantId),
+                eq(aiProviders.isPrimary, true)
+              )
+            );
+            
+          // Step 2: Set this provider as primary
+          await tx.update(aiProviders)
+            .set({ 
+              ...updates, 
+              isPrimary: true, 
+              updatedAt: new Date() 
+            })
+            .where(eq(aiProviders.id, id));
+        });
+        
+        // Get the updated provider
+        const [updated] = await db
+          .select()
+          .from(aiProviders)
+          .where(eq(aiProviders.id, id));
+          
+        return updated;
+      } else {
+        // Regular update without changing primary status
+        const [updated] = await db
+          .update(aiProviders)
+          .set({ ...updates, updatedAt: new Date() })
+          .where(
+            tenantId
+              ? and(eq(aiProviders.id, id), eq(aiProviders.tenantId, tenantId))
+              : eq(aiProviders.id, id)
           )
-        );
+          .returning();
+          
+        if (!updated) {
+          throw new Error(`AI provider with id ${id} not found`);
+        }
+        
+        return updated;
+      }
+    } catch (error) {
+      console.error(`Error in updateAiProvider():`, error);
+      throw error;
     }
-    
-    const [updated] = await db
-      .update(aiProviders)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(
-        tenantId
-          ? and(eq(aiProviders.id, id), eq(aiProviders.tenantId, tenantId))
-          : eq(aiProviders.id, id)
-      )
-      .returning();
-      
-    if (!updated) {
-      throw new Error(`AI provider with id ${id} not found`);
-    }
-    
-    return updated;
   }
   
   async deleteAiProvider(id: number, tenantId?: number): Promise<boolean> {

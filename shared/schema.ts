@@ -260,11 +260,6 @@ export const aiProviders = pgTable("ai_providers", {
   enabled: boolean("enabled").default(true),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-}, (table) => {
-  return {
-    // Only one primary provider per tenant
-    primaryIndex: uniqueIndex("tenant_primary_unique").on(table.tenantId, table.isPrimary),
-  };
 });
 
 export const insertAiProviderSchema = createInsertSchema(aiProviders)

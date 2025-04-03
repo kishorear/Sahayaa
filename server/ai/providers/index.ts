@@ -12,9 +12,16 @@ import { AiProvider } from '@shared/schema';
 function convertDbProviderToConfig(provider: AiProvider): AIProviderConfig {
   // Ensure provider type is one of the valid types before conversion
   // This prevents runtime type errors from invalid data
-  const validTypes = ['openai', 'gemini', 'anthropic', 'aws-bedrock', 'custom'];
+  const validTypes = ['openai', 'gemini', 'anthropic', 'aws-bedrock', 'bedrock', 'custom'];
+  
+  // Map bedrock to aws-bedrock for internal consistency
+  let mappedType = provider.type;
+  if (mappedType === 'bedrock') {
+    mappedType = 'aws-bedrock';
+  }
+  
   const providerType = validTypes.includes(provider.type) 
-    ? provider.type as 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'custom'
+    ? mappedType as 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'bedrock' | 'custom'
     : 'custom'; // Fallback to custom if type is invalid
     
   return {

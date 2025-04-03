@@ -3,7 +3,7 @@
  */
 export interface AIProviderInterface {
   /**
-   * Provider name (openai, gemini, anthropic, aws-bedrock, custom)
+   * Provider name (openai, gemini, anthropic, aws-bedrock, bedrock, custom)
    */
   name: string;
   
@@ -96,7 +96,7 @@ export interface AIProviderConfig {
   /**
    * Provider type
    */
-  type: 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'custom';
+  type: 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'bedrock' | 'custom';
   
   /**
    * API key for the service

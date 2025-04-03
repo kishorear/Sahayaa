@@ -39,16 +39,14 @@ export async function loadAiProviders(specificTenantId?: number) {
           if (process.env.OPENAI_API_KEY) {
             console.log(`Setting up default OpenAI provider for tenant ${specificTenantId} from environment`);
             AIProviderFactory.addProviderConfig(specificTenantId, {
-              id: 0,
-              tenantId: specificTenantId,
-              name: "Default OpenAI",
               type: "openai",
               apiKey: process.env.OPENAI_API_KEY,
-              options: { model: "gpt-4o" },
+              model: "gpt-4o",
               isPrimary: true,
-              isEnabled: true,
-              createdAt: new Date(),
-              updatedAt: new Date()
+              useForChat: true,
+              useForClassification: true,
+              useForAutoResolve: true,
+              useForEmail: true
             });
           }
         } catch (fallbackError) {
@@ -99,16 +97,14 @@ export async function loadAiProviders(specificTenantId?: number) {
             if (process.env.OPENAI_API_KEY) {
               console.log('Setting up default OpenAI provider from environment');
               AIProviderFactory.addProviderConfig(1, {
-                id: 0,
-                tenantId: 1,
-                name: "Default OpenAI",
                 type: "openai",
                 apiKey: process.env.OPENAI_API_KEY,
-                options: { model: "gpt-4o" },
+                model: "gpt-4o",
                 isPrimary: true,
-                isEnabled: true,
-                createdAt: new Date(),
-                updatedAt: new Date()
+                useForChat: true,
+                useForClassification: true,
+                useForAutoResolve: true,
+                useForEmail: true
               });
             }
           } catch (fallbackError) {
@@ -138,6 +134,19 @@ export function registerAiProviderRoutes(app: Express, requireAuth: any, require
     } catch (error) {
       console.error("Error fetching AI providers:", error);
       res.status(500).json({ error: "Failed to fetch AI providers" });
+    }
+  });
+  
+  /**
+   * Get status of all AI providers
+   */
+  app.get('/api/ai-providers/status', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const status = await getAIProviderStatus(req.user!.tenantId);
+      res.json(status);
+    } catch (error) {
+      console.error("Error checking AI provider status:", error);
+      res.status(500).json({ error: "Failed to check AI provider status" });
     }
   });
 
@@ -207,17 +216,7 @@ export function registerAiProviderRoutes(app: Express, requireAuth: any, require
         return res.status(404).json({ error: "AI provider not found" });
       }
       
-      // If setting as primary, update all other providers to not be primary
-      if (req.body.isPrimary) {
-        const providers = await storage.getAiProviders(req.user!.tenantId);
-        for (const p of providers) {
-          if (p.isPrimary && p.id !== providerId) {
-            await storage.updateAiProvider(p.id, { isPrimary: false }, req.user!.tenantId);
-          }
-        }
-      }
-      
-      // Update the provider
+      // The updateAiProvider method now handles the isPrimary constraints properly in a transaction
       const updatedProvider = await storage.updateAiProvider(providerId, req.body, req.user!.tenantId);
       
       // Reload AI provider configurations for this tenant
@@ -263,16 +262,4 @@ export function registerAiProviderRoutes(app: Express, requireAuth: any, require
     }
   });
 
-  /**
-   * Get status of all AI providers
-   */
-  app.get('/api/ai-providers/status', requireAuth, async (req: Request, res: Response) => {
-    try {
-      const status = await getAIProviderStatus(req.user!.tenantId);
-      res.json(status);
-    } catch (error) {
-      console.error("Error checking AI provider status:", error);
-      res.status(500).json({ error: "Failed to check AI provider status" });
-    }
-  });
 }

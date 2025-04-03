@@ -85,15 +85,41 @@ function App() {
     });
   };
 
-  // Simulated download function
+  // Download function
   const handleDownload = (type: string) => {
     toast({
       title: `Downloading ${type}`,
       description: `Your ${type} download has started.`,
     });
     
-    // In a real implementation, this would trigger an actual download
-    // of the widget package or documentation
+    // Map the download type to the appropriate file
+    let downloadPath = '';
+    
+    switch(type) {
+      case "documentation":
+        downloadPath = '/downloads/widget/documentation.md';
+        break;
+      case "sample code":
+        downloadPath = '/downloads/widget/sample-implementation.html';
+        break;
+      case "API documentation":
+        downloadPath = '/downloads/widget/api-documentation.md';
+        break;
+      case "full widget package":
+      case "widget package":
+        downloadPath = '/downloads/supportai-widget-package.zip';
+        break;
+      default:
+        downloadPath = '/downloads/supportai-widget-package.zip';
+    }
+    
+    // Create a temporary anchor element to trigger the download
+    const link = document.createElement('a');
+    link.href = downloadPath;
+    link.download = downloadPath.split('/').pop() || 'supportai-widget-download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (

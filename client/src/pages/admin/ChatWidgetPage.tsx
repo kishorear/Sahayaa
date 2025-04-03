@@ -97,29 +97,21 @@ function App() {
     
     switch(type) {
       case "documentation":
-        downloadPath = '/downloads/widget/documentation.md';
+        window.location.href = '/downloads/widget/documentation.md';
         break;
       case "sample code":
-        downloadPath = '/downloads/widget/sample-implementation.html';
+        window.location.href = '/downloads/widget/sample-implementation.html';
         break;
       case "API documentation":
-        downloadPath = '/downloads/widget/api-documentation.md';
+        window.location.href = '/downloads/widget/api-documentation.md';
         break;
       case "full widget package":
       case "widget package":
-        downloadPath = '/downloads/supportai-widget-package.zip';
+        window.location.href = '/downloads/supportai-widget-package.zip';
         break;
       default:
-        downloadPath = '/downloads/supportai-widget-package.zip';
+        window.location.href = '/downloads/supportai-widget-package.zip';
     }
-    
-    // Create a temporary anchor element to trigger the download
-    const link = document.createElement('a');
-    link.href = downloadPath;
-    link.download = downloadPath.split('/').pop() || 'supportai-widget-download';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   return (

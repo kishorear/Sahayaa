@@ -1,0 +1,106 @@
+starting up user application
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+forwarding local port 5000 to external port 80
+No DATABASE_URL provided, using memory session store
+  connectionTimeoutMillis: 3000,
+  keepalive: true,
+  connectionString: undefined,
+Database connection setup - Environment: Production
+}
+Memory session store initialized as fallback. Reason: Initialization
+Error in getAllTenants(): Error: connect ECONNREFUSED 127.0.0.1:5432
+Storage initialized successfully
+Using PostgreSQL session store: Yes
+  max: 10,
+Database connection config: {
+  max_retries: 5
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+  address: '127.0.0.1',
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+Attempting to initialize database storage...
+    at async file:///home/runner/workspace/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Database URL available: false
+    at async StorageWrapper.getAllTenants (file:///home/runner/workspace/dist/index.js:3389:18)
+  code: 'ECONNREFUSED',
+Error fetching identity providers: Error: connect ECONNREFUSED 127.0.0.1:5432
+  ssl: 'Enabled with rejectUnauthorized=false',
+  port: 5432
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at async StorageWrapper.getAiProviders (file:///home/runner/workspace/dist/index.js:3636:18)
+  port: 5432
+  syscall: 'connect',
+  httpOnly: true,
+Session cookie configuration: {
+  port: 5432
+  syscall: 'connect',
+    at async loadAiProviders (file:///home/runner/workspace/dist/index.js:9651:26) {
+  secure: false,
+  errno: -111,
+Retrying in 843ms...
+    at async DatabaseStorage.getAllTenants (file:///home/runner/workspace/dist/index.js:2346:16)
+    at async registerRoutes (file:///home/runner/workspace/dist/index.js:10379:5)
+  address: '127.0.0.1',
+  maxAge: 86400000,
+    at async SsoService.initializeProviders (file:///home/runner/workspace/dist/index.js:9081:23)
+    at async file:///home/runner/workspace/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Auth setup - Environment: Production
+  address: '127.0.0.1',
+Setting up PostgreSQL session store - Environment: Production
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async StorageWrapper.getAllTenants (file:///home/runner/workspace/dist/index.js:3389:18)
+  sameSite: 'lax',
+Setting up default OpenAI provider from environment
+  port: 5432
+    at async DatabaseStorage.getAiProviders (file:///home/runner/workspace/dist/index.js:2179:16)
+Database connection attempt 1/5 failed: connect ECONNREFUSED 127.0.0.1:5432
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Local AI implementation initialized
+    at async file:///home/runner/workspace/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getIdentityProviders (file:///home/runner/workspace/dist/index.js:2861:26)
+    at async loadAiProviders (file:///home/runner/workspace/dist/index.js:9651:26) {
+  syscall: 'connect',
+    at async DatabaseStorage.getAllTenants (file:///home/runner/workspace/dist/index.js:2346:16)
+Database connection attempt 2/5 failed: connect ECONNREFUSED 127.0.0.1:5432
+  errno: -111,
+  address: '127.0.0.1',
+  code: 'ECONNREFUSED',
+  errno: -111,
+Error in getAiProviders(): Error: connect ECONNREFUSED 127.0.0.1:5432
+}
+Session store connection test successful
+}
+  code: 'ECONNREFUSED',
+    at async DatabaseStorage.getAiProviders (file:///home/runner/workspace/dist/index.js:2179:16)
+Retrying in 3567ms...
+  errno: -111,
+}
+  errno: -111,
+  path: '/'
+  port: 5432
+    at async StorageWrapper.getIdentityProviders (file:///home/runner/workspace/dist/index.js:3471:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+  syscall: 'connect',
+    at async file:///home/runner/workspace/node_modules/drizzle-orm/node-postgres/session.js:83:22
+  code: 'ECONNREFUSED',
+    at async loadAiProviders (file:///home/runner/workspace/dist/index.js:9672:29) {
+Database connection attempt 3/5 failed: connect ECONNREFUSED 127.0.0.1:5432
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at async file:///home/runner/workspace/dist/index.js:11051:18 {
+}
+  idleTimeoutMillis: 30000,
+    at async loadAiProviders (file:///home/runner/workspace/dist/index.js:9672:29) {
+1:01:09 AM [express] serving on port 5000
+  address: '127.0.0.1',
+}
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+Retrying in 1437ms...
+  statement_timeout: 10000,
+    at async StorageWrapper.getAiProviders (file:///home/runner/workspace/dist/index.js:3636:18)
+Error loading providers for default tenant: Error: connect ECONNREFUSED 127.0.0.1:5432
+  syscall: 'connect',
+Error fetching tenants: Error: connect ECONNREFUSED 127.0.0.1:5432
+  code: 'ECONNREFUSED',
+}

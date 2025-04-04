@@ -14,11 +14,13 @@ class ZendeskService {
    * Get or create a Zendesk client for the given configuration
    */
   private getClient(config: ZendeskConfig): any {
-    const cacheKey = `${config.subdomain}:${config.username}`;
+    // Map email to username if needed for backwards compatibility
+    const username = (config as any).email || config.username;
+    const cacheKey = `${config.subdomain}:${username}`;
     
     if (!this.clients.has(cacheKey)) {
       const client = zendesk.createClient({
-        username: config.username,
+        username: username,
         token: config.apiToken,
         remoteUri: `https://${config.subdomain}.zendesk.com/api/v2`
       });

@@ -9,7 +9,8 @@ interface ExtendedInsertMessage extends InsertMessage {
 
 export interface ZendeskConfig {
   subdomain: string;
-  email: string;
+  email: string;     // Used in forms and UI
+  username: string;  // Used in the API client, maps to email
   apiToken: string;
   enabled: boolean;
 }
@@ -24,8 +25,10 @@ export class ZendeskService {
 
   constructor(config: ZendeskConfig) {
     this.apiUrl = `https://${config.subdomain}.zendesk.com/api/v2`;
+    // Handle both username and email fields for backwards compatibility
+    const username = config.username || config.email; 
     this.auth = {
-      username: `${config.email}/token`,
+      username: `${username}/token`,
       password: config.apiToken
     };
     this.enabled = config.enabled;

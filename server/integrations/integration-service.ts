@@ -23,9 +23,10 @@ export interface JiraConfig {
 
 export interface ZendeskConfig {
   subdomain: string;
-  username: string;
+  username: string;  // maps to email in the form
   apiToken: string;
   groupId?: string;
+  enabled?: boolean; // Added to match usage in integration-routes.ts
 }
 
 // Event handler for ticket created event

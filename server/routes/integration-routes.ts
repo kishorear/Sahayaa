@@ -324,7 +324,14 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         
         const integrations: IntegrationConfig[] = [{
           type: 'zendesk',
-          config: { ...zendeskConfig }
+          config: { 
+            subdomain: zendeskConfig.subdomain,
+            email: zendeskConfig.email,
+            username: zendeskConfig.email, // Map email to username for consistency
+            apiToken: zendeskConfig.apiToken,
+            enabled: zendeskConfig.enabled,
+            groupId: zendeskConfig.groupId
+          }
         }];
         
         integrationService.setupIntegrations(integrations);
@@ -685,6 +692,7 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
           const tempZendeskService = new ZendeskService({
             subdomain: sanitizedConfig.subdomain,
             email: sanitizedConfig.email,
+            username: sanitizedConfig.email, // Map email to username for consistency
             apiToken: sanitizedConfig.apiToken,
             enabled: true
           });

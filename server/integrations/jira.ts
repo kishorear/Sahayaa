@@ -66,6 +66,69 @@ export class JiraService {
     return this.enabled;
   }
 
+  // Cache for available issue types
+  private cachedIssueTypes: any[] | null = null;
+  
+  /**
+   * Fetch available issue types for the project
+   */
+  private async getAvailableIssueTypes(): Promise<any[]> {
+    // Return cached issue types if available
+    if (this.cachedIssueTypes) {
+      return this.cachedIssueTypes;
+    }
+    
+    try {
+      console.log(`Fetching available issue types for project ${this.projectKey}...`);
+      const response = await axios.get(
+        `${this.apiUrl}/issue/createmeta?projectKeys=${this.projectKey}`,
+        {
+          auth: this.auth,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          timeout: 5000 // 5 second timeout
+        }
+      );
+      
+      let issueTypes: any[] = [];
+      
+      // Extract issue types from the response
+      if (response.data && 
+          response.data.projects && 
+          response.data.projects.length > 0 && 
+          response.data.projects[0].issuetypes) {
+        issueTypes = response.data.projects[0].issuetypes;
+        console.log(`Found ${issueTypes.length} available issue types:`, 
+          issueTypes.map((t: any) => `${t.name} (${t.id})`).join(', '));
+      } else {
+        console.warn('No issue types found in response, using fallback issue types');
+        issueTypes = [
+          { id: "10001", name: "Task" },
+          { id: "10002", name: "Bug" },
+          { id: "10003", name: "Story" }
+        ];
+      }
+      
+      // Cache the issue types
+      this.cachedIssueTypes = issueTypes;
+      return issueTypes;
+    } catch (error: any) {
+      console.error('Error fetching issue types:', error);
+      
+      // Use default issue types as fallback
+      const fallbackTypes = [
+        { id: "10001", name: "Task" },
+        { id: "10002", name: "Bug" },
+        { id: "10003", name: "Story" }
+      ];
+      
+      this.cachedIssueTypes = fallbackTypes;
+      return fallbackTypes;
+    }
+  }
+
   /**
    * Create an issue in Jira from a local ticket
    */
@@ -78,6 +141,38 @@ export class JiraService {
     try {
       console.log(`Creating Jira issue for ticket: "${ticket.title}"`);
       console.log(`Using Jira project key: "${this.projectKey}"`);
+      
+      // Get available issue types
+      const issueTypes = await this.getAvailableIssueTypes();
+      
+      // Select the appropriate issue type based on the ticket category
+      let selectedIssueType: any;
+      
+      // Try to find a matching issue type based on category
+      const category = ticket.category || 'other';
+      
+      if (category === 'bug' || category === 'error') {
+        selectedIssueType = issueTypes.find((t: any) => 
+          t.name && (t.name.toLowerCase() === 'bug' || t.name.toLowerCase().includes('bug')));
+      } else if (category === 'feature' || category === 'enhancement') {
+        selectedIssueType = issueTypes.find((t: any) => 
+          t.name && (t.name.toLowerCase() === 'story' || 
+          t.name.toLowerCase().includes('feature') || 
+          t.name.toLowerCase().includes('enhancement')));
+      }
+      
+      // If no matching issue type found, use Task type or the first available type
+      if (!selectedIssueType) {
+        selectedIssueType = issueTypes.find((t: any) => t.name && t.name.toLowerCase() === 'task') || issueTypes[0];
+      }
+      
+      // Safety check - if we still don't have a valid issue type, create a minimal one
+      if (!selectedIssueType) {
+        selectedIssueType = { id: "10001", name: "Task" };
+        console.warn("No suitable issue type found, using default Task type");
+      }
+      
+      console.log(`Selected issue type: ${selectedIssueType.name} (${selectedIssueType.id})`);
       
       // Create the issue data
       const issueData = {
@@ -111,12 +206,14 @@ export class JiraService {
             ]
           },
           issuetype: {
-            name: "Task"
+            id: selectedIssueType.id,
+            // Include name as a fallback
+            name: selectedIssueType.name
           },
           priority: {
             name: this.mapComplexityToPriority(ticket.complexity)
           },
-          labels: [ticket.category]
+          labels: ticket.category ? [ticket.category] : []
         }
       };
       
@@ -155,7 +252,7 @@ export class JiraService {
           error: 'Invalid response from Jira API'
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating issue in Jira:", error);
       
       // Extract detailed error information
@@ -232,7 +329,7 @@ export class JiraService {
         }
       );
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding comment to Jira issue:", error);
       return false;
     }
@@ -286,7 +383,7 @@ export class JiraService {
       );
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating issue status in Jira:", error);
       return false;
     }
@@ -357,7 +454,7 @@ export class JiraService {
               console.error(`Failed to create Jira issue for ticket #${ticket.id}: ${jiraIssue.error}`);
             }
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Error syncing ticket #${ticket.id} to Jira:`, error);
         }
       });
@@ -428,7 +525,7 @@ export class JiraService {
           });
           
           return true;
-        } catch (projectError) {
+        } catch (projectError: any) {
           console.error(`Error accessing project ${this.projectKey}:`, 
             projectError.response?.status || projectError.message);
           console.error("Make sure the project key is correct and the user has access to it");
@@ -437,7 +534,7 @@ export class JiraService {
       }
       
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying Jira connection:", error.message);
       
       // Handle different error types for better debugging
@@ -472,7 +569,10 @@ export class JiraService {
   /**
    * Map internal ticket complexity to Jira priority
    */
-  private mapComplexityToPriority(complexity: string): string {
+  private mapComplexityToPriority(complexity: string | null | undefined): string {
+    // Default to medium priority if no complexity is provided
+    if (!complexity) return "Medium";
+    
     switch (complexity) {
       case "simple": return "Low";
       case "medium": return "Medium";

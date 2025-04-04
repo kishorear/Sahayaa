@@ -229,7 +229,7 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any, requir
   });
   
   /**
-   * Test integration connection
+   * Test integration connection (general endpoint)
    */
   app.post('/api/integrations/test', requireAuth, async (req: Request, res: Response) => {
     try {
@@ -316,6 +316,82 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any, requir
       return res.status(500).json({
         message: 'Error testing integration connection',
         details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  /**
+   * Test Jira connection (specific endpoint for frontend)
+   */
+  app.post('/api/integrations/jira/test', requireAuth, async (req: Request, res: Response) => {
+    try {
+      console.log('Received Jira test request with body:', {
+        ...req.body,
+        apiToken: req.body.apiToken ? '[REDACTED]' : undefined
+      });
+      
+      // Map the request directly
+      const formValues = req.body;
+      
+      // Validate form values directly
+      if (!formValues.baseUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'Base URL is required'
+        });
+      }
+      
+      if (!formValues.email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is required'
+        });
+      }
+      
+      if (!formValues.apiToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'API Token is required'
+        });
+      }
+      
+      if (!formValues.projectKey) {
+        return res.status(400).json({
+          success: false,
+          message: 'Project Key is required'
+        });
+      }
+      
+      // Create Jira config with frontend field names mapped to backend names
+      const jiraConfig: JiraConfig = {
+        enabled: formValues.enabled,
+        host: String(formValues.baseUrl || ''),
+        username: String(formValues.email || ''),
+        apiToken: formValues.apiToken,
+        projectKey: formValues.projectKey
+      };
+      
+      console.log('Testing Jira connection with mapped config:', {
+        ...jiraConfig,
+        apiToken: '[REDACTED]' // Don't log the actual token
+      });
+      
+      // Import the Jira client
+      const { testJiraConnection } = await import('../integrations/jira-service');
+      
+      // Test the connection
+      const result = await testJiraConnection(jiraConfig);
+      
+      return res.status(200).json({
+        success: result.success,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('Error testing Jira connection:', error);
+      
+      return res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Invalid Jira configuration'
       });
     }
   });

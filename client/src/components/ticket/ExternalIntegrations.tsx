@@ -1,205 +1,135 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, Clock, Check, AlertCircle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { TicketIntegrationStatus } from './TicketIntegrationStatus';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 interface ExternalIntegrationsProps {
-  externalIntegrations?: Record<string, any>;
-  onSyncTicket?: () => void;
-  isSyncing?: boolean;
+  ticketId: number;
 }
 
-const ExternalIntegrations: React.FC<ExternalIntegrationsProps> = ({
-  externalIntegrations,
-  onSyncTicket,
-  isSyncing = false
-}) => {
-  // If there are no external integrations, don't render the component
-  if (!externalIntegrations || Object.keys(externalIntegrations).length === 0) {
+// Sync status response type
+interface SyncStatusResponse {
+  ticket: {
+    id: number;
+    title: string;
+    status: string;
+  };
+  activeIntegrations: string[];
+  externalIntegrations: Record<string, any>;
+  hasUnsyncedChanges: boolean;
+}
+
+export function ExternalIntegrations({ ticketId }: ExternalIntegrationsProps) {
+  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  
+  // Query to get the integration status
+  const syncStatusQuery = useQuery({
+    queryKey: ['/api/tickets', ticketId, 'sync-status'],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/tickets/${ticketId}/sync-status`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to get integration status: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        setError(null);
+        return data as SyncStatusResponse;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to get integration status');
+        throw error;
+      }
+    },
+    refetchInterval: 30000 // Refresh every 30 seconds
+  });
+  
+  // Mutation to sync the ticket
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/tickets/${ticketId}/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to sync ticket: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/tickets', ticketId, 'sync-status'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tickets', ticketId] });
+      setError(null);
+    },
+    onError: (error) => {
+      setError(error instanceof Error ? error.message : 'Failed to sync ticket');
+    }
+  });
+  
+  // Handle sync ticket action
+  const handleSyncTicket = async () => {
+    await syncMutation.mutateAsync();
+  };
+  
+  if (syncStatusQuery.isPending) {
     return (
-      <Card className="mt-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-md flex items-center justify-between">
-            External Integrations
+      <div className="p-4 border rounded-md bg-background animate-pulse">
+        <div className="h-4 w-1/3 bg-muted rounded mb-3"></div>
+        <div className="h-10 bg-muted rounded mb-3"></div>
+        <div className="h-20 bg-muted rounded"></div>
+      </div>
+    );
+  }
+  
+  // If there are no active integrations, don't display anything
+  if (
+    !syncStatusQuery.data ||
+    !syncStatusQuery.data.activeIntegrations ||
+    syncStatusQuery.data.activeIntegrations.length === 0
+  ) {
+    return null;
+  }
+  
+  return (
+    <div>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={onSyncTicket} 
-              disabled={isSyncing}
+              onClick={() => syncStatusQuery.refetch()}
             >
-              {isSyncing ? (
-                <Clock className="mr-1 h-4 w-4 animate-spin" />
-              ) : (
-                <Clock className="mr-1 h-4 w-4" />
-              )}
-              {isSyncing ? 'Syncing...' : 'Sync Now'}
+              <RefreshCw className="h-3 w-3 mr-1" /> Retry
             </Button>
-          </CardTitle>
-          <CardDescription>
-            This ticket has not been synchronized with any external systems.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="mt-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-md flex items-center justify-between">
-          External Integrations
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onSyncTicket} 
-            disabled={isSyncing}
-          >
-            {isSyncing ? (
-              <Clock className="mr-1 h-4 w-4 animate-spin" />
-            ) : (
-              <Clock className="mr-1 h-4 w-4" />
-            )}
-            {isSyncing ? 'Syncing...' : 'Sync Now'}
-          </Button>
-        </CardTitle>
-        <CardDescription>
-          This ticket is synchronized with the following external systems.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Jira Integration */}
-          {externalIntegrations.jira && (
-            <div className="flex items-center justify-between border-b pb-2">
-              <div className="flex items-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Badge className="mr-2 bg-blue-500">Jira</Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Jira issue tracking system</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <span className="font-medium mr-2">
-                  {externalIntegrations.jira.key || externalIntegrations.jira.id}
-                </span>
-                {externalIntegrations.jira.status && (
-                  <Badge variant={getJiraStatusVariant(externalIntegrations.jira.status)}>
-                    {formatJiraStatus(externalIntegrations.jira.status)}
-                  </Badge>
-                )}
-              </div>
-              <a 
-                href={externalIntegrations.jira.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:text-blue-700 flex items-center"
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                View in Jira
-              </a>
-            </div>
-          )}
-
-          {/* Zendesk Integration */}
-          {externalIntegrations.zendesk && (
-            <div className="flex items-center justify-between border-b pb-2">
-              <div className="flex items-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Badge className="mr-2 bg-green-500">Zendesk</Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Zendesk customer support system</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <span className="font-medium mr-2">
-                  #{externalIntegrations.zendesk.id}
-                </span>
-                {externalIntegrations.zendesk.status && (
-                  <Badge variant={getZendeskStatusVariant(externalIntegrations.zendesk.status)}>
-                    {formatZendeskStatus(externalIntegrations.zendesk.status)}
-                  </Badge>
-                )}
-              </div>
-              <a 
-                href={externalIntegrations.zendesk.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-green-500 hover:text-green-700 flex items-center"
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                View in Zendesk
-              </a>
-            </div>
-          )}
-
-          {/* Last sync time */}
-          {externalIntegrations.lastSyncTime && (
-            <div className="text-sm text-gray-500 mt-2 flex items-center">
-              <Check className="h-4 w-4 mr-1 text-green-500" />
-              Last synchronized: {new Date(externalIntegrations.lastSyncTime).toLocaleString()}
-            </div>
-          )}
-
-          {/* Sync errors */}
-          {externalIntegrations.syncError && (
-            <div className="text-sm text-red-500 mt-2 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
-              Error: {externalIntegrations.syncError}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <TicketIntegrationStatus
+        ticketId={ticketId}
+        externalIntegrations={syncStatusQuery.data?.externalIntegrations}
+        activeIntegrations={syncStatusQuery.data?.activeIntegrations || []}
+        hasUnsyncedChanges={syncStatusQuery.data?.hasUnsyncedChanges || false}
+        onSyncTicket={handleSyncTicket}
+      />
+    </div>
   );
-};
-
-// Helper functions to format status badges
-function getJiraStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (status.toLowerCase()) {
-    case "to do": 
-    case "open": 
-    case "new": 
-      return "default";
-    case "in progress": 
-      return "secondary";
-    case "done": 
-    case "resolved": 
-    case "closed": 
-      return "outline";
-    default: 
-      return "default";
-  }
 }
-
-function formatJiraStatus(status: string): string {
-  return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-function getZendeskStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (status.toLowerCase()) {
-    case "new": 
-      return "default";
-    case "open": 
-    case "pending": 
-      return "secondary";
-    case "solved": 
-    case "closed": 
-      return "outline";
-    default: 
-      return "default";
-  }
-}
-
-function formatZendeskStatus(status: string): string {
-  return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-export default ExternalIntegrations;

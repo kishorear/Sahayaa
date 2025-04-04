@@ -26,6 +26,7 @@ export const tenants = pgTable("tenants", {
   apiKey: text("apiKey").notNull().unique(),
   adminId: integer("adminId").default(1), // Reference to the admin user for this tenant
   settings: json("settings").default({}).notNull(), // Tenant-specific settings
+  integrationSettings: json("integrationSettings").default({}).notNull(), // External integration settings (Jira, Zendesk, etc.)
   branding: json("branding").default({
     primaryColor: '#4F46E5',
     logo: null,

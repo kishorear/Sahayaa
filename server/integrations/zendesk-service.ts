@@ -1,232 +1,263 @@
 /**
- * Zendesk Service
+ * Zendesk Integration Service
  * 
- * Service for interacting with the Zendesk API.
+ * Handles integration with Zendesk for ticket synchronization
  */
 
-import zendesk from 'node-zendesk';
+import * as zendesk from 'node-zendesk';
 import { ZendeskConfig } from './integration-service';
 
-class ZendeskService {
-  private clients: Map<string, any> = new Map();
-  
-  /**
-   * Get or create a Zendesk client for the given configuration
-   */
-  private getClient(config: ZendeskConfig): any {
-    // Map email to username if needed for backwards compatibility
-    const username = (config as any).email || config.username;
-    const cacheKey = `${config.subdomain}:${username}`;
-    
-    if (!this.clients.has(cacheKey)) {
-      const client = zendesk.createClient({
-        username: username,
-        token: config.apiToken,
-        remoteUri: `https://${config.subdomain}.zendesk.com/api/v2`
-      });
-      
-      this.clients.set(cacheKey, client);
-    }
-    
-    return this.clients.get(cacheKey);
-  }
-  
-  /**
-   * Create a new Zendesk ticket
-   */
-  async createTicket(
-    config: ZendeskConfig,
-    subject: string,
-    description: string,
-    ticketType: string
-  ): Promise<{ id: string }> {
-    return new Promise((resolve, reject) => {
-      try {
-        const client = this.getClient(config);
-        
-        // Create ticket data
-        const ticketData: any = {
-          ticket: {
-            subject: subject,
-            comment: {
-              body: description
-            },
-            type: this.mapTicketType(ticketType),
-            priority: 'normal',
-            tags: ['support-system', ticketType]
-          }
-        };
-        
-        // Add group if specified in config
-        if (config.groupId) {
-          ticketData.ticket.group_id = config.groupId;
-        }
-        
-        // Create the ticket
-        client.tickets.create(ticketData, (err: Error, req: any, result: any) => {
-          if (err) {
-            console.error('Error creating Zendesk ticket:', err);
-            return reject(new Error(`Failed to create Zendesk ticket: ${err.message}`));
-          }
-          
-          resolve({
-            id: result.id.toString()
-          });
-        });
-      } catch (error) {
-        console.error('Error creating Zendesk ticket:', error);
-        reject(new Error(`Failed to create Zendesk ticket: ${error instanceof Error ? error.message : 'Unknown error'}`));
-      }
+/**
+ * Create a Zendesk client instance
+ */
+function createZendeskClient(config: ZendeskConfig): any {
+  try {
+    return zendesk.createClient({
+      username: config.username,
+      token: config.apiToken,
+      remoteUri: `https://${config.subdomain}.zendesk.com/api/v2`
     });
-  }
-  
-  /**
-   * Test a Zendesk connection
-   */
-  async testConnection(config: ZendeskConfig): Promise<boolean> {
-    return new Promise((resolve) => {
-      try {
-        const client = this.getClient(config);
-        
-        // Try to get ticket fields to validate credentials
-        client.ticketfields.list((err: Error) => {
-          if (err) {
-            console.error('Zendesk connection test failed:', err);
-            resolve(false);
-          } else {
-            resolve(true);
-          }
-        });
-      } catch (error) {
-        console.error('Zendesk connection test failed:', error);
-        resolve(false);
-      }
-    });
-  }
-  
-  /**
-   * Update a Zendesk ticket
-   */
-  async updateTicket(
-    config: ZendeskConfig,
-    ticketId: string,
-    subject?: string,
-    comment?: string,
-    status?: string
-  ): Promise<boolean> {
-    return new Promise((resolve) => {
-      try {
-        const client = this.getClient(config);
-        const updateData: any = {
-          ticket: {}
-        };
-        
-        // Add fields that should be updated
-        if (subject) {
-          updateData.ticket.subject = subject;
-        }
-        
-        if (comment) {
-          updateData.ticket.comment = {
-            body: comment,
-            public: false
-          };
-        }
-        
-        if (status) {
-          updateData.ticket.status = this.mapTicketStatus(status);
-        }
-        
-        // Update the ticket
-        client.tickets.update(ticketId, updateData, (err: Error) => {
-          if (err) {
-            console.error(`Error updating Zendesk ticket ${ticketId}:`, err);
-            resolve(false);
-          } else {
-            resolve(true);
-          }
-        });
-      } catch (error) {
-        console.error(`Error updating Zendesk ticket ${ticketId}:`, error);
-        resolve(false);
-      }
-    });
-  }
-  
-  /**
-   * Add a comment to a Zendesk ticket
-   */
-  async addComment(
-    config: ZendeskConfig,
-    ticketId: string,
-    comment: string,
-    isPublic: boolean = false
-  ): Promise<boolean> {
-    return new Promise((resolve) => {
-      try {
-        const client = this.getClient(config);
-        
-        const updateData = {
-          ticket: {
-            comment: {
-              body: comment,
-              public: isPublic
-            }
-          }
-        };
-        
-        client.tickets.update(ticketId, updateData, (err: Error) => {
-          if (err) {
-            console.error(`Error adding comment to Zendesk ticket ${ticketId}:`, err);
-            resolve(false);
-          } else {
-            resolve(true);
-          }
-        });
-      } catch (error) {
-        console.error(`Error adding comment to Zendesk ticket ${ticketId}:`, error);
-        resolve(false);
-      }
-    });
-  }
-  
-  /**
-   * Map internal ticket type to Zendesk ticket type
-   */
-  private mapTicketType(internalType: string): string {
-    const typeMap: Record<string, string> = {
-      'technical_issue': 'problem',
-      'billing': 'question',
-      'feature_request': 'task',
-      'bug': 'incident',
-      'inquiry': 'question'
-    };
-    
-    return typeMap[internalType] || 'question';
-  }
-  
-  /**
-   * Map internal ticket status to Zendesk ticket status
-   */
-  private mapTicketStatus(internalStatus: string): string {
-    const statusMap: Record<string, string> = {
-      'new': 'new',
-      'in_progress': 'open',
-      'resolved': 'solved',
-      'closed': 'closed',
-      'pending': 'pending'
-    };
-    
-    return statusMap[internalStatus] || 'open';
+  } catch (error) {
+    console.error('Error creating Zendesk client:', error);
+    throw new Error('Failed to create Zendesk client: Invalid configuration');
   }
 }
 
-// Singleton instance
-let zendeskService: ZendeskService | null = null;
+/**
+ * Verify Zendesk connection and configuration
+ */
+export async function verifyZendeskConnection(config: ZendeskConfig): Promise<boolean> {
+  return new Promise((resolve) => {
+    try {
+      const client = createZendeskClient(config);
+      
+      // Try to get current user to verify connection
+      client.users.me((err: any, req: any, result: any) => {
+        if (err) {
+          console.error('Zendesk connection verification failed:', err);
+          resolve(false);
+          return;
+        }
+        
+        console.log(`Successfully connected to Zendesk as ${result.name} (${result.email})`);
+        resolve(true);
+      });
+    } catch (error) {
+      console.error('Zendesk connection verification failed:', error);
+      resolve(false);
+    }
+  });
+}
 
-export function getZendeskService(): ZendeskService {
-  if (!zendeskService) {
-    zendeskService = new ZendeskService();
+/**
+ * Format the ticket description for Zendesk
+ */
+function formatZendeskDescription(ticket: any): string {
+  // Get ticket messages in chronological order
+  const messages = [...(ticket.messages || [])].sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  
+  // Format the message content
+  let description = `Support Ticket Information\n\n`;
+  description += `ID: ${ticket.id}\n`;
+  description += `Created: ${new Date(ticket.createdAt).toISOString()}\n`;
+  description += `Status: ${ticket.status}\n`;
+  description += `Priority: ${ticket.priority}\n`;
+  description += `Category: ${ticket.category || 'Uncategorized'}\n\n`;
+  
+  if (ticket.metadata) {
+    description += `Additional Information\n\n`;
+    for (const [key, value] of Object.entries(ticket.metadata)) {
+      if (key !== 'jiraIssueKey' && key !== 'zendeskTicketId') {
+        description += `${key}: ${value}\n`;
+      }
+    }
+    description += '\n';
   }
-  return zendeskService;
+  
+  if (messages.length > 0) {
+    description += `Conversation History\n\n`;
+    messages.forEach((message: any) => {
+      description += `${message.role} (${new Date(message.createdAt).toLocaleString()})\n`;
+      description += `${message.content}\n\n`;
+    });
+  }
+  
+  return description;
+}
+
+/**
+ * Create or update a Zendesk ticket
+ */
+export async function syncTicketWithZendesk(ticket: any, config: ZendeskConfig): Promise<Record<string, any>> {
+  return new Promise((resolve, reject) => {
+    try {
+      const client = createZendeskClient(config);
+      
+      // Check if the ticket already has a Zendesk issue
+      const zendeskTicketId = ticket.externalIntegrations?.zendesk?.id;
+      
+      // Format ticket data for Zendesk
+      const subject = `[Support] ${ticket.title}`;
+      const description = formatZendeskDescription(ticket);
+      
+      // Create ticket data object for Zendesk
+      const ticketData = {
+        ticket: {
+          subject,
+          comment: { body: description },
+          priority: mapPriorityToZendesk(ticket.priority),
+          tags: ['support_system', ticket.category].filter(Boolean)
+        }
+      };
+      
+      // Define the createNewTicket function
+      const createNewTicket = () => {
+        // Create new ticket
+        client.tickets.create(ticketData, (err: any, req: any, result: any) => {
+          if (err) {
+            console.error('Error creating Zendesk ticket:', err);
+            resolve({
+              error: err.message || 'Unknown error',
+              timestamp: new Date().toISOString()
+            });
+            return;
+          }
+          
+          // Get the ticket URL
+          const ticketUrl = `https://${config.subdomain}.zendesk.com/agent/tickets/${result.id}`;
+          
+          // Return the ticket information
+          resolve({
+            id: result.id,
+            url: ticketUrl,
+            status: result.status,
+            subject: result.subject,
+            description: result.description,
+            created: result.created_at,
+            updated: result.updated_at
+          });
+        });
+      };
+      
+      if (zendeskTicketId) {
+        // Update existing ticket
+        client.tickets.update(zendeskTicketId, ticketData, (err: any, req: any, result: any) => {
+          if (err) {
+            console.error(`Error updating Zendesk ticket #${zendeskTicketId}:`, err);
+            
+            // Check if the ticket doesn't exist
+            if (err.statusCode === 404) {
+              console.log(`Zendesk ticket #${zendeskTicketId} not found, creating a new one`);
+              createNewTicket();
+            } else {
+              resolve({
+                error: err.message || 'Unknown error',
+                timestamp: new Date().toISOString()
+              });
+            }
+            return;
+          }
+          
+          // Get the ticket URL
+          const ticketUrl = `https://${config.subdomain}.zendesk.com/agent/tickets/${result.id}`;
+          
+          // Return the ticket information
+          resolve({
+            id: result.id,
+            url: ticketUrl,
+            status: result.status,
+            subject: result.subject,
+            description: result.description,
+            created: result.created_at,
+            updated: result.updated_at
+          });
+        });
+      } else {
+        createNewTicket();
+      }
+    } catch (error) {
+      console.error('Error syncing ticket with Zendesk:', error);
+      
+      // Return error information
+      resolve({
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+}
+
+/**
+ * Map ticket priority to Zendesk priority
+ */
+function mapPriorityToZendesk(priority: string): string {
+  switch (priority?.toLowerCase()) {
+    case 'high':
+    case 'urgent':
+      return 'urgent';
+    case 'medium':
+      return 'normal';
+    case 'low':
+      return 'low';
+    default:
+      return 'normal';
+  }
+}
+
+/**
+ * Test the connection to Zendesk
+ * @param config The Zendesk configuration
+ * @returns Result with success flag and message
+ */
+export function testZendeskConnection(config: ZendeskConfig): Promise<{ success: boolean; message: string }> {
+  return new Promise((resolve) => {
+    try {
+      const client = createZendeskClient(config);
+      
+      // Try to get current user to verify connection
+      client.users.me((err: any, req: any, result: any) => {
+        if (err) {
+          console.error('Zendesk connection test failed:', err);
+          
+          // Check for specific errors to provide better error messages
+          if (err.statusCode === 401) {
+            resolve({
+              success: false,
+              message: 'Authentication failed. Please check your username and API token.'
+            });
+          } else if (err.statusCode === 404) {
+            resolve({
+              success: false,
+              message: 'Invalid Zendesk subdomain. Please check your subdomain.'
+            });
+          } else if (err.code === 'ENOTFOUND') {
+            resolve({
+              success: false,
+              message: 'Could not connect to Zendesk. Please check your subdomain.'
+            });
+          } else {
+            resolve({
+              success: false,
+              message: `Connection failed: ${err.message || 'Unknown error'}`
+            });
+          }
+          return;
+        }
+        
+        resolve({
+          success: true,
+          message: `Successfully connected to Zendesk as ${result.name} (${result.email})`
+        });
+      });
+    } catch (error) {
+      console.error('Error in Zendesk connection test:', error);
+      
+      resolve({
+        success: false,
+        message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+  });
 }

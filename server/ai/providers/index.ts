@@ -20,8 +20,7 @@ function convertDbProviderToConfig(provider: AiProvider): AIProviderConfig {
     mappedType = 'aws-bedrock';
   }
   
-  // Check if the mapped type is valid, not the original type
-  const providerType = validTypes.includes(mappedType) 
+  const providerType = validTypes.includes(provider.type) 
     ? mappedType as 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'bedrock' | 'custom'
     : 'custom'; // Fallback to custom if type is invalid
     
@@ -118,7 +117,6 @@ export class AIProviderFactory {
       case 'anthropic':
         return new AnthropicProvider(config);
       case 'aws-bedrock':
-      case 'bedrock':
         return new BedrockProvider(config);
       case 'custom':
         return new CustomProvider(config);

@@ -20,7 +20,6 @@ import {
 import { setupAuth } from "./auth";
 import { registerEmailRoutes } from "./routes/email-routes";
 import { registerIntegrationRoutes } from "./routes/integration-routes";
-import { registerSyncRoutes } from "./routes/sync-routes";
 import { registerDataSourceRoutes } from "./routes/data-source-routes";
 import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
@@ -73,10 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerEmailRoutes(app, requireRole(['admin', 'support-agent']));
   
   // Register third-party integration routes
-  registerIntegrationRoutes(app, requireAuth, requireRole);
-  
-  // Register sync routes for external systems (Jira, Zendesk)
-  registerSyncRoutes(app, requireAuth);
+  registerIntegrationRoutes(app, requireRole(['admin']));
   
   // Register data source routes
   registerDataSourceRoutes(app, requireRole(['admin']));
@@ -173,19 +169,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const externalTicketReferences: Record<string, any> = {};
       try {
         // Get the integration service to handle third-party ticket creation
-        const { handleTicketCreated } = await import('./integrations/integration-service');
+        const integrationService = getIntegrationService();
         
         // Add more detailed logging
         console.log(`Creating ticket #${ticket.id} "${newTicket.title}" in third-party systems...`);
         console.log(`Ticket details: category=${newTicket.category}, complexity=${newTicket.complexity}`);
         console.log(`Assigned to: ${newTicket.assignedTo || 'Unassigned'}`);
         
-        // Handle ticket creation in external systems
-        await handleTicketCreated(ticket);
-        
-        // For now, we'll skip the old integration service code since we're using 
-        // the new implementation through sync routes
-        const thirdPartyResults: Record<string, any> = {};
+        // Create the ticket in any enabled third-party systems
+        const thirdPartyResults = await integrationService.createTicketInThirdParty(newTicket);
+        console.log(`Third-party ticket creation results:`, thirdPartyResults);
         
         // Save external references to metadata for future updates
         if (thirdPartyResults.jira) {

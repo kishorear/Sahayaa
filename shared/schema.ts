@@ -26,7 +26,6 @@ export const tenants = pgTable("tenants", {
   apiKey: text("apiKey").notNull().unique(),
   adminId: integer("adminId").default(1), // Reference to the admin user for this tenant
   settings: json("settings").default({}).notNull(), // Tenant-specific settings
-  integrationSettings: json("integrationSettings").default({}).notNull(), // External integration settings (Jira, Zendesk, etc.)
   branding: json("branding").default({
     primaryColor: '#4F46E5',
     logo: null,
@@ -315,40 +314,3 @@ export const insertDocumentUsageSchema = createInsertSchema(documentUsage)
 
 export type DocumentUsage = typeof documentUsage.$inferSelect;
 export type InsertDocumentUsage = z.infer<typeof insertDocumentUsageSchema>;
-
-// Integration types for third-party services
-export const IntegrationTypeEnum = z.enum([
-  'jira',
-  'zendesk'
-]);
-
-// Third-party service integrations
-export const integrations = pgTable("integrations", {
-  id: serial("id").primaryKey(),
-  tenantId: integer("tenantId").notNull(),
-  type: text("type").notNull(), // 'jira', 'zendesk', etc.
-  name: text("name").notNull(), // Display name for the integration
-  enabled: boolean("enabled").default(true).notNull(),
-  
-  // Integration configuration
-  config: json("config").notNull(), // Integration-specific configuration including API keys, URLs, etc.
-  
-  // Sync settings
-  syncEnabled: boolean("syncEnabled").default(false), // Whether to sync with this integration
-  syncDirection: text("syncDirection").default("outbound"), // 'outbound', 'inbound', 'bidirectional'
-  lastSyncTime: timestamp("lastSyncTime"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-}, (table) => {
-  return {
-    // Create a unique index on type + tenantId to allow only one integration of each type per tenant
-    integrationTypeUnique: uniqueIndex("integration_type_tenant_unique").on(table.type, table.tenantId),
-  };
-});
-
-export const insertIntegrationSchema = createInsertSchema(integrations)
-  .omit({ id: true, createdAt: true, updatedAt: true, lastSyncTime: true });
-
-export type Integration = typeof integrations.$inferSelect;
-export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;

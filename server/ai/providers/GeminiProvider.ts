@@ -174,44 +174,6 @@ export class GeminiProvider implements AIProviderInterface {
     }
   }
   
-  async generateTicketTitle(
-    messages: Array<{ role: string; content: string }>,
-    context?: string
-  ): Promise<string> {
-    try {
-      // Get the generative model
-      const generativeModel = this.client.getGenerativeModel({ model: this.model });
-      
-      // Filter out system messages from conversation
-      const conversationMessages = messages.filter(m => m.role !== 'system');
-      
-      // Create the prompt for title generation
-      let promptContent = `
-      Based on the following support conversation, generate a concise and descriptive title for the support ticket.
-      The title should be clear, specific, and capture the main issue being discussed.
-      Keep it under 10 words and make it professional.
-      
-      ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
-      
-      Support Ticket Title:
-      `;
-      
-      // Add context information if available
-      if (context) {
-        promptContent = `Use the following information to help you understand the context of the conversation:\n${context}\n\n${promptContent}`;
-      }
-      
-      const result = await generativeModel.generateContent(promptContent);
-      const response = result.response;
-      
-      // Clean up any quotes or extra whitespace
-      return response.text().replace(/^["']|["']$/g, '').trim();
-    } catch (error) {
-      console.error("Error calling Gemini for ticket title generation:", error);
-      throw new Error("Failed to generate ticket title with Gemini");
-    }
-  }
-  
   async summarizeConversation(
     messages: Array<{ role: string; content: string }>,
     context?: string

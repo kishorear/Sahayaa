@@ -1,6 +1,5 @@
 import { InsertTicket, InsertMessage } from "@shared/schema";
 import axios from "axios";
-import { JiraConfig } from "./integration-service";
 
 // Extended InsertMessage type for integration purposes
 interface ExtendedInsertMessage extends InsertMessage {
@@ -8,7 +7,13 @@ interface ExtendedInsertMessage extends InsertMessage {
   tenantId?: number;
 }
 
-// Using JiraConfig from integration-service.ts
+export interface JiraConfig {
+  baseUrl: string;
+  email: string;
+  apiToken: string;
+  projectKey: string;
+  enabled: boolean;
+}
 
 /**
  * Jira integration service for ticket synchronization
@@ -20,10 +25,10 @@ export class JiraService {
   private enabled: boolean;
 
   constructor(config: JiraConfig) {
-    if (!config.host || !config.username || !config.apiToken || !config.projectKey) {
+    if (!config.baseUrl || !config.email || !config.apiToken || !config.projectKey) {
       console.error("Invalid Jira configuration - missing required fields:", {
-        host: config.host ? "provided" : "missing",
-        username: config.username ? "provided" : "missing",
+        baseUrl: config.baseUrl ? "provided" : "missing",
+        email: config.email ? "provided" : "missing",
         apiToken: config.apiToken ? "provided" : "missing",
         projectKey: config.projectKey ? "provided" : "missing"
       });
@@ -31,25 +36,25 @@ export class JiraService {
     }
 
     console.log("Initializing Jira Service with config:", {
-      host: config.host,
-      username: config.username,
+      baseUrl: config.baseUrl,
+      email: config.email,
       apiToken: config.apiToken ? "[REDACTED]" : "missing",
       projectKey: config.projectKey,
-      issueType: config.issueType || 'Task'
+      enabled: config.enabled
     });
     
-    // Make sure host doesn't have trailing slash
-    const baseUrl = config.host.endsWith('/') 
-      ? config.host.slice(0, -1) 
-      : config.host;
+    // Make sure baseUrl doesn't have trailing slash
+    const baseUrl = config.baseUrl.endsWith('/') 
+      ? config.baseUrl.slice(0, -1) 
+      : config.baseUrl;
       
     this.apiUrl = `${baseUrl}/rest/api/3`;
     this.auth = {
-      username: config.username,
+      username: config.email,
       password: config.apiToken
     };
     this.projectKey = config.projectKey;
-    this.enabled = true; // Always enabled when instantiated
+    this.enabled = config.enabled;
     
     console.log("Jira Service initialized with API URL:", this.apiUrl);
   }

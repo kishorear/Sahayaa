@@ -196,62 +196,6 @@ export class BedrockProvider implements AIProviderInterface {
     }
   }
   
-  async generateTicketTitle(
-    messages: Array<{ role: string; content: string }>,
-    context?: string
-  ): Promise<string> {
-    try {
-      // Filter out system messages from conversation
-      const conversationMessages = messages.filter(m => m.role !== 'system');
-      
-      // Create the prompt for title generation
-      let prompt = `
-      Based on the following support conversation, generate a concise and descriptive title for the support ticket.
-      The title should be clear, specific, and capture the main issue being discussed.
-      Keep it under 10 words and make it professional.
-      
-      ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
-      
-      Support Ticket Title:
-      `;
-      
-      // Build system message
-      let systemPrompt = "You are an AI assistant that creates concise, descriptive titles for support tickets based on conversation context.";
-      
-      if (context) {
-        systemPrompt += `\n\nUse this information to help understand the context of the conversation:\n${context}`;
-      }
-      
-      // Format the request body
-      const formattedBody = this.formatRequestBody(
-        this.model,
-        [{ role: 'user', content: prompt }],
-        context,
-        systemPrompt
-      );
-      
-      // Create the model command
-      const command = new InvokeModelCommand({
-        modelId: this.model,
-        body: Buffer.from(JSON.stringify(formattedBody)),
-        contentType: 'application/json',
-        accept: 'application/json'
-      });
-      
-      // Call the model
-      const response = await this.client.send(command);
-      
-      // Parse the response
-      const responseText = await this.parseResponseBody(response);
-      
-      // Clean up any quotes or extra whitespace
-      return responseText.replace(/^["']|["']$/g, '').trim();
-    } catch (error) {
-      console.error("Error calling AWS Bedrock for ticket title generation:", error);
-      throw new Error("Failed to generate ticket title with AWS Bedrock");
-    }
-  }
-  
   async summarizeConversation(
     messages: Array<{ role: string; content: string }>,
     context?: string

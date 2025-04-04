@@ -43,12 +43,7 @@ export class AnthropicProvider implements AIProviderInterface {
         max_tokens: 1024
       });
 
-      // Handle different content types in the Anthropic API response
-      if (response.content && response.content.length > 0) {
-        const content = response.content[0];
-        return typeof content.text === 'string' ? content.text : '';
-      }
-      return '';
+      return response.content[0].text;
     } catch (error) {
       console.error("Error calling Anthropic for chat response:", error);
       throw new Error("Failed to generate chat response with Anthropic");
@@ -105,11 +100,7 @@ export class AnthropicProvider implements AIProviderInterface {
       });
 
       // Extract and parse the JSON response
-      let content = '';
-      if (response.content && response.content.length > 0) {
-        const contentBlock = response.content[0];
-        content = typeof contentBlock.text === 'string' ? contentBlock.text : '';
-      }
+      const content = response.content[0].text;
       
       // Find JSON content between curly braces
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -158,12 +149,7 @@ export class AnthropicProvider implements AIProviderInterface {
         max_tokens: 1024
       });
 
-      // Extract text from response
-      let responseText = '';
-      if (response.content && response.content.length > 0) {
-        const contentBlock = response.content[0];
-        responseText = typeof contentBlock.text === 'string' ? contentBlock.text : '';
-      }
+      const responseText = response.content[0].text;
       
       // Check if the response indicates resolution
       const resolved = responseText.includes("[ISSUE RESOLVED]");
@@ -178,52 +164,6 @@ export class AnthropicProvider implements AIProviderInterface {
     } catch (error) {
       console.error("Error calling Anthropic for ticket resolution:", error);
       throw new Error("Failed to auto-resolve ticket with Anthropic");
-    }
-  }
-  
-  async generateTicketTitle(
-    messages: Array<{ role: string; content: string }>,
-    context?: string
-  ): Promise<string> {
-    try {
-      // Build system message with context if available
-      let system = "You are an AI assistant that creates concise, descriptive titles for support tickets based on conversation context.";
-      
-      if (context) {
-        system += `\n\nUse this information to help understand the context of the conversation:\n${context}`;
-      }
-      
-      // Filter out system messages from conversation
-      const conversationMessages = messages.filter(m => m.role !== 'system');
-      
-      // Create the prompt for title generation
-      let prompt = `
-      Based on the following support conversation, generate a concise and descriptive title for the support ticket.
-      The title should be clear, specific, and capture the main issue being discussed.
-      Keep it under 10 words and make it professional.
-      
-      ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
-      
-      Support Ticket Title:
-      `;
-      
-      const response = await this.client.messages.create({
-        model: this.model,
-        system: system,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1024
-      });
-
-      // Extract text and clean up any quotes or extra whitespace
-      let title = '';
-      if (response.content && response.content.length > 0) {
-        const contentBlock = response.content[0];
-        title = typeof contentBlock.text === 'string' ? contentBlock.text : '';
-      }
-      return title.replace(/^["']|["']$/g, '').trim();
-    } catch (error) {
-      console.error("Error calling Anthropic for ticket title generation:", error);
-      throw new Error("Failed to generate ticket title with Anthropic");
     }
   }
   
@@ -259,13 +199,7 @@ export class AnthropicProvider implements AIProviderInterface {
         max_tokens: 1024
       });
 
-      // Extract text from response
-      let summary = '';
-      if (response.content && response.content.length > 0) {
-        const contentBlock = response.content[0];
-        summary = typeof contentBlock.text === 'string' ? contentBlock.text : '';
-      }
-      return summary;
+      return response.content[0].text;
     } catch (error) {
       console.error("Error calling Anthropic for conversation summarization:", error);
       throw new Error("Failed to summarize conversation with Anthropic");

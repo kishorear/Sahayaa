@@ -30,10 +30,13 @@ interface ZendeskConfig {
 // Validation schemas
 const jiraConfigSchema = z.object({
   enabled: z.boolean(),
-  host: z.string().min(1),
-  username: z.string().min(1),
+  host: z.string().min(1).optional(),
+  username: z.string().min(1).optional(),
   apiToken: z.string().min(1),
-  projectKey: z.string().min(1)
+  projectKey: z.string().min(1),
+  // Allow baseUrl and email as alternatives to host and username
+  baseUrl: z.string().min(1).optional(),
+  email: z.string().min(1).optional()
 });
 
 const zendeskConfigSchema = z.object({
@@ -154,10 +157,14 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any, requir
       
       // Update Jira settings if provided
       if (updatedSettings.jira) {
+        // Map fields from frontend to backend with proper type conversion
+        const host = String(updatedSettings.jira.host || updatedSettings.jira.baseUrl || '');
+        const username = String(updatedSettings.jira.username || updatedSettings.jira.email || '');
+        
         const jiraConfig: JiraConfig = {
           enabled: updatedSettings.jira.enabled,
-          host: updatedSettings.jira.host,
-          username: updatedSettings.jira.username,
+          host,
+          username,
           apiToken: updatedSettings.jira.apiToken,
           projectKey: updatedSettings.jira.projectKey
         };
@@ -238,7 +245,24 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any, requir
       if (type === 'jira') {
         try {
           // Validate the config
-          const jiraConfig = jiraConfigSchema.parse(config);
+          const validatedConfig = jiraConfigSchema.parse(config);
+          
+          // Map frontend property names to backend property names
+          const host = String(validatedConfig.host || validatedConfig.baseUrl || '');
+          const username = String(validatedConfig.username || validatedConfig.email || '');
+          
+          const jiraConfig: JiraConfig = {
+            enabled: validatedConfig.enabled,
+            host,
+            username,
+            apiToken: validatedConfig.apiToken,
+            projectKey: validatedConfig.projectKey
+          };
+          
+          console.log('Testing Jira connection with mapped config:', {
+            ...jiraConfig,
+            apiToken: '[REDACTED]' // Don't log the actual token
+          });
           
           // Import the Jira client
           const { testJiraConnection } = await import('../integrations/jira-service');

@@ -225,7 +225,12 @@ export default function ChatbotInterface() {
 
   const createTicketMutation = useMutation({
     mutationFn: async (ticketData: InsertTicket) => {
-      return await apiRequest("POST", "/api/tickets", ticketData);
+      // Make sure we pass the tenant ID to ensure proper third-party integrations
+      // This is especially important when deployed as a widget on a client site
+      return await apiRequest("POST", "/api/tickets", {
+        ...ticketData,
+        createInThirdParty: true, // Flag to ensure third-party creation is attempted
+      });
     },
     onSuccess: async (response) => {
       const ticket = await response.json();
@@ -237,9 +242,18 @@ export default function ChatbotInterface() {
         issue: ticket.title.toLowerCase() // Store the title in lowercase for case-insensitive comparison
       }]);
       
+      // Check if the ticket was created in third-party systems
+      const externalSystems = ticket.externalIntegrations 
+        ? Object.keys(ticket.externalIntegrations).join(', ') 
+        : '';
+      
+      const externalText = externalSystems 
+        ? ` It has also been created in ${externalSystems}.` 
+        : '';
+      
       toast({
         title: "Ticket Created",
-        description: `Support ticket #${ticket.id} has been created. Our team will follow up shortly.`,
+        description: `Support ticket #${ticket.id} has been created.${externalText} Our team will follow up shortly.`,
       });
       
       // Add a message about successful ticket creation with attachment reminder and asking if they need more help
@@ -247,7 +261,7 @@ export default function ChatbotInterface() {
         ...prev,
         {
           id: `ai-ticket-created-${Date.now()}`,
-          content: `Support ticket #${ticket.id} has been created successfully. You can add images or a screen recording now if that would help explain your issue better. Is there anything else I can assist you with today?`,
+          content: `Support ticket #${ticket.id} has been created successfully.${externalText} You can add images or a screen recording now if that would help explain your issue better. Is there anything else I can assist you with today?`,
           sender: "ai",
           timestamp: new Date(),
         }

@@ -136,11 +136,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // This route needs no auth since it can be created by the chatbot
   app.post("/api/tickets", async (req, res) => {
     try {
-      // Extract createInThirdParty flag before validation
-      const { createInThirdParty, ...requestData } = req.body;
-      
       // Validate the ticket data
-      const ticketData = insertTicketSchema.parse(requestData);
+      const ticketData = insertTicketSchema.parse(req.body);
       
       // Use AI to classify the ticket
       // Pass tenant context if available (from middleware or user)
@@ -169,75 +166,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create ticket in our system
       const ticket = await storage.createTicket(newTicket);
       
-      // Create ticket in third-party systems based on integration settings and createInThirdParty flag
-      // The createInThirdParty flag ensures we only do this when explicitly requested (e.g., from the chatbot)
+      // Create ticket in third-party systems - this happens for ALL tickets
+      // as we want tickets created in both our system and third-party systems simultaneously
       const externalTicketReferences: Record<string, any> = {};
       
-      // Log the request for creating the ticket in third-party systems
-      console.log(`Ticket #${ticket.id} created, createInThirdParty flag:`, createInThirdParty);
+      // Log the ticket creation
+      console.log(`Ticket #${ticket.id} created, creating in third-party systems...`);
       
-      // Only create ticket in third-party systems if explicitly requested
-      // This ensures we don't create duplicate tickets when tickets are created through other means
-      if (createInThirdParty) {
-        try {
-          // Get the integration service to handle third-party ticket creation
-          const integrationService = getIntegrationService();
-          
-          // Add more detailed logging
-          console.log(`Creating ticket #${ticket.id} "${newTicket.title}" in third-party systems...`);
-          console.log(`Ticket details: category=${newTicket.category}, complexity=${newTicket.complexity}`);
-          console.log(`Assigned to: ${newTicket.assignedTo || 'Unassigned'}`);
-          
-          // Create the ticket in any enabled third-party systems
-          const thirdPartyResults = await integrationService.createTicketInThirdParty(newTicket);
-          console.log(`Third-party ticket creation results:`, thirdPartyResults);
-          
-          // Save external references to metadata for future updates
-          if (thirdPartyResults.jira) {
-            if (!thirdPartyResults.jira.error) {
-              externalTicketReferences.jira = thirdPartyResults.jira.key;
-              console.log(`Ticket created in Jira with key: ${thirdPartyResults.jira.key}, url: ${thirdPartyResults.jira.url}`);
-            } else {
-              console.error(`Failed to create ticket in Jira: ${thirdPartyResults.jira.error}`);
-              // Add error information to the ticket in our system for future reference/troubleshooting
-              await storage.updateTicket(ticket.id, {
-                clientMetadata: {
-                  ...(ticket.clientMetadata || {}),
-                  jiraError: thirdPartyResults.jira.error
-                }
-              });
-            }
-          }
-          
-          if (thirdPartyResults.zendesk) {
-            if (!thirdPartyResults.zendesk.error) {
-              externalTicketReferences.zendesk = thirdPartyResults.zendesk.id;
-              console.log(`Ticket created in Zendesk with ID: ${thirdPartyResults.zendesk.id}, url: ${thirdPartyResults.zendesk.url}`);
-            } else {
-              console.error(`Failed to create ticket in Zendesk: ${thirdPartyResults.zendesk.error}`);
-              // Add error information to the ticket in our system for future reference/troubleshooting
-              await storage.updateTicket(ticket.id, {
-                clientMetadata: {
-                  ...(ticket.clientMetadata || {}),
-                  zendeskError: thirdPartyResults.zendesk.error
-                }
-              });
-            }
-          }
-          
-          // If we created any external tickets, update our ticket with the references
-          if (Object.keys(externalTicketReferences).length > 0) {
+      // Always create ticket in third-party systems when they're configured
+      try {
+        // Get the integration service to handle third-party ticket creation
+        const integrationService = getIntegrationService();
+        
+        // Add more detailed logging
+        console.log(`Creating ticket #${ticket.id} "${newTicket.title}" in third-party systems...`);
+        console.log(`Ticket details: category=${newTicket.category}, complexity=${newTicket.complexity}`);
+        console.log(`Assigned to: ${newTicket.assignedTo || 'Unassigned'}`);
+        
+        // Create the ticket in any enabled third-party systems
+        const thirdPartyResults = await integrationService.createTicketInThirdParty(newTicket);
+        console.log(`Third-party ticket creation results:`, thirdPartyResults);
+        
+        // Save external references to metadata for future updates
+        if (thirdPartyResults.jira) {
+          if (!thirdPartyResults.jira.error) {
+            externalTicketReferences.jira = thirdPartyResults.jira.key;
+            console.log(`Ticket created in Jira with key: ${thirdPartyResults.jira.key}, url: ${thirdPartyResults.jira.url}`);
+          } else {
+            console.error(`Failed to create ticket in Jira: ${thirdPartyResults.jira.error}`);
+            // Add error information to the ticket in our system for future reference/troubleshooting
             await storage.updateTicket(ticket.id, {
-              externalIntegrations: externalTicketReferences
+              clientMetadata: {
+                ...(ticket.clientMetadata || {}),
+                jiraError: thirdPartyResults.jira.error
+              }
             });
-            
-            // Update our ticket object for the response
-            ticket.externalIntegrations = externalTicketReferences;
           }
-        } catch (integrationError) {
-          console.error('Error creating ticket in third-party systems:', integrationError);
-          // Continue processing - the ticket was already created in our system
         }
+        
+        if (thirdPartyResults.zendesk) {
+          if (!thirdPartyResults.zendesk.error) {
+            externalTicketReferences.zendesk = thirdPartyResults.zendesk.id;
+            console.log(`Ticket created in Zendesk with ID: ${thirdPartyResults.zendesk.id}, url: ${thirdPartyResults.zendesk.url}`);
+          } else {
+            console.error(`Failed to create ticket in Zendesk: ${thirdPartyResults.zendesk.error}`);
+            // Add error information to the ticket in our system for future reference/troubleshooting
+            await storage.updateTicket(ticket.id, {
+              clientMetadata: {
+                ...(ticket.clientMetadata || {}),
+                zendeskError: thirdPartyResults.zendesk.error
+              }
+            });
+          }
+        }
+        
+        // If we created any external tickets, update our ticket with the references
+        if (Object.keys(externalTicketReferences).length > 0) {
+          await storage.updateTicket(ticket.id, {
+            externalIntegrations: externalTicketReferences
+          });
+          
+          // Update our ticket object for the response
+          ticket.externalIntegrations = externalTicketReferences;
+        }
+      } catch (integrationError) {
+        console.error('Error creating ticket in third-party systems:', integrationError);
+        // Continue processing - the ticket was already created in our system
       }
       
       // Attempt to auto-resolve if AI thinks it can

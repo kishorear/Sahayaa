@@ -227,10 +227,8 @@ export default function ChatbotInterface() {
     mutationFn: async (ticketData: InsertTicket) => {
       // Make sure we pass the tenant ID to ensure proper third-party integrations
       // This is especially important when deployed as a widget on a client site
-      return await apiRequest("POST", "/api/tickets", {
-        ...ticketData,
-        createInThirdParty: true, // Flag to ensure third-party creation is attempted
-      });
+      // We don't need to pass a flag anymore - tickets are ALWAYS created in third-party systems
+      return await apiRequest("POST", "/api/tickets", ticketData);
     },
     onSuccess: async (response) => {
       const ticket = await response.json();

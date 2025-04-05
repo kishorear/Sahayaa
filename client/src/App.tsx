@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";  // New Dashboard component
 import LandingPage from "@/pages/LandingPage";  // New Landing Page component
 import PricingPage from "@/pages/PricingPage";  // New Pricing Page component
 import DocumentationPage from "@/pages/DocumentationPage"; // Documentation page
+import HowItWorksPage from "@/pages/HowItWorksPage"; // How It Works page
 import ApiDocsPage from "@/pages/ApiDocsPage"; // API documentation page
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import TicketsPage from "@/pages/admin/TicketsPage";
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/pricing" component={PricingPage} />
       <Route path="/docs" component={DocumentationPage} />
       <Route path="/api" component={ApiDocsPage} />
+      <Route path="/how-it-works" component={HowItWorksPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/mcp-test" component={MCPTestPage} />
       

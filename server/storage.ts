@@ -103,6 +103,7 @@ export interface IStorage {
   // Widget analytics operations
   getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined>;
   getWidgetAnalyticsByAdminId(adminId: number, tenantId?: number): Promise<WidgetAnalytics[]>;
+  getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]>;
   createWidgetAnalytics(analytics: InsertWidgetAnalytics): Promise<WidgetAnalytics>;
   updateWidgetAnalytics(id: number, updates: Partial<WidgetAnalytics>): Promise<WidgetAnalytics>;
   
@@ -1373,6 +1374,12 @@ export class MemStorage implements IStorage {
         analytics.adminId === adminId && 
         (!tenantId || analytics.tenantId === tenantId)
     );
+  }
+  
+  async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
+    // Return all widget analytics, optionally filtered by tenant
+    return Array.from(this.widgetAnalyticsData.values())
+      .filter(analytics => !tenantId || analytics.tenantId === tenantId);
   }
   
   async createWidgetAnalytics(insertAnalytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
@@ -3275,6 +3282,24 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
+    try {
+      if (tenantId) {
+        return await db
+          .select()
+          .from(widgetAnalytics)
+          .where(eq(widgetAnalytics.tenantId, tenantId));
+      } else {
+        return await db
+          .select()
+          .from(widgetAnalytics);
+      }
+    } catch (error) {
+      console.error('Failed to get all widget analytics:', error);
+      throw error;
+    }
+  }
+  
   async createWidgetAnalytics(insertAnalytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
     const analyticsToInsert = {
       ...insertAnalytics,
@@ -4047,6 +4072,15 @@ class StorageWrapper implements IStorage {
     }
   }
   
+  async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
+    try {
+      return await this.storageImpl.getAllWidgetAnalytics(tenantId);
+    } catch (error) {
+      console.error(`Error in getAllWidgetAnalytics():`, error);
+      throw error;
+    }
+  }
+  
   async createWidgetAnalytics(analytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
     try {
       return await this.storageImpl.createWidgetAnalytics(analytics);
@@ -4134,15 +4168,6 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.deleteSupportDocument(id, tenantId);
     } catch (error) {
       console.error(`Error in deleteSupportDocument():`, error);
-      throw error;
-    }
-  }
-
-  async incrementDocumentViewCount(id: number): Promise<void> {
-    try {
-      return await this.storageImpl.incrementDocumentViewCount(id);
-    } catch (error) {
-      console.error(`Error in incrementDocumentViewCount():`, error);
       throw error;
     }
   }

@@ -790,9 +790,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "N/A";
       
       // Calculate AI resolution percentage
-      const aiResolvedCount = tickets.filter(t => t.aiResolved).length;
-      const aiResolvedPercentage = totalTickets ? 
-        Math.round((aiResolvedCount / totalTickets) * 100) + "%" : 
+      // Get widget analytics to count auto-resolved chats that didn't create tickets
+      const widgetAnalytics = await storage.getAllWidgetAnalytics();
+      
+      // Count auto-resolved conversations from widget analytics metadata
+      let autoResolvedChatsCount = 0;
+      
+      for (const analytics of widgetAnalytics) {
+        if (analytics.metadata && typeof analytics.metadata === 'object') {
+          // Check if metadata contains autoResolved conversations
+          const metadata = analytics.metadata as Record<string, any>;
+          if (metadata.autoResolvedConversations) {
+            autoResolvedChatsCount += metadata.autoResolvedConversations;
+          }
+        }
+      }
+      
+      // Count tickets resolved by AI
+      const aiResolvedTicketsCount = tickets.filter(t => t.aiResolved).length;
+      
+      // Total of AI resolved interactions (tickets + auto-resolved chats)
+      const totalAiResolved = aiResolvedTicketsCount + autoResolvedChatsCount;
+      
+      // Total interactions (tickets + auto-resolved chats that didn't create tickets)
+      const totalInteractions = totalTickets + autoResolvedChatsCount;
+      
+      // Calculate the AI resolution percentage
+      const aiResolvedPercentage = totalInteractions > 0 ? 
+        Math.round((totalAiResolved / totalInteractions) * 100) + "%" : 
         "0%";
       
       res.status(200).json({
@@ -802,6 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiResolvedPercentage
       });
     } catch (error) {
+      console.error("Error getting metrics summary:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

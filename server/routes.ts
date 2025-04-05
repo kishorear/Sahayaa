@@ -772,9 +772,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let ticketsWithResponseTime = 0;
       
       for (const ticket of tickets) {
-        if (ticket.resolvedAt && ticket.createdAt) {
+        // Account for tickets with status = 'resolved' even if resolvedAt is null
+        if ((ticket.status === "resolved" || ticket.resolvedAt !== null) && ticket.createdAt) {
           const created = new Date(ticket.createdAt);
-          const resolved = new Date(ticket.resolvedAt);
+          
+          // Use resolvedAt if available, otherwise use updatedAt as a fallback for resolved tickets
+          const resolved = ticket.resolvedAt ? new Date(ticket.resolvedAt) : new Date(ticket.updatedAt);
+          
           const responseTimeHours = (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
           totalResponseTime += responseTimeHours;
           ticketsWithResponseTime++;

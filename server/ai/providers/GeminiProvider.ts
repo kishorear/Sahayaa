@@ -210,6 +210,53 @@ export class GeminiProvider implements AIProviderInterface {
     }
   }
   
+  async generateTicketTitle(
+    messages: Array<{ role: string; content: string }>,
+    context?: string
+  ): Promise<string> {
+    try {
+      // Get the generative model
+      const generativeModel = this.client.getGenerativeModel({ model: this.model });
+      
+      // Filter out system messages for title generation
+      const userMessages = messages.filter(m => m.role === 'user');
+      
+      if (userMessages.length === 0) {
+        return "Support Request";
+      }
+      
+      // Build prompt for title generation
+      let promptContent = `
+      Based on the following conversation, generate a concise, specific title (maximum 60 characters) 
+      that accurately describes the technical issue. Focus on the actual problem, and include error codes if mentioned.
+      The title should help support agents quickly understand the issue.
+      
+      ${messages.slice(-5).map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
+      
+      Generate a clear, specific title:
+      `;
+      
+      // Add context information if available
+      if (context) {
+        promptContent = `Use the following information for additional context:\n${context}\n\n${promptContent}`;
+      }
+      
+      const result = await generativeModel.generateContent(promptContent);
+      const response = result.response;
+      
+      // Get the title and make sure it's not too long
+      let title = response.text().trim();
+      if (title.length > 60) {
+        title = title.substring(0, 57) + '...';
+      }
+      
+      return title;
+    } catch (error) {
+      console.error("Error calling Gemini for ticket title generation:", error);
+      return "Support Request"; // Fallback title
+    }
+  }
+  
   async isAvailable(): Promise<boolean> {
     try {
       // Simple availability check - try to generate a simple response

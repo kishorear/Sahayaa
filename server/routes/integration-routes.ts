@@ -82,12 +82,12 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       maskedToken: '********'
     },
     jira: {
-      enabled: false,
-      baseUrl: '',
-      email: '',
-      apiToken: '',
+      enabled: true,
+      baseUrl: 'https://your-jira-instance.atlassian.net/rest/api/3',
+      email: 'test@example.com',
+      apiToken: 'dummy-token-for-testing',
       maskedToken: '********',
-      projectKey: ''
+      projectKey: 'TEST'
     }
   };
   

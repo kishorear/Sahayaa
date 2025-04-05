@@ -8,6 +8,7 @@ export const AiProviderTypeEnum = z.enum([
   'gemini',
   'anthropic',
   'aws-bedrock',
+  'bedrock', // Including legacy 'bedrock' type which maps to 'aws-bedrock' in the code
   'custom'
 ]);
 

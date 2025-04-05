@@ -250,6 +250,71 @@ export class BedrockProvider implements AIProviderInterface {
     }
   }
   
+  async generateTicketTitle(
+    messages: Array<{ role: string; content: string }>,
+    context?: string
+  ): Promise<string> {
+    try {
+      // Filter out system messages for title generation
+      const userMessages = messages.filter(m => m.role === 'user');
+      
+      if (userMessages.length === 0) {
+        return "Support Request";
+      }
+      
+      // Create the prompt for title generation
+      let prompt = `
+      Based on the following conversation, generate a concise, specific title (maximum 60 characters) 
+      that accurately describes the technical issue. Focus on the actual problem, and include error codes if mentioned.
+      The title should help support agents quickly understand the issue.
+      
+      ${messages.slice(-5).map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
+      
+      Generate a clear, specific title:
+      `;
+      
+      // Build system message
+      let systemPrompt = "You are an AI assistant that generates concise ticket titles for support requests.";
+      
+      if (context) {
+        systemPrompt += `\n\nUse this information to help understand the context of the conversation:\n${context}`;
+      }
+      
+      // Format the request body
+      const formattedBody = this.formatRequestBody(
+        this.model,
+        [{ role: 'user', content: prompt }],
+        context,
+        systemPrompt
+      );
+      
+      // Create the model command
+      const command = new InvokeModelCommand({
+        modelId: this.model,
+        body: Buffer.from(JSON.stringify(formattedBody)),
+        contentType: 'application/json',
+        accept: 'application/json'
+      });
+      
+      // Call the model
+      const response = await this.client.send(command);
+      
+      // Parse the response
+      const responseText = await this.parseResponseBody(response);
+      
+      // Get the title and make sure it's not too long
+      let title = responseText.trim();
+      if (title.length > 60) {
+        title = title.substring(0, 57) + '...';
+      }
+      
+      return title;
+    } catch (error) {
+      console.error("Error calling AWS Bedrock for ticket title generation:", error);
+      return "Support Request"; // Fallback title
+    }
+  }
+  
   async isAvailable(): Promise<boolean> {
     try {
       // Simple availability check with a basic request

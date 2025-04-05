@@ -167,6 +167,39 @@ export class CustomProvider implements AIProviderInterface {
     }
   }
   
+  async generateTicketTitle(
+    messages: Array<{ role: string; content: string }>,
+    context?: string
+  ): Promise<string> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/generate-title`, 
+        {
+          messages,
+          context
+        },
+        { headers: this.headers }
+      );
+      
+      // Validate the response
+      if (!response.data || typeof response.data.title !== 'string') {
+        throw new Error('Invalid title generation response from custom AI provider');
+      }
+      
+      // Get the title and make sure it's not too long
+      let title = response.data.title.trim();
+      if (title.length > 60) {
+        title = title.substring(0, 57) + '...';
+      }
+      
+      return title;
+    } catch (error) {
+      console.error("Error calling custom AI provider for title generation:", error);
+      // Return a default title in case of error
+      return "Support Request";
+    }
+  }
+  
   async isAvailable(): Promise<boolean> {
     try {
       // Check if the service is available by pinging the health endpoint

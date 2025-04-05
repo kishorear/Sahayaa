@@ -10,7 +10,6 @@ import {
   aiProviders,
   supportDocuments,
   documentUsage,
-  userFeedback,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -32,9 +31,7 @@ import {
   type SupportDocument,
   type InsertSupportDocument,
   type DocumentUsage,
-  type InsertDocumentUsage,
-  type UserFeedback,
-  type InsertUserFeedback
+  type InsertDocumentUsage
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -127,13 +124,6 @@ export interface IStorage {
   getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]>;
   getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any>;
   
-  // User feedback operations
-  getUserFeedback(tenantId: number): Promise<UserFeedback[]>;
-  getUserFeedbackById(id: number): Promise<UserFeedback | undefined>;
-  createUserFeedback(feedback: InsertUserFeedback): Promise<UserFeedback>;
-  resolveUserFeedback(id: number, resolvedBy: number): Promise<UserFeedback>;
-  getUserFeedbackAnalytics(tenantId: number): Promise<any>;
-  
   // Session management
   sessionStore: session.Store;
 }
@@ -149,7 +139,6 @@ export class MemStorage implements IStorage {
   private aiProviders: Map<number, AiProvider>;
   private supportDocuments: Map<number, SupportDocument>;
   private documentUsageData: Map<number, DocumentUsage>;
-  private userFeedbackData: Map<number, UserFeedback>;
   private tenantIdCounter: number;
   private userIdCounter: number;
   private ticketIdCounter: number;
@@ -160,7 +149,6 @@ export class MemStorage implements IStorage {
   private aiProviderIdCounter: number;
   private supportDocumentIdCounter: number;
   private documentUsageIdCounter: number;
-  private userFeedbackIdCounter: number;
   
   // Add caches for critical data in production
   private userCache: Map<string, User> = new Map();
@@ -183,8 +171,6 @@ export class MemStorage implements IStorage {
     this.aiProviders = new Map();
     this.supportDocuments = new Map();
     this.documentUsageData = new Map();
-    this.userFeedbackData = new Map();
-    this.userFeedbackIdCounter = 1;
     this.tenantIdCounter = 1;
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
@@ -1713,119 +1699,6 @@ export class MemStorage implements IStorage {
         start: startDate,
         end: endDate
       }
-    };
-  }
-
-  // User feedback operations
-  async getUserFeedback(tenantId: number): Promise<UserFeedback[]> {
-    const feedbacks = Array.from(this.userFeedbackData.values());
-    return feedbacks.filter(feedback => feedback.tenantId === tenantId);
-  }
-
-  async getUserFeedbackById(id: number): Promise<UserFeedback | undefined> {
-    return this.userFeedbackData.get(id);
-  }
-
-  async createUserFeedback(feedback: InsertUserFeedback): Promise<UserFeedback> {
-    const id = this.userFeedbackIdCounter++;
-    const now = new Date();
-    
-    const newFeedback: UserFeedback = {
-      ...feedback,
-      id,
-      createdAt: now,
-      updatedAt: now,
-      resolvedAt: null,
-      resolvedBy: null
-    };
-    
-    this.userFeedbackData.set(id, newFeedback);
-    return newFeedback;
-  }
-
-  async resolveUserFeedback(id: number, resolvedBy: number): Promise<UserFeedback> {
-    const feedback = await this.getUserFeedbackById(id);
-    
-    if (!feedback) {
-      throw new Error(`Feedback with ID ${id} not found`);
-    }
-    
-    const updatedFeedback: UserFeedback = {
-      ...feedback,
-      resolvedAt: new Date(),
-      resolvedBy,
-      updatedAt: new Date()
-    };
-    
-    this.userFeedbackData.set(id, updatedFeedback);
-    return updatedFeedback;
-  }
-
-  async getUserFeedbackAnalytics(tenantId: number): Promise<any> {
-    const feedbacks = await this.getUserFeedback(tenantId);
-    
-    // Count by rating
-    const countByRating = new Map<number, number>();
-    for (let i = 1; i <= 5; i++) {
-      countByRating.set(i, 0);
-    }
-    
-    // Count by category
-    const countByCategory = new Map<string, number>();
-    
-    // Count resolved vs unresolved
-    let resolvedCount = 0;
-    let unresolvedCount = 0;
-    
-    // Count by day
-    const feedbackByDay = new Map<string, number>();
-    
-    for (const feedback of feedbacks) {
-      // Count by rating
-      const rating = feedback.rating;
-      countByRating.set(rating, (countByRating.get(rating) || 0) + 1);
-      
-      // Count by category
-      if (feedback.category) {
-        const categoryCount = countByCategory.get(feedback.category) || 0;
-        countByCategory.set(feedback.category, categoryCount + 1);
-      }
-      
-      // Count resolved status
-      if (feedback.resolvedAt) {
-        resolvedCount++;
-      } else {
-        unresolvedCount++;
-      }
-      
-      // Count by day
-      const day = feedback.createdAt.toISOString().split('T')[0];
-      const dayCount = feedbackByDay.get(day) || 0;
-      feedbackByDay.set(day, dayCount + 1);
-    }
-    
-    // Calculate average rating
-    let totalRating = 0;
-    let ratingCount = 0;
-    
-    for (const [rating, count] of countByRating.entries()) {
-      totalRating += rating * count;
-      ratingCount += count;
-    }
-    
-    const averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
-    
-    return {
-      totalFeedback: feedbacks.length,
-      averageRating,
-      countByRating: Object.fromEntries(countByRating),
-      countByCategory: Object.fromEntries(countByCategory),
-      resolutionStatus: {
-        resolved: resolvedCount,
-        unresolved: unresolvedCount,
-        resolutionRate: feedbacks.length > 0 ? (resolvedCount / feedbacks.length) * 100 : 0
-      },
-      feedbackByDay: Object.fromEntries(feedbackByDay)
     };
   }
 }
@@ -3778,109 +3651,6 @@ export class DatabaseStorage implements IStorage {
       }
     };
   }
-
-  // User feedback operations
-  async getUserFeedback(tenantId: number): Promise<UserFeedback[]> {
-    return await db.select().from(userFeedback).where(eq(userFeedback.tenantId, tenantId));
-  }
-
-  async getUserFeedbackById(id: number): Promise<UserFeedback | undefined> {
-    const results = await db.select().from(userFeedback).where(eq(userFeedback.id, id));
-    return results[0];
-  }
-
-  async createUserFeedback(feedback: InsertUserFeedback): Promise<UserFeedback> {
-    const [newFeedback] = await db.insert(userFeedback).values(feedback).returning();
-    return newFeedback;
-  }
-
-  async resolveUserFeedback(id: number, resolvedBy: number): Promise<UserFeedback> {
-    const now = new Date();
-    const [updatedFeedback] = await db
-      .update(userFeedback)
-      .set({ 
-        resolvedAt: now, 
-        resolvedBy, 
-        updatedAt: now 
-      })
-      .where(eq(userFeedback.id, id))
-      .returning();
-    
-    if (!updatedFeedback) {
-      throw new Error(`Feedback with ID ${id} not found`);
-    }
-    
-    return updatedFeedback;
-  }
-
-  async getUserFeedbackAnalytics(tenantId: number): Promise<any> {
-    // Get all feedback for the tenant
-    const feedbacks = await this.getUserFeedback(tenantId);
-    
-    // Count by rating
-    const countByRating = new Map<number, number>();
-    for (let i = 1; i <= 5; i++) {
-      countByRating.set(i, 0);
-    }
-    
-    // Count by category
-    const countByCategory = new Map<string, number>();
-    
-    // Count resolved vs unresolved
-    let resolvedCount = 0;
-    let unresolvedCount = 0;
-    
-    // Count by day
-    const feedbackByDay = new Map<string, number>();
-    
-    for (const feedback of feedbacks) {
-      // Count by rating
-      const rating = feedback.rating;
-      countByRating.set(rating, (countByRating.get(rating) || 0) + 1);
-      
-      // Count by category
-      if (feedback.category) {
-        const categoryCount = countByCategory.get(feedback.category) || 0;
-        countByCategory.set(feedback.category, categoryCount + 1);
-      }
-      
-      // Count resolved status
-      if (feedback.resolvedAt) {
-        resolvedCount++;
-      } else {
-        unresolvedCount++;
-      }
-      
-      // Count by day
-      const day = feedback.createdAt.toISOString().split('T')[0];
-      const dayCount = feedbackByDay.get(day) || 0;
-      feedbackByDay.set(day, dayCount + 1);
-    }
-    
-    // Calculate average rating
-    let totalRating = 0;
-    let ratingCount = 0;
-    
-    for (const [rating, count] of countByRating.entries()) {
-      totalRating += rating * count;
-      ratingCount += count;
-    }
-    
-    const averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
-    
-    return {
-      totalFeedback: feedbacks.length,
-      averageRating,
-      countByRating: Object.fromEntries(countByRating),
-      countByCategory: Object.fromEntries(countByCategory),
-      resolutionStatus: {
-        resolved: resolvedCount,
-        unresolved: unresolvedCount,
-        resolutionRate: feedbacks.length > 0 ? (resolvedCount / feedbacks.length) * 100 : 0
-      },
-      feedbackByDay: Object.fromEntries(feedbackByDay)
-    };
-  }
 }
 
 // Create a function to initialize storage with fallback to in-memory if database fails
@@ -4444,52 +4214,6 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.incrementDocumentViewCount(id);
     } catch (error) {
       console.error(`Error in incrementDocumentViewCount(${id}):`, error);
-      throw error;
-    }
-  }
-
-  // User feedback methods
-  async getUserFeedback(tenantId: number): Promise<UserFeedback[]> {
-    try {
-      return await this.storageImpl.getUserFeedback(tenantId);
-    } catch (error) {
-      console.error(`Error in getUserFeedback(${tenantId}):`, error);
-      throw error;
-    }
-  }
-
-  async getUserFeedbackById(id: number): Promise<UserFeedback | undefined> {
-    try {
-      return await this.storageImpl.getUserFeedbackById(id);
-    } catch (error) {
-      console.error(`Error in getUserFeedbackById(${id}):`, error);
-      throw error;
-    }
-  }
-
-  async createUserFeedback(feedback: InsertUserFeedback): Promise<UserFeedback> {
-    try {
-      return await this.storageImpl.createUserFeedback(feedback);
-    } catch (error) {
-      console.error(`Error in createUserFeedback():`, error);
-      throw error;
-    }
-  }
-
-  async resolveUserFeedback(id: number, resolvedBy: number): Promise<UserFeedback> {
-    try {
-      return await this.storageImpl.resolveUserFeedback(id, resolvedBy);
-    } catch (error) {
-      console.error(`Error in resolveUserFeedback(${id}):`, error);
-      throw error;
-    }
-  }
-
-  async getUserFeedbackAnalytics(tenantId: number): Promise<any> {
-    try {
-      return await this.storageImpl.getUserFeedbackAnalytics(tenantId);
-    } catch (error) {
-      console.error(`Error in getUserFeedbackAnalytics(${tenantId}):`, error);
       throw error;
     }
   }

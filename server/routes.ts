@@ -30,8 +30,6 @@ import { registerTeamMemberRoutes } from "./routes/team-member-routes";
 import { registerDocumentRoutes } from "./routes/document-routes";
 // Import the download routes registration function
 import { registerDownloadRoutes } from "./routes/download-routes";
-// Import the feedback routes registration function
-import { registerFeedbackRoutes } from "./routes/feedback-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -96,9 +94,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register document routes
   registerDocumentRoutes(app, requireAuth, requireRole);
-  
-  // Register feedback routes
-  registerFeedbackRoutes(app, requireAuth, requireRole);
   
   // Register download routes (no auth required - public downloads)
   registerDownloadRoutes(app);

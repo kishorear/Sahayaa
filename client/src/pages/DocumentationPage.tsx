@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, Code, MessageSquare, Puzzle, Key, CloudLightning, Server, GitMerge } from "lucide-react";
+import { BookOpen, Code, MessageSquare, Puzzle, Key, CloudLightning, Server, GitMerge, HelpCircle } from "lucide-react";
 import { Link } from "wouter";
 
 export default function DocumentationPage() {
@@ -19,12 +19,18 @@ export default function DocumentationPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="getting-started" className="mb-8">
+      <Tabs defaultValue="how-it-works" className="mb-8">
         <TabsList className="mb-4">
           <TabsTrigger value="getting-started">
             <div className="flex items-center">
               <Puzzle className="mr-2 h-4 w-4" />
               Getting Started
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="how-it-works">
+            <div className="flex items-center">
+              <HelpCircle className="mr-2 h-4 w-4" />
+              How It Works
             </div>
           </TabsTrigger>
           <TabsTrigger value="features">
@@ -79,6 +85,111 @@ export default function DocumentationPage() {
                   <li><strong>Customize Chat Widget</strong> - Configure and integrate the chat widget into your website.</li>
                   <li><strong>Train Your Team</strong> - Get your support team familiar with the dashboard and tools.</li>
                 </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="how-it-works" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>How the AI Support Platform Works</CardTitle>
+              <CardDescription>
+                A comprehensive guide to understanding the core functionality and technical architecture of the AI Support Platform.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="prose max-w-none">
+                <h3>Platform Architecture Overview</h3>
+                <p>
+                  The AI Support Platform is built on a modern, scalable architecture designed to handle enterprise support operations efficiently. It consists of several interconnected components working together:
+                </p>
+                <ul>
+                  <li><strong>Multi-Tenant Database</strong> - Securely stores data for multiple organizations with complete isolation</li>
+                  <li><strong>AI Processing Pipeline</strong> - Analyzes and processes customer inquiries using multiple AI providers</li>
+                  <li><strong>Integration Layer</strong> - Connects with third-party systems like Jira and Zendesk</li>
+                  <li><strong>Web Application</strong> - Provides administrative interface and dashboards</li>
+                  <li><strong>Embeddable Chat Widget</strong> - Customer-facing component that can be integrated into any website</li>
+                </ul>
+
+                <h3>Multi-AI Provider System</h3>
+                <p>
+                  The platform uses a sophisticated multi-AI provider architecture that enables organizations to leverage different AI technologies simultaneously:
+                </p>
+                <ul>
+                  <li><strong>Primary Provider Selection</strong> - Configure one primary AI provider (OpenAI, Anthropic, Google Gemini, or AWS Bedrock)</li>
+                  <li><strong>Provider Failover</strong> - Automatic fallback to secondary providers if the primary is unavailable</li>
+                  <li><strong>Operation-Specific Routing</strong> - Different operations (chat, ticket classification, auto-resolution) can use different AI providers</li>
+                  <li><strong>Custom Provider Integration</strong> - Support for custom AI providers through standardized REST API interface</li>
+                </ul>
+
+                <h3>End-to-End Support Workflow</h3>
+                <p>
+                  When a customer interacts with the support system, the following process takes place:
+                </p>
+                
+                <h4>1. Initial Contact</h4>
+                <p>
+                  Customer initiates contact through one of several channels:
+                </p>
+                <ul>
+                  <li><strong>Chat Widget</strong> - Embedded in your website or application</li>
+                  <li><strong>Email</strong> - Sent to your configured support email address</li>
+                  <li><strong>API</strong> - Via direct API call from your other systems</li>
+                </ul>
+
+                <h4>2. AI Analysis & Classification</h4>
+                <p>
+                  The system processes the inquiry using AI capabilities:
+                </p>
+                <ul>
+                  <li><strong>NLP Processing</strong> - Natural language processing extracts key details</li>
+                  <li><strong>Knowledge Base Lookup</strong> - Relevant documentation is retrieved from your knowledge base</li>
+                  <li><strong>Classification</strong> - Ticket is categorized and assigned complexity level</li>
+                  <li><strong>Auto-Resolution Assessment</strong> - System determines if the issue can be automatically resolved</li>
+                </ul>
+
+                <h4>3. Resolution Pathways</h4>
+                <p>
+                  Based on the analysis, the ticket follows one of these paths:
+                </p>
+                <ul>
+                  <li><strong>Path A: Automatic Resolution</strong> - Simple issues are resolved by the AI without human intervention</li>
+                  <li><strong>Path B: Guided Self-Service</strong> - AI suggests knowledge base articles that may resolve the issue</li>
+                  <li><strong>Path C: Human Agent</strong> - Complex issues are routed to appropriate human agents with AI-enhanced context</li>
+                </ul>
+
+                <h4>4. Integration Actions</h4>
+                <p>
+                  For tickets requiring human attention, the platform automatically:
+                </p>
+                <ul>
+                  <li><strong>Creates Tickets</strong> - In both the platform database and any connected third-party systems (e.g., Jira, Zendesk)</li>
+                  <li><strong>Synchronizes Updates</strong> - Changes made in either system are reflected in both places</li>
+                  <li><strong>Attaches Context</strong> - AI-generated notes and relevant knowledge are included</li>
+                </ul>
+
+                <h4>5. Analytics & Learning</h4>
+                <p>
+                  Throughout the process, the system:
+                </p>
+                <ul>
+                  <li><strong>Collects Performance Data</strong> - Tracks resolution times, customer satisfaction, and AI accuracy</li>
+                  <li><strong>Generates Reports</strong> - Creates actionable insights for continuous improvement</li>
+                  <li><strong>Suggests Knowledge Base Updates</strong> - Identifies gaps in documentation based on customer inquiries</li>
+                </ul>
+
+                <h3>Security & Compliance Features</h3>
+                <p>
+                  The platform incorporates enterprise-grade security measures:
+                </p>
+                <ul>
+                  <li><strong>Data Isolation</strong> - Complete separation between tenant data</li>
+                  <li><strong>Role-Based Access</strong> - Granular permissions for different user types</li>
+                  <li><strong>Authentication Options</strong> - MFA and SSO integration</li>
+                  <li><strong>Audit Logging</strong> - Comprehensive logging of all system activities</li>
+                  <li><strong>Data Encryption</strong> - Both at rest and in transit</li>
+                </ul>
               </div>
             </CardContent>
           </Card>

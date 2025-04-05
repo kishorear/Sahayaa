@@ -315,3 +315,26 @@ export const insertDocumentUsageSchema = createInsertSchema(documentUsage)
 
 export type DocumentUsage = typeof documentUsage.$inferSelect;
 export type InsertDocumentUsage = z.infer<typeof insertDocumentUsageSchema>;
+
+// User feedback schema
+export const userFeedback = pgTable("user_feedback", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  rating: integer("rating").notNull(), // 1-5 star rating
+  comments: text("comments"), // Optional text feedback
+  source: text("source").notNull().default("widget"), // 'widget', 'email', 'portal', etc.
+  sessionId: text("session_id"), // To associate feedback with a specific chat session
+  ticketId: integer("ticket_id"), // If feedback is related to a specific ticket
+  metadata: json("metadata").default({}), // Additional metadata (browser, OS, etc.)
+  userEmail: text("user_email"), // Optional user email for follow-up
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolved: boolean("resolved").default(false), // Whether feedback has been addressed
+  resolvedBy: integer("resolved_by"), // User ID who resolved the feedback
+  resolvedAt: timestamp("resolved_at"), // When feedback was resolved
+});
+
+export const insertUserFeedbackSchema = createInsertSchema(userFeedback)
+  .omit({ id: true, createdAt: true, resolved: true, resolvedBy: true, resolvedAt: true });
+
+export type UserFeedback = typeof userFeedback.$inferSelect;
+export type InsertUserFeedback = z.infer<typeof insertUserFeedbackSchema>;

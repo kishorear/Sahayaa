@@ -20,9 +20,6 @@ export default function HowItWorksPage() {
               </div>
             </Link>
             <div className="flex items-center space-x-6">
-              <Link href="/#features">
-                <span className="hover:text-primary transition-colors cursor-pointer">Features</span>
-              </Link>
               <Link href="/pricing">
                 <span className="hover:text-primary transition-colors cursor-pointer">Pricing</span>
               </Link>

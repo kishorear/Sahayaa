@@ -16,9 +16,6 @@ export default function LandingPage() {
               <span className="ml-2 text-xl font-bold">SupportAI</span>
             </div>
             <div className="flex items-center space-x-6">
-              <Link href="/#features">
-                <span className="hover:text-primary transition-colors cursor-pointer">Features</span>
-              </Link>
               <Link href="/pricing">
                 <span className="hover:text-primary transition-colors cursor-pointer">Pricing</span>
               </Link>
@@ -271,9 +268,6 @@ export default function LandingPage() {
               <p className="mt-2 text-sm">AI-powered customer support solution</p>
             </div>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-              <Link href="/#features">
-                <span className="hover:text-white transition-colors cursor-pointer">Features</span>
-              </Link>
               <Link href="/pricing">
                 <span className="hover:text-white transition-colors cursor-pointer">Pricing</span>
               </Link>

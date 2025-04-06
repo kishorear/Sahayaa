@@ -19,6 +19,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User, Bot, CircleCheck, Clock, Calendar } from "lucide-react";
+import { TicketStatusProgress } from "@/components/admin/TicketStatusProgress";
 
 export default function TicketDetails() {
   const { id } = useParams<{ id: string }>();
@@ -209,7 +210,7 @@ export default function TicketDetails() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
-              <div>
+              <div className="space-y-4">
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
                 <Select
                   value={selectedStatus || ticket.status}
@@ -225,6 +226,11 @@ export default function TicketDetails() {
                     <SelectItem value="resolved">Resolved</SelectItem>
                   </SelectContent>
                 </Select>
+                
+                {/* Animated Ticket Status Progress Bar */}
+                <div className="mt-3">
+                  <TicketStatusProgress status={selectedStatus || ticket.status} />
+                </div>
               </div>
 
               <div>
@@ -236,13 +242,13 @@ export default function TicketDetails() {
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Assigned To</h3>
                 <div className="flex items-center">
                   <User className="h-5 w-5 mr-2 text-gray-400" />
-                  <span>{ticket.assignedTo || "Unassigned"}</span>
+                  <span>{ticket.assignedTo ? ticket.assignedTo : "Unassigned"}</span>
                 </div>
               </div>
 
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Complexity</h3>
-                <ComplexityBadge complexity={ticket.complexity} />
+                <ComplexityBadge complexity={ticket.complexity || "medium"} />
               </div>
 
               <div>
@@ -298,15 +304,15 @@ function StatusBadge({ status }: { status: string }) {
     case "new":
       return <Badge variant="destructive">New</Badge>;
     case "in_progress":
-      return <Badge variant="warning" className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
+      return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">In Progress</Badge>;
     case "resolved":
-      return <Badge variant="success" className="bg-green-100 text-green-800">Resolved</Badge>;
+      return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Resolved</Badge>;
     default:
       return <Badge>{status}</Badge>;
   }
 }
 
-function ComplexityBadge({ complexity }: { complexity: string }) {
+function ComplexityBadge({ complexity }: { complexity: string | null }) {
   switch (complexity) {
     case "simple":
       return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Simple</Badge>;
@@ -315,7 +321,7 @@ function ComplexityBadge({ complexity }: { complexity: string }) {
     case "complex":
       return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Complex</Badge>;
     default:
-      return <Badge variant="outline">{complexity}</Badge>;
+      return <Badge variant="outline">{complexity || "Medium"}</Badge>;
   }
 }
 

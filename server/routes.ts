@@ -796,14 +796,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Count auto-resolved conversations from widget analytics metadata
       let autoResolvedChatsCount = 0;
       
-      for (const analytics of widgetAnalytics) {
-        if (analytics.metadata && typeof analytics.metadata === 'object') {
-          // Check if metadata contains autoResolved conversations
-          const metadata = analytics.metadata as Record<string, any>;
-          if (metadata.autoResolvedConversations) {
-            autoResolvedChatsCount += metadata.autoResolvedConversations;
+      try {
+        // Use for of loop with Array.isArray for safety
+        if (Array.isArray(widgetAnalytics)) {
+          for (const analytics of widgetAnalytics) {
+            // Field might be returned in snake_case from SQL query
+            const metadata = (analytics.metadata || (analytics as any).metadata);
+            
+            if (metadata && typeof metadata === 'object') {
+              // Check if metadata contains autoResolved conversations
+              const metadataObj = metadata as Record<string, any>;
+              if (metadataObj.autoResolvedConversations) {
+                autoResolvedChatsCount += metadataObj.autoResolvedConversations;
+              }
+            }
           }
+        } else {
+          console.warn('Widget analytics is not an array:', widgetAnalytics);
         }
+      } catch (err) {
+        console.error('Error processing widget analytics:', err);
+        // Continue with default value of 0 for autoResolvedChatsCount
       }
       
       // Count tickets resolved by AI

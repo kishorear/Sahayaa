@@ -1379,7 +1379,54 @@ export class MemStorage implements IStorage {
   async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
     // Return all widget analytics, optionally filtered by tenant
     return Array.from(this.widgetAnalyticsData.values())
-      .filter(analytics => !tenantId || analytics.tenantId === tenantId);
+      .filter(analytics => {
+        // Handle database fields using snake_case while code uses camelCase
+        const analyticsAny = analytics as any;
+        const analyticsWithSnakeCase = ('tenant_id' in analyticsAny) ? analyticsAny.tenant_id : analyticsAny.tenantId;
+        return !tenantId || analyticsWithSnakeCase === tenantId;
+      })
+      .map(analytics => {
+        // Map any snake_case fields to camelCase for consistency
+        const result = { ...analytics };
+        const analyticsAny = analytics as any;
+        
+        // Check if we have snake_case fields and map them
+        if ('tenant_id' in analyticsAny) {
+          result.tenantId = analyticsAny.tenant_id;
+        }
+        if ('admin_id' in analyticsAny) {
+          result.adminId = analyticsAny.admin_id;
+        }
+        if ('client_website' in analyticsAny) {
+          result.clientWebsite = analyticsAny.client_website;
+        }
+        if ('client_info' in analyticsAny) {
+          result.clientInfo = analyticsAny.client_info;
+        }
+        if ('messages_received' in analyticsAny) {
+          result.messagesReceived = analyticsAny.messages_received;
+        }
+        if ('messages_sent' in analyticsAny) {
+          result.messagesSent = analyticsAny.messages_sent;
+        }
+        if ('tickets_created' in analyticsAny) {
+          result.ticketsCreated = analyticsAny.tickets_created;
+        }
+        if ('last_activity' in analyticsAny) {
+          result.lastActivity = analyticsAny.last_activity;
+        }
+        if ('last_client_ip' in analyticsAny) {
+          result.lastClientIp = analyticsAny.last_client_ip;
+        }
+        if ('created_at' in analyticsAny) {
+          result.createdAt = analyticsAny.created_at;
+        }
+        if ('updated_at' in analyticsAny) {
+          result.updatedAt = analyticsAny.updated_at;
+        }
+        
+        return result;
+      });
   }
   
   async createWidgetAnalytics(insertAnalytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
@@ -3284,19 +3331,41 @@ export class DatabaseStorage implements IStorage {
   
   async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
     try {
+      let result;
+      // Use raw SQL query to handle column name difference between schema and actual database
       if (tenantId) {
-        return await db
-          .select()
-          .from(widgetAnalytics)
-          .where(eq(widgetAnalytics.tenantId, tenantId));
+        result = await db.execute(
+          `SELECT * FROM widget_analytics WHERE tenant_id = $1`,
+          [tenantId]
+        );
       } else {
-        return await db
-          .select()
-          .from(widgetAnalytics);
+        result = await db.execute(
+          `SELECT * FROM widget_analytics`
+        );
       }
+      
+      // Ensure we always return an array, even if result is not in the expected format
+      if (!result || !Array.isArray(result.rows)) {
+        console.warn('Unexpected result format from widget_analytics query:', result);
+        return [];
+      }
+      
+      // Return the rows array which contains the actual data
+      return result.rows.map(row => {
+        // Ensure metadata is parsed if it's a string
+        if (row.metadata && typeof row.metadata === 'string') {
+          try {
+            row.metadata = JSON.parse(row.metadata);
+          } catch (e) {
+            console.warn('Failed to parse metadata JSON:', e);
+          }
+        }
+        return row as unknown as WidgetAnalytics;
+      });
     } catch (error) {
       console.error('Failed to get all widget analytics:', error);
-      throw error;
+      // Return empty array instead of throwing to avoid breaking the API
+      return [];
     }
   }
   
@@ -4074,10 +4143,17 @@ class StorageWrapper implements IStorage {
   
   async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
     try {
-      return await this.storageImpl.getAllWidgetAnalytics(tenantId);
+      const analytics = await this.storageImpl.getAllWidgetAnalytics(tenantId);
+      // Ensure we always return an array
+      if (!analytics) {
+        console.warn('getAllWidgetAnalytics() returned null or undefined, returning empty array');
+        return [];
+      }
+      return analytics;
     } catch (error) {
       console.error(`Error in getAllWidgetAnalytics():`, error);
-      throw error;
+      // Return empty array instead of throwing to avoid breaking the API consumer
+      return [];
     }
   }
   

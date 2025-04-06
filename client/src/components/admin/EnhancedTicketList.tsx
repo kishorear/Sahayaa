@@ -27,7 +27,9 @@ import {
 // Ticket status component with appropriate colors
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
-    case "open":
+    case "new":
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Open</Badge>;
+    case "open": // Supporting both "new" and "open" for flexibility
       return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Open</Badge>;
     case "in_progress":
       return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">In Progress</Badge>;
@@ -36,7 +38,7 @@ function StatusBadge({ status }: { status: string }) {
     case "closed":
       return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Closed</Badge>;
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return <Badge variant="outline" className="capitalize">{status.replace('_', ' ')}</Badge>;
   }
 }
 
@@ -99,7 +101,12 @@ export default function EnhancedTicketList() {
 
   // Filter and search logic
   const filteredTickets = tickets?.filter(ticket => {
-    // Filter by status
+    // Filter by tab/view - this is the main status filter from the tabs
+    if (currentView !== "all" && ticket.status !== currentView) {
+      return false;
+    }
+    
+    // Filter by status dropdown (additional filtering)
     if (filterStatus !== "all" && ticket.status !== filterStatus) {
       return false;
     }
@@ -157,7 +164,7 @@ export default function EnhancedTicketList() {
           <Tabs value={currentView} onValueChange={setCurrentView} className="w-full">
             <TabsList className="grid grid-cols-4 mb-6">
               <TabsTrigger value="all">All Tickets</TabsTrigger>
-              <TabsTrigger value="open">Open</TabsTrigger>
+              <TabsTrigger value="new">Open</TabsTrigger>
               <TabsTrigger value="in_progress">In Progress</TabsTrigger>
               <TabsTrigger value="resolved">Resolved</TabsTrigger>
             </TabsList>
@@ -265,7 +272,7 @@ export default function EnhancedTicketList() {
                                 <SelectValue placeholder="Change Status" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="new">Open</SelectItem>
                                 <SelectItem value="in_progress">In Progress</SelectItem>
                                 <SelectItem value="resolved">Resolved</SelectItem>
                                 <SelectItem value="closed">Closed</SelectItem>

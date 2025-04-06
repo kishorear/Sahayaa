@@ -102,6 +102,31 @@ export function registerWidgetAnalyticsRoutes(app: Express, requireAuth: any) {
     }
   });
   
+  // Import helper function for time period filtering
+  const getTimePeriodCutoff = (timePeriod: string): Date => {
+    const now = new Date();
+    const cutoffDate = new Date();
+    
+    switch (timePeriod) {
+      case 'daily':
+        cutoffDate.setDate(now.getDate() - 1);
+        break;
+      case 'weekly':
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case 'monthly':
+        cutoffDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'quarterly':
+        cutoffDate.setMonth(now.getMonth() - 3);
+        break;
+      default:
+        cutoffDate.setDate(now.getDate() - 7); // Default to weekly
+    }
+    
+    return cutoffDate;
+  };
+
   // Admin endpoint - get all analytics for the current admin's tenant
   app.get('/api/admin/widget-analytics', requireAuth, async (req: Request, res: Response) => {
     try {
@@ -109,12 +134,22 @@ export function registerWidgetAnalyticsRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: "Not authenticated" });
       }
       
+      const timePeriod = req.query.timePeriod as string || 'weekly';
+      
+      // Get all analytics data for this admin
       const analyticsData = await storage.getWidgetAnalyticsByAdminId(
         req.user.id, 
         req.user.tenantId
       );
       
-      res.status(200).json(analyticsData);
+      // Filter data based on timePeriod
+      const cutoffDate = getTimePeriodCutoff(timePeriod);
+      const filteredData = analyticsData.filter(item => {
+        const lastActivity = new Date(item.lastActivity);
+        return lastActivity >= cutoffDate;
+      });
+      
+      res.status(200).json(filteredData);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

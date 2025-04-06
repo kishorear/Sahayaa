@@ -33,6 +33,33 @@ import { registerDownloadRoutes } from "./routes/download-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
+/**
+ * Calculate the cutoff date based on the selected time period
+ */
+function getTimePeriodCutoff(timePeriod: string): Date {
+  const now = new Date();
+  const cutoffDate = new Date();
+  
+  switch (timePeriod) {
+    case 'daily':
+      cutoffDate.setDate(now.getDate() - 1);
+      break;
+    case 'weekly':
+      cutoffDate.setDate(now.getDate() - 7);
+      break;
+    case 'monthly':
+      cutoffDate.setMonth(now.getMonth() - 1);
+      break;
+    case 'quarterly':
+      cutoffDate.setMonth(now.getMonth() - 3);
+      break;
+    default:
+      cutoffDate.setDate(now.getDate() - 7); // Default to weekly
+  }
+  
+  return cutoffDate;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Add enhanced error handlers for database-related errors in all routes
   const handleDatabaseError = (error: any, res: Response) => {
@@ -762,10 +789,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DASHBOARD METRICS - Require admin or support-agent roles
   app.get("/api/metrics/summary", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
+      const timePeriod = req.query.timePeriod as string || 'weekly';
       const tickets = await storage.getAllTickets();
       
-      const totalTickets = tickets.length;
-      const resolvedTickets = tickets.filter(t => t.status === "resolved" || t.resolvedAt !== null).length;
+      // Filter tickets based on timePeriod
+      const cutoffDate = getTimePeriodCutoff(timePeriod);
+      const filteredTickets = tickets.filter(ticket => {
+        const ticketDate = new Date(ticket.createdAt);
+        return ticketDate >= cutoffDate;
+      });
+      
+      const totalTickets = filteredTickets.length;
+      const resolvedTickets = filteredTickets.filter(t => t.status === "resolved" || t.resolvedAt !== null).length;
       
       // Calculate avg response time (placeholder calculation, would be more accurate in real app)
       let totalResponseTime = 0;
@@ -847,12 +882,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/metrics/categories", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
+      const timePeriod = req.query.timePeriod as string || 'weekly';
       const tickets = await storage.getAllTickets();
+      
+      // Filter tickets based on timePeriod
+      const cutoffDate = getTimePeriodCutoff(timePeriod);
+      const filteredTickets = tickets.filter(ticket => {
+        const ticketDate = new Date(ticket.createdAt);
+        return ticketDate >= cutoffDate;
+      });
       
       // Count tickets by category
       const categoryCount: Record<string, number> = {};
       
-      tickets.forEach(ticket => {
+      filteredTickets.forEach(ticket => {
         categoryCount[ticket.category] = (categoryCount[ticket.category] || 0) + 1;
       });
       
@@ -860,7 +903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const distribution = Object.entries(categoryCount).map(([category, count]) => ({
         category,
         count,
-        percentage: Math.round((count / tickets.length) * 100)
+        percentage: Math.round((count / filteredTickets.length) * 100)
       }));
       
       res.status(200).json(distribution);

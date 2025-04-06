@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -17,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { WidgetAnalytics } from "@shared/schema";
 import { format } from "date-fns";
@@ -32,13 +34,22 @@ const formatDate = (date: Date): string => {
 };
 
 export default function WidgetAnalyticsComponent() {
+  const [timePeriod, setTimePeriod] = useState("weekly");
+  
   const { 
     data: analyticsData, 
     isLoading, 
     error,
     refetch
   } = useQuery<WidgetAnalytics[]>({
-    queryKey: ["/api/admin/widget-analytics"],
+    queryKey: ["/api/admin/widget-analytics", timePeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/widget-analytics?timePeriod=${timePeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch widget analytics');
+      }
+      return response.json();
+    }
   });
 
   if (isLoading) {
@@ -97,9 +108,22 @@ export default function WidgetAnalyticsComponent() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">Widget Analytics</h2>
-        <Button onClick={() => refetch()} size="sm" variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={timePeriod} onValueChange={setTimePeriod}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Select time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => refetch()} size="sm" variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

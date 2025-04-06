@@ -20,11 +20,25 @@ export default function AnalyticsDashboard() {
     avgResponseTime: string;
     aiResolvedPercentage: string;
   }>({
-    queryKey: ['/api/metrics/summary'],
+    queryKey: ['/api/metrics/summary', timePeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/metrics/summary?timePeriod=${timePeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics summary');
+      }
+      return response.json();
+    }
   });
 
   const { data: categoryData, isLoading: categoryLoading } = useQuery<TicketCategoryDistribution[]>({
-    queryKey: ['/api/metrics/categories'],
+    queryKey: ['/api/metrics/categories', timePeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/metrics/categories?timePeriod=${timePeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch category metrics');
+      }
+      return response.json();
+    }
   });
 
   // Response time metrics (mock data for now)

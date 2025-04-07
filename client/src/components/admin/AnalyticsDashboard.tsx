@@ -77,17 +77,44 @@ export default function AnalyticsDashboard() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h2>
-        <Select value={timePeriod} onValueChange={setTimePeriod}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select time period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="daily">Daily</SelectItem>
-            <SelectItem value="weekly">Weekly</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="quarterly">Quarterly</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          {(summaryLoading || categoryLoading || responseTimeLoading || volumeLoading) && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Updating...
+            </div>
+          )}
+          <Select value={timePeriod} onValueChange={setTimePeriod}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Summary Metrics */}
@@ -115,7 +142,7 @@ export default function AnalyticsDashboard() {
               <div className="text-2xl font-bold">{summaryData?.totalTickets || 0}</div>
             )}
             <p className="text-xs text-muted-foreground">
-              +12.5% from last month
+              For {timePeriod} time period
             </p>
           </CardContent>
         </Card>
@@ -144,7 +171,7 @@ export default function AnalyticsDashboard() {
               <div className="text-2xl font-bold">{summaryData?.resolvedTickets || 0}</div>
             )}
             <p className="text-xs text-muted-foreground">
-              +15.6% from last month
+              For {timePeriod} time period
             </p>
           </CardContent>
         </Card>
@@ -172,7 +199,7 @@ export default function AnalyticsDashboard() {
               <div className="text-2xl font-bold">{summaryData?.avgResponseTime || "N/A"}</div>
             )}
             <p className="text-xs text-muted-foreground">
-              -7.2% from last month
+              For {timePeriod} time period
             </p>
           </CardContent>
         </Card>
@@ -199,7 +226,7 @@ export default function AnalyticsDashboard() {
               <div className="text-2xl font-bold">{summaryData?.aiResolvedPercentage || "0%"}</div>
             )}
             <p className="text-xs text-muted-foreground">
-              +9.4% from last month
+              For {timePeriod} time period
             </p>
           </CardContent>
         </Card>
@@ -218,7 +245,7 @@ export default function AnalyticsDashboard() {
             <CardHeader>
               <CardTitle>Ticket Distribution by Category</CardTitle>
               <CardDescription>
-                Breakdown of support tickets by category
+                Breakdown of support tickets by category for the selected time period
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
@@ -260,9 +287,9 @@ export default function AnalyticsDashboard() {
         <TabsContent value="volume" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Daily Ticket Volume</CardTitle>
+              <CardTitle>Ticket Volume by Day</CardTitle>
               <CardDescription>
-                Number of tickets created per day over the last week
+                Number of tickets created per day for the selected time period
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
@@ -291,9 +318,9 @@ export default function AnalyticsDashboard() {
         <TabsContent value="response" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Average Response Time</CardTitle>
+              <CardTitle>Average Response Time by Day</CardTitle>
               <CardDescription>
-                Average time (in hours) to first response per day
+                Average time (in hours) to resolve tickets for the selected time period
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">

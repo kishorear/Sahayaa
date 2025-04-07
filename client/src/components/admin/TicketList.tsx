@@ -28,11 +28,11 @@ export default function TicketList() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filteredTickets = tickets?.filter((ticket) => {
-    // Search filter
-    const matchesSearch =
-      searchQuery === "" ||
-      ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.description.toLowerCase().includes(searchQuery.toLowerCase());
+    // Search filter - only apply search if searchQuery has content
+    const matchesSearch = 
+      !searchQuery ||
+      ticket.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ticket.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Category filter
     const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
@@ -59,7 +59,7 @@ export default function TicketList() {
                 type="text"
                 placeholder="Search tickets..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value.trim())}
                 className="pl-10"
               />
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -180,9 +180,9 @@ function StatusBadge({ status }: { status: string }) {
     case "new":
       return <Badge variant="destructive">New</Badge>;
     case "in_progress":
-      return <Badge variant="warning" className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
+      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
     case "resolved":
-      return <Badge variant="success" className="bg-green-100 text-green-800">Resolved</Badge>;
+      return <Badge variant="default" className="bg-green-100 text-green-800">Resolved</Badge>;
     default:
       return <Badge>{status}</Badge>;
   }

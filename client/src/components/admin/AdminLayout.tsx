@@ -131,20 +131,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <Menu className="w-6 h-6" />
               </Button>
             </div>
+            <div className="flex-1"></div>
             <div className="flex items-center">
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Search tickets..."
-                  className="w-full py-2 pl-10 pr-4 text-sm bg-gray-100 border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <Search className="w-5 h-5 text-gray-400" />
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center ml-4">
-              <Button variant="ghost" size="icon" className="ml-4">
+              <Button variant="ghost" size="icon">
                 <Bell className="w-6 h-6 text-gray-400" />
               </Button>
               <div className="ml-3 relative">

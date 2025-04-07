@@ -928,6 +928,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // API endpoint for response time metrics
+  app.get("/api/metrics/response-time", requireRole(['admin', 'support-agent']), async (req, res) => {
+    try {
+      const timePeriod = req.query.timePeriod as string || 'weekly';
+      const tickets = await storage.getAllTickets();
+      
+      // Filter tickets based on timePeriod
+      const cutoffDate = getTimePeriodCutoff(timePeriod);
+      const filteredTickets = tickets.filter(ticket => {
+        const ticketDate = new Date(ticket.createdAt);
+        return ticketDate >= cutoffDate;
+      });
+      
+      // Group tickets by day of week
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayOfWeekData: Record<string, { count: number, totalHours: number }> = {};
+      
+      // Initialize all days
+      dayNames.forEach(day => {
+        dayOfWeekData[day] = { count: 0, totalHours: 0 };
+      });
+      
+      // Calculate response time for each ticket and group by day
+      filteredTickets.forEach(ticket => {
+        if ((ticket.status === "resolved" || ticket.resolvedAt !== null) && ticket.createdAt) {
+          const created = new Date(ticket.createdAt);
+          const resolved = ticket.resolvedAt ? new Date(ticket.resolvedAt) : new Date(ticket.updatedAt);
+          
+          const responseTimeHours = (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
+          const dayOfWeek = dayNames[created.getDay()];
+          
+          dayOfWeekData[dayOfWeek].count++;
+          dayOfWeekData[dayOfWeek].totalHours += responseTimeHours;
+        }
+      });
+      
+      // Calculate average response time for each day
+      const responseTimeData = Object.entries(dayOfWeekData).map(([name, data]) => ({
+        name,
+        avg: data.count > 0 ? parseFloat((data.totalHours / data.count).toFixed(1)) : 0
+      }));
+      
+      // Sort days of week correctly
+      responseTimeData.sort((a, b) => {
+        return dayNames.indexOf(a.name) - dayNames.indexOf(b.name);
+      });
+      
+      res.status(200).json(responseTimeData);
+    } catch (error) {
+      console.error("Error getting response time metrics:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // API endpoint for ticket volume metrics
+  app.get("/api/metrics/ticket-volume", requireRole(['admin', 'support-agent']), async (req, res) => {
+    try {
+      const timePeriod = req.query.timePeriod as string || 'weekly';
+      const tickets = await storage.getAllTickets();
+      
+      // Filter tickets based on timePeriod
+      const cutoffDate = getTimePeriodCutoff(timePeriod);
+      const filteredTickets = tickets.filter(ticket => {
+        const ticketDate = new Date(ticket.createdAt);
+        return ticketDate >= cutoffDate;
+      });
+      
+      // Group tickets by day of week
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayOfWeekCounts: Record<string, number> = {};
+      
+      // Initialize all days to 0
+      dayNames.forEach(day => {
+        dayOfWeekCounts[day] = 0;
+      });
+      
+      // Count tickets for each day
+      filteredTickets.forEach(ticket => {
+        if (ticket.createdAt) {
+          const created = new Date(ticket.createdAt);
+          const dayOfWeek = dayNames[created.getDay()];
+          dayOfWeekCounts[dayOfWeek]++;
+        }
+      });
+      
+      // Format data for chart
+      const volumeData = Object.entries(dayOfWeekCounts).map(([name, count]) => ({
+        name,
+        volume: count
+      }));
+      
+      // Sort days of week correctly
+      volumeData.sort((a, b) => {
+        return dayNames.indexOf(a.name) - dayNames.indexOf(b.name);
+      });
+      
+      res.status(200).json(volumeData);
+    } catch (error) {
+      console.error("Error getting ticket volume metrics:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // ATTACHMENT ROUTES
   app.get("/api/tickets/:ticketId/attachments", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
     try {

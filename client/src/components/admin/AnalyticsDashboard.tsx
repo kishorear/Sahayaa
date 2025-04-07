@@ -41,27 +41,29 @@ export default function AnalyticsDashboard() {
     }
   });
 
-  // Response time metrics (mock data for now)
-  const responseTimeData = [
-    { name: 'Mon', avg: 3.4 },
-    { name: 'Tue', avg: 2.8 },
-    { name: 'Wed', avg: 4.2 },
-    { name: 'Thu', avg: 3.0 },
-    { name: 'Fri', avg: 2.5 },
-    { name: 'Sat', avg: 1.8 },
-    { name: 'Sun', avg: 1.5 },
-  ];
+  // Response time metrics from real data
+  const { data: responseTimeData = [], isLoading: responseTimeLoading } = useQuery<{name: string, avg: number}[]>({
+    queryKey: ['/api/metrics/response-time', timePeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/metrics/response-time?timePeriod=${timePeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch response time metrics');
+      }
+      return response.json();
+    }
+  });
 
-  // Daily ticket volume (mock data for now)
-  const ticketVolumeData = [
-    { name: 'Mon', volume: 12 },
-    { name: 'Tue', volume: 19 },
-    { name: 'Wed', volume: 15 },
-    { name: 'Thu', volume: 22 },
-    { name: 'Fri', volume: 18 },
-    { name: 'Sat', volume: 8 },
-    { name: 'Sun', volume: 6 },
-  ];
+  // Daily ticket volume from real data
+  const { data: ticketVolumeData = [], isLoading: volumeLoading } = useQuery<{name: string, volume: number}[]>({
+    queryKey: ['/api/metrics/ticket-volume', timePeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/metrics/ticket-volume?timePeriod=${timePeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch ticket volume metrics');
+      }
+      return response.json();
+    }
+  });
 
   // Format category name for display
   function formatCategory(category: string) {
@@ -264,18 +266,24 @@ export default function AnalyticsDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
-              <div className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ticketVolumeData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="volume" fill="#8884d8" name="Ticket Volume" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {volumeLoading ? (
+                <div className="flex justify-center py-8">
+                  <Skeleton className="h-[350px] w-full" />
+                </div>
+              ) : (
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={ticketVolumeData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="volume" fill="#8884d8" name="Ticket Volume" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -289,18 +297,24 @@ export default function AnalyticsDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
-              <div className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={responseTimeData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="avg" fill="#82ca9d" name="Avg. Response Time (hours)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {responseTimeLoading ? (
+                <div className="flex justify-center py-8">
+                  <Skeleton className="h-[350px] w-full" />
+                </div>
+              ) : (
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={responseTimeData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="avg" fill="#82ca9d" name="Avg. Response Time (hours)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SupportAI Chat Widget",
   "version": "1.0.0",
-  "description": "Easily add SupportAI chat functionality to any website you visit",
+  "description": "Easily integrate the SupportAI chat widget into any website",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -16,22 +16,29 @@
       "128": "icons/icon128.png"
     }
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": [
-    "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "run_at": "document_end"
     }
-  ]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "onboarding_page": "onboarding.html"
 }

@@ -1,70 +1,65 @@
-# SupportAI Chat Widget - Browser Extension
+# SupportAI Chat Widget Browser Extension
 
-## Overview
+This browser extension allows you to easily integrate the SupportAI Chat Widget into any website for testing and demonstration purposes.
 
-This browser extension allows you to easily add the SupportAI chat widget to any website you visit. It's perfect for:
+## Features
 
-- Testing how the widget would look on your website before embedding it permanently
-- Quickly adding support chat functionality to websites you manage
-- Providing support capabilities on internal or development sites
+- **Easy Configuration**: Set up your Tenant ID, API Key, and widget appearance.
+- **One-Click Injection**: Add the chat widget to any website with a single click.
+- **Customization Options**: Choose widget position and primary color.
+- **Permanent Installation Helper**: Includes code snippets for permanent installation.
 
-## Installation Instructions
+## Installation
 
-### Chrome / Edge / Brave
-
-1. Unzip the extension package to a folder on your computer
-2. Open Chrome/Edge/Brave and navigate to `chrome://extensions/` (or equivalent)
-3. Enable "Developer mode" in the top-right corner
-4. Click "Load unpacked"
-5. Select the folder containing the extracted extension files
-6. The SupportAI extension icon should now appear in your browser toolbar
-
-### Firefox
-
-1. Unzip the extension package to a folder on your computer
-2. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
-3. Click "Load Temporary Add-on"
-4. Select the `manifest.json` file from the extracted extension folder
-5. The SupportAI extension icon should now appear in your browser toolbar
+1. Download and unzip the extension package.
+2. Open your browser's extension management page:
+   - Chrome: `chrome://extensions/`
+   - Edge: `edge://extensions/`
+   - Firefox: `about:addons`
+3. Enable "Developer mode" (toggle in the top-right corner for Chrome/Edge).
+4. Click "Load unpacked" (Chrome/Edge) or "Load Temporary Add-on" (Firefox).
+5. Select the folder containing the unpacked extension.
 
 ## Usage
 
-1. Navigate to any website where you want to add the SupportAI chat widget
-2. Click on the SupportAI extension icon in your browser toolbar
-3. Enter your Tenant ID and API Key (found in your SupportAI dashboard)
-4. Customize the widget appearance if desired
-5. Click "Activate on This Site"
-6. The chat widget will appear on the website
+1. Click on the SupportAI icon in your browser toolbar.
+2. Enter your Tenant ID and API Key from your SupportAI dashboard.
+3. Select your preferred widget position and color.
+4. Click "Save & Apply" to save your configuration.
+5. Visit any website where you want to test the widget.
+6. Click "Inject Widget" to add the chat widget to the current page.
 
-To remove the widget from a site, click the extension icon and press "Deactivate".
+## Permanent Installation
 
-## Configuration Options
+For a permanent installation on your website, add the following script tag to your HTML:
 
-- **Tenant ID**: Your unique SupportAI tenant identifier
-- **API Key**: Your SupportAI API authentication key
-- **Primary Color**: The main color used for the widget
-- **Position**: Where the widget appears on the page (bottom-right or bottom-left)
-- **Auto-open**: Whether the chat window opens automatically when the page loads
-- **Show branding**: Whether to display "Powered by SupportAI" in the widget
+```html
+<script src="https://supportai.com/widget.js?tenant=YOUR_TENANT_ID"></script>
+```
 
-## For Website Owners
+Replace `YOUR_TENANT_ID` with your actual Tenant ID from your SupportAI dashboard.
 
-If you own a website and want to permanently add the SupportAI widget, we recommend using our standard installation method:
+## Advanced Configuration
 
-1. Log in to your SupportAI dashboard
-2. Navigate to the Chat Widget page
-3. Copy the provided installation code
-4. Add the code to your website's HTML
+For advanced configuration, you can add this script before the widget script:
 
-This provides better integration and more advanced customization options.
+```html
+<script>
+  window.supportAiConfig = {
+    tenantId: "YOUR_TENANT_ID",
+    apiKey: "YOUR_API_KEY",
+    primaryColor: "#6366F1",
+    position: "right",
+    autoOpen: false,
+    branding: true
+  };
+</script>
+```
 
 ## Support
 
-For assistance with this extension, please contact:
+For support, visit [https://supportai.com/help](https://supportai.com/help) or contact our support team at support@supportai.com.
 
-- Email: support@supportai.com
-- Website: https://supportai.com/support
+## License
 
----
-
-Copyright © 2025 SupportAI, Inc. All rights reserved.
+© 2025 SupportAI, Inc. All rights reserved.

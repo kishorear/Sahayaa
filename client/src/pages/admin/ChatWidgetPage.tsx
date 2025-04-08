@@ -92,7 +92,7 @@ function App() {
       description: `Your ${type} download has started.`,
     });
     
-    // Map the download type to the appropriate file
+    // Map the download type to the appropriate file or API endpoint
     let downloadPath = '';
     
     switch(type) {
@@ -107,10 +107,28 @@ function App() {
         break;
       case "full widget package":
       case "widget package":
-        window.location.href = '/downloads/supportai-widget-package.zip';
+        // Construct URL with query parameters for customized widget package
+        const queryParams = new URLSearchParams({
+          tenantId: String(user?.tenantId || 1),
+          userId: String(user?.id || 1),
+          primaryColor: primaryColor.replace('#', ''),
+          position: widgetPosition,
+          greetingMessage: encodeURIComponent(greetingMessage),
+          autoOpen: String(autoOpen),
+          branding: String(includeBranding),
+          reportData: 'true'
+        });
+        
+        // Use the dynamic widget download API
+        window.location.href = `/api/widgets/download?${queryParams.toString()}`;
         break;
       default:
-        window.location.href = '/downloads/supportai-widget-package.zip';
+        // Use the dynamic widget download API
+        const defaultParams = new URLSearchParams({
+          tenantId: String(user?.tenantId || 1),
+          userId: String(user?.id || 1)
+        });
+        window.location.href = `/api/widgets/download?${defaultParams.toString()}`;
     }
   };
 

@@ -54,6 +54,7 @@
     "@types/passport-oauth2": "^1.4.17",
     "@types/qrcode": "^1.5.5",
     "@types/speakeasy": "^2.0.10",
+    "archiver": "^7.0.1",
     "axios": "^1.8.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",

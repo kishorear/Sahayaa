@@ -1,365 +1,415 @@
 /**
  * SupportAI Chat Widget
- * Version: 1.0.0
+ * A lightweight client-side chat widget for customer support
  * 
- * This JavaScript file creates and manages the SupportAI chat widget for your website.
- * It provides real-time customer support powered by AI.
+ * This file will be customized with your specific configuration settings
+ * when downloaded from the SupportAI admin dashboard.
  */
 
 (function() {
-  // Default configuration
+  // Default configuration settings that will be replaced with user values
   const defaultConfig = {
-    tenantId: null,
-    apiKey: null,
-    primaryColor: "#6366F1",
-    position: "right",
-    greetingMessage: "How can I help you today?",
-    autoOpen: false,
-    branding: true,
-    reportData: true,
-    adminId: null
+    tenantId: "__TENANT_ID__",
+    primaryColor: "__PRIMARY_COLOR__",
+    position: "__POSITION__",
+    greetingMessage: "__GREETING_MESSAGE__",
+    autoOpen: __AUTO_OPEN__,
+    branding: __BRANDING__,
+    reportData: __REPORT_DATA__,
+    serverUrl: "https://supportai.com/api"
   };
 
-  // Merge user configuration with defaults
-  const config = {...defaultConfig, ...window.supportAiConfig};
+  // Merge the default configuration with any user-provided configuration
+  const config = {
+    ...defaultConfig,
+    ...(window.supportAiConfig || {})
+  };
 
-  // Required configuration validation
-  if (!config.tenantId || !config.apiKey) {
-    console.error("SupportAI Widget: Missing required configuration (tenantId and apiKey)");
-    return;
-  }
-
-  // Create widget container
-  function createWidgetContainer() {
-    const container = document.createElement('div');
-    container.id = 'supportai-widget-container';
-    container.style.position = 'fixed';
-    container.style.bottom = '20px';
-    container.style[config.position] = '20px';
-    container.style.zIndex = '9999';
-    document.body.appendChild(container);
-    return container;
-  }
-
-  // Create chat button
-  function createChatButton(container) {
-    const button = document.createElement('div');
-    button.id = 'supportai-chat-button';
-    button.style.width = '60px';
-    button.style.height = '60px';
-    button.style.borderRadius = '50%';
-    button.style.backgroundColor = config.primaryColor;
-    button.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-    button.style.display = 'flex';
-    button.style.alignItems = 'center';
-    button.style.justifyContent = 'center';
-    button.style.cursor = 'pointer';
-    button.style.transition = 'all 0.2s ease';
-    button.innerHTML = `
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-      </svg>
-    `;
-    button.addEventListener('click', toggleChatWindow);
-    button.addEventListener('mouseover', () => {
-      button.style.transform = 'scale(1.1)';
-    });
-    button.addEventListener('mouseout', () => {
-      button.style.transform = 'scale(1)';
-    });
-    container.appendChild(button);
-    return button;
-  }
-
-  // Create chat window
-  function createChatWindow(container) {
-    const chatWindow = document.createElement('div');
-    chatWindow.id = 'supportai-chat-window';
-    chatWindow.style.position = 'absolute';
-    chatWindow.style.bottom = '70px';
-    chatWindow.style[config.position] = '0';
-    chatWindow.style.width = '350px';
-    chatWindow.style.height = '500px';
-    chatWindow.style.backgroundColor = 'white';
-    chatWindow.style.borderRadius = '10px';
-    chatWindow.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-    chatWindow.style.display = 'none';
-    chatWindow.style.flexDirection = 'column';
-    chatWindow.style.overflow = 'hidden';
-    
-    // Chat header
-    const chatHeader = document.createElement('div');
-    chatHeader.style.padding = '15px';
-    chatHeader.style.backgroundColor = config.primaryColor;
-    chatHeader.style.color = 'white';
-    chatHeader.style.fontWeight = 'bold';
-    chatHeader.style.display = 'flex';
-    chatHeader.style.justifyContent = 'space-between';
-    chatHeader.style.alignItems = 'center';
-    chatHeader.innerHTML = `
-      <div>Support Chat</div>
-      <div id="supportai-close-button" style="cursor: pointer;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </div>
-    `;
-    chatWindow.appendChild(chatHeader);
-
-    // Chat messages container
-    const messagesContainer = document.createElement('div');
-    messagesContainer.id = 'supportai-messages';
-    messagesContainer.style.flex = '1';
-    messagesContainer.style.padding = '15px';
-    messagesContainer.style.overflowY = 'auto';
-    messagesContainer.style.display = 'flex';
-    messagesContainer.style.flexDirection = 'column';
-    messagesContainer.style.gap = '10px';
-    
-    // Welcome message
-    const welcomeMessage = document.createElement('div');
-    welcomeMessage.className = 'supportai-message supportai-assistant';
-    welcomeMessage.style.backgroundColor = '#f0f0f0';
-    welcomeMessage.style.borderRadius = '10px';
-    welcomeMessage.style.padding = '10px 15px';
-    welcomeMessage.style.maxWidth = '80%';
-    welcomeMessage.style.alignSelf = 'flex-start';
-    welcomeMessage.textContent = config.greetingMessage;
-    messagesContainer.appendChild(welcomeMessage);
-    
-    chatWindow.appendChild(messagesContainer);
-
-    // Input area
-    const inputArea = document.createElement('div');
-    inputArea.style.borderTop = '1px solid #eaeaea';
-    inputArea.style.padding = '15px';
-    inputArea.style.display = 'flex';
-    inputArea.style.gap = '10px';
-    
-    const textInput = document.createElement('input');
-    textInput.id = 'supportai-input';
-    textInput.type = 'text';
-    textInput.placeholder = 'Type your message...';
-    textInput.style.flex = '1';
-    textInput.style.padding = '10px';
-    textInput.style.borderRadius = '5px';
-    textInput.style.border = '1px solid #ddd';
-    textInput.style.outline = 'none';
-    textInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        sendMessage();
-      }
-    });
-    
-    const sendButton = document.createElement('button');
-    sendButton.id = 'supportai-send';
-    sendButton.style.backgroundColor = config.primaryColor;
-    sendButton.style.color = 'white';
-    sendButton.style.border = 'none';
-    sendButton.style.borderRadius = '5px';
-    sendButton.style.padding = '10px 15px';
-    sendButton.style.cursor = 'pointer';
-    sendButton.textContent = 'Send';
-    sendButton.addEventListener('click', sendMessage);
-    
-    inputArea.appendChild(textInput);
-    inputArea.appendChild(sendButton);
-    chatWindow.appendChild(inputArea);
-
-    // Branding (if enabled)
-    if (config.branding) {
-      const branding = document.createElement('div');
-      branding.style.padding = '5px 10px';
-      branding.style.textAlign = 'center';
-      branding.style.fontSize = '11px';
-      branding.style.color = '#999';
-      branding.style.backgroundColor = '#f9f9f9';
-      branding.innerHTML = 'Powered by <a href="https://supportai.com" target="_blank" style="color: #666; text-decoration: none; font-weight: bold;">SupportAI</a>';
-      chatWindow.appendChild(branding);
+  // Create a class to encapsulate the widget functionality
+  class SupportAIWidget {
+    constructor() {
+      // Store the DOM elements
+      this.container = null;
+      this.button = null;
+      this.chatWindow = null;
+      this.messagesContainer = null;
+      this.inputField = null;
+      
+      // Track whether the chat window is open
+      this.isOpen = false;
+      
+      // Track conversation data
+      this.conversationId = null;
+      this.sessionId = this.generateSessionId();
+      
+      // Initialize the widget
+      this.init();
     }
-
-    // Set up close button functionality
-    chatWindow.querySelector('#supportai-close-button').addEventListener('click', () => {
-      chatWindow.style.display = 'none';
-    });
-
-    container.appendChild(chatWindow);
-    return chatWindow;
-  }
-
-  // Toggle chat window visibility
-  function toggleChatWindow() {
-    const chatWindow = document.getElementById('supportai-chat-window');
-    if (chatWindow.style.display === 'none') {
-      chatWindow.style.display = 'flex';
-      document.getElementById('supportai-input').focus();
-    } else {
-      chatWindow.style.display = 'none';
-    }
-  }
-
-  // Send message function
-  function sendMessage() {
-    const textInput = document.getElementById('supportai-input');
-    const messagesContainer = document.getElementById('supportai-messages');
     
-    const message = textInput.value.trim();
-    if (!message) return;
-    
-    // Add user message to chat
-    const userMessage = document.createElement('div');
-    userMessage.className = 'supportai-message supportai-user';
-    userMessage.style.backgroundColor = config.primaryColor;
-    userMessage.style.color = 'white';
-    userMessage.style.borderRadius = '10px';
-    userMessage.style.padding = '10px 15px';
-    userMessage.style.maxWidth = '80%';
-    userMessage.style.alignSelf = 'flex-end';
-    userMessage.textContent = message;
-    messagesContainer.appendChild(userMessage);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    // Clear input
-    textInput.value = '';
-    
-    // Add typing indicator
-    const typingIndicator = document.createElement('div');
-    typingIndicator.className = 'supportai-message supportai-assistant supportai-typing';
-    typingIndicator.style.backgroundColor = '#f0f0f0';
-    typingIndicator.style.borderRadius = '10px';
-    typingIndicator.style.padding = '10px 15px';
-    typingIndicator.style.maxWidth = '80%';
-    typingIndicator.style.alignSelf = 'flex-start';
-    typingIndicator.innerHTML = '<div class="typing-dots"><span>.</span><span>.</span><span>.</span></div>';
-    messagesContainer.appendChild(typingIndicator);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    // Simulate response (in a real implementation, this would call your API)
-    setTimeout(() => {
-      // Remove typing indicator
-      messagesContainer.removeChild(typingIndicator);
+    /**
+     * Initialize the widget by creating DOM elements and adding event listeners
+     */
+    init() {
+      // Create the widget container
+      this.createWidgetContainer();
       
-      // Add response message
-      const responseMessage = document.createElement('div');
-      responseMessage.className = 'supportai-message supportai-assistant';
-      responseMessage.style.backgroundColor = '#f0f0f0';
-      responseMessage.style.borderRadius = '10px';
-      responseMessage.style.padding = '10px 15px';
-      responseMessage.style.maxWidth = '80%';
-      responseMessage.style.alignSelf = 'flex-start';
+      // Create the chat button
+      this.createChatButton();
       
-      // This is a simulation - in production, call your backend API
-      if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
-        responseMessage.textContent = "Hello! How can I assist you today?";
-      } else if (message.toLowerCase().includes('help')) {
-        responseMessage.textContent = "I'm here to help! What do you need assistance with?";
-      } else if (message.toLowerCase().includes('thanks') || message.toLowerCase().includes('thank you')) {
-        responseMessage.textContent = "You're welcome! Is there anything else I can help with?";
-      } else {
-        responseMessage.textContent = "I'll help you with that. In a real implementation, this would connect to your SupportAI backend.";
-      }
+      // Create the chat window
+      this.createChatWindow();
       
-      messagesContainer.appendChild(responseMessage);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      // Set up event listeners
+      this.setupEventListeners();
       
-      // Report interaction data if enabled
+      // Report initialization event
       if (config.reportData) {
-        reportInteraction(message, responseMessage.textContent);
+        this.reportEvent('widget_initialized');
       }
-    }, 1500);
-  }
-
-  // Report interaction to backend (analytics)
-  function reportInteraction(userMessage, aiResponse) {
-    // In a real implementation, this would send data to your analytics endpoint
-    console.log('SupportAI Widget: Reporting interaction data');
-    
-    // Example analytics data
-    const analyticsData = {
-      tenantId: config.tenantId,
-      adminId: config.adminId,
-      timestamp: new Date().toISOString(),
-      userMessage: userMessage,
-      aiResponse: aiResponse
-    };
-    
-    // This is just a placeholder for the real implementation
-    console.log('Analytics data:', analyticsData);
-  }
-
-  // Initialize the widget
-  function initWidget() {
-    // Create the widget elements
-    const container = createWidgetContainer();
-    createChatButton(container);
-    createChatWindow(container);
-    
-    // Auto-open if configured
-    if (config.autoOpen) {
-      setTimeout(() => {
-        document.getElementById('supportai-chat-window').style.display = 'flex';
-      }, 2000);
+      
+      // Automatically open the chat if configured
+      if (config.autoOpen) {
+        setTimeout(() => this.openChat(), 1000);
+      }
     }
     
-    // Add custom styles
-    const customStyles = document.createElement('style');
-    customStyles.textContent = `
-      #supportai-messages::-webkit-scrollbar {
-        width: 6px;
+    /**
+     * Create the main container for the widget
+     */
+    createWidgetContainer() {
+      this.container = document.createElement('div');
+      this.container.className = 'supportai-widget-container';
+      
+      // Apply positioning based on configuration
+      if (config.position === 'left') {
+        this.container.style.left = '20px';
+        this.container.style.right = 'auto';
+      } else if (config.position === 'center') {
+        this.container.style.left = '50%';
+        this.container.style.right = 'auto';
+        this.container.style.transform = 'translateX(-50%)';
       }
-      #supportai-messages::-webkit-scrollbar-track {
-        background: #f1f1f1;
+      
+      document.body.appendChild(this.container);
+    }
+    
+    /**
+     * Create the chat button that toggles the chat window
+     */
+    createChatButton() {
+      this.button = document.createElement('div');
+      this.button.className = 'supportai-widget-button';
+      this.button.style.backgroundColor = config.primaryColor;
+      
+      // Add chat icon
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('width', '24');
+      icon.setAttribute('height', '24');
+      icon.setAttribute('fill', 'none');
+      icon.setAttribute('stroke', 'currentColor');
+      icon.setAttribute('stroke-width', '2');
+      icon.setAttribute('stroke-linecap', 'round');
+      icon.setAttribute('stroke-linejoin', 'round');
+      icon.className = 'supportai-widget-icon';
+      
+      const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path1.setAttribute('d', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z');
+      
+      icon.appendChild(path1);
+      this.button.appendChild(icon);
+      
+      this.container.appendChild(this.button);
+    }
+    
+    /**
+     * Create the chat window with header, messages container, and input field
+     */
+    createChatWindow() {
+      this.chatWindow = document.createElement('div');
+      this.chatWindow.className = 'supportai-chat-window';
+      
+      // Create chat header
+      const header = document.createElement('div');
+      header.className = 'supportai-chat-header';
+      header.style.backgroundColor = config.primaryColor;
+      
+      const title = document.createElement('div');
+      title.textContent = 'Support Chat';
+      
+      const closeButton = document.createElement('div');
+      closeButton.className = 'supportai-chat-close';
+      closeButton.innerHTML = '&times;';
+      closeButton.onclick = (e) => {
+        e.stopPropagation();
+        this.closeChat();
+      };
+      
+      header.appendChild(title);
+      header.appendChild(closeButton);
+      
+      // Create messages container
+      this.messagesContainer = document.createElement('div');
+      this.messagesContainer.className = 'supportai-chat-messages';
+      
+      // Create input area
+      const inputArea = document.createElement('div');
+      inputArea.className = 'supportai-chat-input';
+      
+      this.inputField = document.createElement('input');
+      this.inputField.type = 'text';
+      this.inputField.placeholder = 'Type your message...';
+      
+      const sendButton = document.createElement('button');
+      sendButton.className = 'supportai-send-button';
+      sendButton.innerHTML = '&#10148;';
+      sendButton.style.backgroundColor = config.primaryColor;
+      sendButton.onclick = () => this.sendMessage();
+      
+      inputArea.appendChild(this.inputField);
+      inputArea.appendChild(sendButton);
+      
+      // Add branding if enabled
+      let branding = null;
+      if (config.branding) {
+        branding = document.createElement('div');
+        branding.className = 'supportai-branding';
+        branding.textContent = 'Powered by SupportAI';
       }
-      #supportai-messages::-webkit-scrollbar-thumb {
-        background: #ddd;
-        border-radius: 3px;
+      
+      // Assemble chat window
+      this.chatWindow.appendChild(header);
+      this.chatWindow.appendChild(this.messagesContainer);
+      this.chatWindow.appendChild(inputArea);
+      
+      if (branding) {
+        this.chatWindow.appendChild(branding);
       }
-      #supportai-messages::-webkit-scrollbar-thumb:hover {
-        background: #ccc;
+      
+      this.container.appendChild(this.chatWindow);
+      
+      // Add initial greeting message
+      this.addMessage('assistant', config.greetingMessage);
+    }
+    
+    /**
+     * Set up event listeners for the widget
+     */
+    setupEventListeners() {
+      // Toggle chat window when the button is clicked
+      this.button.addEventListener('click', () => {
+        if (this.isOpen) {
+          this.closeChat();
+        } else {
+          this.openChat();
+        }
+      });
+      
+      // Send message when Enter key is pressed in the input field
+      this.inputField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.sendMessage();
+        }
+      });
+      
+      // Add styles to the document
+      this.addStyles();
+    }
+    
+    /**
+     * Add the widget styles to the document
+     */
+    addStyles() {
+      const style = document.createElement('style');
+      style.textContent = `
+        /* Widget styles would be injected here in a production version */
+        /* For this version, refer to the separate CSS file */
+      `;
+      document.head.appendChild(style);
+    }
+    
+    /**
+     * Open the chat window
+     */
+    openChat() {
+      this.chatWindow.classList.add('open');
+      this.isOpen = true;
+      this.inputField.focus();
+      
+      if (config.reportData) {
+        this.reportEvent('widget_opened');
       }
-      .typing-dots span {
-        animation: typingDot 1.4s infinite;
-        display: inline-block;
-        opacity: 0.7;
+    }
+    
+    /**
+     * Close the chat window
+     */
+    closeChat() {
+      this.chatWindow.classList.remove('open');
+      this.isOpen = false;
+      
+      if (config.reportData) {
+        this.reportEvent('widget_closed');
       }
-      .typing-dots span:nth-child(2) {
-        animation-delay: 0.2s;
+    }
+    
+    /**
+     * Send a message to the support AI
+     */
+    sendMessage() {
+      const message = this.inputField.value.trim();
+      
+      if (!message) {
+        return;
       }
-      .typing-dots span:nth-child(3) {
-        animation-delay: 0.4s;
+      
+      // Add user message to the chat window
+      this.addMessage('user', message);
+      
+      // Clear the input field
+      this.inputField.value = '';
+      
+      // Report the message event
+      if (config.reportData) {
+        this.reportEvent('message_sent', { content: message });
       }
-      @keyframes typingDot {
-        0%, 60%, 100% { transform: translateY(0); }
-        30% { transform: translateY(-5px); }
-      }
-    `;
-    document.head.appendChild(customStyles);
+      
+      // In a production environment, this would send the message to the server
+      // and process the response. For this example, we'll simulate a response.
+      this.simulateResponse(message);
+    }
+    
+    /**
+     * Add a message to the chat window
+     * @param {string} role - The role of the message sender (user or assistant)
+     * @param {string} content - The message content
+     */
+    addMessage(role, content) {
+      const message = document.createElement('div');
+      message.className = `supportai-message supportai-message-${role}`;
+      message.textContent = content;
+      
+      this.messagesContainer.appendChild(message);
+      this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+    }
+    
+    /**
+     * Simulate a response from the support AI
+     * In a production environment, this would be replaced with an API call
+     * @param {string} userMessage - The message from the user
+     */
+    simulateResponse(userMessage) {
+      // Simulate typing indicator
+      const typingIndicator = document.createElement('div');
+      typingIndicator.className = 'supportai-message supportai-message-assistant';
+      typingIndicator.textContent = '...';
+      this.messagesContainer.appendChild(typingIndicator);
+      
+      // Simulate response delay
+      setTimeout(() => {
+        // Remove typing indicator
+        this.messagesContainer.removeChild(typingIndicator);
+        
+        // Add AI response
+        const lowerMessage = userMessage.toLowerCase();
+        let response = 'I\'ll help you with that. Could you provide more details?';
+        
+        if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+          response = 'Hello! How can I assist you today?';
+        } else if (lowerMessage.includes('help')) {
+          response = 'I\'m here to help! What do you need assistance with?';
+        } else if (lowerMessage.includes('thanks') || lowerMessage.includes('thank you')) {
+          response = 'You\'re welcome! Is there anything else I can help you with?';
+        } else if (lowerMessage.includes('bye')) {
+          response = 'Goodbye! Feel free to come back if you have more questions.';
+        } else if (lowerMessage.includes('feature') || lowerMessage.includes('bug')) {
+          response = 'Thank you for bringing this to our attention. Let me create a ticket for you.';
+          
+          // Simulate ticket creation
+          setTimeout(() => {
+            this.addMessage('assistant', 'Ticket #' + Math.floor(1000 + Math.random() * 9000) + ' has been created. Our team will investigate this issue.');
+          }, 1500);
+        }
+        
+        this.addMessage('assistant', response);
+        
+        // Report response event
+        if (config.reportData) {
+          this.reportEvent('message_received', { content: response });
+        }
+      }, 1500);
+    }
+    
+    /**
+     * Report an event to the server for analytics
+     * @param {string} eventType - The type of event
+     * @param {Object} metadata - Additional metadata for the event
+     */
+    reportEvent(eventType, metadata = {}) {
+      // In a production environment, this would send the event to the server
+      // For this example, we'll just log it to the console
+      console.log('SupportAI Event:', eventType, {
+        tenantId: config.tenantId,
+        sessionId: this.sessionId,
+        timestamp: new Date().toISOString(),
+        eventType,
+        metadata: {
+          url: window.location.href,
+          referrer: document.referrer,
+          userAgent: navigator.userAgent,
+          ...metadata
+        }
+      });
+      
+      // In production, this would be an actual API call:
+      /*
+      fetch(`${config.serverUrl}/widget/analytics/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenantId: config.tenantId,
+          sessionId: this.sessionId,
+          timestamp: new Date().toISOString(),
+          eventType,
+          metadata: {
+            url: window.location.href,
+            referrer: document.referrer,
+            userAgent: navigator.userAgent,
+            ...metadata
+          }
+        })
+      }).catch(error => console.error('Error reporting event:', error));
+      */
+    }
+    
+    /**
+     * Generate a unique session ID
+     * @returns {string} A unique session ID
+     */
+    generateSessionId() {
+      return 'session_' + Math.random().toString(36).substr(2, 9);
+    }
   }
-
-  // Initialize when DOM is fully loaded
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initWidget);
+  
+  // Initialize the widget when the page is loaded
+  if (document.readyState === 'complete') {
+    new SupportAIWidget();
   } else {
-    initWidget();
+    window.addEventListener('load', () => {
+      new SupportAIWidget();
+    });
   }
-
-  // Expose the API globally
-  window.SupportAI = {
-    open: function() {
-      const chatWindow = document.getElementById('supportai-chat-window');
-      if (chatWindow) chatWindow.style.display = 'flex';
-    },
-    close: function() {
-      const chatWindow = document.getElementById('supportai-chat-window');
-      if (chatWindow) chatWindow.style.display = 'none';
-    },
-    toggle: function() {
-      toggleChatWindow();
-    },
-    updateConfig: function(newConfig) {
-      Object.assign(config, newConfig);
-      // In a real implementation, you would update the UI based on the new config
+  
+  // Export the widget for use in other scripts
+  window.SupportAIChat = {
+    init: function(customConfig) {
+      window.supportAiConfig = {
+        ...config,
+        ...customConfig
+      };
+      new SupportAIWidget();
     }
   };
 })();

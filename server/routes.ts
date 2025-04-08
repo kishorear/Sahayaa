@@ -30,6 +30,8 @@ import { registerTeamMemberRoutes } from "./routes/team-member-routes";
 import { registerDocumentRoutes } from "./routes/document-routes";
 // Import the download routes registration function
 import { registerDownloadRoutes } from "./routes/download-routes";
+// Import the widget download routes registration function
+import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -124,6 +126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register download routes (no auth required - public downloads)
   registerDownloadRoutes(app);
+  
+  // Register widget download routes
+  registerWidgetDownloadRoutes(app);
   
   // Initialize SSO service for all tenants
   try {

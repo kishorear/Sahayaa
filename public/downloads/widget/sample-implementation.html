@@ -3,196 +3,149 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SupportAI Chat Widget - Sample Implementation</title>
+  <title>SupportAI Chat Widget Demo</title>
   <style>
-    /* Basic page styling */
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      margin: 0;
-      padding: 0;
       line-height: 1.6;
       color: #333;
-    }
-    
-    header {
-      background-color: #6366F1;
-      color: white;
-      padding: 2rem;
-      text-align: center;
-    }
-    
-    .container {
-      max-width: 1200px;
+      max-width: 800px;
       margin: 0 auto;
-      padding: 2rem;
+      padding: 20px;
     }
-    
+    header {
+      background-color: __PRIMARY_COLOR__;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
     h1 {
-      margin-top: 0;
+      margin: 0;
     }
-    
-    .section {
-      margin-bottom: 3rem;
-    }
-    
-    .code-block {
+    .demo-section {
       background-color: #f5f5f5;
-      border-radius: 5px;
-      padding: 1rem;
-      overflow-x: auto;
-      font-family: monospace;
-      margin: 1rem 0;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
     }
-    
-    .button {
-      background-color: #6366F1;
+    code {
+      background-color: #eee;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    pre {
+      background-color: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    .btn {
+      background-color: __PRIMARY_COLOR__;
       color: white;
       border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 5px;
+      padding: 10px 15px;
+      border-radius: 4px;
       cursor: pointer;
-      font-size: 1rem;
-      margin-right: 1rem;
+      font-size: 16px;
     }
-    
-    .button:hover {
-      background-color: #4F46E5;
+    .btn:hover {
+      opacity: 0.9;
     }
-    
-    .demo-controls {
-      margin: 2rem 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    
     footer {
-      background-color: #f5f5f5;
-      padding: 2rem;
+      margin-top: 40px;
       text-align: center;
-      margin-top: 3rem;
+      color: #666;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>SupportAI Chat Widget - Sample Implementation</h1>
-    <p>This page demonstrates how to integrate and use the SupportAI Chat Widget</p>
+    <h1>SupportAI Chat Widget Demo</h1>
+    <p>This page demonstrates how to integrate the SupportAI chat widget into your website.</p>
   </header>
-  
-  <div class="container">
-    <div class="section">
-      <h2>Basic Implementation</h2>
-      <p>
-        To add the SupportAI chat widget to your website, simply include the following code before the closing <code>&lt;/body&gt;</code> tag:
-      </p>
-      <div class="code-block">
-        <pre>&lt;!-- SupportAI Chat Widget --&gt;
+
+  <section class="demo-section">
+    <h2>Demo</h2>
+    <p>The SupportAI chat widget is active on this page. Click the chat button in the bottom-right corner to start a conversation.</p>
+    <p>The widget is configured with the following settings:</p>
+    <ul>
+      <li>Tenant ID: <code>__TENANT_ID__</code></li>
+      <li>Primary Color: <code>__PRIMARY_COLOR__</code></li>
+      <li>Position: <code>__POSITION__</code></li>
+      <li>Auto Open: <code>__AUTO_OPEN__</code></li>
+      <li>Show Branding: <code>__BRANDING__</code></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Integration Guide</h2>
+    <p>To add the SupportAI chat widget to your website, follow these steps:</p>
+    
+    <h3>Step 1: Add the Widget Script</h3>
+    <p>Add the following code to your website, right before the closing <code>&lt;/body&gt;</code> tag:</p>
+    <pre><code>&lt;!-- SupportAI Chat Widget --&gt;
 &lt;script&gt;
   window.supportAiConfig = {
-    tenantId: YOUR_TENANT_ID,
-    apiKey: "YOUR_API_KEY",
-    primaryColor: "#6366F1",
-    position: "right",
-    greetingMessage: "How can I help you today?",
-    autoOpen: false,
-    branding: true,
-    reportData: true,
-    adminId: YOUR_ADMIN_ID
+    tenantId: __TENANT_ID__,
+    apiKey: "__API_KEY__",
+    primaryColor: "__PRIMARY_COLOR__",
+    position: "__POSITION__",
+    greetingMessage: "__GREETING_MESSAGE__",
+    autoOpen: __AUTO_OPEN__,
+    branding: __BRANDING__,
+    reportData: __REPORT_DATA__,
+    adminId: __ADMIN_ID__
   };
 &lt;/script&gt;
-&lt;script src="https://supportai.com/widget.js" async&gt;&lt;/script&gt;</pre>
-      </div>
-    </div>
-    
-    <div class="section">
-      <h2>Widget Control</h2>
-      <p>
-        You can programmatically control the widget using the JavaScript API:
-      </p>
-      <div class="demo-controls">
-        <button class="button" onclick="window.SupportAI && window.SupportAI.open()">Open Chat</button>
-        <button class="button" onclick="window.SupportAI && window.SupportAI.close()">Close Chat</button>
-        <button class="button" onclick="window.SupportAI && window.SupportAI.toggle()">Toggle Chat</button>
-        <button class="button" onclick="window.SupportAI && window.SupportAI.updateConfig({primaryColor: getRandomColor()})">Random Color</button>
-      </div>
-      <div class="code-block">
-        <pre>// Open the chat window
-window.SupportAI.open();
+&lt;script src="supportai-widget.js" async&gt;&lt;/script&gt;</code></pre>
+
+    <h3>Step 2: Customize (Optional)</h3>
+    <p>You can further customize the widget by modifying the configuration options above or by editing the CSS file (<code>supportai-widget.css</code>).</p>
+
+    <h3>Step 3: Test</h3>
+    <p>After adding the code, test the widget by navigating to your website and clicking the chat button.</p>
+  </section>
+
+  <section>
+    <h2>Advanced Usage</h2>
+    <p>For advanced use cases, you can programmatically control the widget using JavaScript:</p>
+    <pre><code>// Open the chat window
+SupportAIChat.open();
 
 // Close the chat window
-window.SupportAI.close();
+SupportAIChat.close();
 
-// Toggle the chat window
-window.SupportAI.toggle();
+// Send a message programmatically
+SupportAIChat.sendMessage("Hello from code!");
 
-// Update configuration at runtime
-window.SupportAI.updateConfig({
-  primaryColor: "#FF0000",
-  greetingMessage: "New greeting message"
-});</pre>
-      </div>
-    </div>
-    
-    <div class="section">
-      <h2>Advanced Usage</h2>
-      <p>
-        For more advanced use cases, you can listen for events from the widget:
-      </p>
-      <div class="code-block">
-        <pre>document.addEventListener('supportai:opened', function() {
-  console.log('Chat window was opened');
-});
+// Listen for events
+SupportAIChat.on('message_sent', function(data) {
+  console.log('User sent a message:', data.content);
+});</code></pre>
+  </section>
 
-document.addEventListener('supportai:closed', function() {
-  console.log('Chat window was closed');
-});
-
-document.addEventListener('supportai:messageSent', function(e) {
-  console.log('Message sent:', e.detail.message);
-});
-
-document.addEventListener('supportai:messageReceived', function(e) {
-  console.log('Message received:', e.detail.message);
-});</pre>
-      </div>
-    </div>
-  </div>
-  
   <footer>
     <p>&copy; 2025 SupportAI. All rights reserved.</p>
   </footer>
-  
+
   <!-- SupportAI Chat Widget -->
   <script>
     window.supportAiConfig = {
-      tenantId: 1, // Replace with your actual tenant ID
-      apiKey: "demo_key_123",
-      primaryColor: "#6366F1",
-      position: "right",
-      greetingMessage: "👋 Hello! This is a demo of the SupportAI Chat Widget. Feel free to try it out!",
-      autoOpen: false,
-      branding: true,
-      reportData: true,
-      adminId: 1 // Replace with your actual admin ID
+      tenantId: __TENANT_ID__,
+      apiKey: "__API_KEY__",
+      primaryColor: "__PRIMARY_COLOR__",
+      position: "__POSITION__",
+      greetingMessage: "__GREETING_MESSAGE__",
+      autoOpen: __AUTO_OPEN__,
+      branding: __BRANDING__,
+      reportData: __REPORT_DATA__,
+      adminId: __ADMIN_ID__
     };
-    
-    // Helper function for random color button
-    function getRandomColor() {
-      const letters = '0123456789ABCDEF';
-      let color = '#';
-      for (let i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
-      }
-      console.log('Changing widget color to:', color);
-      return color;
-    }
-    
-    // When using the actual widget.js, uncomment the line below
-    // document.write('<script src="https://supportai.com/widget.js" async><\/script>');
-    
-    // For this demo, we're including the local copy
-    document.write('<script src="./supportai-widget.js" async><\/script>');
   </script>
+  <script src="supportai-widget.js" async></script>
 </body>
 </html>

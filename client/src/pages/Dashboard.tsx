@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart3, Users, Ticket, Clock, ArrowUpRight, 
   ArrowRight, Download, MessageSquare, Settings
@@ -25,6 +26,7 @@ interface CategoryMetric {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   
   // Fetch summary metrics
   const { data: summaryData, isLoading: isLoadingSummary } = useQuery<SummaryMetrics>({
@@ -145,7 +147,18 @@ export default function Dashboard() {
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xl">Chat Module</CardTitle>
-              <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-blue-600 dark:text-blue-400"
+                onClick={() => {
+                  window.location.href = '/downloads/supportai-widget-package.zip';
+                  toast({
+                    title: "Downloading widget package",
+                    description: "Your widget package download has started."
+                  });
+                }}
+              >
                 <Download className="h-4 w-4 mr-1" />
                 Download Widget
               </Button>
@@ -174,7 +187,17 @@ export default function Dashboard() {
                     <div className="bg-gray-900 text-gray-100 p-3 rounded text-xs font-mono overflow-x-auto">
                       {`<script src="https://supportai.com/widget.js?tenant=${user?.tenantId}"></script>`}
                     </div>
-                    <Button variant="link" className="text-xs p-0 h-6 mt-2">
+                    <Button 
+                      variant="link" 
+                      className="text-xs p-0 h-6 mt-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`<script src="https://supportai.com/widget.js?tenant=${user?.tenantId}"></script>`);
+                        toast({
+                          title: "Copied to clipboard",
+                          description: "Widget code has been copied to your clipboard."
+                        });
+                      }}
+                    >
                       Copy Code
                     </Button>
                   </div>
@@ -248,9 +271,19 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Get the embeddable chat widget code for your website.
               </p>
-              <Link href="/admin/settings">
-                <Button variant="outline" size="sm">Download Now</Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  window.location.href = '/downloads/supportai-widget-package.zip';
+                  toast({
+                    title: "Downloading widget package",
+                    description: "Your widget package download has started."
+                  });
+                }}
+              >
+                Download Now
+              </Button>
             </CardContent>
           </Card>
 

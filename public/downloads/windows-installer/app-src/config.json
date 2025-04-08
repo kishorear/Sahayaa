@@ -1,0 +1,8 @@
+{
+  "tenantId": "YOUR_TENANT_ID",
+  "apiKey": "YOUR_API_KEY",
+  "primaryColor": "#6366F1",
+  "position": "right",
+  "autoOpen": false,
+  "branding": true
+}

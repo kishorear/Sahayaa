@@ -147,21 +147,66 @@ export default function Dashboard() {
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xl">Chat Module</CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-blue-600 dark:text-blue-400"
-                onClick={() => {
-                  window.location.href = '/downloads/supportai-widget-package.zip';
-                  toast({
-                    title: "Downloading widget package",
-                    description: "Your widget package download has started."
-                  });
-                }}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Download Widget
-              </Button>
+              <div className="relative">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-blue-600 dark:text-blue-400"
+                  onClick={() => {
+                    // Toggle dropdown
+                    const dropdown = document.getElementById("download-dropdown");
+                    dropdown?.classList.toggle("hidden");
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Download Widget
+                </Button>
+                
+                {/* Dropdown menu for download options */}
+                <div 
+                  id="download-dropdown" 
+                  className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 hidden z-50"
+                >
+                  <div className="py-1">
+                    <a 
+                      href="/downloads/supportai-widget-package.zip" 
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => {
+                        toast({
+                          title: "Downloading standard package",
+                          description: "Your widget package download has started."
+                        });
+                      }}
+                    >
+                      Standard Widget Package
+                    </a>
+                    <a 
+                      href="/downloads/windows-installer/SupportAIWidget_Setup.exe" 
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => {
+                        toast({
+                          title: "Downloading Windows Installer",
+                          description: "Your Windows installer download has started."
+                        });
+                      }}
+                    >
+                      Windows Installer (.exe)
+                    </a>
+                    <a 
+                      href="/downloads/extension/supportai-widget-extension.zip" 
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => {
+                        toast({
+                          title: "Downloading Browser Extension",
+                          description: "Your Browser Extension download has started."
+                        });
+                      }}
+                    >
+                      Browser Extension
+                    </a>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="border border-gray-200 dark:border-gray-700 rounded-md p-4 bg-white dark:bg-gray-800">
@@ -271,19 +316,64 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Get the embeddable chat widget code for your website.
               </p>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  window.location.href = '/downloads/supportai-widget-package.zip';
-                  toast({
-                    title: "Downloading widget package",
-                    description: "Your widget package download has started."
-                  });
-                }}
-              >
-                Download Now
-              </Button>
+              <div className="relative">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    // Toggle dropdown
+                    const dropdown = document.getElementById("download-dropdown-quick");
+                    dropdown?.classList.toggle("hidden");
+                  }}
+                >
+                  Download Now
+                </Button>
+                
+                {/* Dropdown menu for download options */}
+                <div 
+                  id="download-dropdown-quick" 
+                  className="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 hidden z-50"
+                >
+                  <div className="py-1">
+                    <a 
+                      href="/downloads/supportai-widget-package.zip" 
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => {
+                        toast({
+                          title: "Downloading standard package",
+                          description: "Your widget package download has started."
+                        });
+                      }}
+                    >
+                      Standard Widget Package
+                    </a>
+                    <a 
+                      href="/downloads/windows-installer/SupportAIWidget_Setup.exe" 
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => {
+                        toast({
+                          title: "Downloading Windows Installer",
+                          description: "Your Windows installer download has started."
+                        });
+                      }}
+                    >
+                      Windows Installer (.exe)
+                    </a>
+                    <a 
+                      href="/downloads/extension/supportai-widget-extension.zip" 
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => {
+                        toast({
+                          title: "Downloading Browser Extension",
+                          description: "Your Browser Extension download has started."
+                        });
+                      }}
+                    >
+                      Browser Extension
+                    </a>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

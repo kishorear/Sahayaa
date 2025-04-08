@@ -1,0 +1,55 @@
+SOFTWARE LICENSE AGREEMENT
+SupportAI Widget
+
+IMPORTANT: PLEASE READ THIS LICENSE CAREFULLY BEFORE USING THIS SOFTWARE.
+
+1. LICENSE GRANT
+
+SupportAI grants you a non-exclusive, non-transferable license to use the SupportAI Widget software (the "Software") on your website(s) subject to the terms and conditions of this Agreement.
+
+2. OWNERSHIP
+
+The Software is owned and copyrighted by SupportAI. Your license confers no title or ownership in the Software and should not be construed as a sale of any right in the Software.
+
+3. COPYRIGHT
+
+The Software and all rights, without limitation including proprietary rights therein, are owned by SupportAI and are protected by copyright laws and international copyright treaties.
+
+4. PERMITTED USES
+
+You may:
+(a) Install and use the Software on website(s) that you own or manage
+(b) Make a reasonable number of copies of the Software for backup purposes only
+
+5. PROHIBITED USES
+
+You may not:
+(a) Distribute, sell, lease, rent, lend, or sublicense the Software
+(b) Modify, alter, translate, or create derivative works of the Software
+(c) Reverse engineer, decompile, or disassemble the Software, except as permitted by law
+(d) Remove any proprietary notices or labels on the Software
+
+6. TERMINATION
+
+This license is effective until terminated. It will terminate automatically if you fail to comply with any term or condition of this Agreement.
+
+7. DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. SUPPORTAI DISCLAIMS ALL WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+8. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL SUPPORTAI BE LIABLE FOR ANY DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF PROFITS, BUSINESS INTERRUPTION, LOSS OF INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THIS SOFTWARE.
+
+9. GOVERNING LAW
+
+This Agreement shall be governed by the laws of the jurisdiction in which SupportAI operates, excluding its conflict of law provisions.
+
+10. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between you and SupportAI and supersedes any prior agreement concerning the Software.
+
+By installing or using the Software, you agree to be bound by the terms of this Agreement.
+
+SupportAI, Inc.
+support@supportai.com

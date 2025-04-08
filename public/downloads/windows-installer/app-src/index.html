@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SupportAI Widget Manager</title>
+  <style>
+    /* Basic styles */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      background-color: #f5f5f7;
+    }
+    * {
+      box-sizing: border-box;
+    }
+
+    /* Header styles */
+    header {
+      background-color: #6366F1;
+      color: white;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+    }
+    .logo {
+      width: 40px;
+      height: 40px;
+      margin-right: 16px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    /* Main container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px;
+    }
+
+    /* Tab styles */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .tab.active {
+      border-bottom: 3px solid #6366F1;
+      color: #6366F1;
+    }
+
+    /* Form styles */
+    .form-section {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #444;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    input[type="color"] {
+      width: 100%;
+      height: 40px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    /* Toggle switch */
+    .toggle-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #6366F1;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    /* Button styles */
+    .button-group {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    button {
+      background-color: #6366F1;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover {
+      background-color: #5153d0;
+    }
+    button.secondary {
+      background-color: #f5f5f7;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+    button.secondary:hover {
+      background-color: #e8e8e8;
+    }
+
+    /* Code output section */
+    .code-section {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .code-block {
+      background-color: #282c34;
+      color: #abb2bf;
+      font-family: Consolas, Monaco, 'Andale Mono', monospace;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+    .button-bar {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Preview section */
+    .preview-section {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      height: 400px;
+    }
+    .browser-bar {
+      background-color: #f0f0f0;
+      padding: 8px;
+      border-radius: 4px 4px 0 0;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+    }
+    .browser-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .browser-dot.red { background-color: #ff5f57; }
+    .browser-dot.yellow { background-color: #ffbd2e; }
+    .browser-dot.green { background-color: #28c941; }
+    .browser-url {
+      background-color: white;
+      border-radius: 15px;
+      padding: 4px 12px;
+      flex-grow: 1;
+      margin-left: 10px;
+      font-size: 12px;
+      color: #666;
+    }
+    .preview-content {
+      padding: 20px;
+      position: relative;
+      height: calc(100% - 40px);
+    }
+    .widget-preview {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-color: var(--primary-color, #6366F1);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .widget-chat {
+      position: absolute;
+      bottom: 90px;
+      right: 20px;
+      width: 300px;
+      height: 400px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+      display: none;
+    }
+    .widget-preview:hover + .widget-chat,
+    .widget-preview.open + .widget-chat {
+      display: block;
+    }
+    .widget-header {
+      background-color: var(--primary-color, #6366F1);
+      color: white;
+      padding: 15px;
+      border-radius: 8px 8px 0 0;
+      font-weight: 500;
+    }
+    
+    /* Status bar */
+    .status-bar {
+      background-color: #f0f0f0;
+      padding: 10px 20px;
+      border-top: 1px solid #ddd;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #666;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+      display: inline-block;
+    }
+    .status-dot.connected { background-color: #28c941; }
+    .status-dot.disconnected { background-color: #ff5f57; }
+
+    /* Responsive styles */
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+      .tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/logo.png" alt="SupportAI Logo" class="logo">
+    <h1>SupportAI Widget Manager</h1>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" data-tab="config">Configuration</div>
+      <div class="tab" data-tab="export">Export Code</div>
+      <div class="tab" data-tab="preview">Preview</div>
+      <div class="tab" data-tab="help">Help</div>
+    </div>
+
+    <div class="tab-content" id="config-tab">
+      <div class="form-section">
+        <h2>Account Settings</h2>
+        <div class="form-group">
+          <label for="tenant-id">Tenant ID</label>
+          <input type="text" id="tenant-id" placeholder="Enter your Tenant ID">
+        </div>
+        <div class="form-group">
+          <label for="api-key">API Key</label>
+          <input type="text" id="api-key" placeholder="Enter your API Key">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>Widget Appearance</h2>
+        <div class="form-group">
+          <label for="primary-color">Primary Color</label>
+          <input type="color" id="primary-color" value="#6366F1">
+        </div>
+        <div class="form-group">
+          <label for="position">Widget Position</label>
+          <select id="position">
+            <option value="right">Bottom Right</option>
+            <option value="left">Bottom Left</option>
+          </select>
+        </div>
+        <div class="form-group toggle-container">
+          <label for="auto-open">Auto-open on page load</label>
+          <label class="switch">
+            <input type="checkbox" id="auto-open">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="form-group toggle-container">
+          <label for="branding">Show "Powered by SupportAI" branding</label>
+          <label class="switch">
+            <input type="checkbox" id="branding" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="secondary" id="reset-config">Reset</button>
+        <button id="save-config">Save Configuration</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="export-tab" style="display:none;">
+      <div class="code-section">
+        <h2>HTML Embed Code</h2>
+        <div class="code-block" id="html-code">
+          <!-- Generated HTML code will appear here -->
+        </div>
+        <div class="button-bar">
+          <button id="copy-html">Copy Code</button>
+          <button id="export-html">Export as HTML</button>
+        </div>
+      </div>
+
+      <div class="code-section">
+        <h2>JavaScript Integration</h2>
+        <div class="code-block" id="js-code">
+          <!-- Generated JS code will appear here -->
+        </div>
+        <div class="button-bar">
+          <button id="copy-js">Copy Code</button>
+          <button id="export-js">Export as JavaScript</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="preview-tab" style="display:none;">
+      <div class="preview-section">
+        <div class="browser-bar">
+          <div class="browser-dot red"></div>
+          <div class="browser-dot yellow"></div>
+          <div class="browser-dot green"></div>
+          <div class="browser-url">https://yourwebsite.com</div>
+        </div>
+        <div class="preview-content">
+          <h3>Your Website Content</h3>
+          <p>This is a preview of how the SupportAI widget will appear on your website.</p>
+          
+          <div class="widget-preview" id="widget-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          
+          <div class="widget-chat">
+            <div class="widget-header">Chat with Support</div>
+            <div style="padding: 15px;">
+              <p style="text-align: center; color: #666;">Widget preview</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="button-group">
+        <button id="toggle-chat">Toggle Chat Open</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="help-tab" style="display:none;">
+      <div class="form-section">
+        <h2>Getting Started</h2>
+        <p>To use the SupportAI Widget on your website, follow these steps:</p>
+        <ol>
+          <li>Configure your account settings with your SupportAI Tenant ID and API Key</li>
+          <li>Customize the widget appearance to match your brand</li>
+          <li>Copy the generated code or export it as a file</li>
+          <li>Add the code to your website's HTML, right before the closing <code>&lt;/body&gt;</code> tag</li>
+        </ol>
+      </div>
+
+      <div class="form-section">
+        <h2>Support Resources</h2>
+        <p>If you need help with the SupportAI Widget, check out these resources:</p>
+        <ul>
+          <li><a href="#" id="open-docs">Documentation</a></li>
+          <li><a href="#" id="open-support">Contact Support</a></li>
+          <li><a href="#" id="open-dashboard">SupportAI Dashboard</a></li>
+        </ul>
+        <p>Current Version: <span id="app-version">1.0.0</span></p>
+        <button id="check-updates" class="secondary">Check for Updates</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div>
+      <span class="status-dot connected"></span>
+      Ready
+    </div>
+    <div>SupportAI Widget v1.0.0</div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Hide all tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.style.display = 'none';
+        });
+        
+        // Remove active class from all tabs
+        document.querySelectorAll('.tab').forEach(t => {
+          t.classList.remove('active');
+        });
+        
+        // Show selected tab content and mark tab as active
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(`${tabId}-tab`).style.display = 'block';
+        tab.classList.add('active');
+      });
+    });
+
+    // Get form elements
+    const tenantIdInput = document.getElementById('tenant-id');
+    const apiKeyInput = document.getElementById('api-key');
+    const primaryColorInput = document.getElementById('primary-color');
+    const positionSelect = document.getElementById('position');
+    const autoOpenInput = document.getElementById('auto-open');
+    const brandingInput = document.getElementById('branding');
+
+    // Widget preview elements
+    const widgetButton = document.getElementById('widget-button');
+    const toggleChatBtn = document.getElementById('toggle-chat');
+
+    // Config management
+    let config = {
+      tenantId: '',
+      apiKey: '',
+      primaryColor: '#6366F1',
+      position: 'right',
+      autoOpen: false,
+      branding: true
+    };
+
+    // Function to update the UI with config values
+    function updateUI() {
+      tenantIdInput.value = config.tenantId;
+      apiKeyInput.value = config.apiKey;
+      primaryColorInput.value = config.primaryColor;
+      positionSelect.value = config.position;
+      autoOpenInput.checked = config.autoOpen;
+      brandingInput.checked = config.branding;
+      
+      // Update preview
+      document.documentElement.style.setProperty('--primary-color', config.primaryColor);
+      if (config.autoOpen) {
+        widgetButton.classList.add('open');
+      } else {
+        widgetButton.classList.remove('open');
+      }
+      
+      // Update code blocks
+      updateCodeBlocks();
+    }
+
+    // Function to update code blocks
+    function updateCodeBlocks() {
+      const htmlCode = `<!-- SupportAI Chat Widget -->
+<script>
+  window.supportAiConfig = {
+    tenantId: ${config.tenantId || 'YOUR_TENANT_ID'},
+    apiKey: "${config.apiKey || 'YOUR_API_KEY'}",
+    primaryColor: "${config.primaryColor}",
+    position: "${config.position}",
+    autoOpen: ${config.autoOpen},
+    branding: ${config.branding},
+    reportData: true
+  };
+</script>
+<script src="https://supportai.com/widget.js" async></script>`;
+
+      const jsCode = `// SupportAI Widget Integration
+const script = document.createElement('script');
+script.src = 'https://supportai.com/widget.js';
+script.async = true;
+
+const configScript = document.createElement('script');
+configScript.textContent = \`
+  window.supportAiConfig = {
+    tenantId: ${config.tenantId || 'YOUR_TENANT_ID'},
+    apiKey: "${config.apiKey || 'YOUR_API_KEY'}",
+    primaryColor: "${config.primaryColor}",
+    position: "${config.position}",
+    autoOpen: ${config.autoOpen},
+    branding: ${config.branding},
+    reportData: true
+  };
+\`;
+
+document.head.appendChild(configScript);
+document.body.appendChild(script);`;
+
+      document.getElementById('html-code').textContent = htmlCode;
+      document.getElementById('js-code').textContent = jsCode;
+    }
+
+    // Toggle chat preview
+    toggleChatBtn.addEventListener('click', () => {
+      widgetButton.classList.toggle('open');
+    });
+
+    // Save configuration
+    document.getElementById('save-config').addEventListener('click', () => {
+      config = {
+        tenantId: tenantIdInput.value,
+        apiKey: apiKeyInput.value,
+        primaryColor: primaryColorInput.value,
+        position: positionSelect.value,
+        autoOpen: autoOpenInput.checked,
+        branding: brandingInput.checked
+      };
+      
+      // Send to main process
+      window.electron.saveConfig(config);
+      
+      // Update UI
+      updateUI();
+      
+      // Show status message
+      document.querySelector('.status-bar div:first-child').innerHTML = '<span class="status-dot connected"></span> Configuration saved';
+      setTimeout(() => {
+        document.querySelector('.status-bar div:first-child').innerHTML = '<span class="status-dot connected"></span> Ready';
+      }, 3000);
+    });
+
+    // Reset configuration
+    document.getElementById('reset-config').addEventListener('click', () => {
+      if (confirm('Reset all configuration settings to default values?')) {
+        config = {
+          tenantId: '',
+          apiKey: '',
+          primaryColor: '#6366F1',
+          position: 'right',
+          autoOpen: false,
+          branding: true
+        };
+        
+        updateUI();
+      }
+    });
+
+    // Copy button functionality
+    document.getElementById('copy-html').addEventListener('click', () => {
+      const code = document.getElementById('html-code').textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        document.querySelector('.status-bar div:first-child').innerHTML = '<span class="status-dot connected"></span> HTML code copied to clipboard';
+        setTimeout(() => {
+          document.querySelector('.status-bar div:first-child').innerHTML = '<span class="status-dot connected"></span> Ready';
+        }, 3000);
+      });
+    });
+
+    document.getElementById('copy-js').addEventListener('click', () => {
+      const code = document.getElementById('js-code').textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        document.querySelector('.status-bar div:first-child').innerHTML = '<span class="status-dot connected"></span> JavaScript code copied to clipboard';
+        setTimeout(() => {
+          document.querySelector('.status-bar div:first-child').innerHTML = '<span class="status-dot connected"></span> Ready';
+        }, 3000);
+      });
+    });
+
+    // Export buttons
+    document.getElementById('export-html').addEventListener('click', () => {
+      window.electron.exportWidget('html');
+    });
+
+    document.getElementById('export-js').addEventListener('click', () => {
+      window.electron.exportWidget('js');
+    });
+
+    // Help tab links
+    document.getElementById('open-docs').addEventListener('click', () => {
+      window.electron.openExternal('https://supportai.com/docs');
+    });
+
+    document.getElementById('open-support').addEventListener('click', () => {
+      window.electron.openExternal('https://supportai.com/support');
+    });
+
+    document.getElementById('open-dashboard').addEventListener('click', () => {
+      window.electron.openExternal('https://supportai.com/dashboard');
+    });
+
+    // Check for updates
+    document.getElementById('check-updates').addEventListener('click', () => {
+      window.electron.checkForUpdates();
+    });
+
+    // Listen for events from main process
+    window.electron.onConfigUpdate((newConfig) => {
+      config = newConfig;
+      updateUI();
+    });
+
+    window.electron.onExportSuccess((filePath) => {
+      document.querySelector('.status-bar div:first-child').innerHTML = `<span class="status-dot connected"></span> Exported to ${filePath}`;
+      setTimeout(() => {
+        document.querySelector('.status-bar div:first-child').innerHTML = '<span class="status-dot connected"></span> Ready';
+      }, 3000);
+    });
+
+    window.electron.onUpdateStatus((status) => {
+      if (status.available) {
+        alert(`A new version (${status.version}) is available! Please visit the SupportAI website to download the update.`);
+      } else {
+        alert('You are using the latest version.');
+      }
+    });
+
+    // Initialize the UI
+    window.electron.getConfig();
+  </script>
+</body>
+</html>

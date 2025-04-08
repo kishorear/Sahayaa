@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart3, Users, Ticket, Clock, ArrowUpRight, 
   ArrowRight, Download, MessageSquare, Settings
@@ -25,6 +26,31 @@ interface CategoryMetric {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // Function to handle widget download
+  const handleWidgetDownload = () => {
+    // Show toast notification
+    toast({
+      title: "Downloading widget package",
+      description: "Your widget package is being prepared and will download shortly.",
+    });
+    
+    // Construct URL with query parameters for customized widget package
+    const queryParams = new URLSearchParams({
+      tenantId: String(user?.tenantId || 1),
+      userId: String(user?.id || 1),
+      primaryColor: '6366F1', // Default primary color
+      position: 'right',
+      greetingMessage: encodeURIComponent('How can I help you today?'),
+      autoOpen: 'false',
+      branding: 'true',
+      reportData: 'true'
+    });
+    
+    // Download the widget package
+    window.location.href = `/api/widgets/download?${queryParams.toString()}`;
+  };
   
   // Fetch summary metrics
   const { data: summaryData, isLoading: isLoadingSummary } = useQuery<SummaryMetrics>({
@@ -145,7 +171,12 @@ export default function Dashboard() {
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xl">Chat Module</CardTitle>
-              <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-blue-600 dark:text-blue-400"
+                onClick={handleWidgetDownload}
+              >
                 <Download className="h-4 w-4 mr-1" />
                 Download Widget
               </Button>
@@ -248,9 +279,13 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Get the embeddable chat widget code for your website.
               </p>
-              <Link href="/admin/settings">
-                <Button variant="outline" size="sm">Download Now</Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleWidgetDownload}
+              >
+                Download Now
+              </Button>
             </CardContent>
           </Card>
 

@@ -119,10 +119,7 @@ export default function ContactUsPage() {
     setEmailSupportResponse("");
     
     try {
-      const response = await apiRequest("/api/email-support", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/email-support", data);
       
       const result = await response.json();
       
@@ -228,7 +225,7 @@ export default function ContactUsPage() {
                     <div>
                       <h3 className="font-medium">Email</h3>
                       <p className="text-gray-600 dark:text-gray-400">
-                        support@supportai.example.com
+                        {emailStatus?.supportEmail || "support@supportai.example.com"}
                       </p>
                     </div>
                   </div>

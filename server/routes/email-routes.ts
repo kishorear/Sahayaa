@@ -58,15 +58,20 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
     }
   });
   
-  // Get email configuration status
-  app.get('/api/email/status', requireAuth, async (req: Request, res: Response) => {
+  // Get email configuration status - public endpoint for use in the contact page
+  app.get('/api/email/status', async (req: Request, res: Response) => {
     const emailService = getEmailService();
     
     if (!emailService) {
       return res.status(200).json({ configured: false });
     }
     
-    return res.status(200).json({ configured: true });
+    // Don't include sensitive information, just the configuration status
+    return res.status(200).json({ 
+      configured: true,
+      // Include the support email address for displaying on the contact page
+      supportEmail: emailService.getConfig().settings.fromEmail 
+    });
   });
   
   // Test email configuration

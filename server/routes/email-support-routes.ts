@@ -22,15 +22,6 @@ export function registerEmailSupportRoutes(app: Express) {
       // Get tenantId from the session or use default
       const tenantId = req.user?.tenantId || 1;
       
-      // Get the email service
-      const emailService = getEmailService();
-      
-      if (!emailService) {
-        return res.status(500).json({
-          message: 'Email service is not configured'
-        });
-      }
-      
       // Generate AI response using the same functionality as the chatbot
       // Create an initial system prompt that's specifically for email support
       const systemPrompt = 
@@ -71,36 +62,53 @@ export function registerEmailSupportRoutes(app: Express) {
       // Format the full email response
       const fullEmailResponse = 
         `Dear Customer,\n\n${aiResponse}\n\nBest regards,\nThe Support Team`;
+        
+      // Get the email service
+      const emailService = getEmailService();
       
-      // Send the response email to the customer
-      await emailService.sendEmail(
-        email,
-        `Re: ${subject}`,
-        `<p>${fullEmailResponse.replace(/\n/g, '<br/>')}</p>`
-      );
+      // Flag to track if emails were sent
+      let emailsSent = false;
       
-      // Also send a notification to the support team email address (using the configured from email)
-      // This ensures the support team is aware of the customer request
-      const supportEmail = emailService.getConfig().settings.fromEmail;
-      
-      // Format the notification email for support team
-      const notificationContent = `
-        <h2>New Email Support Request</h2>
-        <p><strong>From:</strong> ${email}</p>
-        <p><strong>Subject:</strong> ${subject}</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-        <hr />
-        <p><strong>AI Response:</strong></p>
-        <p>${aiResponse.replace(/\n/g, '<br/>')}</p>
-      `;
-      
-      // Send notification to the support team
-      await emailService.sendEmail(
-        supportEmail,
-        `[Support Request] ${subject}`,
-        notificationContent
-      );
+      // If email service is configured, send the emails
+      if (emailService) {
+        try {
+          // Send the response email to the customer
+          await emailService.sendEmail(
+            email,
+            `Re: ${subject}`,
+            `<p>${fullEmailResponse.replace(/\n/g, '<br/>')}</p>`
+          );
+          
+          // Also send a notification to the support team email address
+          const supportEmail = emailService.getConfig().settings.fromEmail;
+          
+          // Format the notification email for support team
+          const notificationContent = `
+            <h2>New Email Support Request</h2>
+            <p><strong>From:</strong> ${email}</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Message:</strong></p>
+            <p>${message}</p>
+            <hr />
+            <p><strong>AI Response:</strong></p>
+            <p>${aiResponse.replace(/\n/g, '<br/>')}</p>
+          `;
+          
+          // Send notification to the support team
+          await emailService.sendEmail(
+            supportEmail,
+            `[Support Request] ${subject}`,
+            notificationContent
+          );
+          
+          emailsSent = true;
+        } catch (emailError) {
+          console.error('Error sending emails:', emailError);
+          // Continue processing even if email sending fails
+        }
+      } else {
+        console.warn('Email service not configured. Processing support request without sending emails.');
+      }
       
       // Log this as a support interaction
       try {
@@ -133,9 +141,12 @@ export function registerEmailSupportRoutes(app: Express) {
       }
       
       return res.status(200).json({
-        message: 'Support request processed successfully',
+        message: emailsSent 
+          ? 'Support request processed successfully' 
+          : 'Support request processed successfully, but email delivery is not configured',
         aiResponse: aiResponse,
-        emailSent: true
+        emailSent: emailsSent,
+        emailConfigured: !!emailService
       });
       
     } catch (error: any) {
@@ -170,8 +181,13 @@ export function registerEmailSupportRoutes(app: Express) {
       const emailService = getEmailService();
       
       if (!emailService) {
-        return res.status(500).json({
-          message: 'Email service is not configured'
+        // Rather than returning an error, we'll just log without sending emails
+        console.warn('Email service not configured. Processing contact form without sending emails.');
+        
+        return res.status(200).json({
+          message: 'Contact form submitted successfully, but email delivery is not configured',
+          emailSent: false,
+          emailConfigured: false
         });
       }
       
@@ -204,7 +220,9 @@ export function registerEmailSupportRoutes(app: Express) {
       );
       
       return res.status(200).json({
-        message: 'Contact form submitted successfully'
+        message: 'Contact form submitted successfully',
+        emailSent: true,
+        emailConfigured: true
       });
       
     } catch (error: any) {

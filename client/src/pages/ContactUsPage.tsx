@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -92,10 +92,7 @@ export default function ContactUsPage() {
   const onContactSubmit = async (data: ContactFormValues) => {
     setContactFormSubmitting(true);
     try {
-      await apiRequest("/api/contact", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      await apiRequest("POST", "/api/contact", data);
 
       toast({
         title: "Message sent!",
@@ -360,6 +357,30 @@ export default function ContactUsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
+                      {/* Email Configuration Status */}
+                      {isLoadingEmailStatus ? (
+                        <div className="mb-4 flex items-center text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Checking email configuration status...
+                        </div>
+                      ) : emailStatus && !emailStatus.configured ? (
+                        <Alert variant="destructive" className="mb-4">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Email Not Configured</AlertTitle>
+                          <AlertDescription>
+                            The email support service is currently unavailable. Please use the regular contact form instead.
+                          </AlertDescription>
+                        </Alert>
+                      ) : emailStatus && emailStatus.configured ? (
+                        <Alert variant="default" className="mb-4 bg-primary/10 border-primary/20">
+                          <CheckCircle className="h-4 w-4 text-primary" />
+                          <AlertTitle>Email Support Ready</AlertTitle>
+                          <AlertDescription>
+                            Our email support system is ready to help you. Fill out the form below to get instant AI-powered assistance.
+                          </AlertDescription>
+                        </Alert>
+                      ) : null}
+                      
                       <Form {...emailSupportForm}>
                         <form onSubmit={emailSupportForm.handleSubmit(onEmailSupportSubmit)} className="space-y-6">
                           <FormField
@@ -411,7 +432,7 @@ export default function ContactUsPage() {
                           <Button 
                             type="submit" 
                             className="w-full"
-                            disabled={emailSupportSubmitting}
+                            disabled={emailSupportSubmitting || (emailStatus && !emailStatus.configured)}
                           >
                             {emailSupportSubmitting ? (
                               <>

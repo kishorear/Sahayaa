@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { setupAuth } from "./auth";
 import { registerEmailRoutes } from "./routes/email-routes";
+import { registerEmailSupportRoutes } from "./routes/email-support-routes";
 import { registerIntegrationRoutes } from "./routes/integration-routes";
 import { registerDataSourceRoutes } from "./routes/data-source-routes";
 import { registerMfaRoutes } from "./routes/mfa-routes";
@@ -99,6 +100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register email-related routes
   registerEmailRoutes(app, requireRole(['admin', 'support-agent']));
+  
+  // Register email support routes (publicly accessible)
+  registerEmailSupportRoutes(app);
   
   // Register third-party integration routes
   registerIntegrationRoutes(app, requireRole(['admin']));

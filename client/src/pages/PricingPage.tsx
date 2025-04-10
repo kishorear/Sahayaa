@@ -87,6 +87,9 @@ export default function PricingPage() {
               <Link href="/how-it-works">
                 <span className="hover:text-primary transition-colors cursor-pointer">How It Works</span>
               </Link>
+              <Link href="/contact">
+                <span className="hover:text-primary transition-colors cursor-pointer">Contact Us</span>
+              </Link>
               <Link href="/auth">
                 <Button size="sm">Login</Button>
               </Link>
@@ -286,7 +289,9 @@ export default function PricingPage() {
               <Link href="/api">
                 <span className="hover:text-white transition-colors cursor-pointer">API</span>
               </Link>
-              <span className="hover:text-white transition-colors cursor-pointer">Contact</span>
+              <Link href="/contact">
+                <span className="hover:text-white transition-colors cursor-pointer">Contact Us</span>
+              </Link>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">

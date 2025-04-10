@@ -70,6 +70,14 @@ export class EmailService {
   private config: EmailConfig;
   private checkingEmails: boolean = false;
   private checkInterval: NodeJS.Timeout | null = null;
+  
+  /**
+   * Get the email service configuration
+   * This is used for accessing settings like the "from" email address
+   */
+  public getConfig(): EmailConfig {
+    return this.config;
+  }
 
   constructor(config: EmailConfig) {
     this.config = config;

@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Tabs, 
   TabsContent, 
@@ -21,9 +22,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Mail, MapPin, Phone } from "lucide-react";
+import { Loader2, Mail, MapPin, Phone, AlertCircle, CheckCircle } from "lucide-react";
 
 // Form validation schemas
 const contactFormSchema = z.object({
@@ -48,6 +50,22 @@ export default function ContactUsPage() {
   const [emailSupportSuccess, setEmailSupportSuccess] = useState(false);
   const [emailSupportResponse, setEmailSupportResponse] = useState("");
   const [contactFormSubmitting, setContactFormSubmitting] = useState(false);
+  
+  // Check if email is configured
+  const { data: emailStatus, isLoading: isLoadingEmailStatus } = useQuery({
+    queryKey: ["/api/email/status"],
+    queryFn: async () => {
+      const response = await fetch("/api/email/status");
+      if (!response.ok) {
+        throw new Error("Failed to fetch email configuration status");
+      }
+      return response.json();
+    },
+    // Retry if the status check fails
+    retry: 2,
+    // Don't refetch unnecessarily
+    refetchOnWindowFocus: false,
+  });
 
   // Regular contact form
   const contactForm = useForm<ContactFormValues>({

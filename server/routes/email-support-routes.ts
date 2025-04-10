@@ -72,11 +72,34 @@ export function registerEmailSupportRoutes(app: Express) {
       const fullEmailResponse = 
         `Dear Customer,\n\n${aiResponse}\n\nBest regards,\nThe Support Team`;
       
-      // Send the email
+      // Send the response email to the customer
       await emailService.sendEmail(
         email,
         `Re: ${subject}`,
         `<p>${fullEmailResponse.replace(/\n/g, '<br/>')}</p>`
+      );
+      
+      // Also send a notification to the support team email address (using the configured from email)
+      // This ensures the support team is aware of the customer request
+      const supportEmail = emailService.getConfig().settings.fromEmail;
+      
+      // Format the notification email for support team
+      const notificationContent = `
+        <h2>New Email Support Request</h2>
+        <p><strong>From:</strong> ${email}</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+        <hr />
+        <p><strong>AI Response:</strong></p>
+        <p>${aiResponse.replace(/\n/g, '<br/>')}</p>
+      `;
+      
+      // Send notification to the support team
+      await emailService.sendEmail(
+        supportEmail,
+        `[Support Request] ${subject}`,
+        notificationContent
       );
       
       // Log this as a support interaction
@@ -161,8 +184,8 @@ export function registerEmailSupportRoutes(app: Express) {
         <p>${message}</p>
       `;
       
-      // Get the support email address from config or use a default
-      const supportEmail = process.env.SUPPORT_EMAIL || 'support@example.com';
+      // Get the support email address from the email configuration
+      const supportEmail = emailService.getConfig().settings.fromEmail;
       
       // Send notification to the support team
       await emailService.sendEmail(

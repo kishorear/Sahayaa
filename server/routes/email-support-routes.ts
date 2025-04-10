@@ -1,7 +1,7 @@
 import { Express, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
-import { generateChatResponse } from '../ai';
+import { generateChatResponse, ChatMessage } from '../ai';
 import { getEmailService } from '../email-service';
 
 // Schema for email support requests
@@ -41,21 +41,31 @@ export function registerEmailSupportRoutes(app: Express) {
         Format your response appropriately for an email reply with proper greeting and sign-off.`;
       
       // Convert the user message to chat format for the AI
-      const chatHistory = [
+      const chatHistory: ChatMessage[] = [
         {
           role: 'system',
           content: systemPrompt
-        },
+        } as ChatMessage,
         {
           role: 'user',
           content: message
-        }
+        } as ChatMessage
       ];
       
       // Generate the AI response
-      const aiResponse = await generateChatResponse(
-        chatHistory,
+      // Create a simple "ticket" object for context (this is just for the AI function)
+      const ticketContext = {
+        id: 0, // Placeholder ID
+        title: subject,
+        description: message,
+        category: 'email_support',
         tenantId
+      };
+      
+      const aiResponse = await generateChatResponse(
+        ticketContext,
+        chatHistory,
+        ""  // No additional message since it's already in chatHistory
       );
       
       // Format the full email response
@@ -105,7 +115,7 @@ export function registerEmailSupportRoutes(app: Express) {
         emailSent: true
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing email support request:', error);
       
       if (error instanceof z.ZodError) {
@@ -117,7 +127,7 @@ export function registerEmailSupportRoutes(app: Express) {
       
       return res.status(500).json({
         message: 'Error processing support request',
-        error: error.message
+        error: error.message || 'Unknown error'
       });
     }
   });
@@ -174,12 +184,12 @@ export function registerEmailSupportRoutes(app: Express) {
         message: 'Contact form submitted successfully'
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing contact form:', error);
       
       return res.status(500).json({
         message: 'Error processing contact form',
-        error: error.message
+        error: error.message || 'Unknown error'
       });
     }
   });

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -55,6 +55,26 @@ type TestEmailValues = z.infer<typeof testEmailSchema>;
 export default function EmailSettings() {
   const [testMode, setTestMode] = useState(false);
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Query to fetch existing email configuration
+  const { data: emailConfigResponse, isLoading: configLoading } = useQuery({
+    queryKey: ['/api/email/config'],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest('GET', '/api/email/config');
+        // Parse the JSON response if it's a string, otherwise return as is
+        return typeof response === 'string' ? JSON.parse(response) : response;
+      } catch (error) {
+        toast({
+          title: "Error Loading Configuration",
+          description: error instanceof Error ? error.message : "Could not load email configuration",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    }
+  });
 
   // Form for email configuration
   const configForm = useForm<EmailConfigValues>({
@@ -93,6 +113,93 @@ export default function EmailSettings() {
       recipient: "",
     },
   });
+  
+  // Update form values when configuration is loaded
+  useEffect(() => {
+    if (emailConfigResponse && !configLoading) {
+      try {
+        // For type safety
+        interface ConfigResponse {
+          smtp?: {
+            host?: string;
+            port?: number;
+            secure?: boolean;
+            auth?: {
+              user?: string;
+              pass?: string;
+            };
+          };
+          imap?: {
+            host?: string;
+            port?: number;
+            user?: string;
+            password?: string;
+            tls?: boolean;
+            authTimeout?: number;
+          };
+          settings?: {
+            fromName?: string;
+            fromEmail?: string;
+            ticketSubjectPrefix?: string;
+            checkInterval?: number;
+          };
+        }
+
+        // Safely cast the response
+        const parsedConfig: ConfigResponse = emailConfigResponse;
+        
+        if (!parsedConfig || !parsedConfig.smtp || !parsedConfig.imap || !parsedConfig.settings) {
+          console.log("Email configuration is incomplete or in unexpected format", parsedConfig);
+          return;
+        }
+        
+        // Create a properly typed config object with defaults
+        const config: EmailConfigValues = {
+          smtp: {
+            host: parsedConfig.smtp.host || "",
+            port: Number(parsedConfig.smtp.port) || 465,
+            secure: parsedConfig.smtp.secure !== undefined ? Boolean(parsedConfig.smtp.secure) : true,
+            auth: {
+              user: parsedConfig.smtp.auth?.user || "",
+              pass: parsedConfig.smtp.auth?.pass || "",
+            },
+          },
+          imap: {
+            host: parsedConfig.imap.host || "",
+            port: Number(parsedConfig.imap.port) || 993,
+            user: parsedConfig.imap.user || "",
+            password: parsedConfig.imap.password || "",
+            tls: parsedConfig.imap.tls !== undefined ? Boolean(parsedConfig.imap.tls) : true,
+            authTimeout: Number(parsedConfig.imap.authTimeout) || 10000,
+          },
+          settings: {
+            fromName: parsedConfig.settings.fromName || "Support Team",
+            fromEmail: parsedConfig.settings.fromEmail || "",
+            ticketSubjectPrefix: parsedConfig.settings.ticketSubjectPrefix || "[Support]",
+            checkInterval: Number(parsedConfig.settings.checkInterval) || 60000,
+          }
+        };
+        
+        // If password is masked (for security reasons), don't overwrite the current value
+        const formValues = configForm.getValues();
+        if (config.smtp.auth.pass === '********' && formValues.smtp?.auth?.pass) {
+          config.smtp.auth.pass = formValues.smtp.auth.pass;
+        }
+        
+        if (config.imap.password === '********' && formValues.imap?.password) {
+          config.imap.password = formValues.imap.password;
+        }
+        
+        // Reset the form with loaded configuration
+        configForm.reset(config);
+        
+        // Log success
+        console.log("Email configuration loaded successfully");
+      } catch (error) {
+        console.error("Error processing email configuration:", error);
+      }
+    }
+  }, [emailConfigResponse, configLoading, configForm]);
 
   // Mutation for saving email configuration
   const configMutation = useMutation({

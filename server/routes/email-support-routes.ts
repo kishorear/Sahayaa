@@ -1,7 +1,7 @@
 import { Express, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
-import { generateChatResponse, ChatMessage } from '../ai';
+import { generateChatResponse, generateTicketTitle, ChatMessage } from '../ai';
 import { getEmailService } from '../email-service';
 
 // Schema for email support requests
@@ -112,9 +112,31 @@ export function registerEmailSupportRoutes(app: Express) {
       
       // Log this as a support interaction
       try {
+        // Generate an AI-based title for better ticket categorization
+        const chatHistory: ChatMessage[] = [
+          {
+            role: 'user',
+            content: message
+          } as ChatMessage,
+          {
+            role: 'assistant',
+            content: aiResponse
+          } as ChatMessage
+        ];
+        
+        // Use AI to generate a better title based on the conversation
+        let aiGeneratedTitle;
+        try {
+          aiGeneratedTitle = await generateTicketTitle(chatHistory, tenantId);
+          console.log('Generated AI title for email support ticket:', aiGeneratedTitle);
+        } catch (titleError) {
+          console.error('Error generating AI title for email support ticket:', titleError);
+          aiGeneratedTitle = subject; // Fallback to the user's subject
+        }
+        
         // Create a ticket in the system for tracking
         const ticket = await storage.createTicket({
-          title: subject,
+          title: aiGeneratedTitle,
           description: message,
           status: 'resolved',
           category: 'email_support',

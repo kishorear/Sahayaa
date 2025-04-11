@@ -49,7 +49,7 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
         if (tenant) {
           // Update tenant settings with email configuration
           const updatedSettings = {
-            ...tenant.settings,
+            ...(tenant.settings || {}),
             emailConfig: config
           };
           
@@ -97,6 +97,48 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
     });
   });
   
+  // Get full email configuration - admin only
+  app.get('/api/email/config', requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Get current email configuration
+      const emailService = getEmailService();
+      
+      if (!emailService) {
+        // Try to get from database
+        const tenantId = req.user?.tenantId || 1;
+        const tenant = await storage.getTenantById(tenantId);
+        
+        if (tenant?.settings && typeof tenant.settings === 'object' && 'emailConfig' in tenant.settings) {
+          // Found in database but not loaded in memory
+          return res.status(200).json(tenant.settings.emailConfig);
+        }
+        
+        // No config found
+        return res.status(200).json({ 
+          message: 'No email configuration found',
+          config: null
+        });
+      }
+      
+      // Return the current configuration
+      const config = emailService.getConfig();
+      
+      // Mask passwords/secrets for security
+      if (config.smtp?.auth?.pass) {
+        config.smtp.auth.pass = '********';
+      }
+      
+      if (config.imap?.password) {
+        config.imap.password = '********';
+      }
+      
+      return res.status(200).json(config);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ message: `Error retrieving email configuration: ${errorMessage}` });
+    }
+  });
+  
   // Test email configuration
   app.post('/api/email/test', requireAuth, async (req: Request, res: Response) => {
     const emailService = getEmailService();
@@ -120,7 +162,8 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       
       res.status(200).json({ message: 'Test email sent successfully' });
     } catch (error) {
-      res.status(500).json({ message: `Error sending test email: ${error.message}` });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ message: `Error sending test email: ${errorMessage}` });
     }
   });
   
@@ -162,7 +205,8 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       
       res.status(200).json({ message: 'Email sent successfully' });
     } catch (error) {
-      res.status(500).json({ message: `Error sending email: ${error.message}` });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ message: `Error sending email: ${errorMessage}` });
     }
   });
 }

@@ -64,6 +64,28 @@ function getTimePeriodCutoff(timePeriod: string): Date {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize email configuration from database 
+  try {
+    console.log("Attempting to load email configuration from database...");
+    const defaultTenant = await storage.getTenantById(1);
+    
+    if (defaultTenant?.settings && typeof defaultTenant.settings === 'object' && 'emailConfig' in defaultTenant.settings) {
+      const { setupEmailService } = await import('./email-service');
+      const emailConfig = defaultTenant.settings.emailConfig as any;
+      
+      console.log("Found email configuration in database, initializing email service");
+      const emailService = setupEmailService(emailConfig);
+      
+      // Start email monitoring if successfully loaded
+      emailService.startEmailMonitoring();
+      console.log("Email monitoring started successfully");
+    } else {
+      console.log("No email configuration found in tenant settings");
+    }
+  } catch (error) {
+    console.error("Error loading email configuration:", error);
+  }
+
   // Add enhanced error handlers for database-related errors in all routes
   const handleDatabaseError = (error: any, res: Response) => {
     console.error("Route handler database error:", error);

@@ -1,104 +1,77 @@
-import React, { useState } from "react";
-import { Link } from "wouter";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { Link } from 'wouter';
+
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Mail, MapPin, Phone, AlertCircle, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, MapPin, Phone, Mail, CheckCircle, AlertCircle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
-// Form validation schemas
-const contactFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  subject: z.string().min(5, "Subject must be at least 5 characters"),
-  message: z.string().min(10, "Message must be at least 10 characters"),
+// Define form schemas
+const contactSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Please enter a valid email address."),
+  subject: z.string().min(5, "Subject must be at least 5 characters."),
+  message: z.string().min(10, "Message must be at least 10 characters.")
 });
 
-const emailSupportSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  subject: z.string().min(5, "Subject must be at least 5 characters"),
-  message: z.string().min(10, "Message must be at least 10 characters"),
-});
-
-type ContactFormValues = z.infer<typeof contactFormSchema>;
-type EmailSupportFormValues = z.infer<typeof emailSupportSchema>;
+type ContactValues = z.infer<typeof contactSchema>;
 
 export default function ContactUsPage() {
   const { toast } = useToast();
-  const [emailSupportSubmitting, setEmailSupportSubmitting] = useState(false);
-  const [emailSupportSuccess, setEmailSupportSuccess] = useState(false);
-  const [emailSupportResponse, setEmailSupportResponse] = useState("");
   const [contactFormSubmitting, setContactFormSubmitting] = useState(false);
   
-  // Check if email is configured
-  const { data: emailStatus, isLoading: isLoadingEmailStatus } = useQuery({
-    queryKey: ["/api/email/status"],
-    queryFn: async () => {
-      const response = await fetch("/api/email/status");
-      if (!response.ok) {
-        throw new Error("Failed to fetch email configuration status");
-      }
-      return response.json();
-    },
-    // Retry if the status check fails
-    retry: 2,
-    // Don't refetch unnecessarily
-    refetchOnWindowFocus: false,
-  });
-
-  // Regular contact form
-  const contactForm = useForm<ContactFormValues>({
-    resolver: zodResolver(contactFormSchema),
+  // Contact form setup
+  const contactForm = useForm<ContactValues>({
+    resolver: zodResolver(contactSchema),
     defaultValues: {
       name: "",
       email: "",
       subject: "",
-      message: "",
-    },
+      message: ""
+    }
   });
-
-  // Email support form with AI response
-  const emailSupportForm = useForm<EmailSupportFormValues>({
-    resolver: zodResolver(emailSupportSchema),
-    defaultValues: {
-      email: "",
-      subject: "",
-      message: "",
-    },
+  
+  // Check if email is configured
+  const { data: emailStatus, isLoading: isLoadingEmailStatus } = useQuery({
+    queryKey: ['/api/email/status'],
+    retry: false
   });
-
-  // Submit regular contact form
-  const onContactSubmit = async (data: ContactFormValues) => {
+  
+  // Handle Contact Form submission
+  const onContactSubmit = async (data: ContactValues) => {
     setContactFormSubmitting(true);
+    
     try {
-      await apiRequest("POST", "/api/contact", data);
-
+      const response = await apiRequest("POST", "/api/contact", data);
+      
       toast({
         title: "Message sent!",
-        description: "We've received your message and will get back to you soon.",
+        description: "Thank you for contacting us. We'll get back to you soon.",
       });
-
+      
       contactForm.reset();
     } catch (error) {
       console.error("Error submitting contact form:", error);
@@ -109,42 +82,6 @@ export default function ContactUsPage() {
       });
     } finally {
       setContactFormSubmitting(false);
-    }
-  };
-
-  // Submit email support form with AI response
-  const onEmailSupportSubmit = async (data: EmailSupportFormValues) => {
-    setEmailSupportSubmitting(true);
-    setEmailSupportSuccess(false);
-    setEmailSupportResponse("");
-    
-    try {
-      const response = await apiRequest("POST", "/api/email-support", data);
-      
-      const result = await response.json();
-      
-      if (result.aiResponse) {
-        setEmailSupportResponse(result.aiResponse);
-        setEmailSupportSuccess(true);
-        
-        toast({
-          title: "Support email sent!",
-          description: "We've sent an automated response to your email. See the response below.",
-        });
-        
-        emailSupportForm.reset();
-      } else {
-        throw new Error("No AI response received");
-      }
-    } catch (error) {
-      console.error("Error submitting email support form:", error);
-      toast({
-        title: "Error",
-        description: "There was an error processing your support request. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setEmailSupportSubmitting(false);
     }
   };
 
@@ -185,7 +122,7 @@ export default function ContactUsPage() {
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Get in touch with our team or try our AI-powered email support for immediate assistance.
+            Get in touch with our team for assistance with your questions or concerns.
           </p>
         </div>
       </div>
@@ -243,203 +180,97 @@ export default function ContactUsPage() {
             </div>
             
             <div className="md:col-span-2">
-              <Tabs defaultValue="contact" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8">
-                  <TabsTrigger value="contact">Contact Form</TabsTrigger>
-                  <TabsTrigger value="email-support">Email Support</TabsTrigger>
-                </TabsList>
-                
-                {/* Regular Contact Form */}
-                <TabsContent value="contact">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Send us a message</CardTitle>
-                      <CardDescription>
-                        Fill out the form below and we'll get back to you as soon as possible.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...contactForm}>
-                        <form onSubmit={contactForm.handleSubmit(onContactSubmit)} className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                              control={contactForm.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Name</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Your name" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={contactForm.control}
-                              name="email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Email</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Your email" type="email" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <FormField
-                            control={contactForm.control}
-                            name="subject"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Subject</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Message subject" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={contactForm.control}
-                            name="message"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Message</FormLabel>
-                                <FormControl>
-                                  <Textarea 
-                                    placeholder="Your message" 
-                                    rows={5}
-                                    {...field} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <Button 
-                            type="submit" 
-                            className="w-full"
-                            disabled={contactFormSubmitting}
-                          >
-                            {contactFormSubmitting ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Sending...
-                              </>
-                            ) : (
-                              'Send Message'
-                            )}
-                          </Button>
-                        </form>
-                      </Form>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                
-                {/* AI Email Support Form */}
-                <TabsContent value="email-support">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Get AI-Powered Email Support</CardTitle>
-                      <CardDescription>
-                        Our AI assistant will provide an immediate solution to your question.
-                        The response will be sent to your email and displayed below.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {/* Hidden email status check */}
-                      {isLoadingEmailStatus ? null : null}
+              {/* Contact Form */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Send us a message</CardTitle>
+                  <CardDescription>
+                    Fill out the form below and we'll get back to you as soon as possible.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...contactForm}>
+                    <form onSubmit={contactForm.handleSubmit(onContactSubmit)} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={contactForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Your name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={contactForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Your email" type="email" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                       
-                      <Form {...emailSupportForm}>
-                        <form onSubmit={emailSupportForm.handleSubmit(onEmailSupportSubmit)} className="space-y-6">
-                          <FormField
-                            control={emailSupportForm.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Your Email</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="email@example.com" type="email" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={emailSupportForm.control}
-                            name="subject"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Subject</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="What's your question about?" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={emailSupportForm.control}
-                            name="message"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Your Question</FormLabel>
-                                <FormControl>
-                                  <Textarea 
-                                    placeholder="Describe your question or issue in detail" 
-                                    rows={5}
-                                    {...field} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <Button 
-                            type="submit" 
-                            className="w-full"
-                            disabled={emailSupportSubmitting}
-                          >
-                            {emailSupportSubmitting ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Getting AI Support...
-                              </>
-                            ) : (
-                              'Get AI Support'
-                            )}
-                          </Button>
-                        </form>
-                      </Form>
+                      <FormField
+                        control={contactForm.control}
+                        name="subject"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subject</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Message subject" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       
-                      {/* AI Response Display */}
-                      {emailSupportSuccess && emailSupportResponse && (
-                        <div className="mt-8 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                          <h3 className="text-lg font-medium mb-4">AI Support Response:</h3>
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            {emailSupportResponse.split('\n').map((line, i) => (
-                              <p key={i}>{line}</p>
-                            ))}
-                          </div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                            This response has been sent to your email.
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                      <FormField
+                        control={contactForm.control}
+                        name="message"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Message</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Your message" 
+                                rows={5}
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={contactFormSubmitting}
+                      >
+                        {contactFormSubmitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          'Send Message'
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

@@ -40,8 +40,31 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       // Test connection
       const emailService = setupEmailService(config);
       
-      // Save configuration as a string to storage (in production this would use a proper settings table)
-      // In a real implementation, we would securely store credentials and use environment variables
+      // Save configuration to tenant settings
+      // In a real implementation, we would securely store credentials
+      try {
+        const tenantId = req.user?.tenantId || 1;
+        const tenant = await storage.getTenantById(tenantId);
+        
+        if (tenant) {
+          // Update tenant settings with email configuration
+          const updatedSettings = {
+            ...tenant.settings,
+            emailConfig: config
+          };
+          
+          await storage.updateTenant(tenantId, {
+            settings: updatedSettings
+          });
+          
+          console.log(`Email configuration saved for tenant ${tenantId}`);
+        } else {
+          console.error(`Tenant ${tenantId} not found`);
+        }
+      } catch (storageError) {
+        console.error('Error saving email configuration to database:', storageError);
+        // We'll continue even if storage fails, as the in-memory service is still set up
+      }
       
       // Start email monitoring
       emailService.startEmailMonitoring();

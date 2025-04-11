@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, ChevronLeft, Mail } from "lucide-react";
+import { AlertCircle, CheckCircle, Mail } from "lucide-react";
 
 // Form schema for email configuration
 const emailConfigSchema = z.object({
@@ -256,17 +256,7 @@ export default function EmailSettings() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
-            onClick={() => window.history.back()}
-            className="p-0 h-8 w-8"
-            aria-label="Back to Settings"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-3xl font-bold tracking-tight">Email Integration</h2>
-        </div>
+        <h2 className="text-3xl font-bold tracking-tight">Email Integration</h2>
         {!testMode ? (
           <Button
             variant="outline"

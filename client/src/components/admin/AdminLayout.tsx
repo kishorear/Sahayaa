@@ -11,7 +11,8 @@ import {
   Menu,
   Link2,
   Bot,
-  FileText
+  FileText,
+  ChevronLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -75,6 +76,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="flex flex-col w-64 bg-gray-800">
           <div className="flex items-center h-16 px-4 bg-gray-900">
             <div className="flex items-center">
+              <button 
+                onClick={() => window.history.back()} 
+                className="mr-2 p-1 rounded-full hover:bg-gray-700 focus:outline-none"
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-5 w-5 text-gray-300" />
+              </button>
               <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
               </svg>

@@ -799,7 +799,6 @@ export async function setupAuth(app: Express) {
               console.error(`API user request [${traceId}] - Error formatting admin response:`, responseError);
             }
           }
-          */
         }
       } catch (dbError) {
         console.error(`API user request [${traceId}] - Failed to check admin user in database:`, dbError);

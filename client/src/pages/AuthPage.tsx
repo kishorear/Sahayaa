@@ -9,10 +9,8 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
-import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
-import { Team, InsertUser } from "@shared/schema";
+import { InsertUser } from "@shared/schema";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),

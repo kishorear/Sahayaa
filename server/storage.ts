@@ -175,6 +175,7 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.tenants = new Map();
+    this.teams = new Map();
     this.users = new Map();
     this.tickets = new Map();
     this.messages = new Map();
@@ -185,6 +186,7 @@ export class MemStorage implements IStorage {
     this.supportDocuments = new Map();
     this.documentUsageData = new Map();
     this.tenantIdCounter = 1;
+    this.teamIdCounter = 1;
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
     this.messageIdCounter = 1;
@@ -234,13 +236,59 @@ export class MemStorage implements IStorage {
       tenantId: 1 // Default tenant ID
     });
     
-    // Initialize with sample tickets, data sources, and support documents
+    // Initialize with sample teams, tickets, data sources, and support documents
+    this.initSampleTeams();
     this.initSampleTickets();
     this.initSampleDataSources();
     this.initSampleAiProviders();
     this.initSampleSupportDocuments();
   }
   
+  private async initSampleTeams() {
+    // Create sample teams for the default tenant
+    const sampleTeams = [
+      {
+        name: "Support Team",
+        description: "Handles general customer support inquiries and issues",
+        tenantId: 1
+      },
+      {
+        name: "Engineering Team",
+        description: "Handles technical issues and feature implementations",
+        tenantId: 1
+      },
+      {
+        name: "Billing Team",
+        description: "Handles billing and subscription related inquiries",
+        tenantId: 1
+      },
+      {
+        name: "Product Team",
+        description: "Manages product roadmap and feature requests",
+        tenantId: 1
+      }
+    ];
+
+    // Create the sample teams
+    for (const teamData of sampleTeams) {
+      const id = this.teamIdCounter++;
+      const now = new Date();
+      
+      const newTeam = {
+        ...teamData,
+        id,
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      this.teams.set(id, newTeam);
+      
+      // Add to cache
+      const cacheKey = `team:${id}`;
+      this.teamCache.set(cacheKey, newTeam);
+    }
+  }
+
   private async initSampleAiProviders() {
     // Create default OpenAI provider
     await this.createAiProvider({
@@ -748,6 +796,134 @@ export class MemStorage implements IStorage {
     console.log(`Cache entries cleared for tenant ID: ${id}`);
     
     return updatedTenant;
+  }
+  
+  // Team operations
+  async getTeamById(id: number, tenantId?: number): Promise<Team | undefined> {
+    // Check cache first for better performance
+    const cacheKey = `team:${id}`;
+    const cachedTeam = this.teamCache.get(cacheKey);
+    if (cachedTeam) {
+      console.log(`Team cache hit for ID: ${id}`);
+      
+      // If tenantId is provided, ensure the team belongs to that tenant
+      if (tenantId && cachedTeam.tenantId !== tenantId) {
+        return undefined;
+      }
+      
+      return cachedTeam;
+    }
+    
+    // Cache miss, look up in the map
+    const team = this.teams.get(id);
+    
+    // If tenantId is provided, ensure the team belongs to that tenant
+    if (team && tenantId && team.tenantId !== tenantId) {
+      return undefined;
+    }
+    
+    // If found, add to cache for future requests
+    if (team) {
+      this.teamCache.set(cacheKey, team);
+      
+      // Clear cache entry after 30 minutes to avoid stale data
+      setTimeout(() => {
+        this.teamCache.delete(cacheKey);
+      }, 30 * 60 * 1000);
+    }
+    
+    return team;
+  }
+
+  async getTeamByName(name: string, tenantId?: number): Promise<Team | undefined> {
+    // Filter teams based on name and optional tenantId
+    const teams = Array.from(this.teams.values());
+    
+    return teams.find(team => {
+      const nameMatches = team.name === name;
+      const tenantMatches = tenantId ? team.tenantId === tenantId : true;
+      return nameMatches && tenantMatches;
+    });
+  }
+
+  async getTeamsByTenantId(tenantId: number): Promise<Team[]> {
+    // Filter teams by tenantId
+    const teams = Array.from(this.teams.values());
+    return teams.filter(team => team.tenantId === tenantId);
+  }
+
+  async createTeam(team: InsertTeam): Promise<Team> {
+    const id = this.teamIdCounter++;
+    const now = new Date();
+    
+    const newTeam: Team = {
+      ...team,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    // Add the team to the map
+    this.teams.set(id, newTeam);
+    
+    // Add to cache
+    const cacheKey = `team:${id}`;
+    this.teamCache.set(cacheKey, newTeam);
+    
+    return newTeam;
+  }
+
+  async updateTeam(id: number, updates: Partial<Team>, tenantId?: number): Promise<Team> {
+    // Find the team in the map
+    const team = await this.getTeamById(id, tenantId);
+    if (!team) {
+      throw new Error(`Team with id ${id} not found${tenantId ? ` in tenant ${tenantId}` : ''}`);
+    }
+    
+    // Update the team with the provided updates
+    const updatedTeam: Team = {
+      ...team,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    // Update the team in the map
+    this.teams.set(id, updatedTeam);
+    
+    // Also update the team in the cache
+    const cacheKey = `team:${id}`;
+    this.teamCache.set(cacheKey, updatedTeam);
+    
+    return updatedTeam;
+  }
+
+  async deleteTeam(id: number, tenantId?: number): Promise<boolean> {
+    // Verify the team exists and belongs to the tenant
+    const team = await this.getTeamById(id, tenantId);
+    if (!team) {
+      return false;
+    }
+    
+    // Remove from map
+    const result = this.teams.delete(id);
+    
+    // Also remove from cache
+    const cacheKey = `team:${id}`;
+    this.teamCache.delete(cacheKey);
+    
+    return result;
+  }
+
+  async getTeamMembers(teamId: number, tenantId?: number): Promise<User[]> {
+    // First verify the team exists and belongs to the tenant
+    const team = await this.getTeamById(teamId, tenantId);
+    if (!team) {
+      return [];
+    }
+    
+    // Find all users that belong to this team
+    const users = Array.from(this.users.values());
+    return users.filter(user => user.teamId === teamId);
   }
   
   // User operations
@@ -1777,6 +1953,7 @@ export class DatabaseStorage implements IStorage {
   // Add memory caches for critical resources
   private userCache: Map<number, User> = new Map();
   private userByUsernameCache: Map<string, User> = new Map();
+  private teamCache: Map<number, Team> = new Map();
   private tenantCache: Map<number, Tenant> = new Map();
   private tenantByApiKeyCache: Map<string, Tenant> = new Map();
   private tenantBySubdomainCache: Map<string, Tenant> = new Map();

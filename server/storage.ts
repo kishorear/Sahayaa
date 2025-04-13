@@ -60,6 +60,7 @@ export interface IStorage {
   updateTeam(id: number, updates: Partial<Team>, tenantId?: number): Promise<Team>;
   deleteTeam(id: number, tenantId?: number): Promise<boolean>;
   getTeamMembers(teamId: number, tenantId?: number): Promise<User[]>;
+  getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]>;
   
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -924,6 +925,24 @@ export class MemStorage implements IStorage {
     // Find all users that belong to this team
     const users = Array.from(this.users.values());
     return users.filter(user => user.teamId === teamId);
+  }
+  
+  async getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]> {
+    // First verify the team exists if tenantId is provided
+    if (tenantId) {
+      const team = await this.getTeamById(teamId, tenantId);
+      if (!team) {
+        return [];
+      }
+    }
+    
+    // Find all tickets associated with this team
+    const tickets = Array.from(this.tickets.values());
+    if (tenantId) {
+      return tickets.filter(ticket => ticket.teamId === teamId && ticket.tenantId === tenantId);
+    } else {
+      return tickets.filter(ticket => ticket.teamId === teamId);
+    }
   }
   
   // User operations
@@ -1999,6 +2018,14 @@ export class DatabaseStorage implements IStorage {
     console.log(`Cache entries cleared for tenant ID: ${tenantId}`);
   }
   
+  // Helper method to clear all cached data for a team by ID
+  private clearTeamFromCache(teamId: number): void {
+    // Remove from ID cache
+    this.teamCache.delete(teamId);
+    
+    console.log(`Cache entries cleared for team ID: ${teamId}`);
+  }
+  
   // Default fallback user for admin account (used as last resort during severe database failures)
   private readonly FALLBACK_ADMIN_USER: User = {
     id: 1,
@@ -2461,6 +2488,244 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updated;
+  }
+  
+  // Team operations with caching
+  async getTeamById(id: number, tenantId?: number): Promise<Team | undefined> {
+    // Check cache first for performance
+    if (this.teamCache.has(id)) {
+      console.log(`Team cache hit for ID: ${id}`);
+      return this.teamCache.get(id);
+    }
+    
+    // Use resilient query with cache update
+    return executeQuery<Team | undefined>(
+      async () => {
+        try {
+          const baseQuery = db.select().from(teams).where(eq(teams.id, id));
+          const results = tenantId 
+            ? await baseQuery.where(eq(teams.tenantId, tenantId))
+            : await baseQuery;
+            
+          const team = results[0];
+          
+          if (team) {
+            // Update cache
+            this.teamCache.set(id, team);
+          }
+          
+          return team;
+        } catch (error) {
+          console.error(`Error fetching team with ID ${id}:`, error);
+          throw error;
+        }
+      },
+      // No fallback for team operations
+      undefined,
+      {
+        retries: 2,
+        initialDelay: 100,
+        timeoutMs: 3000,
+        logPrefix: `getTeamById(${id})`
+      }
+    );
+  }
+  
+  async getTeamByName(name: string, tenantId?: number): Promise<Team | undefined> {
+    // Execute query with tenant context if provided
+    return executeQuery<Team | undefined>(
+      async () => {
+        try {
+          const baseQuery = db.select().from(teams).where(eq(teams.name, name));
+          const results = tenantId 
+            ? await baseQuery.where(eq(teams.tenantId, tenantId))
+            : await baseQuery;
+            
+          const team = results[0];
+          
+          if (team) {
+            // Update cache
+            this.teamCache.set(team.id, team);
+          }
+          
+          return team;
+        } catch (error) {
+          console.error(`Error fetching team by name ${name}:`, error);
+          throw error;
+        }
+      },
+      undefined,
+      {
+        retries: 2,
+        initialDelay: 100,
+        timeoutMs: 3000,
+        logPrefix: `getTeamByName(${name})`
+      }
+    );
+  }
+  
+  async getTeamsByTenantId(tenantId: number): Promise<Team[]> {
+    // Execute query for teams in tenant
+    return executeQuery<Team[]>(
+      async () => {
+        try {
+          const results = await db
+            .select()
+            .from(teams)
+            .where(eq(teams.tenantId, tenantId));
+          
+          // Update cache for each team
+          results.forEach(team => {
+            this.teamCache.set(team.id, team);
+          });
+          
+          return results;
+        } catch (error) {
+          console.error(`Error fetching teams for tenant ${tenantId}:`, error);
+          throw error;
+        }
+      },
+      // Return empty array as fallback
+      [],
+      {
+        retries: 2,
+        initialDelay: 100,
+        timeoutMs: 3000,
+        logPrefix: `getTeamsByTenantId(${tenantId})`
+      }
+    );
+  }
+  
+  async createTeam(team: InsertTeam): Promise<Team> {
+    try {
+      const [created] = await db
+        .insert(teams)
+        .values(team)
+        .returning();
+      
+      // Update cache
+      this.teamCache.set(created.id, created);
+      
+      return created;
+    } catch (error) {
+      console.error(`Error in createTeam():`, error);
+      throw error;
+    }
+  }
+  
+  async updateTeam(id: number, updates: Partial<Team>, tenantId?: number): Promise<Team> {
+    try {
+      // Build query based on whether tenantId is provided
+      const query = db
+        .update(teams)
+        .set({...updates, updatedAt: new Date()});
+        
+      if (tenantId) {
+        // Add tenant check if specified
+        const [updated] = await query
+          .where(and(eq(teams.id, id), eq(teams.tenantId, tenantId)))
+          .returning();
+          
+        if (!updated) {
+          throw new Error(`Team with ID ${id} not found in tenant ${tenantId}`);
+        }
+        
+        // Update cache
+        this.clearTeamFromCache(id);
+        this.teamCache.set(updated.id, updated);
+        
+        return updated;
+      } else {
+        // Just check by ID
+        const [updated] = await query
+          .where(eq(teams.id, id))
+          .returning();
+          
+        if (!updated) {
+          throw new Error(`Team with ID ${id} not found`);
+        }
+        
+        // Update cache
+        this.clearTeamFromCache(id);
+        this.teamCache.set(updated.id, updated);
+        
+        return updated;
+      }
+    } catch (error) {
+      console.error(`Error in updateTeam(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  async deleteTeam(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      // Build delete query
+      const query = db.delete(teams);
+      
+      if (tenantId) {
+        // Add tenant check if specified
+        const result = await query.where(
+          and(eq(teams.id, id), eq(teams.tenantId, tenantId))
+        );
+        
+        // Clear from cache
+        this.clearTeamFromCache(id);
+        
+        return true;
+      } else {
+        // Just check by ID
+        const result = await query.where(eq(teams.id, id));
+        
+        // Clear from cache
+        this.clearTeamFromCache(id);
+        
+        return true;
+      }
+    } catch (error) {
+      console.error(`Error in deleteTeam(${id}):`, error);
+      return false;
+    }
+  }
+  
+  async getTeamMembers(teamId: number, tenantId?: number): Promise<User[]> {
+    try {
+      // First verify the team exists and belongs to the tenant
+      const team = await this.getTeamById(teamId, tenantId);
+      
+      if (!team) {
+        return [];
+      }
+      
+      // Get users that belong to this team
+      const results = await db
+        .select()
+        .from(users)
+        .where(eq(users.teamId, teamId));
+        
+      return results;
+    } catch (error) {
+      console.error(`Error in getTeamMembers(${teamId}):`, error);
+      return [];
+    }
+  }
+  
+  async getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]> {
+    try {
+      // Build query based on whether tenantId is provided
+      const baseQuery = db
+        .select()
+        .from(tickets)
+        .where(eq(tickets.teamId, teamId));
+        
+      const results = tenantId
+        ? await baseQuery.where(eq(tickets.tenantId, tenantId))
+        : await baseQuery;
+      
+      return results;
+    } catch (error) {
+      console.error(`Error in getTicketsByTeamId(${teamId}):`, error);
+      return [];
+    }
   }
 
   // User operations

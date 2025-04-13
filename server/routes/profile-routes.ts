@@ -122,4 +122,36 @@ export function registerProfileRoutes(app: Express, requireAuth: any) {
       res.status(500).json({ message: "Error changing password" });
     }
   });
+
+  // Disable SSO
+  app.post("/api/profile/disable-sso", requireAuth, async (req: Request, res: Response) => {
+    try {
+      // req.user is set by the auth middleware
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Check if SSO is actually enabled
+      if (!req.user.ssoEnabled) {
+        return res.status(400).json({ message: "SSO is not enabled for this account" });
+      }
+      
+      // Update user to disable SSO
+      const updatedUser = await storage.updateUser(req.user.id, {
+        ssoEnabled: false,
+        ssoProvider: null,
+        ssoProviderId: null,
+        ssoProviderData: {},
+        updatedAt: new Date()
+      });
+      
+      // Remove sensitive information before sending response
+      const { password, mfaSecret, mfaBackupCodes, ...safeUser } = updatedUser;
+      
+      res.status(200).json(safeUser);
+    } catch (error) {
+      console.error("Error disabling SSO:", error);
+      res.status(500).json({ message: "Error disabling SSO" });
+    }
+  });
 }

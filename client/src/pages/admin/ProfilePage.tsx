@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 import AdminLayout from "@/components/admin/AdminLayout";
+import MfaSetupDialog from "@/components/admin/MfaSetupDialog";
+import SsoSetupDialog from "@/components/admin/SsoSetupDialog";
 import {
   Card,
   CardContent,
@@ -43,7 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, UserCog, Key, Shield } from "lucide-react";
+import { Loader2, UserCog, Key, Shield, ExternalLink } from "lucide-react";
 
 // Schema for profile updates
 const profileFormSchema = z.object({
@@ -69,6 +71,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isMfaDialogOpen, setIsMfaDialogOpen] = useState(false);
+  const [isSsoDialogOpen, setIsSsoDialogOpen] = useState(false);
 
   // Query for the user's profile
   const { data: profile, isLoading } = useQuery({
@@ -171,6 +175,18 @@ export default function ProfilePage() {
       currentPassword: data.currentPassword,
       newPassword: data.newPassword,
     });
+  };
+
+  // Handle MFA setup success
+  const handleMfaSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+  };
+
+  // Handle SSO setup success
+  const handleSsoSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/user'] });
   };
 
   if (isLoading) {
@@ -335,9 +351,26 @@ export default function ProfilePage() {
                       <p className="text-sm text-muted-foreground">
                         Enhance your account security by enabling MFA.
                       </p>
-                      <Button variant="outline" disabled>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsMfaDialogOpen(true)}
+                      >
                         <Shield className="mr-2 h-4 w-4" />
                         {profile?.mfaEnabled ? 'Manage MFA' : 'Setup MFA'}
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2 pt-4 border-t">
+                      <h3 className="text-lg font-medium">Single Sign-On (SSO)</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Connect your account with your organization's identity provider.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsSsoDialogOpen(true)}
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        {profile?.ssoEnabled ? 'Manage SSO' : 'Setup SSO'}
                       </Button>
                     </div>
                   </div>
@@ -419,6 +452,20 @@ export default function ProfilePage() {
             </Form>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* MFA Setup Dialog */}
+        <MfaSetupDialog 
+          open={isMfaDialogOpen} 
+          onClose={() => setIsMfaDialogOpen(false)}
+          onSuccess={handleMfaSuccess}
+        />
+
+        {/* SSO Setup Dialog */}
+        <SsoSetupDialog 
+          open={isSsoDialogOpen} 
+          onClose={() => setIsSsoDialogOpen(false)}
+          onSuccess={handleSsoSuccess}
+        />
       </div>
     </AdminLayout>
   );

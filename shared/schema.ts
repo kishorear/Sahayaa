@@ -19,23 +19,6 @@ export const DocumentStatusEnum = z.enum([
   'archived'
 ]);
 
-// Role types
-export const UserRoleEnum = z.enum([
-  'admin',
-  'support',
-  'engineer',
-  'member'
-]);
-
-// Ticket status types
-export const TicketStatusEnum = z.enum([
-  'new',
-  'in_progress',
-  'resolved',
-  'closed',
-  'reopened'
-]);
-
 // Tenant table for multi-tenant support
 export const tenants = pgTable("tenants", {
   id: serial("id").primaryKey(),
@@ -61,10 +44,9 @@ export const insertTenantSchema = createInsertSchema(tenants)
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
-  teamId: integer("teamId"), // Reference to the team this user belongs to
   username: text("username").notNull(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("member"), // Using the UserRoleEnum values (admin, support, engineer, member)
+  role: text("role").notNull().default("user"),
   name: text("name"),
   email: text("email"),
   
@@ -97,20 +79,17 @@ export const insertUserSchema = createInsertSchema(users)
     name: true,
     email: true,
     tenantId: true,
-    teamId: true,
   });
 
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
-  teamId: integer("teamId"), // Reference to the team this ticket is assigned to
   title: text("title").notNull(),
   description: text("description").notNull(),
-  status: text("status").notNull().default("new"), // Using TicketStatusEnum values
+  status: text("status").notNull().default("new"), // new, in_progress, resolved
   category: text("category").notNull(), // authentication, billing, feature_request, etc.
   complexity: text("complexity").default("medium"), // simple, medium, complex
-  assignedTo: integer("assignedTo"), // Reference to the user ID this ticket is assigned to
-  createdBy: integer("createdBy"), // Reference to the user ID of the ticket creator
+  assignedTo: text("assignedTo"), // role or specific user
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   resolvedAt: timestamp("resolvedAt"),
@@ -336,25 +315,3 @@ export const insertDocumentUsageSchema = createInsertSchema(documentUsage)
 
 export type DocumentUsage = typeof documentUsage.$inferSelect;
 export type InsertDocumentUsage = z.infer<typeof insertDocumentUsageSchema>;
-
-// Teams table for role-based functionality
-export const teams = pgTable("teams", {
-  id: serial("id").primaryKey(),
-  tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
-  name: text("name").notNull(),
-  description: text("description"),
-  leaderId: integer("leaderId"), // Reference to the team leader (user id)
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-}, (table) => {
-  return {
-    // Create a unique index on team name + tenantId to allow same team name in different tenants
-    teamNameUnique: uniqueIndex("team_name_tenant_unique").on(table.name, table.tenantId),
-  };
-});
-
-export const insertTeamSchema = createInsertSchema(teams)
-  .omit({ id: true, createdAt: true, updatedAt: true });
-
-export type Team = typeof teams.$inferSelect;
-export type InsertTeam = z.infer<typeof insertTeamSchema>;

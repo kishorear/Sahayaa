@@ -10,7 +10,9 @@ import { z } from 'zod';
  * @returns userId or null if not authenticated
  */
 function getUserIdFromRequest(req: Request): number | null {
-  let userId = req.session?.userId as number | undefined;
+  // Explicitly cast to fix TypeScript error with session
+  const session = req.session as any;
+  let userId = session?.userId as number | undefined;
   
   if (!userId) {
     const directAuthUserId = req.cookies?.ticket_auth_user_id;
@@ -259,7 +261,7 @@ export const registerTeamRoutes = (
       }
       
       // Get current user for tenant filtering
-      const userId = req.session?.userId;
+      const userId = getUserIdFromRequest(req);
       
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -336,7 +338,7 @@ export const registerTeamRoutes = (
       }
       
       // Get current user for tenant filtering
-      const userId = req.session?.userId;
+      const userId = getUserIdFromRequest(req);
       
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -400,7 +402,7 @@ export const registerTeamRoutes = (
       }
       
       // Get current user for tenant filtering
-      const userId = req.session?.userId;
+      const userId = getUserIdFromRequest(req);
       
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -478,7 +480,7 @@ export const registerTeamRoutes = (
       }
       
       // Get current user for tenant filtering
-      const userId = req.session?.userId;
+      const userId = getUserIdFromRequest(req);
       
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });

@@ -24,7 +24,7 @@ const registerSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
-  role: z.enum(["user", "admin", "support"]).default("user"),
+  role: z.enum(["administrator", "support_engineer", "user"]).default("user"),
   teamId: z.number().optional(), // Team ID is optional
 });
 
@@ -35,25 +35,6 @@ type RegisterData = InsertUser & {
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
-  const [createNewTeam, setCreateNewTeam] = useState(false);
-  const [newTeamName, setNewTeamName] = useState("");
-  
-  // Fetch teams for the dropdown - this must be before any conditional returns
-  const { data: teams, isLoading: isLoadingTeams } = useQuery<Team[]>({
-    queryKey: ["/api/teams"],
-    queryFn: async () => {
-      try {
-        const response = await fetch("/api/teams");
-        if (!response.ok) {
-          throw new Error("Failed to fetch teams");
-        }
-        return response.json();
-      } catch (error) {
-        console.error("Error fetching teams:", error);
-        return [];
-      }
-    },
-  });
   
   // Initialize the forms before any conditional returns
   const loginForm = useForm<z.infer<typeof loginSchema>>({
@@ -86,16 +67,12 @@ export default function AuthPage() {
   }
 
   function onRegisterSubmit(data: z.infer<typeof registerSchema>) {
-    // If creating a new team, add team name to the data
-    if (createNewTeam && newTeamName) {
-      // We'll handle the team creation on the server side
-      registerMutation.mutate({
-        ...data,
-        newTeam: newTeamName,
-      } as RegisterData);
-    } else {
-      registerMutation.mutate(data);
-    }
+    // Set a default team ID for compatibility
+    const userData = {
+      ...data,
+      teamId: 1 // Use default team
+    };
+    registerMutation.mutate(userData);
   }
 
   return (
@@ -237,85 +214,44 @@ export default function AuthPage() {
                         )}
                       />
 
-                      <div className="space-y-3">
-                        <FormLabel>Team Membership</FormLabel>
-                        <div className="flex items-center space-x-2">
-                          <Button 
-                            type="button" 
-                            variant={createNewTeam ? "default" : "outline"} 
-                            size="sm"
-                            onClick={() => setCreateNewTeam(true)}
-                          >
-                            Create new team
-                          </Button>
-                          <Button 
-                            type="button" 
-                            variant={!createNewTeam ? "default" : "outline"} 
-                            size="sm"
-                            onClick={() => setCreateNewTeam(false)}
-                          >
-                            Join existing team
-                          </Button>
-                        </div>
-
-                        {createNewTeam ? (
-                          <FormItem>
-                            <FormLabel>New Team Name</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter new team name" 
-                                value={newTeamName}
-                                onChange={(e) => setNewTeamName(e.target.value)}
-                              />
-                            </FormControl>
+                      <FormField
+                        control={registerForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3">
+                            <FormLabel>Role / Department</FormLabel>
+                            <Select 
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select your role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="user">Regular User</SelectItem>
+                                <SelectItem value="support_engineer">Support Engineer</SelectItem>
+                                <SelectItem value="administrator">Administrator</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            <div className="text-xs text-gray-500">
+                              <p><strong>User:</strong> Can create and view their own tickets</p>
+                              <p><strong>Support Engineer:</strong> Can handle tickets and access support documents</p>
+                              <p><strong>Administrator:</strong> Full access to all system features</p>
+                            </div>
                           </FormItem>
-                        ) : (
-                          <FormField
-                            control={registerForm.control}
-                            name="teamId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Select Team</FormLabel>
-                                <Select 
-                                  onValueChange={(value) => field.onChange(parseInt(value))}
-                                  defaultValue={field.value?.toString()}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a team" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {isLoadingTeams ? (
-                                      <SelectItem value="loading" disabled>
-                                        Loading teams...
-                                      </SelectItem>
-                                    ) : !teams || teams.length === 0 ? (
-                                      <SelectItem value="none" disabled>
-                                        No teams available
-                                      </SelectItem>
-                                    ) : (
-                                      teams.map((team) => (
-                                        <SelectItem key={team.id} value={team.id.toString()}>
-                                          {team.name}
-                                        </SelectItem>
-                                      ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                         )}
-                      </div>
+                      />
+                      
+                      {/* Keep the team field as hidden with a default value for compatibility */}
+                      <input type="hidden" name="teamId" value="1" />
                       
                       <Button 
                         type="submit" 
                         className="w-full"
-                        disabled={registerMutation.isPending || 
-                          (createNewTeam && !newTeamName) || 
-                          (!createNewTeam && !registerForm.getValues().teamId && teams && teams.length > 0)}
+                        disabled={registerMutation.isPending}
                       >
                         {registerMutation.isPending ? (
                           <>

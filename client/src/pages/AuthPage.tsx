@@ -15,6 +15,7 @@ import { InsertUser } from "@shared/schema";
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["administrator", "support_engineer", "user"]).default("user"),
 });
 
 const registerSchema = z.object({
@@ -40,6 +41,7 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+      role: "user",
     },
   });
 
@@ -124,6 +126,31 @@ export default function AuthPage() {
                             <FormControl>
                               <Input type="password" placeholder="Password" {...field} />
                             </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3">
+                            <FormLabel>Role / Department</FormLabel>
+                            <Select 
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select your role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="user">Regular User</SelectItem>
+                                <SelectItem value="support_engineer">Support Engineer</SelectItem>
+                                <SelectItem value="administrator">Administrator</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}

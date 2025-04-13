@@ -338,7 +338,7 @@ export async function setupAuth(app: Express) {
         }
       });
       
-      const { username, password, name, email, role } = req.body;
+      const { username, password, name, email, role, teamId, newTeam } = req.body;
 
       if (!username || !password) {
         console.log("Registration failed: Missing username or password");
@@ -383,15 +383,41 @@ export async function setupAuth(app: Express) {
         const hashedPassword = await hashPassword(password);
         console.log("Password hashed successfully, creating user...");
         
+        // Handle team creation or selection
+        let userTeamId = teamId || null;
+        
+        // Create a new team if requested
+        if (newTeam) {
+          try {
+            console.log(`Creating new team: ${newTeam}`);
+            const team = await storage.createTeam({
+              name: newTeam,
+              description: `Team created by ${username} during registration`,
+              tenantId: 1  // Default tenant ID, in a multi-tenant setup you'd get this from the request
+            });
+            
+            if (team) {
+              userTeamId = team.id;
+              console.log(`New team created with ID: ${userTeamId}`);
+            }
+          } catch (teamError) {
+            console.error("Error creating team:", teamError);
+            return res.status(500).json({ message: "Error creating team", details: teamError.message });
+          }
+        }
+        
+        // Create the user with team assignment
         user = await storage.createUser({
           username,
           password: hashedPassword,
           name: name || null,
           email: email || null,
-          role: requestedRole
+          role: requestedRole,
+          teamId: userTeamId,
+          tenantId: 1  // Default tenant ID, in a multi-tenant setup you'd get this from the request
         });
         
-        console.log(`User created successfully: ${username} (ID: ${user.id})`);
+        console.log(`User created successfully: ${username} (ID: ${user.id}) with team ID: ${userTeamId}`);
       } catch (createError) {
         console.error("Error creating user:", createError);
         return res.status(500).json({ message: "Error creating user account", details: createError.message });
@@ -599,6 +625,7 @@ export async function setupAuth(app: Express) {
       const tempAdminUser = {
         id: 1,
         tenantId: 1,
+        teamId: 1, // Add teamId for the admin user
         username: 'temp_admin',
         role: 'admin',
         name: 'Temporary Admin',
@@ -944,6 +971,7 @@ export async function setupAuth(app: Express) {
         role: users.role,
         name: users.name,
         email: users.email,
+        teamId: users.teamId,
         createdAt: users.createdAt
       }).from(users);
       

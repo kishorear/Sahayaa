@@ -10,6 +10,7 @@ import {
   aiProviders,
   supportDocuments,
   documentUsage,
+  teams,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -31,7 +32,9 @@ import {
   type SupportDocument,
   type InsertSupportDocument,
   type DocumentUsage,
-  type InsertDocumentUsage
+  type InsertDocumentUsage,
+  type Team,
+  type InsertTeam
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -124,6 +127,15 @@ export interface IStorage {
   getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]>;
   getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any>;
   
+  // Team operations
+  getAllTeams(tenantId?: number): Promise<Team[]>;
+  getTeamById(id: number, tenantId?: number): Promise<Team | undefined>;
+  createTeam(team: InsertTeam): Promise<Team>;
+  updateTeam(id: number, updates: Partial<Team>, tenantId?: number): Promise<Team>;
+  deleteTeam(id: number, tenantId?: number): Promise<boolean>;
+  getUsersByTeamId(teamId: number, tenantId?: number): Promise<User[]>;
+  getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]>;
+  
   // Session management
   sessionStore: session.Store;
 }
@@ -139,6 +151,7 @@ export class MemStorage implements IStorage {
   private aiProviders: Map<number, AiProvider>;
   private supportDocuments: Map<number, SupportDocument>;
   private documentUsageData: Map<number, DocumentUsage>;
+  private teams: Map<number, Team>;
   private tenantIdCounter: number;
   private userIdCounter: number;
   private ticketIdCounter: number;
@@ -149,6 +162,7 @@ export class MemStorage implements IStorage {
   private aiProviderIdCounter: number;
   private supportDocumentIdCounter: number;
   private documentUsageIdCounter: number;
+  private teamIdCounter: number;
   
   // Add caches for critical data in production
   private userCache: Map<string, User> = new Map();
@@ -171,6 +185,7 @@ export class MemStorage implements IStorage {
     this.aiProviders = new Map();
     this.supportDocuments = new Map();
     this.documentUsageData = new Map();
+    this.teams = new Map();
     this.tenantIdCounter = 1;
     this.userIdCounter = 1;
     this.ticketIdCounter = 1;
@@ -181,6 +196,7 @@ export class MemStorage implements IStorage {
     this.aiProviderIdCounter = 1;
     this.supportDocumentIdCounter = 1;
     this.documentUsageIdCounter = 1;
+    this.teamIdCounter = 1;
     
     // Initialize sample documents in the constructor
     this.initSampleSupportDocuments();
@@ -1747,6 +1763,85 @@ export class MemStorage implements IStorage {
         end: endDate
       }
     };
+  }
+  
+  // Team operations
+  async getAllTeams(tenantId?: number): Promise<Team[]> {
+    const teams = Array.from(this.teams.values());
+    if (tenantId) {
+      return teams.filter(team => team.tenantId === tenantId);
+    }
+    return teams;
+  }
+  
+  async getTeamById(id: number, tenantId?: number): Promise<Team | undefined> {
+    const team = this.teams.get(id);
+    if (!team) return undefined;
+    
+    if (tenantId && team.tenantId !== tenantId) {
+      return undefined;
+    }
+    
+    return team;
+  }
+  
+  async createTeam(team: InsertTeam): Promise<Team> {
+    const id = this.teamIdCounter++;
+    const now = new Date();
+    
+    const newTeam: Team = {
+      ...team,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.teams.set(id, newTeam);
+    return newTeam;
+  }
+  
+  async updateTeam(id: number, updates: Partial<Team>, tenantId?: number): Promise<Team> {
+    const team = await this.getTeamById(id, tenantId);
+    if (!team) {
+      throw new Error(`Team with ID ${id} not found`);
+    }
+    
+    const updatedTeam: Team = {
+      ...team,
+      ...updates,
+      id, // Ensure the ID doesn't change
+      updatedAt: new Date()
+    };
+    
+    this.teams.set(id, updatedTeam);
+    return updatedTeam;
+  }
+  
+  async deleteTeam(id: number, tenantId?: number): Promise<boolean> {
+    const team = await this.getTeamById(id, tenantId);
+    if (!team) {
+      return false;
+    }
+    
+    return this.teams.delete(id);
+  }
+  
+  async getUsersByTeamId(teamId: number, tenantId?: number): Promise<User[]> {
+    const users = Array.from(this.users.values());
+    return users.filter(user => {
+      if (user.teamId !== teamId) return false;
+      if (tenantId && user.tenantId !== tenantId) return false;
+      return true;
+    });
+  }
+  
+  async getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]> {
+    const tickets = Array.from(this.tickets.values());
+    return tickets.filter(ticket => {
+      if (ticket.teamId !== teamId) return false;
+      if (tenantId && ticket.tenantId !== tenantId) return false;
+      return true;
+    });
   }
 }
 

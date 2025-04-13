@@ -52,6 +52,15 @@ export interface IStorage {
   createTenant(tenant: InsertTenant): Promise<Tenant>;
   updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant>;
   
+  // Team operations
+  getTeamById(id: number, tenantId?: number): Promise<Team | undefined>;
+  getTeamByName(name: string, tenantId?: number): Promise<Team | undefined>;
+  getTeamsByTenantId(tenantId: number): Promise<Team[]>;
+  createTeam(team: InsertTeam): Promise<Team>;
+  updateTeam(id: number, updates: Partial<Team>, tenantId?: number): Promise<Team>;
+  deleteTeam(id: number, tenantId?: number): Promise<boolean>;
+  getTeamMembers(teamId: number, tenantId?: number): Promise<User[]>;
+  
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string, tenantId?: number): Promise<User | undefined>;
@@ -71,6 +80,7 @@ export interface IStorage {
   // Ticket operations
   getAllTickets(tenantId?: number): Promise<Ticket[]>;
   getTicketById(id: number, tenantId?: number): Promise<Ticket | undefined>;
+  getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]>;
   createTicket(ticket: InsertTicket): Promise<Ticket>;
   updateTicket(id: number, updates: Partial<Ticket>, tenantId?: number): Promise<Ticket>;
   
@@ -130,6 +140,7 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private tenants: Map<number, Tenant>;
+  private teams: Map<number, Team>;
   private users: Map<number, User>;
   private tickets: Map<number, Ticket>;
   private messages: Map<number, Message>;
@@ -140,6 +151,7 @@ export class MemStorage implements IStorage {
   private supportDocuments: Map<number, SupportDocument>;
   private documentUsageData: Map<number, DocumentUsage>;
   private tenantIdCounter: number;
+  private teamIdCounter: number;
   private userIdCounter: number;
   private ticketIdCounter: number;
   private messageIdCounter: number;
@@ -155,6 +167,7 @@ export class MemStorage implements IStorage {
   private tenantCache: Map<string, Tenant> = new Map();
   private tenantByApiKeyCache: Map<string, Tenant> = new Map();
   private tenantBySubdomainCache: Map<string, Tenant> = new Map();
+  private teamCache: Map<string, Team> = new Map();
   private ticketCache: Map<string, Ticket> = new Map();
   private supportDocumentCache: Map<string, SupportDocument> = new Map();
   

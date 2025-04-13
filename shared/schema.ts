@@ -41,12 +41,31 @@ export const tenants = pgTable("tenants", {
 export const insertTenantSchema = createInsertSchema(tenants)
   .omit({ id: true, createdAt: true, updatedAt: true });
 
+// Teams table for organizing users and tickets
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Create a unique index on team name + tenantId
+    teamNameUnique: uniqueIndex("team_name_tenant_unique").on(table.name, table.tenantId),
+  };
+});
+
+export const insertTeamSchema = createInsertSchema(teams)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
+  teamId: integer("teamId"), // Reference to the team the user belongs to
   username: text("username").notNull(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("user"),
+  role: text("role").notNull().default("member"), // admin, support, engineer, member
   name: text("name"),
   email: text("email"),
   
@@ -79,11 +98,14 @@ export const insertUserSchema = createInsertSchema(users)
     name: true,
     email: true,
     tenantId: true,
+    teamId: true,
   });
 
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
+  teamId: integer("teamId"), // Reference to the team the ticket belongs to
+  createdBy: integer("createdBy"), // Reference to the user who created the ticket
   title: text("title").notNull(),
   description: text("description").notNull(),
   status: text("status").notNull().default("new"), // new, in_progress, resolved
@@ -134,6 +156,9 @@ export const insertAttachmentSchema = createInsertSchema(attachments)
 // Type definitions
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
+
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;

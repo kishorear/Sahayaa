@@ -27,48 +27,65 @@ type AdminLayoutProps = {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logoutMutation } = useAuth();
 
   const isActive = (path: string) => {
     return location === path;
   };
 
-  const routes = [
+  // Define all available routes with role-based access
+  const allRoutes = [
     { 
       path: "/admin", 
       label: "Dashboard", 
-      icon: LayoutDashboard 
+      icon: LayoutDashboard,
+      roles: ["administrator", "support_engineer", "user"]
     },
     { 
       path: "/admin/tickets", 
       label: "Tickets", 
-      icon: TicketCheck 
+      icon: TicketCheck,
+      roles: ["administrator", "support_engineer", "user"]
     },
     { 
       path: "/admin/team", 
       label: "Team", 
-      icon: Users 
+      icon: Users,
+      roles: ["administrator"]
     },
     { 
       path: "/admin/documents", 
       label: "Documents", 
-      icon: FileText 
+      icon: FileText,
+      roles: ["administrator", "support_engineer"]
     },
     { 
       path: "/admin/integrations", 
       label: "Integrations", 
-      icon: Link2 
+      icon: Link2,
+      roles: ["administrator"]
     },
     { 
       path: "/admin/ai-settings", 
       label: "AI Settings", 
-      icon: Bot 
+      icon: Bot,
+      roles: ["administrator"]
     },
     { 
       path: "/admin/settings", 
       label: "Settings", 
-      icon: Settings 
+      icon: Settings,
+      roles: ["administrator"]
     },
   ];
+  
+  // Filter routes based on user role
+  const routes = allRoutes.filter(route => {
+    // If no user or no roles specified, don't show the route
+    if (!user || !route.roles) return false;
+    // Check if user's role is included in the route's allowed roles
+    return route.roles.includes(user.role.toLowerCase());
+  });
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -108,14 +125,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
               ))}
               <button 
-                onClick={() => {
-                  fetch('/api/logout', {
-                    method: 'POST',
-                    credentials: 'include'
-                  }).then(() => {
-                    window.location.href = '/auth';
-                  });
-                }}
+                onClick={() => logoutMutation.mutate()}
                 className="flex w-full items-center px-2 py-2 mt-8 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
               >
                 <LogOut className="w-6 h-6 mr-3 text-gray-400" />
@@ -142,13 +152,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <div className="flex-1"></div>
             <div className="flex items-center">
+              {user && (
+                <div className="hidden md:flex mr-4 items-center">
+                  <div className="text-right">
+                    <p className="text-sm font-medium">{user.name || user.username}</p>
+                    <p className="text-xs text-gray-500 capitalize">{user.role} {user.teamId ? `• Team ${user.teamId}` : ''}</p>
+                  </div>
+                </div>
+              )}
               <Button variant="ghost" size="icon">
                 <Bell className="w-6 h-6 text-gray-400" />
               </Button>
               <div className="ml-3 relative">
                 <Avatar>
-                  <AvatarImage src="https://github.com/shadcn.png" alt="User" />
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                  <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
               </div>
             </div>
@@ -158,6 +176,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Mobile sidebar (when open) */}
         {isMobileMenuOpen && (
           <div className="md:hidden bg-gray-800 w-full absolute z-10">
+            {user && (
+              <div className="px-4 py-3 border-b border-gray-700">
+                <div className="flex items-center">
+                  <Avatar className="h-8 w-8 mr-2">
+                    <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                    <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium text-white">{user.name || user.username}</p>
+                    <p className="text-xs text-gray-400 capitalize">{user.role} {user.teamId ? `• Team ${user.teamId}` : ''}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <nav className="flex flex-col px-4 py-4 space-y-2">
               {routes.map((route) => (
                 <Link key={route.path} href={route.path}>
@@ -176,14 +208,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
               ))}
               <button 
-                onClick={() => {
-                  fetch('/api/logout', {
-                    method: 'POST',
-                    credentials: 'include'
-                  }).then(() => {
-                    window.location.href = '/auth';
-                  });
-                }}
+                onClick={() => logoutMutation.mutate()}
                 className="flex w-full items-center px-2 py-2 mt-4 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
               >
                 <LogOut className="w-6 h-6 mr-3 text-gray-400" />

@@ -50,6 +50,7 @@ function Router() {
       <ProtectedRoute path="/admin/integrations" component={IntegrationsPage} />
       <ProtectedRoute path="/admin/documents" component={DocumentsPage} />
       <ProtectedRoute path="/admin/settings" component={SettingsPage} />
+      <ProtectedRoute path="/admin/profile" component={ProfilePage} />
       <ProtectedRoute path="/admin/widget" component={ChatWidgetPage} />
       <ProtectedRoute path="/admin/ai-settings" component={AISettingsPage} />
       

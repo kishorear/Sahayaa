@@ -12,7 +12,8 @@ import {
   Link2,
   Bot,
   FileText,
-  ChevronLeft
+  ChevronLeft,
+  UserCog
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -70,6 +71,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       label: "AI Settings", 
       icon: Bot,
       roles: ["administrator", "user"] // Users can access AI settings
+    },
+    { 
+      path: "/admin/profile", 
+      label: "My Profile", 
+      icon: UserCog,
+      roles: ["administrator", "support_engineer", "user"] // All users can manage their profile
     },
     { 
       path: "/admin/settings", 
@@ -163,12 +170,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Button variant="ghost" size="icon">
                 <Bell className="w-6 h-6 text-gray-400" />
               </Button>
-              <div className="ml-3 relative">
-                <Avatar>
-                  <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
-                  <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
-                </Avatar>
-              </div>
+              <Link href="/admin/profile">
+                <div className="ml-3 relative cursor-pointer">
+                  <Avatar>
+                    <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                    <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
+                </div>
+              </Link>
             </div>
           </div>
         </div>
@@ -177,18 +186,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {isMobileMenuOpen && (
           <div className="md:hidden bg-gray-800 w-full absolute z-10">
             {user && (
-              <div className="px-4 py-3 border-b border-gray-700">
-                <div className="flex items-center">
-                  <Avatar className="h-8 w-8 mr-2">
-                    <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
-                    <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium text-white">{user.name || user.username}</p>
-                    <p className="text-xs text-gray-400 capitalize">{user.role} {user.teamId ? `• Team ${user.teamId}` : ''}</p>
+              <Link href="/admin/profile">
+                <div className="px-4 py-3 border-b border-gray-700 cursor-pointer hover:bg-gray-700">
+                  <div className="flex items-center">
+                    <Avatar className="h-8 w-8 mr-2">
+                      <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                      <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium text-white">{user.name || user.username}</p>
+                      <p className="text-xs text-gray-400 capitalize">{user.role} {user.teamId ? `• Team ${user.teamId}` : ''}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             )}
             <nav className="flex flex-col px-4 py-4 space-y-2">
               {routes.map((route) => (

@@ -15,6 +15,7 @@ import TicketsPage from "@/pages/admin/TicketsPage";
 import TicketDetailsPage from "@/pages/admin/TicketDetailsPage";
 import TeamPage from "@/pages/admin/TeamPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
+import ProfilePage from "@/pages/admin/ProfilePage"; // User profile management
 import IntegrationsPage from "@/pages/admin/IntegrationsPage"; // New Integrations Page component
 import ChatWidgetPage from "@/pages/admin/ChatWidgetPage"; // New Chat Widget Page component
 import AISettingsPage from "@/pages/admin/AISettingsPage"; // AI Provider Settings Page

@@ -38,12 +38,8 @@ export default function AuthPage() {
   const [createNewTeam, setCreateNewTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    return <Redirect to="/dashboard" />;
-  }
-
   // Fetch teams for the dropdown
+  // Move this hook before any conditional returns to avoid React hook errors
   const { data: teams, isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
     queryFn: async () => {
@@ -59,6 +55,11 @@ export default function AuthPage() {
       }
     },
   });
+  
+  // If user is already logged in, redirect to dashboard
+  if (user) {
+    return <Redirect to="/dashboard" />;
+  }
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),

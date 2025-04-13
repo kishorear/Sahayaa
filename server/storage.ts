@@ -3831,7 +3831,6 @@ function initializeStorage(): IStorage {
   }
 }
 
-// Export a wrapped storage instance that catches database errors and provides fallbacks
 class StorageWrapper implements IStorage {
   private storageImpl: IStorage;
   public sessionStore: session.Store;

@@ -9,13 +9,18 @@ import { apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
+// Extended type for registration with optional team creation
+type RegisterData = InsertUser & {
+  newTeam?: string; // Optional field for new team creation
+};
+
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, InsertUser>;
+  registerMutation: UseMutationResult<User, Error, RegisterData>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -246,8 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
+    mutationFn: async (credentials: RegisterData) => {
       console.log('Registration attempt with:', credentials.username);
+      console.log('Team data:', credentials.teamId || credentials.newTeam || 'None');
       
       // Maximum retries with exponential backoff
       let retries = 3;

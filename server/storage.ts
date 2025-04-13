@@ -10,6 +10,7 @@ import {
   aiProviders,
   supportDocuments,
   documentUsage,
+  teams,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -31,7 +32,9 @@ import {
   type SupportDocument,
   type InsertSupportDocument,
   type DocumentUsage,
-  type InsertDocumentUsage
+  type InsertDocumentUsage,
+  type Team,
+  type InsertTeam
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -4260,6 +4263,79 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.updateTenant(id, updates);
     } catch (error) {
       console.error(`Error in updateTenant(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  // Team operations
+  async getTeamById(id: number, tenantId?: number): Promise<Team | undefined> {
+    try {
+      return await this.storageImpl.getTeamById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getTeamById(${id}):`, error);
+      throw error;
+    }
+  }
+
+  async getTeamByName(name: string, tenantId?: number): Promise<Team | undefined> {
+    try {
+      return await this.storageImpl.getTeamByName(name, tenantId);
+    } catch (error) {
+      console.error(`Error in getTeamByName(${name}):`, error);
+      throw error;
+    }
+  }
+
+  async getTeamsByTenantId(tenantId: number): Promise<Team[]> {
+    try {
+      return await this.storageImpl.getTeamsByTenantId(tenantId);
+    } catch (error) {
+      console.error(`Error in getTeamsByTenantId(${tenantId}):`, error);
+      throw error;
+    }
+  }
+
+  async createTeam(team: InsertTeam): Promise<Team> {
+    try {
+      return await this.storageImpl.createTeam(team);
+    } catch (error) {
+      console.error(`Error in createTeam():`, error);
+      throw error;
+    }
+  }
+
+  async updateTeam(id: number, updates: Partial<Team>, tenantId?: number): Promise<Team> {
+    try {
+      return await this.storageImpl.updateTeam(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateTeam(${id}):`, error);
+      throw error;
+    }
+  }
+
+  async deleteTeam(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteTeam(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteTeam(${id}):`, error);
+      throw error;
+    }
+  }
+
+  async getTeamMembers(teamId: number, tenantId?: number): Promise<User[]> {
+    try {
+      return await this.storageImpl.getTeamMembers(teamId, tenantId);
+    } catch (error) {
+      console.error(`Error in getTeamMembers(${teamId}):`, error);
+      throw error;
+    }
+  }
+
+  async getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]> {
+    try {
+      return await this.storageImpl.getTicketsByTeamId(teamId, tenantId);
+    } catch (error) {
+      console.error(`Error in getTicketsByTeamId(${teamId}):`, error);
       throw error;
     }
   }

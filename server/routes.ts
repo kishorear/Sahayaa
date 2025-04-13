@@ -27,6 +27,7 @@ import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
 import { registerAiProviderRoutes } from "./routes/ai-provider-routes";
 import { registerTeamMemberRoutes } from "./routes/team-member-routes";
+import { registerTeamRoutes } from "./routes/team-routes";
 // Import the document routes registration function
 import { registerDocumentRoutes } from "./routes/document-routes";
 // Import the download routes registration function
@@ -146,6 +147,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register team member routes
   registerTeamMemberRoutes(app, requireRole);
+  
+  // Register team routes
+  registerTeamRoutes(app);
   
   // Register document routes
   registerDocumentRoutes(app, requireAuth, requireRole);

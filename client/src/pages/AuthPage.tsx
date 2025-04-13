@@ -9,6 +9,10 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { Team, InsertUser } from "@shared/schema";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -21,15 +25,40 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   role: z.enum(["user", "admin", "support"]).default("user"),
+  teamId: z.number().optional(), // Team ID is optional
 });
+
+// Extend the InsertUser type to include newTeam for creating a new team during registration
+type RegisterData = InsertUser & {
+  newTeam?: string;
+};
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
+  const [createNewTeam, setCreateNewTeam] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
   
   // If user is already logged in, redirect to dashboard
   if (user) {
     return <Redirect to="/dashboard" />;
   }
+
+  // Fetch teams for the dropdown
+  const { data: teams, isLoading: isLoadingTeams } = useQuery<Team[]>({
+    queryKey: ["/api/teams"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/teams");
+        if (!response.ok) {
+          throw new Error("Failed to fetch teams");
+        }
+        return response.json();
+      } catch (error) {
+        console.error("Error fetching teams:", error);
+        return [];
+      }
+    },
+  });
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -47,6 +76,7 @@ export default function AuthPage() {
       name: "",
       email: "",
       role: "user",
+      teamId: undefined,
     },
   });
 
@@ -55,7 +85,16 @@ export default function AuthPage() {
   }
 
   function onRegisterSubmit(data: z.infer<typeof registerSchema>) {
-    registerMutation.mutate(data);
+    // If creating a new team, add team name to the data
+    if (createNewTeam && newTeamName) {
+      // We'll handle the team creation on the server side
+      registerMutation.mutate({
+        ...data,
+        newTeam: newTeamName,
+      } as RegisterData);
+    } else {
+      registerMutation.mutate(data);
+    }
   }
 
   return (
@@ -196,10 +235,86 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
+
+                      <div className="space-y-3">
+                        <FormLabel>Team Membership</FormLabel>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            type="button" 
+                            variant={createNewTeam ? "default" : "outline"} 
+                            size="sm"
+                            onClick={() => setCreateNewTeam(true)}
+                          >
+                            Create new team
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant={!createNewTeam ? "default" : "outline"} 
+                            size="sm"
+                            onClick={() => setCreateNewTeam(false)}
+                          >
+                            Join existing team
+                          </Button>
+                        </div>
+
+                        {createNewTeam ? (
+                          <FormItem>
+                            <FormLabel>New Team Name</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter new team name" 
+                                value={newTeamName}
+                                onChange={(e) => setNewTeamName(e.target.value)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        ) : (
+                          <FormField
+                            control={registerForm.control}
+                            name="teamId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Select Team</FormLabel>
+                                <Select 
+                                  onValueChange={(value) => field.onChange(parseInt(value))}
+                                  defaultValue={field.value?.toString()}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select a team" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {isLoadingTeams ? (
+                                      <SelectItem value="loading" disabled>
+                                        Loading teams...
+                                      </SelectItem>
+                                    ) : !teams || teams.length === 0 ? (
+                                      <SelectItem value="none" disabled>
+                                        No teams available
+                                      </SelectItem>
+                                    ) : (
+                                      teams.map((team) => (
+                                        <SelectItem key={team.id} value={team.id.toString()}>
+                                          {team.name}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+                      
                       <Button 
                         type="submit" 
                         className="w-full"
-                        disabled={registerMutation.isPending}
+                        disabled={registerMutation.isPending || 
+                          (createNewTeam && !newTeamName) || 
+                          (!createNewTeam && !registerForm.getValues().teamId && teams && teams.length > 0)}
                       >
                         {registerMutation.isPending ? (
                           <>

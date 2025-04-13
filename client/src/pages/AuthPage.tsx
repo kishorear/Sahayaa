@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Team, InsertUser } from "@shared/schema";
 
 const loginSchema = z.object({
@@ -38,8 +38,7 @@ export default function AuthPage() {
   const [createNewTeam, setCreateNewTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   
-  // Fetch teams for the dropdown
-  // Move this hook before any conditional returns to avoid React hook errors
+  // Fetch teams for the dropdown - this must be before any conditional returns
   const { data: teams, isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
     queryFn: async () => {
@@ -56,11 +55,7 @@ export default function AuthPage() {
     },
   });
   
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    return <Redirect to="/dashboard" />;
-  }
-
+  // Initialize the forms before any conditional returns
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -80,6 +75,11 @@ export default function AuthPage() {
       teamId: undefined,
     },
   });
+  
+  // If user is already logged in, redirect to dashboard
+  if (user) {
+    return <Redirect to="/dashboard" />;
+  }
 
   function onLoginSubmit(data: z.infer<typeof loginSchema>) {
     loginMutation.mutate(data);

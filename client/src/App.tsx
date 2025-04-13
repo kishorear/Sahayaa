@@ -70,19 +70,17 @@ function App() {
   );
 }
 
-// Component that renders the chatbot (temporarily allowing access without authentication)
+// Component that renders the chatbot only for authenticated users
 function ProtectedChatbot() {
   const { user, isLoading } = useAuth();
   
-  /* TEMPORARILY DISABLED: Authentication check
   // Only show the chatbot if the user is logged in
   if (!user) return null;
-  */
   
   // Show loading state only while authentication is being checked
   if (isLoading) return null;
   
-  // Always render the chatbot interface (temporarily)
+  // If authenticated, render the chatbot interface
   return <ChatbotInterface />;
 }
 

@@ -149,7 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerTeamMemberRoutes(app, requireRole);
   
   // Register team routes
-  registerTeamRoutes(app);
+  registerTeamRoutes(app, requireAuth, requireRole);
   
   // Register document routes
   registerDocumentRoutes(app, requireAuth, requireRole);

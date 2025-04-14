@@ -68,6 +68,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("member"), // admin, support, engineer, member
   name: text("name"),
   email: text("email"),
+  profilePicture: text("profilePicture"), // URL or path to profile picture
   
   // MFA fields
   mfaEnabled: boolean("mfaEnabled").default(false),
@@ -97,9 +98,17 @@ export const insertUserSchema = createInsertSchema(users)
     role: true,
     name: true,
     email: true,
+    profilePicture: true,
     tenantId: true,
     teamId: true,
   });
+
+// Schema for updating user profile
+export const updateProfileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").optional(),
+  email: z.string().email("Please enter a valid email").optional(),
+  profilePicture: z.string().nullable().optional(),
+});
 
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),

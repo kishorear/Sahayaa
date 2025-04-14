@@ -213,10 +213,29 @@ export default function ProfilePage() {
               <CardDescription>Your account information</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center text-center">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarImage src={`https://avatars.dicebear.com/api/initials/${profile?.name || profile?.username || 'U'}.svg`} alt={profile?.name || profile?.username || 'User'} />
-                <AvatarFallback className="text-2xl">{profile?.name?.[0] || profile?.username?.[0] || 'U'}</AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <Avatar className="h-24 w-24 mb-4">
+                  {profile?.profilePicture ? (
+                    <AvatarImage src={profile.profilePicture} alt={profile?.name || profile?.username || 'User'} />
+                  ) : (
+                    <AvatarImage src={`https://avatars.dicebear.com/api/initials/${profile?.name || profile?.username || 'U'}.svg`} alt={profile?.name || profile?.username || 'User'} />
+                  )}
+                  <AvatarFallback className="text-2xl">{profile?.name?.[0] || profile?.username?.[0] || 'U'}</AvatarFallback>
+                </Avatar>
+                <div 
+                  className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => document.getElementById('profile-picture-upload')?.click()}
+                >
+                  <span className="text-xs font-medium">Change</span>
+                </div>
+                <input 
+                  type="file" 
+                  id="profile-picture-upload" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                />
+              </div>
               <h3 className="text-xl font-bold">{profile?.name || profile?.username}</h3>
               <p className="text-sm text-muted-foreground mb-2">{profile?.email}</p>
               

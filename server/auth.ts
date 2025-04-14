@@ -26,6 +26,7 @@ declare global {
       role: string;
       name: string | null;
       email: string | null;
+      profilePicture: string | null;
       mfaEnabled: boolean | null;
       mfaSecret: string | null;
       mfaBackupCodes: any[] | null;

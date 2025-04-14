@@ -173,7 +173,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Link href="/admin/profile">
                 <div className="ml-3 relative cursor-pointer">
                   <Avatar>
-                    <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                    {user?.profilePicture ? (
+                      <AvatarImage src={user.profilePicture} alt={user?.name || user?.username || 'User'} />
+                    ) : (
+                      <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                    )}
                     <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                 </div>
@@ -190,7 +194,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="px-4 py-3 border-b border-gray-700 cursor-pointer hover:bg-gray-700">
                   <div className="flex items-center">
                     <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                      {user?.profilePicture ? (
+                        <AvatarImage src={user.profilePicture} alt={user?.name || user?.username || 'User'} />
+                      ) : (
+                        <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
+                      )}
                       <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>

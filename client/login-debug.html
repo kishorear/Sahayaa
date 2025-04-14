@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .login-container {
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 5px;
+      margin-top: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #dff0d8;
+      color: #3c763d;
+      border: 1px solid #d6e9c6;
+    }
+    .error {
+      background-color: #f2dede;
+      color: #a94442;
+      border: 1px solid #ebccd1;
+    }
+    pre {
+      white-space: pre-wrap;
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Login Debug Tool</h1>
+  
+  <div class="login-container">
+    <h2>Admin Login</h2>
+    <div>
+      <label for="username">Username:</label>
+      <input type="text" id="username" value="admin">
+    </div>
+    <div>
+      <label for="password">Password:</label>
+      <input type="password" id="password" value="admin123">
+    </div>
+    <button id="login-btn">Login</button>
+    
+    <div id="result" style="display: none;"></div>
+  </div>
+  
+  <div class="login-container">
+    <h2>Session Status</h2>
+    <button id="check-session-btn">Check Current Session</button>
+    <div id="session-result" style="display: none;"></div>
+  </div>
+  
+  <div class="login-container">
+    <h2>Debug Options</h2>
+    <button id="clear-btn">Clear All Cookies</button>
+    <button id="go-to-app-btn" style="margin-top: 10px">Go to Main Application</button>
+  </div>
+
+  <script>
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const resultEl = document.getElementById('result');
+      
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          credentials: 'include'
+        });
+        
+        const data = await res.text();
+        let jsonData;
+        
+        try {
+          jsonData = JSON.parse(data);
+        } catch (e) {
+          jsonData = { message: data };
+        }
+        
+        resultEl.style.display = 'block';
+        
+        if (res.ok) {
+          resultEl.className = 'result success';
+          resultEl.innerHTML = `
+            <h3>Login Successful</h3>
+            <p>Status: ${res.status}</p>
+            <p>Cookies Set: ${document.cookie}</p>
+            <p>Response:</p>
+            <pre>${JSON.stringify(jsonData, null, 2)}</pre>
+          `;
+          
+          // Store essential user data in a cookie as a backup
+          if (jsonData.id) {
+            const essentialUserData = {
+              id: jsonData.id,
+              username: jsonData.username,
+              role: jsonData.role,
+              tenantId: jsonData.tenantId
+            };
+            document.cookie = `essential_user_data=${JSON.stringify(essentialUserData)};path=/;max-age=86400`;
+          }
+        } else {
+          resultEl.className = 'result error';
+          resultEl.innerHTML = `
+            <h3>Login Failed</h3>
+            <p>Status: ${res.status}</p>
+            <p>Error:</p>
+            <pre>${JSON.stringify(jsonData, null, 2)}</pre>
+          `;
+        }
+      } catch (error) {
+        resultEl.style.display = 'block';
+        resultEl.className = 'result error';
+        resultEl.innerHTML = `
+          <h3>Network Error</h3>
+          <p>Error: ${error.message}</p>
+        `;
+      }
+    });
+    
+    document.getElementById('check-session-btn').addEventListener('click', async () => {
+      const sessionResultEl = document.getElementById('session-result');
+      
+      try {
+        const res = await fetch('/api/user', {
+          credentials: 'include'
+        });
+        
+        const data = await res.text();
+        let jsonData;
+        
+        try {
+          jsonData = JSON.parse(data);
+        } catch (e) {
+          jsonData = { message: data };
+        }
+        
+        sessionResultEl.style.display = 'block';
+        
+        if (res.ok) {
+          sessionResultEl.className = 'result success';
+          sessionResultEl.innerHTML = `
+            <h3>Session Active</h3>
+            <p>Status: ${res.status}</p>
+            <p>Cookies: ${document.cookie}</p>
+            <p>User Data:</p>
+            <pre>${JSON.stringify(jsonData, null, 2)}</pre>
+          `;
+        } else {
+          sessionResultEl.className = 'result error';
+          sessionResultEl.innerHTML = `
+            <h3>No Active Session</h3>
+            <p>Status: ${res.status}</p>
+            <p>Cookies: ${document.cookie}</p>
+            <p>Response:</p>
+            <pre>${JSON.stringify(jsonData, null, 2)}</pre>
+          `;
+        }
+      } catch (error) {
+        sessionResultEl.style.display = 'block';
+        sessionResultEl.className = 'result error';
+        sessionResultEl.innerHTML = `
+          <h3>Network Error</h3>
+          <p>Error: ${error.message}</p>
+        `;
+      }
+    });
+    
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      // Clear all cookies
+      document.cookie.split(';').forEach(cookie => {
+        const [name] = cookie.trim().split('=');
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+      });
+      
+      alert('All cookies cleared');
+    });
+    
+    document.getElementById('go-to-app-btn').addEventListener('click', () => {
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

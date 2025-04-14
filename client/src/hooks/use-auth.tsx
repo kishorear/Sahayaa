@@ -1,3 +1,4 @@
+import * as React from "react";
 import { createContext, ReactNode, useContext } from "react";
 import {
   useQuery,
@@ -28,6 +29,40 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
+  
+  // Add a direct login helper function to window for debugging
+  React.useEffect(() => {
+    (window as any).loginAsAdmin = async () => {
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+          credentials: 'include'
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          console.log('Manual login successful:', data);
+          queryClient.setQueryData(["/api/user"], data);
+          queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+          toast({
+            title: "Login successful",
+            description: `Welcome back, ${data.username}!`,
+          });
+          return true;
+        } else {
+          console.error('Manual login failed:', await res.text());
+          return false;
+        }
+      } catch (error) {
+        console.error('Manual login error:', error);
+        return false;
+      }
+    };
+    
+    console.log("Login helper available. Type window.loginAsAdmin() in console to login as admin");
+  }, [toast]);
   
   const {
     data: user,

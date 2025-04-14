@@ -2846,6 +2846,7 @@ export class DatabaseStorage implements IStorage {
             role: user.role,
             name: user.name,
             email: user.email,
+            profilePicture: user.profilepicture || user.profilePicture,
             mfaEnabled: user.mfaenabled || false,
             mfaSecret: user.mfasecret || null,
             mfaBackupCodes: user.mfabackupcodes || [],
@@ -2926,6 +2927,7 @@ export class DatabaseStorage implements IStorage {
               role: user.role,
               name: user.name,
               email: user.email,
+              profilePicture: user.profilepicture || user.profilePicture,
               mfaEnabled: user.mfaenabled || false,
               mfaSecret: user.mfasecret || null,
               mfaBackupCodes: user.mfabackupcodes || [],
@@ -2998,6 +3000,7 @@ export class DatabaseStorage implements IStorage {
             role: user.role,
             name: user.name,
             email: user.email,
+            profilePicture: user.profilepicture || user.profilePicture,
             mfaEnabled: user.mfaenabled || false,
             mfaSecret: user.mfasecret || null,
             mfaBackupCodes: user.mfabackupcodes || [],
@@ -3049,6 +3052,7 @@ export class DatabaseStorage implements IStorage {
         role: row.role,
         name: row.name,
         email: row.email,
+        profilePicture: row.profilepicture || row.profilePicture,
         mfaEnabled: row.mfaenabled || false,
         mfaSecret: row.mfasecret || null,
         mfaBackupCodes: row.mfabackupcodes || [],
@@ -3104,6 +3108,7 @@ export class DatabaseStorage implements IStorage {
         role: rawUser.role,
         name: rawUser.name,
         email: rawUser.email,
+        profilePicture: rawUser.profilepicture || rawUser.profilePicture,
         mfaEnabled: rawUser.mfaenabled || false,
         mfaSecret: rawUser.mfasecret || null,
         mfaBackupCodes: rawUser.mfabackupcodes || [],
@@ -3192,6 +3197,10 @@ export class DatabaseStorage implements IStorage {
       
       if (updates.email !== undefined) {
         updateFields.push(sql`email = ${updates.email}`);
+      }
+      
+      if (updates.profilePicture !== undefined) {
+        updateFields.push(sql`profilepicture = ${updates.profilePicture}`);
       }
       
       if (updates.tenantId !== undefined) {

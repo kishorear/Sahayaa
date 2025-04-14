@@ -319,9 +319,23 @@ export default function ProfilePage() {
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : profile?.profilePicture ? (
-                    <AvatarImage src={profile.profilePicture} alt={profile?.name || profile?.username || 'User'} />
+                    <>
+                      {console.log("Using profile picture URL:", profile.profilePicture)}
+                      <AvatarImage 
+                        src={profile.profilePicture} 
+                        alt={profile?.name || profile?.username || 'User'}
+                        onError={(e) => {
+                          console.error("Error loading profile picture:", e);
+                          // Fallback to generated avatar on error
+                          e.currentTarget.src = `https://avatars.dicebear.com/api/initials/${profile?.name || profile?.username || 'U'}.svg`;
+                        }} 
+                      />
+                    </>
                   ) : (
-                    <AvatarImage src={`https://avatars.dicebear.com/api/initials/${profile?.name || profile?.username || 'U'}.svg`} alt={profile?.name || profile?.username || 'User'} />
+                    <>
+                      {console.log("No profile picture available, using generated avatar")}
+                      <AvatarImage src={`https://avatars.dicebear.com/api/initials/${profile?.name || profile?.username || 'U'}.svg`} alt={profile?.name || profile?.username || 'User'} />
+                    </>
                   )}
                   <AvatarFallback className="text-2xl">{profile?.name?.[0] || profile?.username?.[0] || 'U'}</AvatarFallback>
                 </Avatar>

@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { testDbConnection, reconnectDb } from "./db";
+import path from "path";
 
 // Process-level unhandled rejection handler to prevent crashes
 process.on('unhandledRejection', (reason, promise) => {
@@ -16,6 +17,12 @@ process.on('uncaughtException', (error) => {
 });
 
 const app = express();
+
+// Set up static file serving for uploads
+const uploadsDir = path.join(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsDir));
+console.log(`Serving static files from: ${uploadsDir}`);
+
 // Enhanced JSON body parser with better error handling
 app.use(express.json({
   limit: '1gb',

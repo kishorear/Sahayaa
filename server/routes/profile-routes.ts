@@ -59,22 +59,10 @@ async function hashPassword(password: string) {
 
 export function registerProfileRoutes(app: Express, requireAuth: any) {
   // Serve uploaded profile pictures
-  app.use('/uploads', (req, res, next) => {
-    // Basic security check to make sure only profile pictures are served
-    if (req.path.startsWith('/profile-')) {
-      // Create a custom middleware to handle file not found errors
-      const staticMiddleware = express.static(uploadsDir);
-      staticMiddleware(req, res, (err) => {
-        if (err) {
-          console.error("Error serving static file:", err);
-          return res.status(404).json({ message: "Profile picture not found" });
-        }
-        next();
-      });
-    } else {
-      res.status(403).json({ message: "Access denied" });
-    }
-  });
+  app.use('/uploads', express.static(uploadsDir));
+  
+  // Log for debugging
+  console.log(`Profile pictures uploads directory: ${uploadsDir}`);
 
   // Get current user profile
   app.get("/api/profile", requireAuth, async (req: Request, res: Response) => {
@@ -173,24 +161,56 @@ export function registerProfileRoutes(app: Express, requireAuth: any) {
   // Upload profile picture
   app.post("/api/profile/picture", requireAuth, upload.single("profilePicture"), async (req: Request, res: Response) => {
     try {
+      console.log("Profile picture upload request received");
+      
       // req.user is set by the auth middleware
       if (!req.user) {
+        console.log("Profile picture upload: User not authenticated");
         return res.status(401).json({ message: "Not authenticated" });
       }
+      
+      console.log("Profile picture upload: User authenticated", { userId: req.user.id, username: req.user.username });
       
       // req.file is the uploaded profile picture
       const file = req.file;
       if (!file) {
+        console.log("Profile picture upload: No file in request");
         return res.status(400).json({ message: "No file was uploaded" });
       }
       
+      // Log the file information for debugging
+      console.log("Profile picture uploaded:", {
+        filename: file.filename,
+        originalname: file.originalname,
+        path: file.path,
+        destination: file.destination,
+        size: file.size
+      });
+      
       // Create a public URL for the uploaded file
       const publicUrl = `/uploads/${path.basename(file.path)}`;
+      console.log("Generated public URL:", publicUrl);
+      
+      try {
+        // Test the file existence
+        const fullPath = path.join(uploadsDir, path.basename(file.path));
+        const fileExists = fs.existsSync(fullPath);
+        console.log(`File existence check: ${fileExists ? "File exists" : "File does not exist"} at ${fullPath}`);
+      } catch (fsError) {
+        console.error("Error checking file existence:", fsError);
+      }
       
       // Update the user's profile with the new profile picture URL
+      console.log("Updating user profile with picture URL:", { userId: req.user.id, url: publicUrl });
       const updatedUser = await storage.updateUser(req.user.id, {
         profilePicture: publicUrl,
         updatedAt: new Date()
+      });
+      
+      console.log("User profile updated:", { 
+        userId: updatedUser.id,
+        profilePictureSet: !!updatedUser.profilePicture,
+        profilePictureUrl: updatedUser.profilePicture
       });
       
       // Remove sensitive information before sending response
@@ -267,6 +287,47 @@ export function registerProfileRoutes(app: Express, requireAuth: any) {
     } catch (error) {
       console.error("Error disabling SSO:", error);
       res.status(500).json({ message: "Error disabling SSO" });
+    }
+  });
+  
+  // Test route for checking upload files - does not require authentication
+  app.get("/api/profile/test-uploads", async (req: Request, res: Response) => {
+    try {
+      console.log("Testing uploads directory access");
+      
+      // List all files in the uploads directory
+      const files = fs.readdirSync(uploadsDir);
+      console.log(`Found ${files.length} files in uploads directory:`, files);
+      
+      // Check if any of the files are images
+      const imageFiles = files.filter(file => 
+        file.match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i)
+      );
+      console.log(`Found ${imageFiles.length} image files:`, imageFiles);
+      
+      // Check if a specific file exists
+      const sampleFilePath = req.query.file ? path.join(uploadsDir, req.query.file.toString()) : null;
+      let sampleFileExists = false;
+      
+      if (sampleFilePath) {
+        sampleFileExists = fs.existsSync(sampleFilePath);
+        console.log(`Requested file ${req.query.file} ${sampleFileExists ? 'exists' : 'does not exist'} at ${sampleFilePath}`);
+      }
+      
+      res.status(200).json({
+        uploadsDir,
+        totalFiles: files.length,
+        files,
+        imageFiles,
+        requestedFile: req.query.file || null,
+        requestedFileExists: sampleFileExists,
+      });
+    } catch (error) {
+      console.error("Error testing uploads:", error);
+      res.status(500).json({ 
+        message: "Error testing uploads", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
 }

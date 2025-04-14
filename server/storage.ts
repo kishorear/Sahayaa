@@ -2769,6 +2769,7 @@ export class DatabaseStorage implements IStorage {
               role: user.role,
               name: user.name,
               email: user.email,
+              profilePicture: user.profilepicture || user.profilePicture,
               mfaEnabled: user.mfaenabled || false,
               mfaSecret: user.mfasecret || null,
               mfaBackupCodes: user.mfabackupcodes || [],

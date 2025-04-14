@@ -23,6 +23,11 @@ const uploadsDir = path.join(process.cwd(), 'uploads');
 app.use('/uploads', express.static(uploadsDir));
 console.log(`Serving static files from: ${uploadsDir}`);
 
+// Set up debug tools
+const clientDir = path.join(process.cwd(), 'client');
+app.use('/debug', express.static(clientDir));
+console.log(`Serving debug tools from: ${clientDir}`);
+
 // Enhanced JSON body parser with better error handling
 app.use(express.json({
   limit: '1gb',

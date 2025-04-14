@@ -62,7 +62,15 @@ export function registerProfileRoutes(app: Express, requireAuth: any) {
   app.use('/uploads', (req, res, next) => {
     // Basic security check to make sure only profile pictures are served
     if (req.path.startsWith('/profile-')) {
-      express.static(uploadsDir)(req, res, next);
+      // Create a custom middleware to handle file not found errors
+      const staticMiddleware = express.static(uploadsDir);
+      staticMiddleware(req, res, (err) => {
+        if (err) {
+          console.error("Error serving static file:", err);
+          return res.status(404).json({ message: "Profile picture not found" });
+        }
+        next();
+      });
     } else {
       res.status(403).json({ message: "Access denied" });
     }

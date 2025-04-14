@@ -45,7 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, UserCog, Key, Shield, ExternalLink } from "lucide-react";
+import { Loader2, UserCog, Key, Shield, ExternalLink, Trash2, ImageIcon } from "lucide-react";
 
 // Schema for profile updates
 const profileFormSchema = z.object({
@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isMfaDialogOpen, setIsMfaDialogOpen] = useState(false);
   const [isSsoDialogOpen, setIsSsoDialogOpen] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
 
   // Query for the user's profile
   const { data: profile, isLoading } = useQuery({
@@ -188,6 +189,104 @@ export default function ProfilePage() {
     queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
     queryClient.invalidateQueries({ queryKey: ['/api/user'] });
   };
+  
+  // Upload profile picture mutation
+  const uploadProfilePictureMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+      
+      const response = await fetch('/api/profile/picture', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to upload profile picture');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      setUploadingPicture(false);
+      toast({
+        title: "Profile picture updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      setUploadingPicture(false);
+      toast({
+        title: "Failed to upload profile picture",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Delete profile picture mutation
+  const deleteProfilePictureMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('DELETE', '/api/profile/picture');
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete profile picture');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      toast({
+        title: "Profile picture removed",
+        description: "Your profile picture has been removed successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to remove profile picture",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle profile picture change
+  const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    
+    // Validate file is an image
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file (JPEG, PNG, etc.).",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image file smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setUploadingPicture(true);
+    uploadProfilePictureMutation.mutate(file);
+  };
 
   if (isLoading) {
     return (
@@ -215,7 +314,11 @@ export default function ProfilePage() {
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative group">
                 <Avatar className="h-24 w-24 mb-4">
-                  {profile?.profilePicture ? (
+                  {uploadingPicture ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background rounded-full">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : profile?.profilePicture ? (
                     <AvatarImage src={profile.profilePicture} alt={profile?.name || profile?.username || 'User'} />
                   ) : (
                     <AvatarImage src={`https://avatars.dicebear.com/api/initials/${profile?.name || profile?.username || 'U'}.svg`} alt={profile?.name || profile?.username || 'User'} />
@@ -223,10 +326,14 @@ export default function ProfilePage() {
                   <AvatarFallback className="text-2xl">{profile?.name?.[0] || profile?.username?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
                 <div 
-                  className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  onClick={() => document.getElementById('profile-picture-upload')?.click()}
+                  className={`absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity ${uploadingPicture ? 'cursor-wait' : 'cursor-pointer'}`}
+                  onClick={() => !uploadingPicture && document.getElementById('profile-picture-upload')?.click()}
                 >
-                  <span className="text-xs font-medium">Change</span>
+                  {uploadingPicture ? (
+                    <span className="text-xs font-medium">Uploading...</span>
+                  ) : (
+                    <span className="text-xs font-medium">Change</span>
+                  )}
                 </div>
                 <input 
                   type="file" 
@@ -234,6 +341,7 @@ export default function ProfilePage() {
                   className="hidden" 
                   accept="image/*"
                   onChange={handleProfilePictureChange}
+                  disabled={uploadingPicture}
                 />
               </div>
               <h3 className="text-xl font-bold">{profile?.name || profile?.username}</h3>
@@ -268,9 +376,24 @@ export default function ProfilePage() {
                 </div>
               </div>
               
+              {profile?.profilePicture && (
+                <Button 
+                  variant="outline" 
+                  className="mt-2 w-full"
+                  onClick={() => deleteProfilePictureMutation.mutate()}
+                  disabled={deleteProfilePictureMutation.isPending}
+                >
+                  {deleteProfilePictureMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4" />
+                  )}
+                  Remove Profile Picture
+                </Button>
+              )}
               <Button 
                 variant="outline" 
-                className="mt-6 w-full"
+                className="mt-2 w-full"
                 onClick={() => setIsPasswordDialogOpen(true)}
               >
                 <Key className="mr-2 h-4 w-4" />

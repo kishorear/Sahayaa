@@ -77,7 +77,7 @@ export default function Dashboard() {
           <div className="mt-4 md:mt-0 space-x-2">
             <Link href="/admin">
               <Button variant="outline" className="w-full md:w-auto mt-2 md:mt-0">
-                Go to Admin
+                Menu
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

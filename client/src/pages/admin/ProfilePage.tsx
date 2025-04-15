@@ -313,7 +313,7 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Profile Summary Card */}
-          <Card className="md:col-span-1">
+          <Card className="md:col-span-1 profile-menu">
             <CardHeader>
               <CardTitle>Profile Summary</CardTitle>
               <CardDescription>Your account information</CardDescription>
@@ -430,19 +430,19 @@ export default function ProfilePage() {
               <CardDescription>Update your personal information</CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="profile">
+              <Tabs defaultValue="profile" className="w-full profile-tabs-container">
+                <TabsList className="grid w-full grid-cols-2 profile-tabs">
+                  <TabsTrigger value="profile" className="profile-tab-profile">
                     <UserCog className="mr-2 h-4 w-4" />
                     Profile Details
                   </TabsTrigger>
-                  <TabsTrigger value="security">
+                  <TabsTrigger value="security" className="profile-tab-security">
                     <Shield className="mr-2 h-4 w-4" />
                     Security
                   </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="profile" className="space-y-4 mt-4">
+                <TabsContent value="profile" className="space-y-4 mt-4 profile-tab-content">
                   <Form {...profileForm}>
                     <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
                       <FormField
@@ -493,9 +493,9 @@ export default function ProfilePage() {
                   </Form>
                 </TabsContent>
                 
-                <TabsContent value="security" className="space-y-4 mt-4">
+                <TabsContent value="security" className="space-y-4 mt-4 security-tab-content">
                   <div className="space-y-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 password-section">
                       <h3 className="text-lg font-medium">Password</h3>
                       <p className="text-sm text-muted-foreground">
                         Change your password to keep your account secure.
@@ -503,13 +503,14 @@ export default function ProfilePage() {
                       <Button 
                         variant="outline" 
                         onClick={() => setIsPasswordDialogOpen(true)}
+                        className="password-change-btn"
                       >
                         <Key className="mr-2 h-4 w-4" />
                         Change Password
                       </Button>
                     </div>
                     
-                    <div className="space-y-2 pt-4 border-t">
+                    <div className="space-y-2 pt-4 border-t mfa-section">
                       <h3 className="text-lg font-medium">Multi-Factor Authentication</h3>
                       <p className="text-sm text-muted-foreground">
                         Enhance your account security by enabling MFA.
@@ -517,13 +518,14 @@ export default function ProfilePage() {
                       <Button 
                         variant="outline" 
                         onClick={() => setIsMfaDialogOpen(true)}
+                        className="mfa-setup-btn"
                       >
                         <Shield className="mr-2 h-4 w-4" />
                         {profile?.mfaEnabled ? 'Manage MFA' : 'Setup MFA'}
                       </Button>
                     </div>
 
-                    <div className="space-y-2 pt-4 border-t">
+                    <div className="space-y-2 pt-4 border-t sso-section">
                       <h3 className="text-lg font-medium">Single Sign-On (SSO)</h3>
                       <p className="text-sm text-muted-foreground">
                         Connect your account with your organization's identity provider.
@@ -531,13 +533,14 @@ export default function ProfilePage() {
                       <Button 
                         variant="outline" 
                         onClick={() => setIsSsoDialogOpen(true)}
+                        className="sso-setup-btn"
                       >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         {profile?.ssoEnabled ? 'Manage SSO' : 'Setup SSO'}
                       </Button>
                     </div>
                     
-                    <div className="space-y-2 pt-4 border-t">
+                    <div className="space-y-2 pt-4 border-t tour-section">
                       <h3 className="text-lg font-medium">Onboarding Tour</h3>
                       <p className="text-sm text-muted-foreground">
                         Learn about the key features of the platform with a guided tour.
@@ -546,6 +549,7 @@ export default function ProfilePage() {
                         <Button 
                           variant="outline" 
                           onClick={() => startTour()}
+                          className="start-tour-btn"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -558,6 +562,7 @@ export default function ProfilePage() {
                         <Button 
                           variant="outline" 
                           onClick={() => resetTour()}
+                          className="reset-tour-btn"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>

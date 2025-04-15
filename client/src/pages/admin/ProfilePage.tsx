@@ -6,6 +6,8 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useOnboardingTour } from "@/hooks/use-onboarding-tour";
+import OnboardingTour from "@/components/OnboardingTour";
 
 import AdminLayout from "@/components/admin/AdminLayout";
 import MfaSetupDialog from "@/components/admin/MfaSetupDialog";
@@ -74,6 +76,9 @@ export default function ProfilePage() {
   const [isMfaDialogOpen, setIsMfaDialogOpen] = useState(false);
   const [isSsoDialogOpen, setIsSsoDialogOpen] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
+  
+  // Initialize onboarding tour
+  const { startTour, resetTour, hasTourCompleted } = useOnboardingTour(user?.role || 'administrator');
 
   // Query for the user's profile
   const { data: profile, isLoading } = useQuery({
@@ -528,6 +533,44 @@ export default function ProfilePage() {
                         <ExternalLink className="mr-2 h-4 w-4" />
                         {profile?.ssoEnabled ? 'Manage SSO' : 'Setup SSO'}
                       </Button>
+                    </div>
+                    
+                    <div className="space-y-2 pt-4 border-t">
+                      <h3 className="text-lg font-medium">Onboarding Tour</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Learn about the key features of the platform with a guided tour.
+                      </p>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => startTour()}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 16v-4"></path>
+                            <path d="M12 8h.01"></path>
+                          </svg>
+                          Start Tour Now
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          onClick={() => resetTour()}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                            <path d="M16 21h5v-5"></path>
+                          </svg>
+                          Reset Tour
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {hasTourCompleted 
+                          ? 'You have completed the tour. Reset it to see it again on your next login.' 
+                          : 'The tour will start automatically on your next login.'}
+                      </p>
                     </div>
                   </div>
                 </TabsContent>

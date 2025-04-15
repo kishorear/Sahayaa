@@ -3200,7 +3200,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       if (updates.profilePicture !== undefined) {
-        updateFields.push(sql`profilepicture = ${updates.profilePicture}`);
+        updateFields.push(sql`"profilePicture" = ${updates.profilePicture}`);
       }
       
       if (updates.tenantId !== undefined) {

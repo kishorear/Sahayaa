@@ -7,38 +7,31 @@ export const adminTourSteps: StepProps[] = [
   {
     target: '.admin-dashboard',
     content: 'Welcome to the Admin Dashboard! This is where you can manage all aspects of the support system.',
-    placement: 'bottom',
     disableBeacon: true,
   },
   {
     target: '.tickets-section',
     content: 'Here you can view and manage all support tickets across your organization.',
-    placement: 'bottom',
   },
   {
     target: '.analytics-section',
     content: 'Monitor the performance of your support team with detailed analytics.',
-    placement: 'bottom',
   },
   {
     target: '.user-management',
     content: 'Add, remove, or modify user accounts and permissions from here.',
-    placement: 'right',
   },
   {
     target: '.ai-providers',
     content: 'Configure AI providers that power the intelligent features of the system.',
-    placement: 'left',
   },
   {
     target: '.knowledge-base',
     content: 'Manage your knowledge base documents to improve customer self-service.',
-    placement: 'bottom',
   },
   {
     target: '.profile-menu',
     content: 'Access your profile settings and preferences here.',
-    placement: 'bottom',
   },
 ];
 
@@ -46,28 +39,23 @@ export const supportTourSteps: StepProps[] = [
   {
     target: '.support-dashboard',
     content: 'Welcome to the Support Dashboard! Here you can manage customer tickets and inquiries.',
-    placement: 'bottom',
     disableBeacon: true,
   },
   {
     target: '.active-tickets',
     content: 'View and respond to tickets assigned to you.',
-    placement: 'bottom',
   },
   {
     target: '.search-box',
     content: 'Quickly search for tickets by ID, customer name, or keywords.',
-    placement: 'bottom',
   },
   {
     target: '.knowledge-search',
     content: 'Find relevant knowledge base articles to help resolve customer issues faster.',
-    placement: 'right',
   },
   {
     target: '.profile-menu',
     content: 'Access your profile settings and preferences here.',
-    placement: 'bottom',
   },
 ];
 
@@ -75,28 +63,23 @@ export const userTourSteps: StepProps[] = [
   {
     target: '.user-dashboard',
     content: 'Welcome to your Support Portal! Here you can manage your support requests.',
-    placement: 'bottom',
     disableBeacon: true,
   },
   {
     target: '.create-ticket',
     content: 'Click here to create a new support ticket.',
-    placement: 'right',
   },
   {
     target: '.my-tickets',
     content: 'View all your existing support tickets and their status.',
-    placement: 'bottom',
   },
   {
     target: '.help-center',
     content: 'Browse our knowledge base for self-help articles and guides.',
-    placement: 'left',
   },
   {
     target: '.profile-menu',
     content: 'Access your profile settings and preferences here.',
-    placement: 'bottom',
   },
 ];
 

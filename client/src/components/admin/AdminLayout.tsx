@@ -171,7 +171,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <Bell className="w-6 h-6 text-gray-400" />
               </Button>
               <Link href="/admin/profile">
-                <div className="ml-3 relative cursor-pointer">
+                <div className="profile-menu ml-3 relative cursor-pointer">
                   <Avatar>
                     {user?.profilePicture ? (
                       <>
@@ -266,7 +266,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         )}
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
+        <main className="admin-dashboard flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
           {children}
         </main>
       </div>

@@ -306,6 +306,8 @@ export default function ProfilePage() {
 
   return (
     <AdminLayout>
+      {/* Add the OnboardingTour component */}
+      <OnboardingTour userRole={user?.role || 'administrator'} />
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">My Profile</h1>
 

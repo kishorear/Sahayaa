@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useToast } from './use-toast';
-import { StepProps } from 'react-joyride';
+import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
 
 // Define tour steps for different user roles
-export const adminTourSteps: StepProps[] = [
+export const adminTourSteps: Step[] = [
   {
     target: '.admin-dashboard',
     content: 'Welcome to the Admin Dashboard! This is where you can manage all aspects of the support system.',
@@ -35,7 +35,7 @@ export const adminTourSteps: StepProps[] = [
   },
 ];
 
-export const supportTourSteps: StepProps[] = [
+export const supportTourSteps: Step[] = [
   {
     target: '.support-dashboard',
     content: 'Welcome to the Support Dashboard! Here you can manage customer tickets and inquiries.',
@@ -59,7 +59,7 @@ export const supportTourSteps: StepProps[] = [
   },
 ];
 
-export const userTourSteps: StepProps[] = [
+export const userTourSteps: Step[] = [
   {
     target: '.user-dashboard',
     content: 'Welcome to your Support Portal! Here you can manage your support requests.',
@@ -130,18 +130,18 @@ export const useOnboardingTour = (userRole: string) => {
   }, [hasTourCompleted, toast]);
   
   // Handle tour callbacks
-  const handleJoyrideCallback = (data: any) => {
+  const handleJoyrideCallback = (data: CallBackProps) => {
     const { action, index, status, type } = data;
     
     if (type === 'step:after' && action === 'next') {
       // Update step index
       setStepIndex(index + 1);
-    } else if (status === 'finished' || status === 'skipped') {
+    } else if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       // Tour was finished or skipped
       setIsTourRunning(false);
       setHasTourCompleted(true);
       
-      if (status === 'finished') {
+      if (status === STATUS.FINISHED) {
         toast({
           title: 'Tour completed!',
           description: 'You can restart the tour anytime from your profile settings.',

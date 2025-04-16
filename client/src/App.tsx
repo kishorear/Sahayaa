@@ -23,8 +23,11 @@ import DocumentsPage from "@/pages/admin/DocumentsPage"; // Knowledge base docum
 import MCPTestPage from "@/pages/MCP-Test-Page"; // MCP Testing Page
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
+import CreatorLoginPage from "@/pages/CreatorLoginPage"; // Creator login page
+import CreatorDashboardPage from "@/pages/creator/CreatorDashboardPage"; // Creator dashboard
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { CreatorProtectedRoute } from "@/lib/creator-protected-route"; // Creator route protection
 
 function Router() {
   return (
@@ -38,6 +41,10 @@ function Router() {
       <Route path="/contact" component={ContactUsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/mcp-test" component={MCPTestPage} />
+      
+      {/* Creator Routes */}
+      <Route path="/creator/login" component={CreatorLoginPage} />
+      <CreatorProtectedRoute path="/creator/dashboard" component={CreatorDashboardPage} />
       
       {/* Protected Routes - Application */}
       <ProtectedRoute path="/dashboard" component={Dashboard} />

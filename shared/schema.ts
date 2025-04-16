@@ -65,7 +65,7 @@ export const users = pgTable("users", {
   teamId: integer("teamId"), // Reference to the team the user belongs to
   username: text("username").notNull(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("member"), // admin, support, engineer, member
+  role: text("role").notNull().default("member"), // creator, administrator, support_engineer, user, member
   name: text("name"),
   email: text("email"),
   profilePicture: text("profilePicture"), // URL or path to profile picture

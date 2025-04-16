@@ -1,52 +1,38 @@
-import React from 'react';
-import { Route, useLocation } from 'wouter';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
+import { Redirect, Route } from "wouter";
 
 interface CreatorProtectedRouteProps {
-  component: React.ComponentType<any>;
   path: string;
+  component: React.ComponentType<any>;
 }
 
-export const CreatorProtectedRoute: React.FC<CreatorProtectedRouteProps> = ({
-  component: Component,
+export function CreatorProtectedRoute({
   path,
-  ...rest
-}) => {
+  component: Component,
+}: CreatorProtectedRouteProps) {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-
+  
   return (
-    <Route
-      path={path}
-      {...rest}
-      component={(props: any) => {
-        // If still loading auth state, return null temporarily
+    <Route path={path}>
+      {(params) => {
+        // Show loading state while auth is checked
         if (isLoading) {
-          return null;
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-8 w-8 animate-spin text-border" />
+            </div>
+          );
         }
         
-        // If user is authenticated and is a creator, render the component
-        if (user && user.role === 'creator') {
-          return <Component {...props} />;
+        // If not authenticated or not a creator, redirect to creator login
+        if (!user || user.role !== "creator") {
+          return <Redirect to="/creator/login" />;
         }
         
-        // If user is authenticated but not a creator, show an error and redirect to dashboard
-        if (user) {
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access this area. Creator access only.",
-            variant: "destructive",
-          });
-          setLocation('/dashboard');
-          return null;
-        }
-        
-        // If user is not authenticated, redirect to creator login
-        setLocation('/creator/login');
-        return null;
+        // If authenticated as creator, render the protected component
+        return <Component params={params} />;
       }}
-    />
+    </Route>
   );
-};
+}

@@ -1,207 +1,110 @@
-import type { Express, Request, Response } from "express";
-import { z } from "zod";
-import { storage } from "../storage";
-import { insertUserSchema, User } from "@shared/schema";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
+import { Router, Request, Response } from 'express';
+import { db } from '../db';
+import { users, teams } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 
-// Hash password function
-const scryptAsync = promisify(scrypt);
+const router = Router();
 
-async function hashPassword(password: string) {
-  try {
-    const salt = randomBytes(16).toString("hex");
-    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-    return `${buf.toString("hex")}.${salt}`;
-  } catch (error) {
-    console.error('Error hashing password:', error);
-    throw new Error('Failed to hash password');
-  }
-}
-
-export function registerTeamMemberRoutes(app: Express, requireRole: (roles: string[]) => any) {
-  // Get all team members (users)
-  app.get("/api/team-members", requireRole(['admin']), async (req: Request, res: Response) => {
+/**
+ * Registers team member routes
+ * @param app Express application
+ * @param requireRole Middleware to require specific roles
+ */
+export function registerTeamMemberRoutes(app: any, requireRole: Function) {
+  // Add user to team
+  app.post("/api/teams/:teamId/members/:userId", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
     try {
-      // Get the tenant ID from the authenticated user or request
+      const teamId = parseInt(req.params.teamId);
+      const userId = parseInt(req.params.userId);
+      
+      if (isNaN(teamId) || isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid team or user ID" });
+      }
+      
+      // Get the tenant context from the user
       const tenantId = req.user?.tenantId || 1;
       
-      // Fetch all users for this tenant
-      const users = await storage.getUsersByTenantId(tenantId);
+      // Verify team exists and belongs to tenant
+      const teamResult = await db.select().from(teams)
+        .where(and(
+          eq(teams.id, teamId),
+          eq(teams.tenantId, tenantId)
+        ))
+        .limit(1);
       
-      // Remove sensitive information before sending
-      const sanitizedUsers = users.map(user => {
-        const { password, mfaSecret, mfaBackupCodes, ...safeUser } = user;
-        return safeUser;
-      });
+      if (teamResult.length === 0) {
+        return res.status(404).json({ message: "Team not found or access denied" });
+      }
       
-      res.status(200).json(sanitizedUsers);
+      // Verify user exists and belongs to tenant
+      const userResult = await db.select().from(users)
+        .where(and(
+          eq(users.id, userId),
+          eq(users.tenantId, tenantId)
+        ))
+        .limit(1);
+      
+      if (userResult.length === 0) {
+        return res.status(404).json({ message: "User not found or access denied" });
+      }
+      
+      // Add user to team
+      const result = await db.update(users)
+        .set({ teamId })
+        .where(and(
+          eq(users.id, userId),
+          eq(users.tenantId, tenantId)
+        ))
+        .returning();
+      
+      return res.status(200).json(result[0]);
     } catch (error) {
-      console.error("Error fetching team members:", error);
-      res.status(500).json({ message: "Error fetching team members" });
+      console.error('Error adding user to team:', error);
+      return res.status(500).json({ message: "Internal server error" });
     }
   });
-
-  // Get a specific team member
-  app.get("/api/team-members/:id", requireRole(['admin']), async (req: Request, res: Response) => {
+  
+  // Remove user from team
+  app.delete("/api/teams/:teamId/members/:userId", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const teamId = parseInt(req.params.teamId);
+      const userId = parseInt(req.params.userId);
+      
+      if (isNaN(teamId) || isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid team or user ID" });
+      }
+      
+      // Get the tenant context from the user
       const tenantId = req.user?.tenantId || 1;
       
-      // Fetch the user
-      const user = await storage.getUser(id);
+      // Verify user exists, belongs to tenant, and is in the team
+      const userResult = await db.select().from(users)
+        .where(and(
+          eq(users.id, userId),
+          eq(users.tenantId, tenantId),
+          eq(users.teamId, teamId)
+        ))
+        .limit(1);
       
-      // Check if user exists and belongs to the current tenant
-      if (!user || user.tenantId !== tenantId) {
-        return res.status(404).json({ message: "Team member not found" });
+      if (userResult.length === 0) {
+        return res.status(404).json({ message: "User not found, not in the team, or access denied" });
       }
       
-      // Remove sensitive information
-      const { password, mfaSecret, mfaBackupCodes, ...safeUser } = user;
+      // Remove user from team
+      const result = await db.update(users)
+        .set({ teamId: null })
+        .where(and(
+          eq(users.id, userId),
+          eq(users.tenantId, tenantId)
+        ))
+        .returning();
       
-      res.status(200).json(safeUser);
+      return res.status(200).json(result[0]);
     } catch (error) {
-      console.error("Error fetching team member:", error);
-      res.status(500).json({ message: "Error fetching team member" });
+      console.error('Error removing user from team:', error);
+      return res.status(500).json({ message: "Internal server error" });
     }
   });
-
-  // Create a new team member
-  app.post("/api/team-members", requireRole(['admin']), async (req: Request, res: Response) => {
-    try {
-      const tenantId = req.user?.tenantId || 1;
-      
-      // Validate the request data
-      const userData = insertUserSchema
-        .extend({
-          // Ensure role is one of the valid roles
-          role: z.enum(['admin', 'support-agent', 'engineer', 'user']),
-        })
-        .parse({ ...req.body, tenantId });
-      
-      // Check if username already exists
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser && existingUser.tenantId === tenantId) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-      
-      // Hash the password before storing it
-      if (userData.password) {
-        try {
-          console.log(`Hashing password for new user ${userData.username}`);
-          userData.password = await hashPassword(userData.password);
-          console.log("Password hashed successfully");
-        } catch (hashError) {
-          console.error("Error hashing password:", hashError);
-          return res.status(500).json({ message: "Error processing password" });
-        }
-      }
-      
-      // Create the user
-      const newUser = await storage.createUser(userData);
-      console.log(`New user created with ID: ${newUser.id}`);
-      
-      // Remove sensitive information
-      const { password, mfaSecret, mfaBackupCodes, ...safeUser } = newUser;
-      
-      res.status(201).json(safeUser);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
-      }
-      console.error("Error creating team member:", error);
-      res.status(500).json({ message: "Error creating team member" });
-    }
-  });
-
-  // Update a team member
-  app.patch("/api/team-members/:id", requireRole(['admin']), async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const tenantId = req.user?.tenantId || 1;
-      
-      // Fetch the existing user
-      const existingUser = await storage.getUser(id);
-      
-      // Check if user exists and belongs to the current tenant
-      if (!existingUser || existingUser.tenantId !== tenantId) {
-        return res.status(404).json({ message: "Team member not found" });
-      }
-      
-      // Validate the update data
-      const updateSchema = z.object({
-        username: z.string().optional(),
-        role: z.enum(['admin', 'support-agent', 'engineer', 'user']).optional(),
-        name: z.string().nullable().optional(),
-        email: z.string().email().nullable().optional(),
-        password: z.string().min(6).optional(),
-      });
-      
-      const updateData = updateSchema.parse(req.body);
-      
-      // Check if a new username already exists (if username is being updated)
-      if (updateData.username && updateData.username !== existingUser.username) {
-        const userWithSameUsername = await storage.getUserByUsername(updateData.username);
-        if (userWithSameUsername && userWithSameUsername.tenantId === tenantId) {
-          return res.status(400).json({ message: "Username already exists" });
-        }
-      }
-      
-      // Hash the password if it's being updated
-      if (updateData.password) {
-        try {
-          console.log(`Hashing updated password for user ${existingUser.username} (ID: ${id})`);
-          updateData.password = await hashPassword(updateData.password);
-          console.log("Password hashed successfully");
-        } catch (hashError) {
-          console.error("Error hashing password:", hashError);
-          return res.status(500).json({ message: "Error processing password" });
-        }
-      }
-      
-      // Update the user
-      const updatedUser = await storage.updateUser(id, updateData);
-      console.log(`User ${updatedUser.username} (ID: ${updatedUser.id}) updated successfully`);
-      
-      // Remove sensitive information
-      const { password, mfaSecret, mfaBackupCodes, ...safeUser } = updatedUser;
-      
-      res.status(200).json(safeUser);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
-      }
-      console.error("Error updating team member:", error);
-      res.status(500).json({ message: "Error updating team member" });
-    }
-  });
-
-  // Delete a team member
-  app.delete("/api/team-members/:id", requireRole(['admin']), async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const tenantId = req.user?.tenantId || 1;
-      
-      // Fetch the user
-      const user = await storage.getUser(id);
-      
-      // Check if user exists and belongs to the current tenant
-      if (!user || user.tenantId !== tenantId) {
-        return res.status(404).json({ message: "Team member not found" });
-      }
-      
-      // Prevent deleting your own account
-      if (user.id === req.user?.id) {
-        return res.status(400).json({ message: "Cannot delete your own account" });
-      }
-      
-      // Delete the user
-      await storage.deleteUser(id);
-      
-      res.status(200).json({ message: "Team member deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting team member:", error);
-      res.status(500).json({ message: "Error deleting team member" });
-    }
-  });
+  
+  return router;
 }

@@ -46,7 +46,7 @@ declare global {
 // Using scrypt for password hashing
 const scryptAsync = promisify(scrypt);
 
-async function hashPassword(password: string) {
+export async function hashPassword(password: string) {
   // Use a fixed salt in production for consistent hashing
   // This is not ideal for security but helps with debugging
   const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
@@ -60,7 +60,7 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-async function comparePasswords(supplied: string, stored: string) {
+export async function comparePasswords(supplied: string, stored: string) {
   try {
     // Validate that stored password has the expected format
     if (!stored || !stored.includes('.')) {

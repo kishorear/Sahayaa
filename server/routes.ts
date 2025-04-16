@@ -27,7 +27,7 @@ import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
 import { registerAiProviderRoutes } from "./routes/ai-provider-routes";
 import { registerTeamMemberRoutes } from "./routes/team-member-routes";
-import { registerTeamRoutes } from "./routes/team-routes";
+import teamRoutes from "./routes/team-routes";
 import { registerProfileRoutes } from "./routes/profile-routes";
 // Import the document routes registration function
 import { registerDocumentRoutes } from "./routes/document-routes";
@@ -35,6 +35,8 @@ import { registerDocumentRoutes } from "./routes/document-routes";
 import { registerDownloadRoutes } from "./routes/download-routes";
 // Import the widget download routes registration function
 import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
+// Import creator routes for multi-tenant management
+import creatorRoutes from "./routes/creator-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -150,7 +152,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerTeamMemberRoutes(app, requireRole);
   
   // Register team routes
-  registerTeamRoutes(app);
+  app.use('/api/teams', teamRoutes);
+  
+  // Register creator routes for multi-tenant management
+  app.use('/api/creator', creatorRoutes);
   
   // Register profile routes
   registerProfileRoutes(app, requireAuth);

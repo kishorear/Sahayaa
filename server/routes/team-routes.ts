@@ -1,182 +1,270 @@
-import { type Express } from "express";
-import { Router } from "express";
-import { storage } from "../storage";
-import { Team, insertTeamSchema } from "../../shared/schema";
-import { z } from "zod";
+import { Router, Request, Response } from 'express';
+import { db } from '../db';
+import { teams, users, InsertTeam } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 
 const router = Router();
 
-// Get all teams (optionally filtered by tenant ID)
-router.get("/api/teams", async (req, res) => {
+/**
+ * GET /api/teams
+ * Get all teams for the current user's tenant
+ */
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenantId || 1; // Default to tenant 1 if not provided
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
     
-    console.log(`Fetching teams for tenant ${tenantId}`);
-    const teams = await storage.getTeamsByTenantId(tenantId);
-    res.json(teams);
+    const tenantId = req.user.tenantId;
+    
+    const result = await db.select().from(teams)
+      .where(eq(teams.tenantId, tenantId));
+    
+    return res.status(200).json(result);
   } catch (error) {
-    console.error("Error fetching teams:", error);
-    res.status(500).json({ message: "Error fetching teams" });
+    console.error('Error fetching teams:', error);
+    return res.status(500).json({ message: 'Error fetching teams' });
   }
 });
 
-// Get a specific team by ID
-router.get("/api/teams/:id", async (req, res) => {
+/**
+ * GET /api/teams/:id
+ * Get a team by ID (only if it belongs to the user's tenant)
+ */
+router.get('/:id', async (req: Request, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
     const teamId = parseInt(req.params.id);
     if (isNaN(teamId)) {
-      return res.status(400).json({ message: "Invalid team ID" });
+      return res.status(400).json({ message: 'Invalid team ID' });
     }
     
-    const team = await storage.getTeamById(teamId);
-    if (!team) {
-      return res.status(404).json({ message: "Team not found" });
+    const tenantId = req.user.tenantId;
+    
+    const result = await db.select().from(teams)
+      .where(and(
+        eq(teams.id, teamId),
+        eq(teams.tenantId, tenantId)
+      ))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
     }
     
-    res.json(team);
+    return res.status(200).json(result[0]);
   } catch (error) {
-    console.error("Error fetching team:", error);
-    res.status(500).json({ message: "Error fetching team" });
+    console.error('Error fetching team:', error);
+    return res.status(500).json({ message: 'Error fetching team' });
   }
 });
 
-// Create a new team
-router.post("/api/teams", async (req, res) => {
+/**
+ * GET /api/teams/:id/members
+ * Get all members of a team
+ */
+router.get('/:id/members', async (req: Request, res: Response) => {
   try {
-    const parsedData = insertTeamSchema.safeParse(req.body);
-    if (!parsedData.success) {
-      return res.status(400).json({ 
-        message: "Invalid team data",
-        errors: parsedData.error.errors 
-      });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
     
-    const tenantId = req.user?.tenantId || 1; // Default to tenant 1 if not provided
-    const teamData = {
-      ...parsedData.data,
+    const teamId = parseInt(req.params.id);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ message: 'Invalid team ID' });
+    }
+    
+    const tenantId = req.user.tenantId;
+    
+    // First verify team exists and belongs to tenant
+    const teamResult = await db.select().from(teams)
+      .where(and(
+        eq(teams.id, teamId),
+        eq(teams.tenantId, tenantId)
+      ))
+      .limit(1);
+    
+    if (teamResult.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    // Get team members
+    const result = await db.select({
+      id: users.id,
+      username: users.username,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      profilePicture: users.profilePicture,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt
+    }).from(users)
+      .where(and(
+        eq(users.teamId, teamId),
+        eq(users.tenantId, tenantId)
+      ));
+    
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching team members:', error);
+    return res.status(500).json({ message: 'Error fetching team members' });
+  }
+});
+
+/**
+ * POST /api/teams
+ * Create a new team
+ */
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // Only administrators can create teams
+    if (req.user.role !== 'administrator' && req.user.role !== 'creator') {
+      return res.status(403).json({ message: 'Forbidden - Insufficient permissions' });
+    }
+    
+    const tenantId = req.user.tenantId;
+    
+    const { name, description } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ message: 'Team name is required' });
+    }
+    
+    const insertData: InsertTeam = {
+      name,
+      description: description || '',
       tenantId
     };
     
-    const team = await storage.createTeam(teamData);
-    res.status(201).json(team);
+    const result = await db.insert(teams).values(insertData).returning();
+    
+    return res.status(201).json(result[0]);
   } catch (error) {
-    console.error("Error creating team:", error);
-    res.status(500).json({ message: "Error creating team" });
+    console.error('Error creating team:', error);
+    return res.status(500).json({ message: 'Error creating team' });
   }
 });
 
-// Update a team
-router.put("/api/teams/:id", async (req, res) => {
+/**
+ * PUT /api/teams/:id
+ * Update a team
+ */
+router.put('/:id', async (req: Request, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // Only administrators can update teams
+    if (req.user.role !== 'administrator' && req.user.role !== 'creator') {
+      return res.status(403).json({ message: 'Forbidden - Insufficient permissions' });
+    }
+    
     const teamId = parseInt(req.params.id);
     if (isNaN(teamId)) {
-      return res.status(400).json({ message: "Invalid team ID" });
+      return res.status(400).json({ message: 'Invalid team ID' });
     }
     
-    const parsedData = z.object({
-      name: z.string().optional(),
-      description: z.string().nullable().optional(),
-    }).safeParse(req.body);
+    const tenantId = req.user.tenantId;
     
-    if (!parsedData.success) {
-      return res.status(400).json({ 
-        message: "Invalid team data",
-        errors: parsedData.error.errors 
-      });
+    const { name, description } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ message: 'Team name is required' });
     }
     
-    // Make sure the team exists first
-    const existingTeam = await storage.getTeamById(teamId);
-    if (!existingTeam) {
-      return res.status(404).json({ message: "Team not found" });
+    // First verify team exists and belongs to tenant
+    const teamResult = await db.select().from(teams)
+      .where(and(
+        eq(teams.id, teamId),
+        eq(teams.tenantId, tenantId)
+      ))
+      .limit(1);
+    
+    if (teamResult.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
     }
     
-    // Only allow updates for teams in the same tenant as the user
-    const tenantId = req.user?.tenantId || 1;
-    if (existingTeam.tenantId !== tenantId) {
-      return res.status(403).json({ message: "Not authorized to update this team" });
-    }
+    const result = await db.update(teams)
+      .set({
+        name,
+        description: description || '',
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(teams.id, teamId),
+        eq(teams.tenantId, tenantId)
+      ))
+      .returning();
     
-    const updatedTeam = await storage.updateTeam(teamId, parsedData.data);
-    res.json(updatedTeam);
+    return res.status(200).json(result[0]);
   } catch (error) {
-    console.error("Error updating team:", error);
-    res.status(500).json({ message: "Error updating team" });
+    console.error('Error updating team:', error);
+    return res.status(500).json({ message: 'Error updating team' });
   }
 });
 
-// Delete a team
-router.delete("/api/teams/:id", async (req, res) => {
+/**
+ * DELETE /api/teams/:id
+ * Delete a team
+ */
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // Only administrators can delete teams
+    if (req.user.role !== 'administrator' && req.user.role !== 'creator') {
+      return res.status(403).json({ message: 'Forbidden - Insufficient permissions' });
+    }
+    
     const teamId = parseInt(req.params.id);
     if (isNaN(teamId)) {
-      return res.status(400).json({ message: "Invalid team ID" });
+      return res.status(400).json({ message: 'Invalid team ID' });
     }
     
-    // Make sure the team exists first
-    const existingTeam = await storage.getTeamById(teamId);
-    if (!existingTeam) {
-      return res.status(404).json({ message: "Team not found" });
+    const tenantId = req.user.tenantId;
+    
+    // First verify team exists and belongs to tenant
+    const teamResult = await db.select().from(teams)
+      .where(and(
+        eq(teams.id, teamId),
+        eq(teams.tenantId, tenantId)
+      ))
+      .limit(1);
+    
+    if (teamResult.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
     }
     
-    // Only allow deletion for teams in the same tenant as the user
-    const tenantId = req.user?.tenantId || 1;
-    if (existingTeam.tenantId !== tenantId) {
-      return res.status(403).json({ message: "Not authorized to delete this team" });
-    }
+    // Update all users in the team to have no team
+    await db.update(users)
+      .set({ teamId: null })
+      .where(and(
+        eq(users.teamId, teamId),
+        eq(users.tenantId, tenantId)
+      ));
     
-    // Can't delete the team if there are users assigned to it
-    const teamMembers = await storage.getTeamMembers(teamId);
-    if (teamMembers.length > 0) {
-      return res.status(400).json({ 
-        message: "Cannot delete team with assigned members. Reassign members first." 
-      });
-    }
+    // Delete the team
+    await db.delete(teams)
+      .where(and(
+        eq(teams.id, teamId),
+        eq(teams.tenantId, tenantId)
+      ));
     
-    await storage.deleteTeam(teamId);
-    res.status(204).send();
+    return res.status(200).json({ message: 'Team deleted successfully' });
   } catch (error) {
-    console.error("Error deleting team:", error);
-    res.status(500).json({ message: "Error deleting team" });
+    console.error('Error deleting team:', error);
+    return res.status(500).json({ message: 'Error deleting team' });
   }
 });
 
-// Get team members
-router.get("/api/teams/:id/members", async (req, res) => {
-  try {
-    const teamId = parseInt(req.params.id);
-    if (isNaN(teamId)) {
-      return res.status(400).json({ message: "Invalid team ID" });
-    }
-    
-    // Make sure the team exists first
-    const existingTeam = await storage.getTeamById(teamId);
-    if (!existingTeam) {
-      return res.status(404).json({ message: "Team not found" });
-    }
-    
-    // Only allow access for teams in the same tenant as the user
-    const tenantId = req.user?.tenantId || 1;
-    if (existingTeam.tenantId !== tenantId) {
-      return res.status(403).json({ message: "Not authorized to view this team's members" });
-    }
-    
-    const members = await storage.getTeamMembers(teamId);
-    
-    // Remove sensitive data before sending response
-    const sanitizedMembers = members.map(member => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, mfaSecret, mfaBackupCodes, ssoProviderData, ...sanitized } = member;
-      return sanitized;
-    });
-    
-    res.json(sanitizedMembers);
-  } catch (error) {
-    console.error("Error fetching team members:", error);
-    res.status(500).json({ message: "Error fetching team members" });
-  }
-});
-
-export function registerTeamRoutes(app: Express): void {
-  app.use(router);
-}
+export default router;

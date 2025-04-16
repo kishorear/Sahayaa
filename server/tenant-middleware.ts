@@ -81,10 +81,16 @@ export const tenantSubdomainAuth = async (req: Request, res: Response, next: Nex
 /**
  * Middleware to restrict access to tenant resources
  * Ensures a user can only access resources belonging to their tenant
+ * Creator role users are exempt from this restriction
  */
 export const tenantResourceGuard = (req: Request, res: Response, next: NextFunction) => {
   // If user is not authenticated, skip (auth middleware will handle)
   if (!req.user) {
+    return next();
+  }
+  
+  // Creator role has cross-tenant access
+  if (req.user.role === 'creator') {
     return next();
   }
   

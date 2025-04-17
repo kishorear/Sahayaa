@@ -118,7 +118,7 @@ export default function CreatorDashboardPage() {
   });
   
   // Fetch teams
-  const { data: teams, isLoading: isLoadingTeams } = useQuery({
+  const { data: teams, isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ['/api/creator/teams', selectedTenantId],
     refetchOnWindowFocus: false,
     enabled: selectedTenantId !== null,

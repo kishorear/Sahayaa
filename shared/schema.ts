@@ -281,18 +281,17 @@ export type InsertWidgetAnalytics = z.infer<typeof insertWidgetAnalyticsSchema>;
 export const aiProviders = pgTable("ai_providers", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
-  type: text("type").notNull(), // 'openai', 'gemini', 'anthropic', 'aws-bedrock', 'custom'
+  provider: text("provider").notNull(), // 'openai', 'anthropic', 'google', 'aws', 'azure', 'custom'
   name: text("name").notNull(), // Display name for the provider
-  apiKey: text("apiKey"), // Optional API key (may use environment variables instead)
-  baseUrl: text("baseUrl"), // Optional base URL for custom APIs
-  model: text("model"), // Model name to use
-  isPrimary: boolean("isPrimary").default(false), // Whether this is the primary provider
-  useForChat: boolean("useForChat").default(true), // Whether to use for chat responses
-  useForClassification: boolean("useForClassification").default(true), // Whether to use for ticket classification
-  useForAutoResolve: boolean("useForAutoResolve").default(true), // Whether to use for auto-resolving tickets
-  useForEmail: boolean("useForEmail").default(true), // Whether to use for email responses
-  settings: json("settings").default({}), // Provider-specific settings
-  enabled: boolean("enabled").default(true),
+  model: text("model").notNull(), // Model name to use, e.g., 'gpt-4', 'claude-3', etc.
+  apiKey: text("apiKey"), // API key (stored securely)
+  endpoint: text("endpoint"), // Optional custom endpoint URL
+  isDefault: boolean("isDefault").default(false), // Whether this is the default provider
+  enabled: boolean("enabled").default(true), // Whether this provider is enabled
+  priority: integer("priority").default(50).notNull(), // Priority (1-100, higher = more priority)
+  contextWindow: integer("contextWindow").default(8000).notNull(), // Max context window size
+  maxTokens: integer("maxTokens").default(1000).notNull(), // Max output tokens
+  temperature: integer("temperature").default(7).notNull(), // Temperature setting (0-10, divided by 10 in code)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

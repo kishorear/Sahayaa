@@ -25,7 +25,7 @@ import { registerDataSourceRoutes } from "./routes/data-source-routes";
 import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
-import { registerAiProviderRoutes } from "./routes/ai-provider-routes";
+import aiProviderRoutes from "./routes/ai-provider-routes";
 import { registerTeamMemberRoutes } from "./routes/team-member-routes";
 import teamRoutes from "./routes/team-routes";
 import { registerProfileRoutes } from "./routes/profile-routes";
@@ -146,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerWidgetAnalyticsRoutes(app, requireAuth);
   
   // Register AI provider routes
-  registerAiProviderRoutes(app, requireAuth, requireRole);
+  app.use('/api/creator', aiProviderRoutes);
   
   // Register team member routes
   registerTeamMemberRoutes(app, requireRole);

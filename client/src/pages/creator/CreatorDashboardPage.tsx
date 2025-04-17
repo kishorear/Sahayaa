@@ -105,13 +105,13 @@ export default function CreatorDashboardPage() {
   }
   
   // Fetch tenants
-  const { data: tenants, isLoading: isLoadingTenants } = useQuery({
+  const { data: tenants, isLoading: isLoadingTenants } = useQuery<Tenant[]>({
     queryKey: ['/api/creator/tenants'],
     refetchOnWindowFocus: false,
   });
   
   // Fetch users
-  const { data: users, isLoading: isLoadingUsers } = useQuery({
+  const { data: users, isLoading: isLoadingUsers } = useQuery<User[]>({
     queryKey: ['/api/creator/users', selectedTenantId],
     refetchOnWindowFocus: false,
     enabled: selectedTenantId !== null,

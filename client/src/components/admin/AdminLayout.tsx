@@ -13,7 +13,8 @@ import {
   Bot,
   FileText,
   ChevronLeft,
-  UserCog
+  UserCog,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -40,49 +41,55 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin", 
       label: "Dashboard", 
       icon: LayoutDashboard,
-      roles: ["administrator", "support_engineer"] // Users don't need the dashboard
+      roles: ["administrator", "support_engineer", "creator"] // Users don't need the dashboard
     },
     { 
       path: "/admin/tickets", 
       label: "Tickets", 
       icon: TicketCheck,
-      roles: ["administrator", "support_engineer", "user"] // All roles need tickets
+      roles: ["administrator", "support_engineer", "user", "creator"] // All roles need tickets
     },
     { 
       path: "/admin/team", 
       label: "Team", 
       icon: Users,
-      roles: ["administrator"] // Only admins manage team
+      roles: ["administrator", "creator"] // Only admins and creators manage team
     },
     { 
       path: "/admin/documents", 
       label: "Documents", 
       icon: FileText,
-      roles: ["administrator", "support_engineer"] // Support engineers need docs access
+      roles: ["administrator", "support_engineer", "creator"] // Support engineers and creators need docs access
     },
     { 
       path: "/admin/integrations", 
       label: "Integrations", 
       icon: Link2,
-      roles: ["administrator", "user"] // Users can access integrations
+      roles: ["administrator", "user", "creator"] // Users and creators can access integrations
     },
     { 
       path: "/admin/ai-settings", 
       label: "AI Settings", 
       icon: Bot,
-      roles: ["administrator", "user"] // Users can access AI settings
+      roles: ["administrator", "user", "creator"] // Users and creators can access AI settings
     },
     { 
       path: "/admin/profile", 
       label: "My Profile", 
       icon: UserCog,
-      roles: ["administrator", "support_engineer", "user"] // All users can manage their profile
+      roles: ["administrator", "support_engineer", "user", "creator"] // All users can manage their profile
     },
     { 
       path: "/admin/settings", 
       label: "Settings", 
       icon: Settings,
-      roles: ["administrator"] // Only admins can change system settings
+      roles: ["administrator", "creator"] // Only admins and creators can change system settings
+    },
+    { 
+      path: "/admin/widget", 
+      label: "Chat Widget", 
+      icon: MessageSquare,
+      roles: ["administrator", "creator"] // Only admins and creators manage widget
     },
   ];
   

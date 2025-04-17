@@ -27,6 +27,7 @@ export function ProtectedRoute({
         
         // If not authenticated, redirect to login
         if (!user) {
+          // Redirect to the regular auth page
           return <Redirect to="/auth" />;
         }
         

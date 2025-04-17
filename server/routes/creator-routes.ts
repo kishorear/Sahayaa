@@ -4,11 +4,12 @@ import {
   tenants, 
   teams, 
   users, 
+  tickets,
   InsertTenant, 
   InsertUser,
   InsertTeam
 } from '@shared/schema';
-import { eq, and, isNull, ne } from 'drizzle-orm';
+import { eq, and, isNull, ne, desc } from 'drizzle-orm';
 import { comparePasswords, hashPassword } from '../auth';
 
 const router = Router();
@@ -428,6 +429,48 @@ router.post('/teams', requireCreator, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error creating team:', error);
     return res.status(500).json({ message: 'Error creating team' });
+  }
+});
+
+/**
+ * GET /api/creator/tickets
+ * Get all tickets across tenants
+ */
+router.get('/tickets', requireCreator, async (req: Request, res: Response) => {
+  try {
+    // Get optional filtering parameters
+    const status = req.query.status as string | undefined;
+    const category = req.query.category as string | undefined;
+    const tenantId = req.query.tenantId ? parseInt(req.query.tenantId as string) : undefined;
+    
+    // Log the request for debugging
+    console.log(`Creator fetching all tickets with filters - status: ${status}, category: ${category}, tenantId: ${tenantId}`);
+    
+    // Base query to select all tickets, ordered by creation date (newest first)
+    let ticketsQuery = db.select().from(tickets).orderBy(desc(tickets.createdAt));
+    
+    // Apply filters if they exist
+    if (status) {
+      ticketsQuery = ticketsQuery.where(eq(tickets.status, status));
+    }
+    
+    if (category) {
+      ticketsQuery = ticketsQuery.where(eq(tickets.category, category));
+    }
+    
+    if (tenantId && !isNaN(tenantId)) {
+      ticketsQuery = ticketsQuery.where(eq(tickets.tenantId, tenantId));
+    }
+    
+    // Execute the query
+    const allTickets = await ticketsQuery;
+    
+    console.log(`Found ${allTickets.length} tickets matching creator's criteria`);
+    
+    return res.status(200).json(allTickets);
+  } catch (error) {
+    console.error('Error fetching tickets for creator:', error);
+    return res.status(500).json({ message: 'Error fetching tickets' });
   }
 });
 

@@ -1978,6 +1978,30 @@ export class DatabaseStorage implements IStorage {
   private teamCache: Map<number, Team> = new Map();
   private tenantCache: Map<number, Tenant> = new Map();
   private tenantByApiKeyCache: Map<string, Tenant> = new Map();
+  
+  /**
+   * Helper function to conditionally include tenant ID in database queries
+   * Used for implementing cross-tenant access for creator users
+   * 
+   * @param tableName The table object for which we're creating a condition
+   * @param tenantId The tenant ID to filter by (if needed)
+   * @param isCreatorUser Whether the current user is a creator with cross-tenant access
+   * @returns SQL condition to include in WHERE clause, or undefined to skip tenant filtering
+   */
+  private getTenantCondition(tableName: any, tenantId?: number, isCreatorUser = false): any {
+    // If user is a creator, we skip tenant filtering completely for cross-tenant access
+    if (isCreatorUser) {
+      console.log(`Creator role detected - bypassing tenant filter for cross-tenant access`);
+      return undefined;
+    }
+    
+    // Otherwise, apply tenant filtering if a tenantId is provided
+    if (tenantId !== undefined) {
+      return eq(tableName.tenantId, tenantId);
+    }
+    
+    return undefined;
+  }
   private tenantBySubdomainCache: Map<string, Tenant> = new Map();
   private ticketCache: Map<string, Ticket> = new Map();
   

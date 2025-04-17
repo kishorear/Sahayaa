@@ -17,6 +17,14 @@ router.get('/', async (req: Request, res: Response) => {
     
     const tenantId = req.user.tenantId;
     
+    // If user is a creator, allow cross-tenant access
+    if (req.isCreatorUser) {
+      console.log('Creator role detected - fetching teams across all tenants');
+      const result = await db.select().from(teams);
+      return res.status(200).json(result);
+    }
+    
+    // Regular tenant-specific query for non-creator users
     const result = await db.select().from(teams)
       .where(eq(teams.tenantId, tenantId));
     

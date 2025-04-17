@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { teams, users, InsertTeam } from '@shared/schema';
+import { teams, users, tenants, InsertTeam } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 const router = Router();
@@ -52,6 +52,21 @@ router.get('/:id', async (req: Request, res: Response) => {
     
     const tenantId = req.user.tenantId;
     
+    // If user is a creator, allow cross-tenant access
+    if (req.isCreatorUser) {
+      console.log(`Creator role detected - fetching team ${teamId} with cross-tenant access`);
+      const result = await db.select().from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+        
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      return res.status(200).json(result[0]);
+    }
+    
+    // Regular tenant-specific query for non-creator users
     const result = await db.select().from(teams)
       .where(and(
         eq(teams.id, teamId),
@@ -87,6 +102,37 @@ router.get('/:id/members', async (req: Request, res: Response) => {
     
     const tenantId = req.user.tenantId;
     
+    // If user is a creator, allow cross-tenant access
+    if (req.isCreatorUser) {
+      console.log(`Creator role detected - fetching team ${teamId} and its members with cross-tenant access`);
+      
+      // First verify team exists (no tenant restriction)
+      const teamResult = await db.select().from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+      
+      if (teamResult.length === 0) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      // Get team members (no tenant restriction)
+      const result = await db.select({
+        id: users.id,
+        username: users.username,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        profilePicture: users.profilePicture,
+        tenantId: users.tenantId, // Include tenant ID for cross-tenant view
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt
+      }).from(users)
+        .where(eq(users.teamId, teamId));
+        
+      return res.status(200).json(result);
+    }
+    
+    // Regular tenant-specific query for non-creator users
     // First verify team exists and belongs to tenant
     const teamResult = await db.select().from(teams)
       .where(and(
@@ -137,12 +183,28 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Forbidden - Insufficient permissions' });
     }
     
-    const tenantId = req.user.tenantId;
+    let tenantId = req.user.tenantId;
     
-    const { name, description } = req.body;
+    const { name, description, targetTenantId } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: 'Team name is required' });
+    }
+    
+    // If user is a creator and specified a target tenant ID, use that instead
+    if (req.isCreatorUser && targetTenantId) {
+      console.log(`Creator role detected - creating team for tenant ID ${targetTenantId}`);
+      
+      // Verify the target tenant exists
+      const tenantResult = await db.select().from(tenants)
+        .where(eq(tenants.id, targetTenantId))
+        .limit(1);
+      
+      if (tenantResult.length === 0) {
+        return res.status(404).json({ message: 'Target tenant not found' });
+      }
+      
+      tenantId = targetTenantId;
     }
     
     const insertData: InsertTeam = {
@@ -188,6 +250,32 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Team name is required' });
     }
     
+    // If user is a creator, allow cross-tenant access
+    if (req.isCreatorUser) {
+      console.log(`Creator role detected - updating team ${teamId} with cross-tenant access`);
+      
+      // First verify team exists (no tenant restriction)
+      const teamResult = await db.select().from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+      
+      if (teamResult.length === 0) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      const result = await db.update(teams)
+        .set({
+          name,
+          description: description || '',
+          updatedAt: new Date()
+        })
+        .where(eq(teams.id, teamId))
+        .returning();
+        
+      return res.status(200).json(result[0]);
+    }
+    
+    // Regular tenant-specific query for non-creator users
     // First verify team exists and belongs to tenant
     const teamResult = await db.select().from(teams)
       .where(and(
@@ -241,6 +329,38 @@ router.delete('/:id', async (req: Request, res: Response) => {
     
     const tenantId = req.user.tenantId;
     
+    // If user is a creator, allow cross-tenant access
+    if (req.isCreatorUser) {
+      console.log(`Creator role detected - deleting team ${teamId} with cross-tenant access`);
+      
+      // First verify team exists (no tenant restriction)
+      const teamResult = await db.select().from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+      
+      if (teamResult.length === 0) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      // Get the tenant ID from the team record for updating users
+      const teamTenantId = teamResult[0].tenantId;
+      
+      // Update all users in the team to have no team
+      await db.update(users)
+        .set({ teamId: null })
+        .where(and(
+          eq(users.teamId, teamId),
+          eq(users.tenantId, teamTenantId)
+        ));
+      
+      // Delete the team
+      await db.delete(teams)
+        .where(eq(teams.id, teamId));
+        
+      return res.status(200).json({ message: 'Team deleted successfully' });
+    }
+    
+    // Regular tenant-specific query for non-creator users
     // First verify team exists and belongs to tenant
     const teamResult = await db.select().from(teams)
       .where(and(

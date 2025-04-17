@@ -11,8 +11,28 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Ticket } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+
+// Define the Ticket type explicitly since we're accessing cross-tenant tickets
+type Ticket = {
+  id: number;
+  tenantId: number;
+  teamId: number | null;
+  createdBy: number | null;
+  title: string;
+  description: string;
+  status: string;
+  category: string;
+  complexity: string;
+  assignedTo: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  aiResolved: boolean;
+  aiNotes: string | null;
+  externalIntegrations: any | null;
+  clientMetadata: any | null;
+};
 import { 
   Search, 
   Filter, 
@@ -66,14 +86,32 @@ export default function CreatorTicketList() {
   const queryClient = useQueryClient();
 
   // Fetch tickets (using creator-specific endpoint that returns cross-tenant tickets)
-  const { data: tickets, isLoading: isLoadingTickets } = useQuery<Ticket[]>({
-    queryKey: ['/api/creator/tickets'],
+  const { data: tickets, isLoading: isLoadingTickets, error: ticketsError } = useQuery<Ticket[]>({
+    queryKey: ['/api/creator/tickets']
   });
 
+  // Log data for debugging
+  if (tickets) {
+    console.log('✅ Tickets fetched successfully:', tickets.length, 'tickets');
+  }
+  
+  if (ticketsError) {
+    console.error('❌ Error fetching tickets:', ticketsError);
+  }
+
   // Fetch tenants for filtering
-  const { data: tenants, isLoading: isLoadingTenants } = useQuery<any[]>({
-    queryKey: ['/api/creator/tenants'],
+  const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useQuery<any[]>({
+    queryKey: ['/api/creator/tenants']
   });
+  
+  // Log data for debugging
+  if (tenants) {
+    console.log('✅ Tenants fetched successfully:', tenants.length, 'tenants');
+  }
+  
+  if (tenantsError) {
+    console.error('❌ Error fetching tenants:', tenantsError);
+  }
 
   // Mutation for updating ticket status
   const updateStatusMutation = useMutation({

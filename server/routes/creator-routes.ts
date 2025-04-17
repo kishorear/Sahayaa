@@ -446,24 +446,30 @@ router.get('/tickets', requireCreator, async (req: Request, res: Response) => {
     // Log the request for debugging
     console.log(`Creator fetching all tickets with filters - status: ${status}, category: ${category}, tenantId: ${tenantId}`);
     
-    // Base query to select all tickets, ordered by creation date (newest first)
-    let ticketsQuery = db.select().from(tickets).orderBy(desc(tickets.createdAt));
+    // Build a conditions array for the query
+    const conditions = [];
     
-    // Apply filters if they exist
     if (status) {
-      ticketsQuery = ticketsQuery.where(eq(tickets.status, status));
+      conditions.push(eq(tickets.status, status));
     }
     
     if (category) {
-      ticketsQuery = ticketsQuery.where(eq(tickets.category, category));
+      conditions.push(eq(tickets.category, category));
     }
     
     if (tenantId && !isNaN(tenantId)) {
-      ticketsQuery = ticketsQuery.where(eq(tickets.tenantId, tenantId));
+      conditions.push(eq(tickets.tenantId, tenantId));
     }
     
-    // Execute the query
-    const allTickets = await ticketsQuery;
+    // Execute the query with the combined conditions
+    let query;
+    if (conditions.length > 0) {
+      query = db.select().from(tickets).where(and(...conditions)).orderBy(desc(tickets.createdAt));
+    } else {
+      query = db.select().from(tickets).orderBy(desc(tickets.createdAt));
+    }
+    
+    const allTickets = await query;
     
     console.log(`Found ${allTickets.length} tickets matching creator's criteria`);
     

@@ -201,6 +201,25 @@ export default function CreatorTicketList() {
           <CardTitle>Support Tickets</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Debug Information */}
+          <div className="mb-4 p-4 bg-gray-50 border rounded-md">
+            <h3 className="text-md font-semibold mb-2">Debug Information:</h3>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div><strong>Tickets Loading:</strong> {isLoadingTickets ? 'Yes' : 'No'}</div>
+              <div><strong>Tenants Loading:</strong> {isLoadingTenants ? 'Yes' : 'No'}</div>
+              <div><strong>Tickets Error:</strong> {ticketsError ? 'Yes' : 'No'}</div>
+              <div><strong>Tenants Error:</strong> {tenantsError ? 'Yes' : 'No'}</div>
+              <div><strong>Raw Tickets Count:</strong> {tickets?.length || 0}</div>
+              <div><strong>Filtered Tickets Count:</strong> {filteredTickets?.length || 0}</div>
+              <div><strong>Current View:</strong> {currentView}</div>
+              <div><strong>Filter Status:</strong> {filterStatus}</div>
+              <div><strong>Raw Ticket Data:</strong></div>
+            </div>
+            <pre className="mt-2 bg-gray-800 text-white p-2 rounded text-xs overflow-auto max-h-40">
+              {tickets ? JSON.stringify(tickets.slice(0, 2), null, 2) : 'No tickets data'}
+            </pre>
+          </div>
+          
           <div className="flex flex-col space-y-4 mb-6 md:flex-row md:space-y-0 md:space-x-4">
             {/* Search box */}
             <div className="relative flex-1">

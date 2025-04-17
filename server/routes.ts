@@ -178,19 +178,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // TICKET ROUTES - Protected routes for support staff and admins
-  app.get("/api/tickets", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
+  app.get("/api/tickets", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
     try {
-      const tickets = await storage.getAllTickets();
-      res.status(200).json(tickets);
+      // Check if user is a creator to determine if we should include tenantId filtering
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      // For creator users, allow filtering by tenantId if provided
+      let tenantId: number | undefined = undefined;
+      
+      if (isCreator && req.query.tenantId) {
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator) {
+        // For non-creator users, always filter by their tenant
+        tenantId = req.user?.tenantId;
+      }
+      
+      // Add other optional filters
+      const status = req.query.status as string | undefined;
+      const category = req.query.category as string | undefined;
+      const assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
+      
+      console.log(`Fetching tickets with filters - isCreator: ${isCreator}, tenantId: ${tenantId}, status: ${status}, category: ${category}, assignedTo: ${assignedTo}`);
+      
+      // Get filtered tickets
+      const tickets = await storage.getAllTickets(tenantId);
+      
+      // Apply additional filters
+      let filteredTickets = tickets;
+      
+      if (status) {
+        filteredTickets = filteredTickets.filter(ticket => ticket.status === status);
+      }
+      
+      if (category) {
+        filteredTickets = filteredTickets.filter(ticket => ticket.category === category);
+      }
+      
+      if (assignedTo && !isNaN(assignedTo)) {
+        filteredTickets = filteredTickets.filter(ticket => ticket.assignedTo === assignedTo);
+      }
+      
+      res.status(200).json(filteredTickets);
     } catch (error) {
       handleDatabaseError(error, res);
     }
   });
 
-  app.get("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
+  app.get("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const ticket = await storage.getTicketById(id);
+      
+      // Check if user is a creator to determine if we should include tenantId
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      // For non-creator users, always filter by their tenant
+      const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      
+      const ticket = await storage.getTicketById(id, tenantId);
       
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
@@ -374,16 +421,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
+  app.patch("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const ticket = await storage.getTicketById(id);
+      
+      // Check if user is a creator to determine tenant filtering
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      // For non-creator users, always filter by their tenant
+      const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      
+      // Get the ticket, respecting tenant isolation for non-creators
+      const ticket = await storage.getTicketById(id, tenantId);
       
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
-      const updatedTicket = await storage.updateTicket(id, req.body);
+      // Update the ticket
+      const updatedTicket = await storage.updateTicket(id, req.body, tenantId);
       res.status(200).json(updatedTicket);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -391,9 +447,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // MESSAGE ROUTES
-  app.get("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer']), async (req, res) => {
+  app.get("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
+      
+      // Check if user is a creator to determine tenant filtering  
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      // For non-creator users, verify ticket belongs to their tenant
+      if (!isCreator) {
+        const ticket = await storage.getTicketById(ticketId, req.user?.tenantId);
+        if (!ticket) {
+          return res.status(404).json({ message: "Ticket not found" });
+        }
+      }
+      
+      // Get all messages for the ticket
       const messages = await storage.getMessagesByTicketId(ticketId);
       res.status(200).json(messages);
     } catch (error) {
@@ -401,12 +470,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
+  app.post("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer', 'user', 'creator']), async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       const messageData = insertMessageSchema.parse({ ...req.body, ticketId });
       
-      const ticket = await storage.getTicketById(ticketId);
+      // Check if user is a creator to determine tenant filtering
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      // For non-creator users, always filter by their tenant
+      const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      
+      // Get ticket with proper tenant filtering
+      const ticket = await storage.getTicketById(ticketId, tenantId);
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }

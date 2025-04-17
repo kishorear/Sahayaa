@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import CreatorTicketList from "@/components/creator/CreatorTicketList";
 import {
   Building,
   Users,
@@ -17,7 +18,9 @@ import {
   PlusCircle,
   Edit,
   Trash2,
-  LogOut
+  LogOut,
+  Ticket,
+  MessageSquare
 } from "lucide-react";
 import {
   Table,
@@ -89,6 +92,7 @@ export default function CreatorDashboardPage() {
   const [isCreatingTenant, setIsCreatingTenant] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState("tenants");
   
   // If user is not logged in or not a creator, redirect to creator login
   if (!user) {
@@ -473,384 +477,424 @@ export default function CreatorDashboardPage() {
           </div>
         </div>
         
-        {selectedTenantId ? (
-          <Tabs defaultValue="users">
-            <TabsList>
-              <TabsTrigger value="users">
-                <Users className="mr-2 h-4 w-4" />
-                Users
-              </TabsTrigger>
-              <TabsTrigger value="teams">
-                <Briefcase className="mr-2 h-4 w-4" />
-                Teams
-              </TabsTrigger>
-              <TabsTrigger value="settings">
-                <Settings className="mr-2 h-4 w-4" />
-                Tenant Settings
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="users" className="pt-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Users</CardTitle>
-                    <CardDescription>
-                      Manage users for the selected tenant
-                    </CardDescription>
-                  </div>
-                  <Dialog open={isCreatingUser} onOpenChange={setIsCreatingUser}>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Add User
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create New User</DialogTitle>
-                        <DialogDescription>
-                          Add a new user to the selected tenant.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <Form {...createUserForm}>
-                        <form onSubmit={createUserForm.handleSubmit(onCreateUserSubmit)} className="space-y-4">
-                          <FormField
-                            control={createUserForm.control}
-                            name="username"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Username</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="johndoe" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={createUserForm.control}
-                            name="password"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" placeholder="••••••••" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={createUserForm.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Full Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="John Doe" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={createUserForm.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Email Address</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="john@example.com" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={createUserForm.control}
-                            name="role"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Role</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select role" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="administrator">Administrator</SelectItem>
-                                    <SelectItem value="support_engineer">Support Engineer</SelectItem>
-                                    <SelectItem value="user">Regular User</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          {teams && teams.length > 0 && (
-                            <FormField
-                              control={createUserForm.control}
-                              name="teamId"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Team</FormLabel>
-                                  <Select 
-                                    onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
-                                    defaultValue={field.value?.toString()}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select team (optional)" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {teams.map((team) => (
-                                        <SelectItem key={team.id} value={team.id.toString()}>
-                                          {team.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          )}
-                          <DialogFooter>
-                            <Button type="submit" disabled={createUserMutation.isPending}>
-                              {createUserMutation.isPending && (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              )}
-                              Create User
+        {/* System-wide Tabs */}
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-8">
+          <TabsList>
+            <TabsTrigger value="tenants">
+              <Building className="mr-2 h-4 w-4" />
+              Tenant Management
+            </TabsTrigger>
+            <TabsTrigger value="tickets">
+              <Ticket className="mr-2 h-4 w-4" />
+              Cross-Tenant Tickets
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Tenant Management Tab */}
+          <TabsContent value="tenants">
+            {selectedTenantId ? (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-semibold mb-2">
+                    {tenants?.find(t => t.id === selectedTenantId)?.name}
+                  </h2>
+                  <p className="text-gray-500">
+                    Subdomain: {tenants?.find(t => t.id === selectedTenantId)?.subdomain}
+                  </p>
+                </div>
+                
+                <Tabs defaultValue="users">
+                  <TabsList>
+                    <TabsTrigger value="users">
+                      <Users className="mr-2 h-4 w-4" />
+                      Users
+                    </TabsTrigger>
+                    <TabsTrigger value="teams">
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      Teams
+                    </TabsTrigger>
+                    <TabsTrigger value="settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Tenant Settings
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Users Tab */}
+                  <TabsContent value="users" className="pt-4">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                          <CardTitle>Users</CardTitle>
+                          <CardDescription>
+                            Manage users for the selected tenant
+                          </CardDescription>
+                        </div>
+                        <Dialog open={isCreatingUser} onOpenChange={setIsCreatingUser}>
+                          <DialogTrigger asChild>
+                            <Button>
+                              <UserPlus className="mr-2 h-4 w-4" />
+                              Add User
                             </Button>
-                          </DialogFooter>
-                        </form>
-                      </Form>
-                    </DialogContent>
-                  </Dialog>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingUsers ? (
-                    <div className="flex items-center justify-center p-4">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Username</TableHead>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Role</TableHead>
-                          <TableHead>Team</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {users?.map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell>{user.username}</TableCell>
-                            <TableCell>{user.name || "-"}</TableCell>
-                            <TableCell>{user.email || "-"}</TableCell>
-                            <TableCell>
-                              <Badge variant={
-                                user.role === "administrator" ? "default" :
-                                user.role === "support_engineer" ? "secondary" : "outline"
-                              }>
-                                {user.role}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {user.teamId && teams ? 
-                                teams.find(t => t.id === user.teamId)?.name || `Team ${user.teamId}` 
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-red-500">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will permanently delete the user account for {user.username}.
-                                      This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => deleteUserMutation.mutate(user.id)}
-                                      className="bg-red-500 hover:bg-red-600"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="teams" className="pt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Teams</CardTitle>
-                  <CardDescription>
-                    Manage teams for the selected tenant
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingTeams ? (
-                    <div className="flex items-center justify-center p-4">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Team Name</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Members</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {teams?.map((team) => (
-                          <TableRow key={team.id}>
-                            <TableCell className="font-medium">{team.name}</TableCell>
-                            <TableCell>{team.description || "-"}</TableCell>
-                            <TableCell>
-                              {users ? 
-                                users.filter(u => u.teamId === team.id).length : 
-                                "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="icon">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="settings" className="pt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tenant Settings</CardTitle>
-                  <CardDescription>
-                    Configure settings for the selected tenant
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Tenant info */}
-                    {tenants && selectedTenantId && (
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-medium">Tenant Information</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-500">Name</p>
-                            <p>{tenants.find(t => t.id === selectedTenantId)?.name}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-500">Subdomain</p>
-                            <p>{tenants.find(t => t.id === selectedTenantId)?.subdomain}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-500">Status</p>
-                            <Badge variant={
-                              tenants.find(t => t.id === selectedTenantId)?.active ? "success" : "destructive"
-                            }>
-                              {tenants.find(t => t.id === selectedTenantId)?.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-500">Created</p>
-                            <p>{new Date(tenants.find(t => t.id === selectedTenantId)?.createdAt).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        
-                        {/* Danger Zone */}
-                        <div className="mt-8 border rounded-md p-4 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
-                          <h3 className="text-lg font-medium text-red-600 dark:text-red-400">Danger Zone</h3>
-                          <p className="text-sm text-red-600 dark:text-red-400 mt-1 mb-4">
-                            These actions are destructive and cannot be reversed.
-                          </p>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Tenant
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will permanently delete the tenant, all its users, teams, and data.
-                                  This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => deleteTenantMutation.mutate(selectedTenantId)}
-                                  className="bg-red-500 hover:bg-red-600"
-                                >
-                                  {deleteTenantMutation.isPending ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      Deleting...
-                                    </>
-                                  ) : (
-                                    "Delete Tenant"
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Create New User</DialogTitle>
+                              <DialogDescription>
+                                Add a new user to the selected tenant.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <Form {...createUserForm}>
+                              <form onSubmit={createUserForm.handleSubmit(onCreateUserSubmit)} className="space-y-4">
+                                <FormField
+                                  control={createUserForm.control}
+                                  name="username"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Username</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="johndoe" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
                                   )}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                />
+                                <FormField
+                                  control={createUserForm.control}
+                                  name="password"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Password</FormLabel>
+                                      <FormControl>
+                                        <Input type="password" placeholder="••••••••" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={createUserForm.control}
+                                  name="name"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Full Name</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="John Doe" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={createUserForm.control}
+                                  name="email"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Email Address</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="john@example.com" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={createUserForm.control}
+                                  name="role"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Role</FormLabel>
+                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select role" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="administrator">Administrator</SelectItem>
+                                          <SelectItem value="support_engineer">Support Engineer</SelectItem>
+                                          <SelectItem value="user">Regular User</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                {teams && teams.length > 0 && (
+                                  <FormField
+                                    control={createUserForm.control}
+                                    name="teamId"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Team</FormLabel>
+                                        <Select 
+                                          onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
+                                          defaultValue={field.value?.toString()}
+                                        >
+                                          <FormControl>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select team (optional)" />
+                                            </SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            {teams.map((team) => (
+                                              <SelectItem key={team.id} value={team.id.toString()}>
+                                                {team.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                                <DialogFooter>
+                                  <Button type="submit" disabled={createUserMutation.isPending}>
+                                    {createUserMutation.isPending && (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Create User
+                                  </Button>
+                                </DialogFooter>
+                              </form>
+                            </Form>
+                          </DialogContent>
+                        </Dialog>
+                      </CardHeader>
+                      <CardContent>
+                        {isLoadingUsers ? (
+                          <div className="flex items-center justify-center p-4">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Username</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Team</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {users?.map((user) => (
+                                <TableRow key={user.id}>
+                                  <TableCell>{user.username}</TableCell>
+                                  <TableCell>{user.name || "-"}</TableCell>
+                                  <TableCell>{user.email || "-"}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={
+                                      user.role === "administrator" ? "default" :
+                                      user.role === "support_engineer" ? "secondary" : "outline"
+                                    }>
+                                      {user.role}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {user.teamId && teams ? 
+                                      teams.find(t => t.id === user.teamId)?.name || `Team ${user.teamId}` 
+                                      : "-"}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="text-red-500">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This will permanently delete the user account for {user.username}.
+                                            This action cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction 
+                                            onClick={() => deleteUserMutation.mutate(user.id)}
+                                            className="bg-red-500 hover:bg-red-600"
+                                          >
+                                            Delete
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                  
+                  {/* Teams Tab */}
+                  <TabsContent value="teams" className="pt-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Teams</CardTitle>
+                        <CardDescription>
+                          Manage teams for the selected tenant
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {isLoadingTeams ? (
+                          <div className="flex items-center justify-center p-4">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Team Name</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead>Members</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {teams?.map((team) => (
+                                <TableRow key={team.id}>
+                                  <TableCell className="font-medium">{team.name}</TableCell>
+                                  <TableCell>{team.description || "-"}</TableCell>
+                                  <TableCell>
+                                    {users ? 
+                                      users.filter(u => u.teamId === team.id).length : 
+                                      "-"}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon">
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                  
+                  {/* Settings Tab */}
+                  <TabsContent value="settings" className="pt-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Tenant Settings</CardTitle>
+                        <CardDescription>
+                          Configure settings for the selected tenant
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {tenants && selectedTenantId && (
+                            <div className="space-y-2">
+                              <h3 className="text-lg font-medium">Tenant Information</h3>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Name</p>
+                                  <p>{tenants.find(t => t.id === selectedTenantId)?.name}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Subdomain</p>
+                                  <p>{tenants.find(t => t.id === selectedTenantId)?.subdomain}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Status</p>
+                                  <Badge variant={
+                                    tenants.find(t => t.id === selectedTenantId)?.active ? "default" : "destructive"
+                                  }>
+                                    {tenants.find(t => t.id === selectedTenantId)?.active ? "Active" : "Inactive"}
+                                  </Badge>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Created</p>
+                                  <p>{tenants.find(t => t.id === selectedTenantId)?.createdAt ? 
+                                    new Date(tenants.find(t => t.id === selectedTenantId)?.createdAt as string).toLocaleDateString() : 
+                                    "Unknown"}</p>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-6">
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete Tenant
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will permanently delete the tenant and all associated data including users,
+                                        teams, tickets, and other resources. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => {
+                                          if (selectedTenantId) {
+                                            deleteTenantMutation.mutate(selectedTenantId);
+                                            setSelectedTenantId(null);
+                                          }
+                                        }}
+                                        className="bg-red-500 hover:bg-red-600"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="text-center p-10">
-            <Building className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-4 text-lg font-medium">No Tenant Selected</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Please select a tenant from the sidebar or create a new one.
-            </p>
-            <Dialog open={isCreatingTenant} onOpenChange={setIsCreatingTenant}>
-              <DialogTrigger asChild>
-                <Button className="mt-4">
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            ) : (
+              <div className="text-center p-12 bg-white dark:bg-gray-800 rounded-lg shadow">
+                <Building className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium">No Tenant Selected</h3>
+                <p className="text-gray-500 mt-2">
+                  Select a tenant from the sidebar or create a new one to get started.
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4" 
+                  onClick={() => setIsCreatingTenant(true)}
+                >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Create New Tenant
                 </Button>
-              </DialogTrigger>
-            </Dialog>
-          </div>
-        )}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Tickets Tab */}
+          <TabsContent value="tickets">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cross-Tenant Ticket Management</CardTitle>
+                <CardDescription>
+                  View and manage tickets across all tenants in the system
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CreatorTicketList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

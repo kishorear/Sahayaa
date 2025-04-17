@@ -78,10 +78,7 @@ export default function CreatorTicketList() {
   // Mutation for updating ticket status
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number, status: string }) => {
-      return apiRequest(`/api/tickets/${id}`, {
-        method: 'PATCH',
-        data: { status }
-      });
+      return apiRequest(`/api/tickets/${id}/status`, status);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/creator/tickets'] });

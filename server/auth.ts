@@ -7,6 +7,7 @@ import { User as SchemaUser, users } from "@shared/schema";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import createMemoryStore from "memorystore";
+import { checkCreatorRole } from './tenant-middleware';
 
 // Extend the session type to include our custom fields
 declare module 'express-session' {
@@ -205,6 +206,9 @@ export async function setupAuth(app: Express) {
     }
     next();
   });
+  
+  // Add middleware to check if user is a creator
+  app.use(checkCreatorRole);
 
   // Middleware to require authentication
   const requireAuth = (req: Request, res: Response, next: NextFunction) => {

@@ -7,6 +7,7 @@ declare global {
   namespace Express {
     interface Request {
       tenant?: Tenant;
+      isCreatorUser?: boolean; // Flag to indicate if user has creator role
     }
   }
 }
@@ -79,6 +80,21 @@ export const tenantSubdomainAuth = async (req: Request, res: Response, next: Nex
 };
 
 /**
+ * Middleware to check if a user is a creator and set the appropriate flag
+ * This middleware should be applied early in the chain
+ */
+export const checkCreatorRole = (req: Request, res: Response, next: NextFunction) => {
+  if (req.user && req.user.role === 'creator') {
+    // Set a flag that can be used by downstream middlewares and routes
+    req.isCreatorUser = true;
+    console.log(`User ${req.user.username} (ID: ${req.user.id}) has creator role - cross-tenant access enabled`);
+  } else {
+    req.isCreatorUser = false;
+  }
+  next();
+};
+
+/**
  * Middleware to restrict access to tenant resources
  * Ensures a user can only access resources belonging to their tenant
  * Creator role users are exempt from this restriction
@@ -90,7 +106,7 @@ export const tenantResourceGuard = (req: Request, res: Response, next: NextFunct
   }
   
   // Creator role has cross-tenant access
-  if (req.user.role === 'creator') {
+  if (req.isCreatorUser || req.user.role === 'creator') {
     return next();
   }
   

@@ -434,17 +434,29 @@ router.post('/teams', requireCreator, async (req: Request, res: Response) => {
 
 /**
  * GET /api/creator/tickets
- * Get all tickets across tenants
+ * Get all tickets across tenants with comprehensive filtering options
  */
 router.get('/tickets', requireCreator, async (req: Request, res: Response) => {
   try {
-    // Get optional filtering parameters
+    // Get all optional filtering parameters
     const status = req.query.status as string | undefined;
     const category = req.query.category as string | undefined;
     const tenantId = req.query.tenantId ? parseInt(req.query.tenantId as string) : undefined;
+    const assignedTo = req.query.assignedTo as string | undefined;
+    const search = req.query.search as string | undefined;
+    const complexity = req.query.complexity as string | undefined;
+    const teamId = req.query.teamId ? parseInt(req.query.teamId as string) : undefined;
     
     // Log the request for debugging
-    console.log(`Creator fetching all tickets with filters - status: ${status}, category: ${category}, tenantId: ${tenantId}`);
+    console.log(`Creator fetching all tickets with filters:`, { 
+      status, 
+      category, 
+      tenantId, 
+      assignedTo, 
+      search,
+      complexity,
+      teamId
+    });
     
     // Build a conditions array for the query
     const conditions = [];
@@ -461,6 +473,18 @@ router.get('/tickets', requireCreator, async (req: Request, res: Response) => {
       conditions.push(eq(tickets.tenantId, tenantId));
     }
     
+    if (assignedTo) {
+      conditions.push(eq(tickets.assignedTo, assignedTo));
+    }
+    
+    if (complexity) {
+      conditions.push(eq(tickets.complexity, complexity));
+    }
+    
+    if (teamId && !isNaN(teamId)) {
+      conditions.push(eq(tickets.teamId, teamId));
+    }
+    
     // Execute the query with the combined conditions
     let query;
     if (conditions.length > 0) {
@@ -469,7 +493,16 @@ router.get('/tickets', requireCreator, async (req: Request, res: Response) => {
       query = db.select().from(tickets).orderBy(desc(tickets.createdAt));
     }
     
-    const allTickets = await query;
+    let allTickets = await query;
+    
+    // If there's a search term, filter results in memory (since we can't use LIKE in Drizzle easily)
+    if (search && search.length > 0) {
+      const searchLower = search.toLowerCase();
+      allTickets = allTickets.filter(ticket => 
+        ticket.title.toLowerCase().includes(searchLower) || 
+        ticket.description.toLowerCase().includes(searchLower)
+      );
+    }
     
     console.log(`Found ${allTickets.length} tickets matching creator's criteria`);
     

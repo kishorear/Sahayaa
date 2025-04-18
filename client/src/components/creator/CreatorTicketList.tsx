@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -12,6 +12,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiRequest } from "@/lib/queryClient";
+import { 
+  Search, 
+  Filter, 
+  ArrowUpDown, 
+  CheckCircle2, 
+  AlertCircle, 
+  Clock, 
+  UserX,
+  MessageSquare,
+  Building
+} from "lucide-react";
 
 // Define the Ticket type explicitly since we're accessing cross-tenant tickets
 type Ticket = {
@@ -33,17 +44,6 @@ type Ticket = {
   externalIntegrations: any | null;
   clientMetadata: any | null;
 };
-import { 
-  Search, 
-  Filter, 
-  ArrowUpDown, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  UserX,
-  MessageSquare,
-  Building
-} from "lucide-react";
 
 // Ticket status component with appropriate colors
 function StatusBadge({ status }: { status: string | null }) {
@@ -87,17 +87,49 @@ export default function CreatorTicketList() {
 
   // Fetch tickets (using creator-specific endpoint that returns cross-tenant tickets)
   const { data: tickets, isLoading: isLoadingTickets, error: ticketsError } = useQuery<Ticket[]>({
-    queryKey: ['/api/creator/tickets']
+    queryKey: ['/api/creator/tickets', filterTenant, filterStatus, filterCategory],
+    queryFn: async () => {
+      let url = '/api/creator/tickets?';
+      
+      // Add filters to the query parameters
+      if (filterTenant !== 'all') {
+        url += `tenantId=${filterTenant}&`;
+      }
+      
+      if (filterStatus !== 'all') {
+        url += `status=${filterStatus}&`;
+      }
+      
+      if (filterCategory !== 'all') {
+        url += `category=${filterCategory}&`;
+      }
+
+      console.log('Fetching tickets with URL:', url);
+      
+      const response = await fetch(url, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch tickets');
+      }
+      
+      const data = await response.json();
+      console.log('Tickets data received:', data.length, 'tickets');
+      return data;
+    }
   });
 
   // Log data for debugging
-  if (tickets) {
-    console.log('✅ Tickets fetched successfully:', tickets.length, 'tickets');
-  }
-  
-  if (ticketsError) {
-    console.error('❌ Error fetching tickets:', ticketsError);
-  }
+  useEffect(() => {
+    if (tickets) {
+      console.log('✅ Tickets fetched successfully:', tickets.length, 'tickets');
+    }
+    
+    if (ticketsError) {
+      console.error('❌ Error fetching tickets:', ticketsError);
+    }
+  }, [tickets, ticketsError]);
 
   // Fetch tenants for filtering
   const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useQuery<any[]>({
@@ -105,13 +137,15 @@ export default function CreatorTicketList() {
   });
   
   // Log data for debugging
-  if (tenants) {
-    console.log('✅ Tenants fetched successfully:', tenants.length, 'tenants');
-  }
-  
-  if (tenantsError) {
-    console.error('❌ Error fetching tenants:', tenantsError);
-  }
+  useEffect(() => {
+    if (tenants) {
+      console.log('✅ Tenants fetched successfully:', tenants.length, 'tenants');
+    }
+    
+    if (tenantsError) {
+      console.error('❌ Error fetching tenants:', tenantsError);
+    }
+  }, [tenants, tenantsError]);
 
   // Mutation for updating ticket status
   const updateStatusMutation = useMutation({

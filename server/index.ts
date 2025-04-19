@@ -4,9 +4,6 @@ import { setupVite, serveStatic, log } from "./vite";
 import { testDbConnection, reconnectDb } from "./db";
 import { setupAuth } from "./auth";
 import path from "path";
-import compression from "compression";
-import cookieParser from "cookie-parser";
-import helmet from "helmet";
 
 // Process-level unhandled rejection handler to prevent crashes
 process.on('unhandledRejection', (reason, promise) => {
@@ -22,42 +19,13 @@ process.on('uncaughtException', (error) => {
 
 const app = express();
 
-// Add security headers with WebSocket-friendly settings for development
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections for Vite HMR
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Allow inline scripts and eval for development
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:"],
-    }
-  },
-  crossOriginEmbedderPolicy: false,
-  crossOriginOpenerPolicy: false,
-  crossOriginResourcePolicy: false
-}));
-
-// Enable response compression
-app.use(compression());
-
-// Add cookie parser for better cookie handling
-app.use(cookieParser());
-
-// Set up static file serving for uploads with cache headers
-const STATIC_CACHE_MAX_AGE = 86400000; // 1 day in milliseconds
+// Set up static file serving for uploads
 const uploadsDir = path.join(process.cwd(), 'uploads');
-app.use('/uploads', express.static(uploadsDir, {
-  maxAge: STATIC_CACHE_MAX_AGE,
-  etag: true,
-  lastModified: true
-}));
+app.use('/uploads', express.static(uploadsDir));
 console.log(`Serving static files from: ${uploadsDir}`);
 
-// JSON body parser with better error handling and reduced limits
+// JSON body parser with better error handling
 app.use(express.json({
-  limit: '10mb', // Reduced from default to improve memory usage
   verify: (req: any, res, buf, encoding) => {
     // Store raw body for webhook processing
     if (req.url.includes('/integrations/webhook')) {
@@ -79,8 +47,8 @@ app.use((err: any, req: any, res: Response, next: NextFunction) => {
   next(err);
 });
 
-// Handle URL-encoded form data with reduced limits
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+// Handle URL-encoded form data
+app.use(express.urlencoded({ extended: false }));
 
 (async () => {
   const server = await registerRoutes(app);

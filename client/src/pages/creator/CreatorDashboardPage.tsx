@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import CreatorTicketList from "@/components/creator/CreatorTicketList";
+import CreatorUserRegistration from "@/components/creator/CreatorUserRegistration";
 import {
   Building,
   Users,
@@ -20,7 +21,8 @@ import {
   Trash2,
   LogOut,
   Ticket,
-  MessageSquare
+  MessageSquare,
+  UserCog
 } from "lucide-react";
 import {
   Table,
@@ -488,6 +490,10 @@ export default function CreatorDashboardPage() {
               <Ticket className="mr-2 h-4 w-4" />
               Cross-Tenant Tickets
             </TabsTrigger>
+            <TabsTrigger value="user-registration">
+              <UserCog className="mr-2 h-4 w-4" />
+              User Registration
+            </TabsTrigger>
           </TabsList>
           
           {/* Tenant Management Tab */}
@@ -893,6 +899,11 @@ export default function CreatorDashboardPage() {
                 <CreatorTicketList />
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          {/* User Registration Tab */}
+          <TabsContent value="user-registration">
+            <CreatorUserRegistration />
           </TabsContent>
         </Tabs>
       </div>

@@ -5,7 +5,7 @@ import { hashPassword } from '../auth';
 const router = express.Router();
 
 // Get all tenants (companies)
-router.get('/creator/tenants', async (req: Request, res: Response) => {
+router.get('/tenants', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -20,7 +20,7 @@ router.get('/creator/tenants', async (req: Request, res: Response) => {
 });
 
 // Get all users for a specific tenant
-router.get('/creator/users', async (req: Request, res: Response) => {
+router.get('/users', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -39,7 +39,7 @@ router.get('/creator/users', async (req: Request, res: Response) => {
 });
 
 // Get all teams for a specific tenant
-router.get('/creator/teams', async (req: Request, res: Response) => {
+router.get('/teams', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -60,7 +60,7 @@ router.get('/creator/teams', async (req: Request, res: Response) => {
 });
 
 // Create a new tenant (company)
-router.post('/creator/tenants', async (req: Request, res: Response) => {
+router.post('/tenants', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -104,14 +104,7 @@ router.post('/creator/tenants', async (req: Request, res: Response) => {
         role: 'administrator',
         tenantId: tenant.id,
         teamId: null,
-        profilePicture: null,
-        mfaEnabled: false,
-        mfaSecret: null,
-        mfaBackupCodes: [],
-        ssoEnabled: false,
-        ssoProvider: null,
-        ssoProviderId: null,
-        ssoProviderData: {}
+        profilePicture: null
       });
       
       // Update tenant with admin ID
@@ -138,7 +131,7 @@ router.post('/creator/tenants', async (req: Request, res: Response) => {
 });
 
 // Create a new user
-router.post('/creator/users', async (req: Request, res: Response) => {
+router.post('/users', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -184,14 +177,7 @@ router.post('/creator/users', async (req: Request, res: Response) => {
       role,
       tenantId,
       teamId: teamId || null,
-      profilePicture: null,
-      mfaEnabled: false,
-      mfaSecret: null,
-      mfaBackupCodes: [],
-      ssoEnabled: false,
-      ssoProvider: null,
-      ssoProviderId: null,
-      ssoProviderData: {}
+      profilePicture: null
     });
     
     // Remove password from response
@@ -205,7 +191,7 @@ router.post('/creator/users', async (req: Request, res: Response) => {
 });
 
 // Delete a tenant
-router.delete('/creator/tenants/:id', async (req: Request, res: Response) => {
+router.delete('/tenants/:id', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -230,7 +216,7 @@ router.delete('/creator/tenants/:id', async (req: Request, res: Response) => {
 });
 
 // Delete a user
-router.delete('/creator/users/:id', async (req: Request, res: Response) => {
+router.delete('/users/:id', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -255,7 +241,7 @@ router.delete('/creator/users/:id', async (req: Request, res: Response) => {
 });
 
 // Cross-tenant tickets endpoint
-router.get('/creator/tickets', async (req: Request, res: Response) => {
+router.get('/tickets', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -294,7 +280,7 @@ router.get('/creator/tickets', async (req: Request, res: Response) => {
 });
 
 // Create new company with user
-router.post('/creator/register-with-company', async (req: Request, res: Response) => {
+router.post('/register-with-company', async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'creator') {
       return res.status(403).json({ message: 'Access denied' });
@@ -342,14 +328,7 @@ router.post('/creator/register-with-company', async (req: Request, res: Response
       role,
       tenantId: tenant.id,
       teamId: null,
-      profilePicture: null,
-      mfaEnabled: false,
-      mfaSecret: null,
-      mfaBackupCodes: [],
-      ssoEnabled: false,
-      ssoProvider: null,
-      ssoProviderId: null,
-      ssoProviderData: {}
+      profilePicture: null
     });
     
     // Update tenant with admin ID if role is administrator

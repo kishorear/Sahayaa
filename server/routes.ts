@@ -146,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerWidgetAnalyticsRoutes(app, requireAuth);
   
   // Register AI provider routes
-  app.use('/api/creator', aiProviderRoutes);
+  app.use('/api/ai-providers', aiProviderRoutes);
   
   // Register team member routes
   registerTeamMemberRoutes(app, requireRole);
@@ -154,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register team routes
   app.use('/api/teams', teamRoutes);
   
-  // Register creator routes for multi-tenant management
+  // Register creator routes for multi-tenant management (without the /creator prefix)
   app.use('/api/creator', creatorRoutes);
   
   // Register profile routes

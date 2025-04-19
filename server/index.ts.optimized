@@ -2,38 +2,30 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { testDbConnection, reconnectDb } from "./db";
-import { setupAuth } from "./auth";
 import path from "path";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { setupOptimizedLogging, logger } from "./logging-middleware";
+import { setupOptimizedAuth } from "./optimized-auth";
 
 // Process-level unhandled rejection handler to prevent crashes
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
   // Don't crash the server, just log the error
 });
 
 // Process-level uncaught exception handler
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  logger.error('Uncaught Exception:', error);
   // Continue execution, don't crash the server
 });
 
 const app = express();
 
-// Add security headers with WebSocket-friendly settings for development
+// Add security headers
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections for Vite HMR
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Allow inline scripts and eval for development
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:"],
-    }
-  },
+  contentSecurityPolicy: false, // Disable CSP in development
   crossOriginEmbedderPolicy: false,
   crossOriginOpenerPolicy: false,
   crossOriginResourcePolicy: false
@@ -41,6 +33,9 @@ app.use(helmet({
 
 // Enable response compression
 app.use(compression());
+
+// Setup optimized logging
+setupOptimizedLogging(app);
 
 // Add cookie parser for better cookie handling
 app.use(cookieParser());
@@ -53,13 +48,21 @@ app.use('/uploads', express.static(uploadsDir, {
   etag: true,
   lastModified: true
 }));
-console.log(`Serving static files from: ${uploadsDir}`);
+logger.info(`Serving static files from: ${uploadsDir}`);
 
-// JSON body parser with better error handling and reduced limits
+// Set up debug tools with no caching
+const clientDir = path.join(process.cwd(), 'client');
+app.use('/debug', express.static(clientDir, {
+  maxAge: 0, // No caching for debug tools
+  etag: true
+}));
+logger.info(`Serving debug tools from: ${clientDir}`);
+
+// Enhanced JSON body parser with better error handling and reduced limits
 app.use(express.json({
-  limit: '10mb', // Reduced from default to improve memory usage
+  limit: '10mb', // Reduced from 1gb to improve memory usage
   verify: (req: any, res, buf, encoding) => {
-    // Store raw body for webhook processing
+    // Only store raw body when absolutely necessary
     if (req.url.includes('/integrations/webhook')) {
       const enc = encoding || 'utf8';
       req.rawBody = buf.toString(enc as any);
@@ -70,7 +73,7 @@ app.use(express.json({
 // JSON parsing error handler
 app.use((err: any, req: any, res: Response, next: NextFunction) => {
   if (err instanceof SyntaxError && 'body' in err) {
-    console.warn('JSON Parse Error:', err.message);
+    logger.warn('JSON Parse Error:', err.message);
     return res.status(400).json({
       error: 'Invalid JSON payload',
       message: 'The request contains malformed JSON'
@@ -79,8 +82,71 @@ app.use((err: any, req: any, res: Response, next: NextFunction) => {
   next(err);
 });
 
-// Handle URL-encoded form data with reduced limits
+// Reduced form data limits
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Set up response timing middleware (optimized)
+app.use((req, res, next) => {
+  // Skip timing for static resources
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    return next();
+  }
+  
+  const start = Date.now();
+  const path = req.path;
+  
+  // Only track API response content selectively
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  if (path.startsWith("/api")) {
+    const originalResJson = res.json;
+    res.json = function (bodyJson, ...args) {
+      // Only capture minimal response data or certain endpoints
+      if (path.includes('/health') || path.includes('/status')) {
+        capturedJsonResponse = { status: bodyJson.status };
+      } else {
+        // For other responses, just note the structure but not full content
+        capturedJsonResponse = { 
+          keys: Object.keys(bodyJson),
+          status: res.statusCode 
+        };
+      }
+      return originalResJson.apply(res, [bodyJson, ...args]);
+    };
+  }
+
+  // Only log slow responses or errors
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    
+    // Log all errors or slow responses
+    if (res.statusCode >= 400 || duration > 500) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      
+      if (res.statusCode >= 400 && capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+      
+      if (logLine.length > 120) {
+        logLine = logLine.slice(0, 119) + "…";
+      }
+      
+      if (res.statusCode >= 500) {
+        logger.error(logLine);
+      } else if (res.statusCode >= 400) {
+        logger.warn(logLine);
+      } else if (duration > 1000) {
+        logger.warn(logLine); // Slow response
+      } else if (duration > 500) {
+        logger.info(logLine); // Moderately slow
+      }
+    }
+  });
+
+  next();
+});
+
+// Setup optimized authentication with caching
+setupOptimizedAuth(app);
 
 (async () => {
   const server = await registerRoutes(app);
@@ -97,13 +163,13 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
       if (Math.random() < 0.01) {
         const isDbConnected = await testDbConnection(2000); // Reduced timeout
         if (!isDbConnected) {
-          console.warn("Database connection check failed, attempting reconnect");
+          logger.warn("Database connection check failed, attempting reconnect");
           await reconnectDb();
         }
       }
       next();
     } catch (error) {
-      console.error("Database health check error:", error);
+      logger.error("Database health check error:", error);
       next(); // Continue even if DB check fails
     }
   });
@@ -116,9 +182,9 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
       
       // Only log full stack traces for 500 errors, not for client errors
       if (status >= 500) {
-        console.error(`Server error (${status}):`, err);
+        logger.error(`Server error (${status}):`, err);
       } else {
-        console.warn(`Client error (${status}): ${message}`);
+        logger.warn(`Client error (${status}): ${message}`);
       }
       
       // Send appropriate response with minimal details
@@ -128,7 +194,7 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
         code: status
       });
     } catch (handlerError) {
-      console.error("Error in error handler:", handlerError);
+      logger.error("Error in error handler:", handlerError);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
@@ -151,9 +217,9 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
     reusePort: true,
   }, () => {
     // Use our optimized logger
-    console.log(`Server running at http://0.0.0.0:${port}`);
-    console.log(`Web Application: http://0.0.0.0:${port}`);
-    console.log(`API: http://0.0.0.0:${port}/api`);
-    console.log(`Performance optimizations enabled.`);
+    logger.info(`Server running at http://0.0.0.0:${port}`);
+    logger.info(`Web Application: http://0.0.0.0:${port}`);
+    logger.info(`API: http://0.0.0.0:${port}/api`);
+    logger.info(`Performance optimizations enabled.`);
   });
 })();

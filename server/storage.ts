@@ -68,7 +68,6 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string, tenantId?: number): Promise<User | undefined>;
-  getAllUsers(): Promise<User[]>;
   getUsersByTenantId(tenantId: number): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
@@ -1012,10 +1011,6 @@ export class MemStorage implements IStorage {
     return user;
   }
   
-  async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
-  }
-
   async getUsersByTenantId(tenantId: number): Promise<User[]> {
     return Array.from(this.users.values()).filter(
       (user) => user.tenantId === tenantId
@@ -3061,44 +3056,6 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getAllUsers(): Promise<User[]> {
-    try {
-      // Use SQL directly to get all users
-      const result = await db.execute(sql`
-        SELECT * FROM users
-      `);
-      
-      if (!result.rows || result.rows.length === 0) {
-        return [];
-      }
-      
-      // Transform the database rows to match our User type
-      return result.rows.map(row => ({
-        id: row.id,
-        tenantId: row.tenantid,
-        username: row.username,
-        password: row.password,
-        role: row.role,
-        email: row.email,
-        name: row.name,
-        teamId: row.teamid,
-        mfaEnabled: row.mfaenabled,
-        mfaSecret: row.mfasecret,
-        mfaBackupCodes: row.mfabackupcodes || [],
-        ssoEnabled: row.ssoenabled,
-        ssoProvider: row.ssoprovider,
-        ssoProviderId: row.ssoproviderid,
-        ssoProviderData: row.ssoproviderdata || {},
-        profilePicture: row.profilepicture,
-        createdAt: row.createdat,
-        updatedAt: row.updatedat
-      }));
-    } catch (error) {
-      console.error(`Error in getAllUsers():`, error);
-      throw error;
-    }
-  }
-
   async getUsersByTenantId(tenantId: number): Promise<User[]> {
     try {
       // Use SQL directly to avoid case sensitivity issues
@@ -4293,16 +4250,6 @@ class StorageWrapper implements IStorage {
   }
   
   // Tenant operations
-  // Alias method for compatibility with creator routes
-  async getTenant(id: number): Promise<Tenant | undefined> {
-    try {
-      return await this.storageImpl.getTenantById(id);
-    } catch (error) {
-      console.error(`Error in getTenant():`, error);
-      throw error;
-    }
-  }
-  
   async getTenantById(id: number): Promise<Tenant | undefined> {
     try {
       return await this.storageImpl.getTenantById(id);
@@ -4357,32 +4304,6 @@ class StorageWrapper implements IStorage {
     }
   }
   
-  // Alias method for compatibility with creator routes
-  async deleteTenant(id: number): Promise<boolean> {
-    try {
-      // Delete all users for this tenant first
-      const users = await this.getUsersByTenantId(id);
-      for (const user of users) {
-        await this.deleteUser(user.id);
-      }
-      
-      // Delete all teams for this tenant
-      const teams = await this.getTeamsByTenantId(id);
-      for (const team of teams) {
-        await this.deleteTeam(team.id, id);
-      }
-      
-      // Delete the tenant itself
-      // Since direct tenant deletion isn't supported, we'll just mark it as inactive
-      await this.updateTenant(id, { active: false });
-      
-      return true;
-    } catch (error) {
-      console.error(`Error in deleteTenant(${id}):`, error);
-      throw error;
-    }
-  }
-  
   // Team operations
   async getTeamById(id: number, tenantId?: number): Promise<Team | undefined> {
     try {
@@ -4391,11 +4312,6 @@ class StorageWrapper implements IStorage {
       console.error(`Error in getTeamById(${id}):`, error);
       throw error;
     }
-  }
-  
-  // Alias method for compatibility with creator routes
-  async getTeam(id: number, tenantId?: number): Promise<Team | undefined> {
-    return this.getTeamById(id, tenantId);
   }
 
   async getTeamByName(name: string, tenantId?: number): Promise<Team | undefined> {
@@ -4480,15 +4396,6 @@ class StorageWrapper implements IStorage {
     }
   }
   
-  async getAllUsers(): Promise<User[]> {
-    try {
-      return await this.storageImpl.getAllUsers();
-    } catch (error) {
-      console.error('Error in getAllUsers():', error);
-      throw error;
-    }
-  }
-
   async getUsersByTenantId(tenantId: number): Promise<User[]> {
     try {
       return await this.storageImpl.getUsersByTenantId(tenantId);
@@ -4586,47 +4493,6 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.getAllTickets(tenantId);
     } catch (error) {
       console.error(`Error in getAllTickets():`, error);
-      throw error;
-    }
-  }
-  
-  // Alias method for compatibility with creator routes
-  async getTickets(options?: { status?: string; tenantId?: number; limit?: number; offset?: number }): Promise<Ticket[]> {
-    try {
-      let tickets = await this.getAllTickets(options?.tenantId);
-      
-      // Apply filters
-      if (options?.status) {
-        tickets = tickets.filter(t => t.status === options.status);
-      }
-      
-      // Apply pagination
-      if (options?.limit || options?.offset) {
-        const offset = options.offset || 0;
-        const limit = options.limit || tickets.length;
-        tickets = tickets.slice(offset, offset + limit);
-      }
-      
-      return tickets;
-    } catch (error) {
-      console.error('Error in getTickets():', error);
-      throw error;
-    }
-  }
-  
-  // Helper method for ticket counts for creator dashboard
-  async countTickets(options?: { status?: string; tenantId?: number }): Promise<number> {
-    try {
-      let tickets = await this.getAllTickets(options?.tenantId);
-      
-      // Apply filters
-      if (options?.status) {
-        tickets = tickets.filter(t => t.status === options.status);
-      }
-      
-      return tickets.length;
-    } catch (error) {
-      console.error('Error in countTickets():', error);
       throw error;
     }
   }

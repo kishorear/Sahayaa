@@ -1,1 +1,0 @@
-window.loginAsCreator = function() { fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin_creator', password: 'creator123' }), credentials: 'include' }).then(res => res.json()).then(user => { console.log('Logged in as:', user); location.reload(); }); };

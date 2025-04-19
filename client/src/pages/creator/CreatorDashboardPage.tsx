@@ -8,8 +8,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import CreatorTicketList from "@/components/creator/CreatorTicketList";
-import CreatorUserRegistration from "@/components/creator/CreatorUserRegistration";
-import { RoleBadge } from "@/components/ui/role-badge";
 import {
   Building,
   Users,
@@ -22,8 +20,7 @@ import {
   Trash2,
   LogOut,
   Ticket,
-  MessageSquare,
-  UserCog
+  MessageSquare
 } from "lucide-react";
 import {
   Table,
@@ -491,10 +488,6 @@ export default function CreatorDashboardPage() {
               <Ticket className="mr-2 h-4 w-4" />
               Cross-Tenant Tickets
             </TabsTrigger>
-            <TabsTrigger value="user-registration">
-              <UserCog className="mr-2 h-4 w-4" />
-              User Registration
-            </TabsTrigger>
           </TabsList>
           
           {/* Tenant Management Tab */}
@@ -617,21 +610,9 @@ export default function CreatorDashboardPage() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          <SelectItem value="administrator">
-                                            <div className="flex items-center">
-                                              <RoleBadge role="administrator" size="sm" />
-                                            </div>
-                                          </SelectItem>
-                                          <SelectItem value="support_engineer">
-                                            <div className="flex items-center">
-                                              <RoleBadge role="support_engineer" size="sm" />
-                                            </div>
-                                          </SelectItem>
-                                          <SelectItem value="user">
-                                            <div className="flex items-center">
-                                              <RoleBadge role="user" size="sm" />
-                                            </div>
-                                          </SelectItem>
+                                          <SelectItem value="administrator">Administrator</SelectItem>
+                                          <SelectItem value="support_engineer">Support Engineer</SelectItem>
+                                          <SelectItem value="user">Regular User</SelectItem>
                                         </SelectContent>
                                       </Select>
                                       <FormMessage />
@@ -704,7 +685,12 @@ export default function CreatorDashboardPage() {
                                   <TableCell>{user.name || "-"}</TableCell>
                                   <TableCell>{user.email || "-"}</TableCell>
                                   <TableCell>
-                                    <RoleBadge role={user.role} />
+                                    <Badge variant={
+                                      user.role === "administrator" ? "default" :
+                                      user.role === "support_engineer" ? "secondary" : "outline"
+                                    }>
+                                      {user.role}
+                                    </Badge>
                                   </TableCell>
                                   <TableCell>
                                     {user.teamId && teams ? 
@@ -907,11 +893,6 @@ export default function CreatorDashboardPage() {
                 <CreatorTicketList />
               </CardContent>
             </Card>
-          </TabsContent>
-          
-          {/* User Registration Tab */}
-          <TabsContent value="user-registration">
-            <CreatorUserRegistration />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,397 +1,477 @@
-import express, { Request, Response } from 'express';
-import { storage } from '../storage';
-import { hashPassword } from '../auth';
+import { Router, Request, Response } from 'express';
+import { db } from '../db';
+import { 
+  tenants, 
+  teams, 
+  users, 
+  tickets,
+  InsertTenant, 
+  InsertUser,
+  InsertTeam
+} from '@shared/schema';
+import { eq, and, isNull, ne, desc } from 'drizzle-orm';
+import { comparePasswords, hashPassword } from '../auth';
 
-const router = express.Router();
+const router = Router();
 
-// Get all tenants (companies)
-router.get('/creator/tenants', async (req: Request, res: Response) => {
+/**
+ * Middleware to check if the user is a creator
+ */
+function requireCreator(req: Request, res: Response, next: Function) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  
+  if (req.user.role !== 'creator') {
+    return res.status(403).json({ message: 'Forbidden - Creator role required' });
+  }
+  
+  next();
+}
+
+/**
+ * POST /api/creator/login
+ * Login for creator users
+ */
+router.post('/login', async (req: Request, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
     }
     
-    const tenants = await storage.getAllTenants();
-    res.json(tenants);
+    // Check if user exists
+    const existingUsers = await db.select().from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    
+    if (existingUsers.length === 0) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    const user = existingUsers[0];
+    
+    // Check if user is a creator
+    if (user.role !== 'creator') {
+      return res.status(403).json({ message: 'Forbidden - Creator role required' });
+    }
+    
+    // Verify password
+    const passwordMatches = await comparePasswords(password, user.password);
+    if (!passwordMatches) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    // Set session
+    if (req.session) {
+      req.session.userId = user.id;
+    }
+    
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+    
+    return res.status(200).json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error during creator login:', error);
+    return res.status(500).json({ message: 'Error during login' });
+  }
+});
+
+/**
+ * GET /api/creator/tenants
+ * Get all tenants
+ */
+router.get('/tenants', requireCreator, async (req: Request, res: Response) => {
+  try {
+    const result = await db.select().from(tenants);
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Error fetching tenants:', error);
-    res.status(500).json({ message: 'Failed to fetch tenants', error: String(error) });
+    return res.status(500).json({ message: 'Error fetching tenants' });
   }
 });
 
-// Get all users for a specific tenant
-router.get('/creator/users', async (req: Request, res: Response) => {
+/**
+ * GET /api/creator/tenants/:id
+ * Get a tenant by ID
+ */
+router.get('/tenants/:id', requireCreator, async (req: Request, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) {
+      return res.status(400).json({ message: 'Invalid tenant ID' });
     }
     
-    const tenantId = req.query.tenantId ? parseInt(req.query.tenantId as string) : undefined;
-    const users = tenantId 
-      ? await storage.getUsersByTenantId(tenantId)
-      : await storage.getAllUsers();
+    const result = await db.select().from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
     
-    res.json(users);
+    if (result.length === 0) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+    
+    return res.status(200).json(result[0]);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({ message: 'Failed to fetch users', error: String(error) });
+    console.error('Error fetching tenant:', error);
+    return res.status(500).json({ message: 'Error fetching tenant' });
   }
 });
 
-// Get all teams for a specific tenant
-router.get('/creator/teams', async (req: Request, res: Response) => {
+/**
+ * POST /api/creator/tenants
+ * Create a new tenant
+ */
+router.post('/tenants', requireCreator, async (req: Request, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
-    const tenantId = req.query.tenantId ? parseInt(req.query.tenantId as string) : undefined;
-    
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-    
-    const teams = await storage.getTeamsByTenantId(tenantId);
-    res.json(teams);
-  } catch (error) {
-    console.error('Error fetching teams:', error);
-    res.status(500).json({ message: 'Failed to fetch teams', error: String(error) });
-  }
-});
-
-// Create a new tenant (company)
-router.post('/creator/tenants', async (req: Request, res: Response) => {
-  try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
     const { name, subdomain, adminEmail, adminName } = req.body;
     
     if (!name || !subdomain) {
       return res.status(400).json({ message: 'Name and subdomain are required' });
     }
     
-    // Check if subdomain already exists
-    const existingTenant = await storage.getTenantBySubdomain(subdomain);
-    if (existingTenant) {
-      return res.status(400).json({ message: 'Subdomain already in use' });
+    // Check if subdomain is already taken
+    const existingTenants = await db.select().from(tenants)
+      .where(eq(tenants.subdomain, subdomain))
+      .limit(1);
+    
+    if (existingTenants.length > 0) {
+      return res.status(409).json({ message: 'Subdomain already in use' });
     }
     
-    // Create tenant
-    const tenant = await storage.createTenant({
+    // Create the tenant
+    const insertData: InsertTenant = {
       name,
       subdomain,
-      apiKey: generateApiKey(),
-      adminId: null,
-      settings: {},
-      branding: {},
-      active: true
-    });
+      apiKey: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15), // Generate a random API key
+      active: true,
+    };
     
-    // If admin details provided, create admin user
+    const result = await db.insert(tenants).values(insertData).returning();
+    const newTenant = result[0];
+    
+    // If adminEmail is provided, create an admin user for the tenant
     if (adminEmail && adminName) {
-      const adminUsername = `admin_${subdomain}`;
-      const adminPassword = generateRandomPassword();
+      // Generate a temporary password
+      const tempPassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await hashPassword(tempPassword);
       
-      const hashedPassword = await hashPassword(adminPassword);
+      const adminUsername = adminEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       
-      const adminUser = await storage.createUser({
+      const adminUser: InsertUser = {
+        tenantId: newTenant.id,
         username: adminUsername,
         password: hashedPassword,
+        role: 'administrator',
         name: adminName,
         email: adminEmail,
-        role: 'administrator',
-        tenantId: tenant.id,
-        teamId: null,
-        profilePicture: null,
-        mfaEnabled: false,
-        mfaSecret: null,
-        mfaBackupCodes: [],
-        ssoEnabled: false,
-        ssoProvider: null,
-        ssoProviderId: null,
-        ssoProviderData: {}
-      });
+      };
       
-      // Update tenant with admin ID
-      await storage.updateTenant(tenant.id, { adminId: adminUser.id });
+      await db.insert(users).values(adminUser);
       
-      // Return tenant with admin information
-      return res.status(201).json({
-        ...tenant,
-        admin: {
-          id: adminUser.id,
-          username: adminUsername,
-          password: adminPassword, // Only return this on creation for notifying the admin
-          name: adminName,
-          email: adminEmail
-        }
-      });
+      // TODO: Send email with temporary password to the admin
+      console.log(`Created admin user ${adminUsername} for tenant ${name} with password: ${tempPassword}`);
     }
     
-    res.status(201).json(tenant);
+    return res.status(201).json(newTenant);
   } catch (error) {
     console.error('Error creating tenant:', error);
-    res.status(500).json({ message: 'Failed to create tenant', error: String(error) });
+    return res.status(500).json({ message: 'Error creating tenant' });
   }
 });
 
-// Create a new user
-router.post('/creator/users', async (req: Request, res: Response) => {
+/**
+ * DELETE /api/creator/tenants/:id
+ * Delete a tenant and all associated data (users, teams, etc.)
+ */
+router.delete('/tenants/:id', requireCreator, async (req: Request, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
-    const { username, password, name, email, role, tenantId, teamId } = req.body;
-    
-    if (!username || !password || !tenantId || !role) {
-      return res.status(400).json({ message: 'Username, password, tenant ID, and role are required' });
-    }
-    
-    // Check if username already exists
-    const existingUser = await storage.getUserByUsername(username);
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already exists' });
-    }
-    
-    // Verify that tenant exists
-    const tenant = await storage.getTenant(tenantId);
-    if (!tenant) {
-      return res.status(400).json({ message: 'Tenant not found' });
-    }
-    
-    // Check team if provided
-    if (teamId) {
-      const team = await storage.getTeam(teamId);
-      if (!team) {
-        return res.status(400).json({ message: 'Team not found' });
-      }
-      if (team.tenantId !== tenantId) {
-        return res.status(400).json({ message: 'Team does not belong to this tenant' });
-      }
-    }
-    
-    // Create user
-    const hashedPassword = await hashPassword(password);
-    
-    const user = await storage.createUser({
-      username,
-      password: hashedPassword,
-      name,
-      email,
-      role,
-      tenantId,
-      teamId: teamId || null,
-      profilePicture: null,
-      mfaEnabled: false,
-      mfaSecret: null,
-      mfaBackupCodes: [],
-      ssoEnabled: false,
-      ssoProvider: null,
-      ssoProviderId: null,
-      ssoProviderData: {}
-    });
-    
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-    
-    res.status(201).json(userWithoutPassword);
-  } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ message: 'Failed to create user', error: String(error) });
-  }
-});
-
-// Delete a tenant
-router.delete('/creator/tenants/:id', async (req: Request, res: Response) => {
-  try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
     const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) {
+      return res.status(400).json({ message: 'Invalid tenant ID' });
+    }
     
-    // Check if tenant exists
-    const tenant = await storage.getTenant(tenantId);
-    if (!tenant) {
+    // First verify tenant exists
+    const tenantResult = await db.select().from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    
+    if (tenantResult.length === 0) {
       return res.status(404).json({ message: 'Tenant not found' });
     }
     
-    // Delete tenant
-    await storage.deleteTenant(tenantId);
+    // Delete all users associated with this tenant
+    await db.delete(users)
+      .where(eq(users.tenantId, tenantId));
     
-    res.json({ message: 'Tenant deleted successfully' });
+    // Delete all teams associated with this tenant
+    await db.delete(teams)
+      .where(eq(teams.tenantId, tenantId));
+    
+    // Delete the tenant
+    await db.delete(tenants)
+      .where(eq(tenants.id, tenantId));
+    
+    return res.status(200).json({ message: 'Tenant and all associated data deleted successfully' });
   } catch (error) {
     console.error('Error deleting tenant:', error);
-    res.status(500).json({ message: 'Failed to delete tenant', error: String(error) });
+    return res.status(500).json({ message: 'Error deleting tenant' });
   }
 });
 
-// Delete a user
-router.delete('/creator/users/:id', async (req: Request, res: Response) => {
+/**
+ * GET /api/creator/users
+ * Get all users (optionally filtered by tenantId)
+ */
+router.get('/users', requireCreator, async (req: Request, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
+    const tenantId = req.query.tenantId ? parseInt(req.query.tenantId as string) : undefined;
+    
+    let query = db.select({
+      id: users.id,
+      tenantId: users.tenantId,
+      teamId: users.teamId,
+      username: users.username,
+      role: users.role,
+      name: users.name,
+      email: users.email,
+      profilePicture: users.profilePicture,
+      mfaEnabled: users.mfaEnabled,
+      ssoEnabled: users.ssoEnabled,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    }).from(users);
+    
+    // If tenantId is provided, filter by it
+    if (tenantId && !isNaN(tenantId)) {
+      query = query.where(eq(users.tenantId, tenantId));
     }
     
-    const userId = parseInt(req.params.id);
+    const result = await query;
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return res.status(500).json({ message: 'Error fetching users' });
+  }
+});
+
+/**
+ * POST /api/creator/users
+ * Create a new user
+ */
+router.post('/users', requireCreator, async (req: Request, res: Response) => {
+  try {
+    const { username, password, role, name, email, tenantId, teamId } = req.body;
     
-    // Check if user exists
-    const user = await storage.getUser(userId);
-    if (!user) {
+    if (!username || !password || !role || !tenantId) {
+      return res.status(400).json({ message: 'Username, password, role, and tenantId are required' });
+    }
+    
+    // Verify tenant exists
+    const tenantResult = await db.select().from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    
+    if (tenantResult.length === 0) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+    
+    // If teamId is provided, verify it exists and belongs to the tenant
+    if (teamId) {
+      const teamResult = await db.select().from(teams)
+        .where(and(
+          eq(teams.id, teamId),
+          eq(teams.tenantId, tenantId)
+        ))
+        .limit(1);
+      
+      if (teamResult.length === 0) {
+        return res.status(404).json({ message: 'Team not found or does not belong to the tenant' });
+      }
+    }
+    
+    // Check if username is already taken within the tenant
+    const existingUsers = await db.select().from(users)
+      .where(and(
+        eq(users.username, username),
+        eq(users.tenantId, tenantId)
+      ))
+      .limit(1);
+    
+    if (existingUsers.length > 0) {
+      return res.status(409).json({ message: 'Username already exists in this tenant' });
+    }
+    
+    // Hash the password
+    const hashedPassword = await hashPassword(password);
+    
+    // Create the user
+    const insertData: InsertUser = {
+      username,
+      password: hashedPassword,
+      role,
+      name: name || null,
+      email: email || null,
+      tenantId,
+      teamId: teamId || null,
+    };
+    
+    const result = await db.insert(users).values(insertData).returning({
+      id: users.id,
+      tenantId: users.tenantId,
+      teamId: users.teamId,
+      username: users.username,
+      role: users.role,
+      name: users.name,
+      email: users.email,
+      profilePicture: users.profilePicture,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    });
+    
+    return res.status(201).json(result[0]);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return res.status(500).json({ message: 'Error creating user' });
+  }
+});
+
+/**
+ * DELETE /api/creator/users/:id
+ * Delete a user
+ */
+router.delete('/users/:id', requireCreator, async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    // First verify user exists
+    const userResult = await db.select().from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    if (userResult.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Delete user
-    await storage.deleteUser(userId);
+    // Don't allow deleting the current user
+    if (req.user && userId === req.user.id) {
+      return res.status(403).json({ message: 'Cannot delete your own account' });
+    }
     
-    res.json({ message: 'User deleted successfully' });
+    // Delete the user
+    await db.delete(users)
+      .where(eq(users.id, userId));
+    
+    return res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
-    res.status(500).json({ message: 'Failed to delete user', error: String(error) });
+    return res.status(500).json({ message: 'Error deleting user' });
   }
 });
 
-// Cross-tenant tickets endpoint
-router.get('/creator/tickets', async (req: Request, res: Response) => {
+/**
+ * GET /api/creator/teams
+ * Get all teams (optionally filtered by tenantId)
+ */
+router.get('/teams', requireCreator, async (req: Request, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
-    // Get filter parameters
-    const status = req.query.status as string | undefined;
     const tenantId = req.query.tenantId ? parseInt(req.query.tenantId as string) : undefined;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-    const page = req.query.page ? parseInt(req.query.page as string) : 1;
     
-    // Fetch tickets with filters
-    const tickets = await storage.getTickets({
-      status,
-      tenantId,
-      limit,
-      offset: (page - 1) * limit
-    });
+    let query = db.select().from(teams);
     
-    // Count total tickets for pagination
-    const totalCount = await storage.countTickets({ status, tenantId });
+    // If tenantId is provided, filter by it
+    if (tenantId && !isNaN(tenantId)) {
+      query = query.where(eq(teams.tenantId, tenantId));
+    }
     
-    res.json({
-      tickets,
-      pagination: {
-        totalItems: totalCount,
-        itemsPerPage: limit,
-        currentPage: page,
-        totalPages: Math.ceil(totalCount / limit)
-      }
-    });
+    const result = await query;
+    return res.status(200).json(result);
   } catch (error) {
-    console.error('Error fetching tickets:', error);
-    res.status(500).json({ message: 'Failed to fetch tickets', error: String(error) });
+    console.error('Error fetching teams:', error);
+    return res.status(500).json({ message: 'Error fetching teams' });
   }
 });
 
-// Create new company with user
-router.post('/creator/register-with-company', async (req: Request, res: Response) => {
+/**
+ * POST /api/creator/teams
+ * Create a new team
+ */
+router.post('/teams', requireCreator, async (req: Request, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'creator') {
-      return res.status(403).json({ message: 'Access denied' });
+    const { name, description, tenantId } = req.body;
+    
+    if (!name || !tenantId) {
+      return res.status(400).json({ message: 'Name and tenantId are required' });
     }
     
-    const { username, password, name, email, role, companyName, companySubdomain } = req.body;
+    // Verify tenant exists
+    const tenantResult = await db.select().from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
     
-    if (!username || !password || !companyName || !companySubdomain || !role) {
-      return res.status(400).json({ 
-        message: 'Username, password, company name, subdomain, and role are required' 
-      });
+    if (tenantResult.length === 0) {
+      return res.status(404).json({ message: 'Tenant not found' });
     }
     
-    // Check if username already exists
-    const existingUser = await storage.getUserByUsername(username);
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already exists' });
-    }
-    
-    // Check if subdomain already exists
-    const existingTenant = await storage.getTenantBySubdomain(companySubdomain);
-    if (existingTenant) {
-      return res.status(400).json({ message: 'Subdomain already in use' });
-    }
-    
-    // Create tenant transaction
-    const tenant = await storage.createTenant({
-      name: companyName,
-      subdomain: companySubdomain,
-      apiKey: generateApiKey(),
-      adminId: null,
-      settings: {},
-      branding: {},
-      active: true
-    });
-    
-    // Create user
-    const hashedPassword = await hashPassword(password);
-    
-    const user = await storage.createUser({
-      username,
-      password: hashedPassword,
+    // Create the team
+    const insertData: InsertTeam = {
       name,
-      email,
-      role,
-      tenantId: tenant.id,
-      teamId: null,
-      profilePicture: null,
-      mfaEnabled: false,
-      mfaSecret: null,
-      mfaBackupCodes: [],
-      ssoEnabled: false,
-      ssoProvider: null,
-      ssoProviderId: null,
-      ssoProviderData: {}
-    });
+      description: description || '',
+      tenantId,
+    };
     
-    // Update tenant with admin ID if role is administrator
-    if (role === 'administrator') {
-      await storage.updateTenant(tenant.id, { adminId: user.id });
-    }
+    const result = await db.insert(teams).values(insertData).returning();
     
-    // Return success with company and user info
-    res.status(201).json({
-      companyId: tenant.id,
-      companyName: tenant.name,
-      companySubdomain: tenant.subdomain,
-      userId: user.id,
-      username: user.username,
-      role: user.role
-    });
+    return res.status(201).json(result[0]);
   } catch (error) {
-    console.error('Error registering company with user:', error);
-    res.status(500).json({ 
-      message: 'Failed to register company with user', 
-      error: String(error) 
-    });
+    console.error('Error creating team:', error);
+    return res.status(500).json({ message: 'Error creating team' });
   }
 });
 
-// Helper functions
-function generateApiKey(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+/**
+ * GET /api/creator/tickets
+ * Get all tickets across tenants
+ */
+router.get('/tickets', requireCreator, async (req: Request, res: Response) => {
+  try {
+    // Get optional filtering parameters
+    const status = req.query.status as string | undefined;
+    const category = req.query.category as string | undefined;
+    const tenantId = req.query.tenantId ? parseInt(req.query.tenantId as string) : undefined;
+    
+    // Log the request for debugging
+    console.log(`Creator fetching all tickets with filters - status: ${status}, category: ${category}, tenantId: ${tenantId}`);
+    
+    // Base query to select all tickets, ordered by creation date (newest first)
+    let ticketsQuery = db.select().from(tickets).orderBy(desc(tickets.createdAt));
+    
+    // Apply filters if they exist
+    if (status) {
+      ticketsQuery = ticketsQuery.where(eq(tickets.status, status));
+    }
+    
+    if (category) {
+      ticketsQuery = ticketsQuery.where(eq(tickets.category, category));
+    }
+    
+    if (tenantId && !isNaN(tenantId)) {
+      ticketsQuery = ticketsQuery.where(eq(tickets.tenantId, tenantId));
+    }
+    
+    // Execute the query
+    const allTickets = await ticketsQuery;
+    
+    console.log(`Found ${allTickets.length} tickets matching creator's criteria`);
+    
+    return res.status(200).json(allTickets);
+  } catch (error) {
+    console.error('Error fetching tickets for creator:', error);
+    return res.status(500).json({ message: 'Error fetching tickets' });
   }
-  return result;
-}
-
-function generateRandomPassword(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let result = '';
-  for (let i = 0; i < 12; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
+});
 
 export default router;

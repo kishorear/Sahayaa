@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Ticket } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   Search, 
@@ -23,27 +24,6 @@ import {
   MessageSquare,
   Building
 } from "lucide-react";
-
-// Define the Ticket type explicitly since we're accessing cross-tenant tickets
-type Ticket = {
-  id: number;
-  tenantId: number;
-  teamId: number | null;
-  createdBy: number | null;
-  title: string;
-  description: string;
-  status: string;
-  category: string;
-  complexity: string;
-  assignedTo: string | null;
-  createdAt: string;
-  updatedAt: string;
-  resolvedAt: string | null;
-  aiResolved: boolean;
-  aiNotes: string | null;
-  externalIntegrations: any | null;
-  clientMetadata: any | null;
-};
 
 // Ticket status component with appropriate colors
 function StatusBadge({ status }: { status: string | null }) {
@@ -86,66 +66,14 @@ export default function CreatorTicketList() {
   const queryClient = useQueryClient();
 
   // Fetch tickets (using creator-specific endpoint that returns cross-tenant tickets)
-  const { data: tickets, isLoading: isLoadingTickets, error: ticketsError } = useQuery<Ticket[]>({
-    queryKey: ['/api/creator/tickets', filterTenant, filterStatus, filterCategory],
-    queryFn: async () => {
-      let url = '/api/creator/tickets?';
-      
-      // Add filters to the query parameters
-      if (filterTenant !== 'all') {
-        url += `tenantId=${filterTenant}&`;
-      }
-      
-      if (filterStatus !== 'all') {
-        url += `status=${filterStatus}&`;
-      }
-      
-      if (filterCategory !== 'all') {
-        url += `category=${filterCategory}&`;
-      }
-
-      console.log('Fetching tickets with URL:', url);
-      
-      const response = await fetch(url, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch tickets');
-      }
-      
-      const data = await response.json();
-      console.log('Tickets data received:', data.length, 'tickets');
-      return data;
-    }
+  const { data: tickets, isLoading: isLoadingTickets } = useQuery<Ticket[]>({
+    queryKey: ['/api/creator/tickets'],
   });
-
-  // Log data for debugging
-  useEffect(() => {
-    if (tickets) {
-      console.log('✅ Tickets fetched successfully:', tickets.length, 'tickets');
-    }
-    
-    if (ticketsError) {
-      console.error('❌ Error fetching tickets:', ticketsError);
-    }
-  }, [tickets, ticketsError]);
 
   // Fetch tenants for filtering
-  const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useQuery<any[]>({
-    queryKey: ['/api/creator/tenants']
+  const { data: tenants, isLoading: isLoadingTenants } = useQuery<any[]>({
+    queryKey: ['/api/creator/tenants'],
   });
-  
-  // Log data for debugging
-  useEffect(() => {
-    if (tenants) {
-      console.log('✅ Tenants fetched successfully:', tenants.length, 'tenants');
-    }
-    
-    if (tenantsError) {
-      console.error('❌ Error fetching tenants:', tenantsError);
-    }
-  }, [tenants, tenantsError]);
 
   // Mutation for updating ticket status
   const updateStatusMutation = useMutation({
@@ -235,25 +163,6 @@ export default function CreatorTicketList() {
           <CardTitle>Support Tickets</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Debug Information */}
-          <div className="mb-4 p-4 bg-gray-50 border rounded-md">
-            <h3 className="text-md font-semibold mb-2">Debug Information:</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><strong>Tickets Loading:</strong> {isLoadingTickets ? 'Yes' : 'No'}</div>
-              <div><strong>Tenants Loading:</strong> {isLoadingTenants ? 'Yes' : 'No'}</div>
-              <div><strong>Tickets Error:</strong> {ticketsError ? 'Yes' : 'No'}</div>
-              <div><strong>Tenants Error:</strong> {tenantsError ? 'Yes' : 'No'}</div>
-              <div><strong>Raw Tickets Count:</strong> {tickets?.length || 0}</div>
-              <div><strong>Filtered Tickets Count:</strong> {filteredTickets?.length || 0}</div>
-              <div><strong>Current View:</strong> {currentView}</div>
-              <div><strong>Filter Status:</strong> {filterStatus}</div>
-              <div><strong>Raw Ticket Data:</strong></div>
-            </div>
-            <pre className="mt-2 bg-gray-800 text-white p-2 rounded text-xs overflow-auto max-h-40">
-              {tickets ? JSON.stringify(tickets.slice(0, 2), null, 2) : 'No tickets data'}
-            </pre>
-          </div>
-          
           <div className="flex flex-col space-y-4 mb-6 md:flex-row md:space-y-0 md:space-x-4">
             {/* Search box */}
             <div className="relative flex-1">

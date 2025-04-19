@@ -84,20 +84,14 @@ export const tenantSubdomainAuth = async (req: Request, res: Response, next: Nex
  * This middleware should be applied early in the chain
  */
 export const checkCreatorRole = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (req.user && req.user.role === 'creator') {
-      // Set a flag that can be used by downstream middlewares and routes
-      req.isCreatorUser = true;
-      console.log(`User ${req.user.username} (ID: ${req.user.id}) has creator role - cross-tenant access enabled`);
-    } else {
-      req.isCreatorUser = false;
-    }
-    next();
-  } catch (error) {
-    console.error('Error in checkCreatorRole middleware:', error);
+  if (req.user && req.user.role === 'creator') {
+    // Set a flag that can be used by downstream middlewares and routes
+    req.isCreatorUser = true;
+    console.log(`User ${req.user.username} (ID: ${req.user.id}) has creator role - cross-tenant access enabled`);
+  } else {
     req.isCreatorUser = false;
-    next();
   }
+  next();
 };
 
 /**
@@ -106,35 +100,26 @@ export const checkCreatorRole = (req: Request, res: Response, next: NextFunction
  * Creator role users are exempt from this restriction
  */
 export const tenantResourceGuard = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // If user is not authenticated, skip (auth middleware will handle)
-    if (!req.user) {
-      return next();
-    }
-    
-    // Creator role has cross-tenant access
-    if (req.isCreatorUser || req.user.role === 'creator') {
-      console.log(`Creator access granted for request: ${req.method} ${req.path}`);
-      return next();
-    }
-    
-    // If tenant is specified in request by previous middleware
-    if (req.tenant) {
-      // Make sure user belongs to this tenant
-      if (req.user.tenantId !== req.tenant.id) {
-        console.warn(`Tenant mismatch: User ${req.user.id} (tenantId: ${req.user.tenantId}) attempted to access tenant ${req.tenant.id}`);
-        return res.status(403).json({ message: "Access denied: tenant mismatch" });
-      }
-    } else {
-      // For API access where tenant is not in URL but determined by user
-      console.log(`Regular tenant access for user ${req.user.id} (tenantId: ${req.user.tenantId})`);
-      // Just proceed - user's tenantId will be used for data filtering
-    }
-    
-    next();
-  } catch (error) {
-    console.error('Error in tenantResourceGuard middleware:', error);
-    // If there's an error determining access, deny by default for security
-    return res.status(500).json({ message: "Internal server error processing tenant access" });
+  // If user is not authenticated, skip (auth middleware will handle)
+  if (!req.user) {
+    return next();
   }
+  
+  // Creator role has cross-tenant access
+  if (req.isCreatorUser || req.user.role === 'creator') {
+    return next();
+  }
+  
+  // If tenant is specified in request by previous middleware
+  if (req.tenant) {
+    // Make sure user belongs to this tenant
+    if (req.user.tenantId !== req.tenant.id) {
+      return res.status(403).json({ message: "Access denied: tenant mismatch" });
+    }
+  } else {
+    // For API access where tenant is not in URL but determined by user
+    // Just proceed - user's tenantId will be used for data filtering
+  }
+  
+  next();
 };

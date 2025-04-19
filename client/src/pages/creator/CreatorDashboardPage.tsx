@@ -9,6 +9,7 @@ import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import CreatorTicketList from "@/components/creator/CreatorTicketList";
 import CreatorUserRegistration from "@/components/creator/CreatorUserRegistration";
+import { RoleBadge } from "@/components/ui/role-badge";
 import {
   Building,
   Users,
@@ -691,12 +692,7 @@ export default function CreatorDashboardPage() {
                                   <TableCell>{user.name || "-"}</TableCell>
                                   <TableCell>{user.email || "-"}</TableCell>
                                   <TableCell>
-                                    <Badge variant={
-                                      user.role === "administrator" ? "default" :
-                                      user.role === "support_engineer" ? "secondary" : "outline"
-                                    }>
-                                      {user.role}
-                                    </Badge>
+                                    <RoleBadge role={user.role} />
                                   </TableCell>
                                   <TableCell>
                                     {user.teamId && teams ? 

@@ -138,16 +138,16 @@ export default function CreatorUserRegistration() {
     onSuccess: () => {
       toast({
         title: "User Created",
-        description: "New user has been created successfully",
+        description: "New user has been created successfully"
       });
       existingCompanyForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/creator/users'] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Registration Failed",
         description: `Error: ${error.message}`,
-        variant: "destructive",
+        variant: "destructive"
       });
     },
   });
@@ -171,16 +171,16 @@ export default function CreatorUserRegistration() {
     onSuccess: (data) => {
       toast({
         title: "Company & User Created",
-        description: `New company "${data.companyName}" created with an admin user`,
+        description: `New company "${data.companyName}" created with an admin user`
       });
       newCompanyForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/creator/tenants'] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Registration Failed",
         description: `Error: ${error.message}`,
-        variant: "destructive",
+        variant: "destructive"
       });
     },
   });

@@ -617,9 +617,21 @@ export default function CreatorDashboardPage() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          <SelectItem value="administrator">Administrator</SelectItem>
-                                          <SelectItem value="support_engineer">Support Engineer</SelectItem>
-                                          <SelectItem value="user">Regular User</SelectItem>
+                                          <SelectItem value="administrator">
+                                            <div className="flex items-center">
+                                              <RoleBadge role="administrator" size="sm" />
+                                            </div>
+                                          </SelectItem>
+                                          <SelectItem value="support_engineer">
+                                            <div className="flex items-center">
+                                              <RoleBadge role="support_engineer" size="sm" />
+                                            </div>
+                                          </SelectItem>
+                                          <SelectItem value="user">
+                                            <div className="flex items-center">
+                                              <RoleBadge role="user" size="sm" />
+                                            </div>
+                                          </SelectItem>
                                         </SelectContent>
                                       </Select>
                                       <FormMessage />

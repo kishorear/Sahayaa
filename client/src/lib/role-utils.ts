@@ -1,46 +1,44 @@
 /**
- * Role utilities to maintain consistent styling across the dashboard
+ * Utility functions and constants for handling user roles and their visual representation
  */
 
-// Define role types for type safety
 export type UserRole = 'administrator' | 'support_engineer' | 'user' | 'creator' | string;
 
-// Define the color scheme for each role
+/**
+ * Color scheme for different user roles
+ * Each role has a background, text, border, and hover color
+ */
 export const roleColors: Record<UserRole, { bg: string, text: string, border: string, hover: string }> = {
-  // Administrator: Purple
-  'administrator': {
-    bg: 'bg-purple-100 dark:bg-purple-900/30',
+  administrator: {
+    bg: 'bg-purple-100 dark:bg-purple-900/20',
     text: 'text-purple-800 dark:text-purple-300',
     border: 'border-purple-200 dark:border-purple-800',
-    hover: 'hover:bg-purple-200 dark:hover:bg-purple-800/50'
+    hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/30'
   },
-  // Support Engineer: Blue
-  'support_engineer': {
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
+  support_engineer: {
+    bg: 'bg-blue-100 dark:bg-blue-900/20',
     text: 'text-blue-800 dark:text-blue-300',
     border: 'border-blue-200 dark:border-blue-800',
-    hover: 'hover:bg-blue-200 dark:hover:bg-blue-800/50'
+    hover: 'hover:bg-blue-200 dark:hover:bg-blue-900/30'
   },
-  // Regular User: Green
-  'user': {
-    bg: 'bg-green-100 dark:bg-green-900/30',
-    text: 'text-green-800 dark:text-green-300',
-    border: 'border-green-200 dark:border-green-800',
-    hover: 'hover:bg-green-200 dark:hover:bg-green-800/50'
-  },
-  // Creator: Amber/Gold
-  'creator': {
-    bg: 'bg-amber-100 dark:bg-amber-900/30',
-    text: 'text-amber-800 dark:text-amber-300',
-    border: 'border-amber-200 dark:border-amber-800',
-    hover: 'hover:bg-amber-200 dark:hover:bg-amber-800/50'
-  },
-  // Default styling for any other role
-  'default': {
-    bg: 'bg-gray-100 dark:bg-gray-800/50',
+  user: {
+    bg: 'bg-gray-100 dark:bg-gray-800/40',
     text: 'text-gray-800 dark:text-gray-300',
     border: 'border-gray-200 dark:border-gray-700',
-    hover: 'hover:bg-gray-200 dark:hover:bg-gray-700'
+    hover: 'hover:bg-gray-200 dark:hover:bg-gray-800/60'
+  },
+  creator: {
+    bg: 'bg-amber-100 dark:bg-amber-900/20',
+    text: 'text-amber-800 dark:text-amber-300',
+    border: 'border-amber-200 dark:border-amber-800',
+    hover: 'hover:bg-amber-200 dark:hover:bg-amber-900/30'
+  },
+  // Default fallback for any unrecognized roles
+  default: {
+    bg: 'bg-slate-100 dark:bg-slate-800/40',
+    text: 'text-slate-800 dark:text-slate-300',
+    border: 'border-slate-200 dark:border-slate-700',
+    hover: 'hover:bg-slate-200 dark:hover:bg-slate-800/60'
   }
 };
 
@@ -60,7 +58,7 @@ export function getRoleColors(role: UserRole) {
  */
 export function getRoleBadgeClasses(role: UserRole) {
   const colors = getRoleColors(role);
-  return `${colors.bg} ${colors.text} ${colors.border} ${colors.hover} font-medium`;
+  return `${colors.bg} ${colors.text} ${colors.border} ${colors.hover}`;
 }
 
 /**
@@ -79,7 +77,7 @@ export function formatRoleName(role: UserRole): string {
     case 'creator':
       return 'Creator';
     default:
-      // Capitalize first letter of each word for custom roles
+      // Capitalize first letter of each word
       return role
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))

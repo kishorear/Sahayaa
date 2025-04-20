@@ -72,7 +72,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Loader2, PlusCircle, RefreshCw, UserPlus, Key, Building, User, UsersRound, X, Check, Copy, Award } from "lucide-react";
+import { Loader2, PlusCircle, RefreshCw, UserPlus, Key, Building, User, UsersRound, X, Check, Copy, Award, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 // Define the registration form schema
@@ -148,6 +148,7 @@ const RegistrationPage = () => {
   
   // Dialog states
   const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -161,7 +162,7 @@ const RegistrationPage = () => {
   // Password copy state
   const [passwordCopied, setPasswordCopied] = useState(false);
 
-  // Setup form
+  // Setup registration form
   const form = useForm<z.infer<typeof registrationSchema>>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
@@ -175,6 +176,37 @@ const RegistrationPage = () => {
       companySSO: false,
       teamId: null,
       teamName: "",
+    },
+  });
+  
+  // Define edit form schema (without password field)
+  const editUserSchema = z.object({
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    role: z.string().min(1, "Role is required"),
+    name: z.string().optional(),
+    email: z.string().email("Invalid email").optional().nullable(),
+    companyId: z.number().optional().nullable(),
+    companyName: z.string().optional().nullable(),
+    companySSO: z.boolean().optional(),
+    teamId: z.number().optional().nullable(),
+    teamName: z.string().optional().nullable(),
+    active: z.boolean().default(true),
+  });
+  
+  // Setup edit form
+  const editForm = useForm<z.infer<typeof editUserSchema>>({
+    resolver: zodResolver(editUserSchema),
+    defaultValues: {
+      username: "",
+      role: "user",
+      name: "",
+      email: "",
+      companyId: null,
+      companyName: "",
+      companySSO: false,
+      teamId: null,
+      teamName: "",
+      active: true,
     },
   });
   
@@ -264,6 +296,32 @@ const RegistrationPage = () => {
       });
     },
   });
+  
+  // Edit user mutation
+  const editUserMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof editUserSchema> & { userId: number }) => {
+      const { userId, ...userData } = data;
+      const response = await apiRequest("PATCH", `/api/creators/users/${userId}`, userData);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "User updated successfully",
+        description: "The user data has been updated in the system.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/creators/users"] });
+      setEditDialogOpen(false);
+      editForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update user",
+        description: error.message || "There was an error updating the user. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Handle registration form submission
   function onSubmit(values: z.infer<typeof registrationSchema>) {
@@ -284,6 +342,32 @@ const RegistrationPage = () => {
     
     // Create user
     createUserMutation.mutate(values);
+  }
+  
+  // Handle edit user form submission
+  function handleEditSubmit(values: z.infer<typeof editUserSchema>) {
+    // If companyId is not selected but companyName is provided, set companyId to null
+    if (!values.companyId && values.companyName) {
+      values.companyId = null;
+    }
+    
+    // If neither companyId nor companyName is provided, show error
+    if (!values.companyId && !values.companyName) {
+      toast({
+        title: "Missing company information",
+        description: "Please select an existing company or enter a new company name.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Update user
+    if (selectedUserId) {
+      editUserMutation.mutate({
+        ...values,
+        userId: selectedUserId
+      });
+    }
   }
   
   // Handle reset password
@@ -327,9 +411,17 @@ const RegistrationPage = () => {
     }
   };
   
-  // Filter teams based on selected tenant
+  // Filter teams based on selected tenant for registration form
   const getFilteredTeams = () => {
     const companyId = form.watch("companyId");
+    if (!companyId || !teamsData?.teams) return [];
+    
+    return teamsData.teams.filter(team => team.tenantId === companyId);
+  };
+  
+  // Filter teams based on selected tenant for edit form
+  const getFilteredTeamsForEdit = () => {
+    const companyId = editForm.watch("companyId");
     if (!companyId || !teamsData?.teams) return [];
     
     return teamsData.teams.filter(team => team.tenantId === companyId);

@@ -31,7 +31,8 @@ const insertAIProviderSchema = createInsertSchema(schema.aiProviders)
     priority: z.number().int().min(1).max(100).default(50),
     contextWindow: z.number().int().min(1000).max(100000).default(8000),
     maxTokens: z.number().int().min(100).max(10000).default(1000),
-    temperature: z.number().min(0).max(1).default(0.7),
+    temperature: z.number().min(0).max(1).default(0.7)
+      .transform(val => Math.round(val * 10)), // Convert 0-1 float to 0-10 integer
     settings: z.record(z.any()).optional()
   })
   .omit({ id: true, createdAt: true, updatedAt: true });

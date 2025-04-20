@@ -81,9 +81,18 @@ const createUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   company: z.string().min(2, "Company name must be at least 2 characters").optional(),
-  role: z.enum(["administrator", "support_engineer", "user"]),
+  role: z.enum(["creator", "administrator", "support_engineer", "user"]),
   tenantId: z.number().min(1, "Tenant ID is required"),
   teamId: z.number().optional(),
+}).refine((data) => {
+  // Make company required only for creator role
+  if (data.role === 'creator') {
+    return !!data.company;
+  }
+  return true;
+}, {
+  message: "Company is required for creator accounts",
+  path: ["company"],
 });
 
 export default function CreatorDashboardPage() {
@@ -323,6 +332,9 @@ export default function CreatorDashboardPage() {
       createUserForm.setValue('tenantId', selectedTenantId);
     }
   }, [selectedTenantId, createUserForm]);
+  
+  // Watch the role field to update the company field requirement
+  const selectedRole = createUserForm.watch('role');
   
   // Handle form submissions
   const onCreateTenantSubmit = (data: z.infer<typeof createTenantSchema>) => {
@@ -605,12 +617,16 @@ export default function CreatorDashboardPage() {
                                   name="company"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Company</FormLabel>
+                                      <FormLabel className="flex items-center">
+                                        Company {selectedRole === "creator" && <span className="ml-1 text-red-500">*</span>}
+                                      </FormLabel>
                                       <FormControl>
                                         <Input placeholder="Acme Corporation" {...field} />
                                       </FormControl>
                                       <FormDescription>
-                                        The company or organization the user represents
+                                        {selectedRole === "creator" 
+                                          ? "The company or organization the user represents (required for creator accounts)"
+                                          : "The company or organization the user represents (optional)"}
                                       </FormDescription>
                                       <FormMessage />
                                     </FormItem>
@@ -629,6 +645,7 @@ export default function CreatorDashboardPage() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
+                                          <SelectItem value="creator">Creator</SelectItem>
                                           <SelectItem value="administrator">Administrator</SelectItem>
                                           <SelectItem value="support_engineer">Support Engineer</SelectItem>
                                           <SelectItem value="user">Regular User</SelectItem>
@@ -707,6 +724,7 @@ export default function CreatorDashboardPage() {
                                   <TableCell>{user.company || "-"}</TableCell>
                                   <TableCell>
                                     <Badge variant={
+                                      user.role === "creator" ? "destructive" :
                                       user.role === "administrator" ? "default" :
                                       user.role === "support_engineer" ? "secondary" : "outline"
                                     }>

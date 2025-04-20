@@ -46,6 +46,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
@@ -1218,6 +1219,261 @@ const RegistrationPage = () => {
                 </DialogFooter>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+        
+        {/* Edit User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit size={18} />
+                Edit User
+              </DialogTitle>
+              <DialogDescription>
+                Update user information. You can change their role, name, email, company, and team.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-6">
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Username field */}
+                    <div className="space-y-2">
+                      <FormField
+                        control={editForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="johndoe" {...field} readOnly />
+                            </FormControl>
+                            <FormDescription>
+                              Cannot be changed
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    {/* Role field */}
+                    <div className="space-y-2">
+                      <FormField
+                        control={editForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Role</FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">User</SelectItem>
+                                  <SelectItem value="support_engineer">Support Engineer</SelectItem>
+                                  <SelectItem value="administrator">Administrator</SelectItem>
+                                  <SelectItem value="creator">Creator</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormDescription>
+                              User's role in the system
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Name and Email fields */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <FormField
+                        control={editForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="John Doe" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              User's full name
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <FormField
+                        control={editForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="john@example.com" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormDescription>
+                              User's email address
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Company field */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="companyId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value?.toString() || ""}
+                              onValueChange={(value) => {
+                                const numValue = value ? parseInt(value) : null;
+                                field.onChange(numValue);
+                                
+                                // Clear team selection if company changes
+                                if (numValue !== field.value) {
+                                  editForm.setValue("teamId", null);
+                                }
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select company" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {tenantsData?.tenants.map((tenant) => (
+                                  <SelectItem key={tenant.id} value={tenant.id.toString()}>
+                                    {tenant.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            Select an existing company or create a new one
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* New Company Name */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Company Name (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter new company name if not in the list above" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormDescription>
+                            If the company doesn't exist, enter a new company name
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* Team field - only shows teams from selected company */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="teamId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Team</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value?.toString() || ""}
+                              onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                              disabled={!editForm.watch("companyId")}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select team" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">No Team</SelectItem>
+                                {getFilteredTeamsForEdit().map((team) => (
+                                  <SelectItem key={team.id} value={team.id.toString()}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            Select a team (optional)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* Active status */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="active"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>Active Status</FormLabel>
+                            <FormDescription>
+                              Determine if this user account is active
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button type="button" variant="secondary" onClick={() => setEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={editUserMutation.isPending}>
+                    {editUserMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>

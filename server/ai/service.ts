@@ -285,21 +285,63 @@ export async function summarizeConversation(
 /**
  * Load AI providers for a tenant from the database
  * Similar to the function in routes, but kept here to avoid circular dependencies
+ * 
+ * @param tenantId The tenant ID to load providers for
+ * @param teamId Optional team ID to filter providers by
  */
-export async function reloadProvidersFromDatabase(tenantId: number): Promise<void> {
+export async function reloadProvidersFromDatabase(tenantId: number, teamId?: number | null): Promise<void> {
   try {
     // Import storage directly to avoid circular dependencies
     const { storage } = await import('../storage');
     
     // Get providers for this tenant
-    const providers = await storage.getAiProviders(tenantId);
+    let providers = await storage.getAiProviders(tenantId);
+    
+    // Filter by team ID if provided
+    if (teamId !== undefined) {
+      // Include both team-specific providers and tenant-wide providers (null teamId)
+      providers = providers.filter(p => p.teamId === teamId || p.teamId === null);
+    }
     
     // Initialize the factory with these configurations
     AIProviderFactory.loadProvidersFromDatabase(tenantId, providers);
     
-    console.log(`Reloaded ${providers.length} AI providers from database for tenant ${tenantId}`);
+    const teamLog = teamId !== undefined ? ` for team ${teamId}` : '';
+    console.log(`Reloaded ${providers.length} AI providers from database for tenant ${tenantId}${teamLog}`);
   } catch (error) {
     console.error(`Failed to reload AI providers for tenant ${tenantId}:`, error);
+  }
+}
+
+/**
+ * Check if a user has access to AI providers
+ * 
+ * @param tenantId The tenant ID
+ * @param teamId The team ID (can be null)
+ * @returns True if the user has access to any AI providers
+ */
+export async function getAiProviderAccessForUser(tenantId: number, teamId: number | null): Promise<boolean> {
+  try {
+    // Import storage directly to avoid circular dependencies
+    const { storage } = await import('../storage');
+    
+    // Get all enabled AI providers for the tenant
+    const providers = await storage.getAiProviders(tenantId);
+    
+    if (!providers || providers.length === 0) {
+      return false;
+    }
+    
+    // If user is not in a team, they can only access tenant-wide providers
+    if (!teamId) {
+      return providers.some(p => p.teamId === null);
+    }
+    
+    // Check for team-specific or tenant-wide providers
+    return providers.some(p => p.teamId === teamId || p.teamId === null);
+  } catch (error) {
+    console.error(`Error checking AI provider access for tenant ${tenantId}, team ${teamId}:`, error);
+    return false;
   }
 }
 

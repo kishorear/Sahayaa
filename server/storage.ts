@@ -1467,10 +1467,19 @@ export class MemStorage implements IStorage {
   }
   
   // AI provider operations
-  async getAiProviders(tenantId: number): Promise<AiProvider[]> {
-    return Array.from(this.aiProviders.values()).filter(
+  async getAiProviders(tenantId: number, teamId?: number | null): Promise<AiProvider[]> {
+    const providers = Array.from(this.aiProviders.values()).filter(
       (provider) => provider.tenantId === tenantId
     );
+    
+    if (teamId !== undefined) {
+      // Filter for team-specific providers and tenant-wide providers (null teamId)
+      return providers.filter(
+        provider => provider.teamId === teamId || provider.teamId === null
+      );
+    }
+    
+    return providers;
   }
   
   async getAiProviderById(id: number, tenantId?: number): Promise<AiProvider | undefined> {
@@ -2246,8 +2255,28 @@ export class DatabaseStorage implements IStorage {
   }
   
   // AI provider operations
-  async getAiProviders(tenantId: number): Promise<AiProvider[]> {
-    return await db.select().from(aiProviders).where(eq(aiProviders.tenantId, tenantId));
+  async getAiProviders(tenantId: number, teamId?: number | null): Promise<AiProvider[]> {
+    if (teamId !== undefined) {
+      // Get both team-specific providers and tenant-wide providers (null teamId)
+      return await db
+        .select()
+        .from(aiProviders)
+        .where(
+          and(
+            eq(aiProviders.tenantId, tenantId),
+            or(
+              eq(aiProviders.teamId, teamId),
+              isNull(aiProviders.teamId)
+            )
+          )
+        );
+    } else {
+      // Get all providers for this tenant
+      return await db
+        .select()
+        .from(aiProviders)
+        .where(eq(aiProviders.tenantId, tenantId));
+    }
   }
   
   async getAiProviderById(id: number, tenantId?: number): Promise<AiProvider | undefined> {

@@ -153,6 +153,7 @@ export default function CreatorDashboardPage() {
     username: string;
     name: string | null;
     email: string | null;
+    company: string | null;
     role: string;
     tenantId: number;
     teamId: number | null;
@@ -601,6 +602,22 @@ export default function CreatorDashboardPage() {
                                 />
                                 <FormField
                                   control={createUserForm.control}
+                                  name="company"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Company</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="Acme Corporation" {...field} />
+                                      </FormControl>
+                                      <FormDescription>
+                                        The company or organization the user represents
+                                      </FormDescription>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={createUserForm.control}
                                   name="role"
                                   render={({ field }) => (
                                     <FormItem>
@@ -675,6 +692,7 @@ export default function CreatorDashboardPage() {
                                 <TableHead>Username</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
+                                <TableHead>Company</TableHead>
                                 <TableHead>Role</TableHead>
                                 <TableHead>Team</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -686,6 +704,7 @@ export default function CreatorDashboardPage() {
                                   <TableCell>{user.username}</TableCell>
                                   <TableCell>{user.name || "-"}</TableCell>
                                   <TableCell>{user.email || "-"}</TableCell>
+                                  <TableCell>{user.company || "-"}</TableCell>
                                   <TableCell>
                                     <Badge variant={
                                       user.role === "administrator" ? "default" :

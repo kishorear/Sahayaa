@@ -235,6 +235,7 @@ router.get('/users', requireCreator, async (req: Request, res: Response) => {
       role: users.role,
       name: users.name,
       email: users.email,
+      company: users.company,
       profilePicture: users.profilePicture,
       mfaEnabled: users.mfaEnabled,
       ssoEnabled: users.ssoEnabled,
@@ -261,7 +262,7 @@ router.get('/users', requireCreator, async (req: Request, res: Response) => {
  */
 router.post('/users', requireCreator, async (req: Request, res: Response) => {
   try {
-    const { username, password, role, name, email, tenantId, teamId } = req.body;
+    const { username, password, role, name, email, company, tenantId, teamId } = req.body;
     
     if (!username || !password || !role || !tenantId) {
       return res.status(400).json({ message: 'Username, password, role, and tenantId are required' });
@@ -312,6 +313,7 @@ router.post('/users', requireCreator, async (req: Request, res: Response) => {
       role,
       name: name || null,
       email: email || null,
+      company: company || null,
       tenantId,
       teamId: teamId || null,
     };
@@ -324,6 +326,7 @@ router.post('/users', requireCreator, async (req: Request, res: Response) => {
       role: users.role,
       name: users.name,
       email: users.email,
+      company: users.company,
       profilePicture: users.profilePicture,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,

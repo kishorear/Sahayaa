@@ -1,6 +1,7 @@
 import React from 'react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { useAiProviderAvailability } from '@/hooks/use-ai-provider';
-import { Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type AIFeatureGuardProps = {
   children: React.ReactNode;
@@ -24,55 +25,47 @@ export function AIFeatureGuard({
   fallback,
   loadingComponent,
   hideOnUnavailable = false,
-  featureDescription = "This AI feature"
+  featureDescription = 'AI-powered features'
 }: AIFeatureGuardProps) {
   const { isAvailable, isLoading, error } = useAiProviderAvailability();
 
-  // While loading, show loading component or default loading state
+  // Show loading state while checking availability
   if (isLoading) {
     return loadingComponent || (
-      <div className="flex items-center justify-center py-4 text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        <span>Checking AI availability...</span>
+      <div className="flex items-center justify-center p-4">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  // If error occurred, show error state
+  // Show error state if there was an error checking availability
   if (error) {
-    return hideOnUnavailable ? null : (
-      <div className="p-4 border rounded-md bg-muted">
-        <div className="flex items-center text-destructive mb-2">
-          <AlertCircle className="h-4 w-4 mr-2" />
-          <span className="font-medium">Error checking AI availability</span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {featureDescription} is temporarily unavailable. Please try again later.
-        </p>
-      </div>
-    );
-  }
-
-  // If AI isn't available, show fallback or default unavailable state
-  if (!isAvailable) {
-    if (hideOnUnavailable) {
-      return null;
-    }
-
+    if (hideOnUnavailable) return null;
+    
     return fallback || (
-      <div className="p-4 border rounded-md bg-muted">
-        <div className="flex items-center text-amber-500 mb-2">
-          <ShieldAlert className="h-4 w-4 mr-2" />
-          <span className="font-medium">AI Features Unavailable</span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {featureDescription} is not available for your account. 
-          Please contact your administrator to enable AI features for your team.
-        </p>
-      </div>
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Unable to check availability of {featureDescription}. Please try again later.
+        </AlertDescription>
+      </Alert>
     );
   }
 
-  // AI is available, render the feature
-  return <>{children}</>;
+  // AI features are available, render children
+  if (isAvailable) {
+    return <>{children}</>;
+  }
+
+  // AI features are not available
+  if (hideOnUnavailable) return null;
+  
+  return fallback || (
+    <Alert className="mb-4 border-yellow-500 bg-yellow-50 text-yellow-900">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>
+        {featureDescription} are not available. Contact your administrator to set up AI providers for your team.
+      </AlertDescription>
+    </Alert>
+  );
 }

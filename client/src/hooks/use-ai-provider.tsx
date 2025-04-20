@@ -1,5 +1,27 @@
-import { useQuery } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+
+type AiAvailabilityResponse = {
+  available: boolean;
+};
+
+type AiProviderResponse = {
+  id: number;
+  name: string;
+  provider: string;
+  model: string;
+  teamId: number | null;
+  isDefault: boolean;
+  hasApiKey: boolean;
+};
+
+type AiProvidersResponse = {
+  providers: AiProviderResponse[];
+};
+
+type AiDefaultProviderResponse = {
+  provider: AiProviderResponse | null;
+};
 
 /**
  * Custom hook to check if AI features should be available for the current user
@@ -10,15 +32,11 @@ import { queryClient } from '@/lib/queryClient';
  *  - error: error object if the check failed
  */
 export function useAiProviderAvailability() {
-  const {
-    data,
-    isLoading,
-    error
-  } = useQuery({
+  const { data, isLoading, error } = useQuery<AiAvailabilityResponse>({
     queryKey: ['/api/ai/availability'],
-    // No explicit queryFn needed as we use the default fetcher
-    staleTime: 5 * 60 * 1000, // 5 minutes - reasonable caching
-    retry: 1, // Only retry once to avoid spamming logs on failure
+    refetchOnWindowFocus: false,
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   return {
@@ -37,16 +55,11 @@ export function useAiProviderAvailability() {
  *  - error: error object if the fetch failed
  */
 export function useAvailableAiProviders() {
-  const {
-    data,
-    isLoading,
-    error
-  } = useQuery({
+  const { data, isLoading, error } = useQuery<AiProvidersResponse>({
     queryKey: ['/api/ai/providers'],
-    // Don't fetch if AI features aren't available (determined by useAiProviderAvailability)
-    enabled: queryClient.getQueryData(['/api/ai/availability'])?.available === true,
+    refetchOnWindowFocus: false,
+    retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1, // Only retry once
   });
 
   return {
@@ -65,21 +78,31 @@ export function useAvailableAiProviders() {
  *  - error: error object if the fetch failed
  */
 export function useDefaultAiProvider() {
-  const {
-    data,
-    isLoading,
-    error
-  } = useQuery({
+  const { data, isLoading, error } = useQuery<AiDefaultProviderResponse>({
     queryKey: ['/api/ai/providers/default'],
-    // Don't fetch if AI features aren't available
-    enabled: queryClient.getQueryData(['/api/ai/availability'])?.available === true,
+    refetchOnWindowFocus: false,
+    retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1, // Only retry once
   });
 
   return {
-    provider: data?.provider,
+    provider: data?.provider || null,
     isLoading,
     error
   };
+}
+
+/**
+ * Utility function to refresh all AI provider data in the cache
+ */
+export function refreshAiProviderData() {
+  queryClient.invalidateQueries({ 
+    queryKey: ['/api/ai/availability'] 
+  });
+  queryClient.invalidateQueries({ 
+    queryKey: ['/api/ai/providers'] 
+  });
+  queryClient.invalidateQueries({ 
+    queryKey: ['/api/ai/providers/default'] 
+  });
 }

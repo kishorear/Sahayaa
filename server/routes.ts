@@ -37,6 +37,8 @@ import { registerDownloadRoutes } from "./routes/download-routes";
 import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
 // Import creator routes for multi-tenant management
 import creatorRoutes from "./routes/creator-routes";
+// Import AI provider availability routes
+import aiAvailabilityRoutes from "./routes/ai-availability-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -169,12 +171,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register widget download routes
   registerWidgetDownloadRoutes(app);
   
+  // Register AI availability routes
+  app.use('/api/ai', aiAvailabilityRoutes);
+  
   // Initialize SSO service for all tenants
   try {
     const ssoService = getSsoService();
     await ssoService.initializeProviders(1); // Initialize for default tenant
   } catch (error) {
     console.error("Failed to initialize SSO providers:", error);
+  }
+  
+  // Initialize AI providers cache during app startup
+  try {
+    console.log("Initializing AI providers cache...");
+    await reloadProvidersFromDatabase();
+    console.log("AI providers cache initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize AI providers cache:", error);
   }
 
   // TICKET ROUTES - Protected routes for support staff and admins

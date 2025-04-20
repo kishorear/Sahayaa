@@ -14,7 +14,8 @@ import {
   FileText,
   ChevronLeft,
   UserCog,
-  MessageSquare
+  MessageSquare,
+  UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -54,6 +55,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       label: "Team", 
       icon: Users,
       roles: ["administrator", "creator"] // Only admins and creators manage team
+    },
+    { 
+      path: "/admin/registration", 
+      label: "Registration", 
+      icon: UserPlus,
+      roles: ["creator"] // Only creators can access the registration page
     },
     { 
       path: "/admin/documents", 

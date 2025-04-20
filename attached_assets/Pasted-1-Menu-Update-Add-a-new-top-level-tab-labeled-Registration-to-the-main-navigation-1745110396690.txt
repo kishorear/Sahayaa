@@ -1,0 +1,30 @@
+1. **Menu Update**  
+   - Add a new top‑level tab labeled **“Registration”** to the main navigation menu.  
+   - Ensure this tab is **only visible** to users authenticated with the **Creator** role.
+
+2. **Registration Dashboard**  
+   Under the “Registration” tab, create a dashboard with two sections:  
+   a. **Add New User**  
+      - A form with fields: `username`, `password`, `companyId`, `companyName`, `companySSO`, and `role` (e.g., Admin, User).  
+      - On submission, call a secured backend endpoint to create the user record scoped to the specified company.  
+   b. **Manage Users & Permissions**  
+      - A paginated list of all users across tenants, showing: username, companyId, companyName, role, status.  
+      - “Edit” action to change a user’s role or company assignment.  
+      - “Deactivate”/“Delete” action for removing access.  
+      - “Reset Password” action to send a password reset email.
+
+3. **Backend Enforcement**  
+   - Create or update REST endpoints under `/api/creators/users/*` guarded by a “CreatorOnly” middleware.  
+   - Ensure all user‑management operations check the caller’s Creator role before proceeding.  
+   - Maintain tenant isolation: whenever a creator creates or edits a user, the `companyId` they assign determines that user’s data scope.
+
+4. **Security & Validation**  
+   - Validate all form inputs (e.g., unique usernames, valid company IDs, secure password strength).  
+   - Log creator actions for audit trail (e.g., “Creator X added user Y to company Z at timestamp”).
+
+5. **Deliverables**  
+   - Updated frontend components/routes for the “Registration” tab and pages.  
+   - New or updated backend controllers, routes, and authorization middleware.  
+   - A brief README section or comments summarizing the new menu item, features, and how to test the Creator flows.
+
+Write clear, modular, and well‑commented code following existing project conventions. At the end, provide a bullet‑point summary of all changes made.

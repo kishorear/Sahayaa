@@ -58,6 +58,24 @@ export const teams = pgTable("teams", {
 
 export const insertTeamSchema = createInsertSchema(teams)
   .omit({ id: true, createdAt: true, updatedAt: true });
+  
+// Team Members table for managing team membership
+export const teamMembers = pgTable("team_members", {
+  id: serial("id").primaryKey(),
+  teamId: integer("teamId").notNull(),
+  userId: integer("userId").notNull(),
+  role: text("role").notNull().default("member"), // member, leader, admin
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Create a unique index on userId + teamId to prevent duplicate memberships
+    membershipUnique: uniqueIndex("membership_unique").on(table.userId, table.teamId),
+  };
+});
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers)
+  .omit({ id: true, createdAt: true, updatedAt: true });
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -171,6 +189,9 @@ export type InsertTenant = z.infer<typeof insertTenantSchema>;
 
 export type Team = typeof teams.$inferSelect;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;

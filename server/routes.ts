@@ -155,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/teams', teamRoutes);
   
   // Register creator routes for multi-tenant management
-  app.use('/api/creator', creatorRoutes);
+  app.use('/api/creators', creatorRoutes);
   
   // Register profile routes
   registerProfileRoutes(app, requireAuth);

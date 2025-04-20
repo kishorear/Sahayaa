@@ -28,6 +28,7 @@ import CreatorDashboardPage from "@/pages/creator/CreatorDashboardPage"; // Crea
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CreatorProtectedRoute } from "@/lib/creator-protected-route"; // Creator route protection
+import RegistrationPage from "@/pages/admin/RegistrationPage"; // Registration page
 
 function Router() {
   return (
@@ -60,6 +61,7 @@ function Router() {
       <ProtectedRoute path="/admin/profile" component={ProfilePage} />
       <ProtectedRoute path="/admin/widget" component={ChatWidgetPage} />
       <ProtectedRoute path="/admin/ai-settings" component={AISettingsPage} />
+      <CreatorProtectedRoute path="/admin/registration" component={RegistrationPage} />
       
       {/* 404 Route */}
       <Route component={NotFound} />

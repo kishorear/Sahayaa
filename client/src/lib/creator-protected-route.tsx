@@ -3,7 +3,9 @@ import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 
 /**
- * A route component that only allows access to users with the creator role
+ * CreatorProtectedRoute component
+ * Only allows access to users with the creator role
+ * Redirects to homepage or shows loading state otherwise
  */
 export function CreatorProtectedRoute({
   path,
@@ -24,14 +26,17 @@ export function CreatorProtectedRoute({
     );
   }
 
-  // Check if user exists and has creator role
+  // Check if user is authenticated and has creator role
   if (!user || user.role !== "creator") {
     return (
       <Route path={path}>
-        <Redirect to="/creator/login" />
+        <Redirect to="/" />
       </Route>
     );
   }
 
+  // If user is authenticated and has creator role, render the component
   return <Route path={path} component={Component} />;
 }
+
+export default CreatorProtectedRoute;

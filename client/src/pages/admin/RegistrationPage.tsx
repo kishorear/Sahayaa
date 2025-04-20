@@ -802,7 +802,7 @@ const RegistrationPage = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Select company...</SelectItem>
+                              <SelectItem value="0">Select company...</SelectItem>
                               {tenantsData?.tenants.map((tenant) => (
                                 <SelectItem key={tenant.id} value={tenant.id.toString()}>
                                   {tenant.name}
@@ -894,7 +894,7 @@ const RegistrationPage = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">No team</SelectItem>
+                              <SelectItem value="0">No team</SelectItem>
                               {getFilteredTeams().map((team) => (
                                 <SelectItem key={team.id} value={team.id.toString()}>
                                   {team.name}

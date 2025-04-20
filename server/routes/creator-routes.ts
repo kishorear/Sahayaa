@@ -97,7 +97,6 @@ router.get("/users", requireCreatorRole, async (req: Request, res: Response) => 
         tenantId: users.tenantId,
         teamId: users.teamId,
         profilePicture: users.profilePicture,
-        active: users.active,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt
       })
@@ -109,7 +108,7 @@ router.get("/users", requireCreatorRole, async (req: Request, res: Response) => 
     
     // Get total count for pagination
     const countQuery = db
-      .select({ count: db.fn.count() })
+      .select({ count: db.sql`count(*)` })
       .from(users)
       .where(searchCondition);
     
@@ -119,27 +118,34 @@ router.get("/users", requireCreatorRole, async (req: Request, res: Response) => 
     // Get tenant names for users
     const tenantIds = [...new Set(userResults.map(user => user.tenantId))];
     
-    const tenantsQuery = db
-      .select({
-        id: tenants.id,
-        name: tenants.name
-      })
-      .from(tenants)
-      .where(tenants.id.in(tenantIds));
+    let tenantResults: { id: number; name: string }[] = [];
+    
+    if (tenantIds.length > 0) {
+      const conditions = tenantIds.map(id => eq(tenants.id, id));
+      tenantResults = await db
+        .select({
+          id: tenants.id,
+          name: tenants.name
+        })
+        .from(tenants)
+        .where(conditions.length === 1 ? conditions[0] : or(...conditions));
+    }
     
     // Get team names for users
     const teamIds = [...new Set(userResults.map(user => user.teamId).filter(Boolean) as number[])];
     
-    const teamsQuery = teamIds.length > 0 ? db
-      .select({
-        id: teams.id,
-        name: teams.name
-      })
-      .from(teams)
-      .where(teams.id.in(teamIds)) : Promise.resolve([]);
+    let teamResults: { id: number; name: string }[] = [];
     
-    // Execute tenant and team queries
-    const [tenantResults, teamResults] = await Promise.all([tenantsQuery, teamsQuery]);
+    if (teamIds.length > 0) {
+      const conditions = teamIds.map(id => eq(teams.id, id));
+      teamResults = await db
+        .select({
+          id: teams.id,
+          name: teams.name
+        })
+        .from(teams)
+        .where(conditions.length === 1 ? conditions[0] : or(...conditions));
+    }
     
     // Create lookup maps
     const tenantMap = new Map(tenantResults.map(tenant => [tenant.id, tenant.name]));
@@ -228,15 +234,18 @@ router.get("/teams", requireCreatorRole, async (req: Request, res: Response) => 
     // Get tenant names for teams
     const tenantIds = [...new Set(teamResults.map(team => team.tenantId))];
     
-    const tenantsQuery = db
-      .select({
-        id: tenants.id,
-        name: tenants.name
-      })
-      .from(tenants)
-      .where(tenants.id.in(tenantIds));
+    let tenantResults: { id: number; name: string }[] = [];
     
-    const tenantResults = await tenantsQuery;
+    if (tenantIds.length > 0) {
+      const conditions = tenantIds.map(id => eq(tenants.id, id));
+      tenantResults = await db
+        .select({
+          id: tenants.id,
+          name: tenants.name
+        })
+        .from(tenants)
+        .where(conditions.length === 1 ? conditions[0] : or(...conditions));
+    }
     
     // Create lookup map
     const tenantMap = new Map(tenantResults.map(tenant => [tenant.id, tenant.name]));
@@ -351,26 +360,28 @@ router.post("/users", requireCreatorRole, async (req: Request, res: Response) =>
     const hashedPassword = await hashPassword(password);
     
     // Create the user
+    const userInsert = {
+      username,
+      password: hashedPassword,
+      role,
+      name: name || null,
+      email: email || null,
+      tenantId,
+      teamId: userTeamId || null,
+      profilePicture: null,
+      mfaEnabled: false,
+      mfaSecret: null,
+      mfaBackupCodes: [],
+      ssoEnabled: false,
+      ssoProvider: null,
+      ssoProviderId: null,
+      ssoProviderData: {},
+      active: true
+    };
+    
     const [newUser] = await db
       .insert(users)
-      .values({
-        username,
-        password: hashedPassword,
-        role,
-        name: name || null,
-        email: email || null,
-        tenantId,
-        teamId: userTeamId || null,
-        profilePicture: null,
-        mfaEnabled: false,
-        mfaSecret: null,
-        mfaBackupCodes: [],
-        ssoEnabled: false,
-        ssoProvider: null,
-        ssoProviderId: null,
-        ssoProviderData: {},
-        active: true
-      })
+      .values(userInsert)
       .returning();
     
     // If a team was specified, add user to the team
@@ -615,7 +626,8 @@ router.delete("/users/:id", requireCreatorRole, async (req: Request, res: Respon
     // Log the action
     logCreatorAction(req.user!.id, "delete_user", {
       userId,
-      username: user.username
+      username: user.username,
+      tenantId: user.tenantId
     }, userId, user.tenantId);
     
     // Return success response
@@ -628,73 +640,5 @@ router.delete("/users/:id", requireCreatorRole, async (req: Request, res: Respon
   }
 });
 
-/**
- * Get user details
- * GET /api/creators/users/:id
- */
-router.get("/users/:id", requireCreatorRole, async (req: Request, res: Response) => {
-  try {
-    const userId = parseInt(req.params.id);
-    
-    // Validation
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-    
-    // Get user details
-    const userQuery = db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    
-    const [user] = await userQuery;
-    
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    
-    // Get tenant details
-    const [tenant] = await db
-      .select({
-        id: tenants.id,
-        name: tenants.name
-      })
-      .from(tenants)
-      .where(eq(tenants.id, user.tenantId))
-      .limit(1);
-    
-    // Get team details if user has a team
-    let team = null;
-    
-    if (user.teamId) {
-      const [teamResult] = await db
-        .select({
-          id: teams.id,
-          name: teams.name
-        })
-        .from(teams)
-        .where(eq(teams.id, user.teamId))
-        .limit(1);
-      
-      team = teamResult;
-    }
-    
-    // Log the action
-    logCreatorAction(req.user!.id, "view_user", {
-      userId
-    }, userId, user.tenantId);
-    
-    // Return user details with tenant and team info
-    return res.status(200).json({
-      ...user,
-      tenant: tenant || { id: user.tenantId, name: `Tenant ${user.tenantId}` },
-      team
-    });
-  } catch (error) {
-    console.error("Error fetching user details:", error);
-    return res.status(500).json({ message: "Failed to fetch user details" });
-  }
-});
-
+// Export the router
 export default router;

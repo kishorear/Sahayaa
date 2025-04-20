@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { DirectRegistrationForm } from "@/components/admin/DirectRegistrationForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -365,6 +366,9 @@ const RegistrationPage = () => {
           </TabsList>
           
           <TabsContent value="user-management" className="space-y-4">
+            {/* Direct Registration Form */}
+            <DirectRegistrationForm />
+            
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">

@@ -1,108 +1,114 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { queryClient } from "@/lib/queryClient";
 
-type AiAvailabilityResponse = {
-  available: boolean;
-};
-
-type AiProviderResponse = {
+/**
+ * Type for AI provider information returned from API
+ */
+interface AIProvider {
   id: number;
   name: string;
-  provider: string;
+  type: string;
   model: string;
   teamId: number | null;
   isDefault: boolean;
   hasApiKey: boolean;
-};
-
-type AiProvidersResponse = {
-  providers: AiProviderResponse[];
-};
-
-type AiDefaultProviderResponse = {
-  provider: AiProviderResponse | null;
-};
-
-/**
- * Custom hook to check if AI features should be available for the current user
- * 
- * @returns Object containing:
- *  - isAvailable: boolean indicating if AI features are available
- *  - isLoading: boolean indicating if the check is in progress
- *  - error: error object if the check failed
- */
-export function useAiProviderAvailability() {
-  const { data, isLoading, error } = useQuery<AiAvailabilityResponse>({
-    queryKey: ['/api/ai/availability'],
-    refetchOnWindowFocus: false,
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  return {
-    isAvailable: data?.available || false,
-    isLoading,
-    error
-  };
 }
 
 /**
- * Custom hook to fetch available AI providers for the current user
- * 
- * @returns Object containing:
- *  - providers: array of available AI providers
- *  - isLoading: boolean indicating if the fetch is in progress
- *  - error: error object if the fetch failed
+ * Context for AI provider availability
  */
-export function useAvailableAiProviders() {
-  const { data, isLoading, error } = useQuery<AiProvidersResponse>({
-    queryKey: ['/api/ai/providers'],
-    refetchOnWindowFocus: false,
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+interface AIProviderContextType {
+  isAvailable: boolean | null;
+  isLoading: boolean;
+  error: Error | null;
+  providers: AIProvider[];
+  defaultProvider: AIProvider | null;
+  providersLoading: boolean;
+  providersError: Error | null;
+  refreshProviders: () => void;
+}
+
+const AIProviderContext = createContext<AIProviderContextType | null>(null);
+
+/**
+ * Provider for AI availability context
+ * This wraps the application to provide global access to AI availability status
+ */
+export function AIProviderProvider({ children }: { children: ReactNode }) {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const {
+    data: availabilityData,
+    isLoading,
+    error,
+  } = useQuery<{ available: boolean }>({
+    queryKey: ["/api/ai/availability"],
+    retry: false,
   });
 
-  return {
-    providers: data?.providers || [],
-    isLoading,
-    error
+  const {
+    data: providersData,
+    isLoading: providersLoading,
+    error: providersError,
+  } = useQuery<{ providers: AIProvider[] }>({
+    queryKey: ["/api/ai/providers", refreshKey],
+    enabled: !!availabilityData?.available,
+    retry: false,
+  });
+
+  const {
+    data: defaultProviderData,
+    isLoading: defaultProviderLoading,
+    error: defaultProviderError,
+  } = useQuery<{ provider: AIProvider | null }>({
+    queryKey: ["/api/ai/providers/default", refreshKey],
+    enabled: !!availabilityData?.available,
+    retry: false,
+  });
+
+  const refreshProviders = () => {
+    setRefreshKey((prev) => prev + 1);
   };
+
+  const value = {
+    isAvailable: availabilityData?.available ?? null,
+    isLoading,
+    error: error as Error | null,
+    providers: providersData?.providers || [],
+    defaultProvider: defaultProviderData?.provider || null,
+    providersLoading: providersLoading || defaultProviderLoading,
+    providersError: (providersError || defaultProviderError) as Error | null,
+    refreshProviders,
+  };
+
+  return (
+    <AIProviderContext.Provider value={value}>
+      {children}
+    </AIProviderContext.Provider>
+  );
 }
 
 /**
- * Custom hook to fetch the default AI provider for the current user
- * 
- * @returns Object containing:
- *  - provider: the default AI provider or undefined
- *  - isLoading: boolean indicating if the fetch is in progress
- *  - error: error object if the fetch failed
+ * Hook to access AI availability status
+ * Use this to conditionally render AI features based on availability
  */
-export function useDefaultAiProvider() {
-  const { data, isLoading, error } = useQuery<AiDefaultProviderResponse>({
-    queryKey: ['/api/ai/providers/default'],
-    refetchOnWindowFocus: false,
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  return {
-    provider: data?.provider || null,
-    isLoading,
-    error
-  };
+export function useAIProvider() {
+  const context = useContext(AIProviderContext);
+  
+  if (context === null) {
+    throw new Error("useAIProvider must be used within an AIProviderProvider");
+  }
+  
+  return context;
 }
 
 /**
- * Utility function to refresh all AI provider data in the cache
+ * Utility function to invalidate AI provider cache
+ * Used after making changes to AI providers
  */
-export function refreshAiProviderData() {
-  queryClient.invalidateQueries({ 
-    queryKey: ['/api/ai/availability'] 
-  });
-  queryClient.invalidateQueries({ 
-    queryKey: ['/api/ai/providers'] 
-  });
-  queryClient.invalidateQueries({ 
-    queryKey: ['/api/ai/providers/default'] 
-  });
+export function invalidateAIProviderCache() {
+  queryClient.invalidateQueries({ queryKey: ["/api/ai/availability"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/ai/providers"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/ai/providers/default"] });
 }

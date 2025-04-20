@@ -1,71 +1,74 @@
-import React from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { useAiProviderAvailability } from '@/hooks/use-ai-provider';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ReactNode } from "react";
+import { useAIProvider } from "@/hooks/use-ai-provider";
+import { Loader2, AlertTriangle } from "lucide-react";
 
-type AIFeatureGuardProps = {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-  loadingComponent?: React.ReactNode;
-  hideOnUnavailable?: boolean;
-  featureDescription?: string;
-};
+interface AIFeatureGuardProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+  loadingFallback?: ReactNode;
+  showAlertOnUnavailable?: boolean;
+}
 
 /**
- * Component that conditionally renders AI-powered features only when available
+ * Component that conditionally renders children based on AI provider availability
+ * Use this to wrap components that require AI functionality
  * 
- * @param children The AI-powered feature components to conditionally render
- * @param fallback Optional component to show when AI is unavailable
- * @param loadingComponent Optional component to show during loading
- * @param hideOnUnavailable Whether to hide completely when unavailable (default: false)
- * @param featureDescription Optional description of the feature for error messages
+ * @param children - Components that use AI features
+ * @param fallback - Optional component to render when AI is unavailable
+ * @param loadingFallback - Optional component to render while checking AI availability
+ * @param showAlertOnUnavailable - Whether to show a warning message when AI is unavailable
  */
 export function AIFeatureGuard({
   children,
   fallback,
-  loadingComponent,
-  hideOnUnavailable = false,
-  featureDescription = 'AI-powered features'
+  loadingFallback,
+  showAlertOnUnavailable = false,
 }: AIFeatureGuardProps) {
-  const { isAvailable, isLoading, error } = useAiProviderAvailability();
+  const { isAvailable, isLoading, error } = useAIProvider();
 
-  // Show loading state while checking availability
+  // While checking availability, show loading state
   if (isLoading) {
-    return loadingComponent || (
-      <div className="flex items-center justify-center p-4">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    return loadingFallback ? (
+      <>{loadingFallback}</>
+    ) : (
+      <div className="flex items-center gap-2 text-muted-foreground p-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Checking AI availability...</span>
       </div>
     );
   }
 
-  // Show error state if there was an error checking availability
-  if (error) {
-    if (hideOnUnavailable) return null;
-    
-    return fallback || (
-      <Alert variant="destructive" className="mb-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Unable to check availability of {featureDescription}. Please try again later.
-        </AlertDescription>
-      </Alert>
-    );
+  // If AI is unavailable, show fallback or alert
+  if (!isAvailable) {
+    // If error occurred during availability check
+    if (error) {
+      console.error("Error checking AI availability:", error);
+    }
+
+    // If fallback is provided, use it
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+
+    // If showAlertOnUnavailable is true, show alert message
+    if (showAlertOnUnavailable) {
+      return (
+        <div className="flex items-center gap-2 p-3 text-amber-600 bg-amber-50 rounded-md border border-amber-200">
+          <AlertTriangle className="h-5 w-5" />
+          <div className="text-sm">
+            <p className="font-medium">AI feature unavailable</p>
+            <p className="text-amber-500">
+              Contact your administrator to set up AI providers for your team.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // If no fallback and no alert, render nothing
+    return null;
   }
 
-  // AI features are available, render children
-  if (isAvailable) {
-    return <>{children}</>;
-  }
-
-  // AI features are not available
-  if (hideOnUnavailable) return null;
-  
-  return fallback || (
-    <Alert className="mb-4 border-yellow-500 bg-yellow-50 text-yellow-900">
-      <AlertCircle className="h-4 w-4" />
-      <AlertDescription>
-        {featureDescription} are not available. Contact your administrator to set up AI providers for your team.
-      </AlertDescription>
-    </Alert>
-  );
+  // If AI is available, render children
+  return <>{children}</>;
 }

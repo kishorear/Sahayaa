@@ -1,123 +1,177 @@
-import { Express, Request, Response } from 'express';
-import { getAiProviderAccessForUser, getAvailableAIProviders, getDefaultAIProvider } from '../ai/service';
-import { checkAiProviderAccess } from '../ai/middleware/check-ai-provider';
-import { logAiProviderAccess } from '../ai/audit-log';
+import { Router, Request, Response } from "express";
+import { db } from "../db";
+import { aiProviders, aiProviderAuditLogs } from "@shared/schema";
+import { getAIProviderForUser, getDefaultProviderForUser } from "../ai/service";
+import { eq, and, isNull, or } from "drizzle-orm";
+import { logAiProviderAccess } from "../ai/audit-log";
+
+const router = Router();
 
 /**
- * Register routes for checking AI provider availability
- * This allows the frontend to conditionally render AI features
- * 
- * @param app Express application
+ * Check if AI features are available for the current user
+ * This endpoint is used by the frontend to conditionally render AI features
  */
-export function registerAIAvailabilityRoutes(app: Express) {
-  // Check if AI features are available for the current user
-  app.get('/api/ai/availability', async (req: Request, res: Response) => {
+router.get("/availability", async (req: Request, res: Response) => {
+  try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
+      return res.status(401).json({ available: false, message: "Unauthorized" });
     }
 
-    try {
-      const { id: userId, tenantId, teamId, role } = req.user;
-      
-      // Admin and creator users always have access
-      if (role === 'admin' || role === 'creator') {
-        return res.json({ available: true });
-      }
-      
-      const available = await getAiProviderAccessForUser(tenantId, teamId);
-      
-      // Log the availability check
-      logAiProviderAccess(
+    const { id: userId, tenantId, teamId, role } = req.user;
+
+    // Creator and Admin users always have access to AI features
+    if (role === "creator" || role === "admin") {
+      await logAiProviderAccess({
         userId,
         tenantId,
         teamId,
-        'availability_check',
-        true,
-        { available }
-      ).catch(err => console.error('Failed to log AI availability check:', err));
-      
-      return res.json({ available });
-    } catch (error) {
-      console.error('Error checking AI availability:', error);
-      return res.status(500).json({ 
-        message: 'Error checking AI availability',
-        available: false 
+        action: "check",
+        success: true,
+        details: `User (${role}) has unrestricted AI access`,
       });
+      return res.json({ available: true });
     }
-  });
 
-  // Get all available AI providers for the current user
-  app.get('/api/ai/providers', checkAiProviderAccess, async (req: Request, res: Response) => {
-    try {
-      const { id: userId, tenantId, teamId, role } = req.user!;
-      
-      const providers = await getAvailableAIProviders(tenantId, teamId, role);
-      
-      // Map to a safe response without sensitive data
-      const safeProviders = providers.map(provider => ({
-        id: provider.id,
-        name: provider.name,
-        type: provider.type,
-        model: provider.model,
-        teamId: provider.teamId,
-        isDefault: provider.isDefault,
-        hasApiKey: !!provider.apiKey
-      }));
-      
-      // Log the providers fetch
-      logAiProviderAccess(
-        userId,
-        tenantId,
-        teamId,
-        'providers_list',
-        true,
-        { count: providers.length }
-      ).catch(err => console.error('Failed to log AI providers list access:', err));
-      
-      return res.json({ providers: safeProviders });
-    } catch (error) {
-      console.error('Error fetching AI providers:', error);
-      return res.status(500).json({ message: 'Error fetching AI providers' });
-    }
-  });
+    // Check if there's at least one AI provider available for this user based on tenant and team
+    const provider = await getAIProviderForUser(tenantId, teamId);
 
-  // Get the default AI provider for the current user
-  app.get('/api/ai/providers/default', checkAiProviderAccess, async (req: Request, res: Response) => {
-    try {
-      const { id: userId, tenantId, teamId } = req.user!;
-      
-      const provider = await getDefaultAIProvider(tenantId, teamId);
-      
-      // If no provider is found, return null
-      if (!provider) {
-        return res.json({ provider: null });
-      }
-      
-      // Return a safe response without sensitive data
-      const safeProvider = {
-        id: provider.id,
-        name: provider.name,
-        type: provider.type,
-        model: provider.model,
-        teamId: provider.teamId,
-        isDefault: provider.isDefault,
-        hasApiKey: !!provider.apiKey
-      };
-      
-      // Log the default provider fetch
-      logAiProviderAccess(
-        userId,
-        tenantId,
-        teamId,
-        'default_provider',
-        true,
-        { providerId: provider.id }
-      ).catch(err => console.error('Failed to log AI default provider access:', err));
-      
-      return res.json({ provider: safeProvider });
-    } catch (error) {
-      console.error('Error fetching default AI provider:', error);
-      return res.status(500).json({ message: 'Error fetching default AI provider' });
+    const available = !!provider;
+    
+    await logAiProviderAccess({
+      userId,
+      tenantId,
+      teamId,
+      action: "check",
+      success: available,
+      details: available 
+        ? `AI available through provider ${provider.name}`
+        : "No AI providers available for user's tenant/team",
+    });
+
+    return res.json({ available });
+  } catch (error) {
+    console.error("Error checking AI availability:", error);
+    return res.status(500).json({ 
+      available: false, 
+      message: "Error checking AI availability" 
+    });
+  }
+});
+
+/**
+ * Get a list of AI providers available to the current user
+ */
+router.get("/providers", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ providers: [] });
     }
-  });
-}
+
+    const { id: userId, tenantId, teamId, role } = req.user;
+
+    let providers = [];
+
+    // Creator and Admin users can see all providers in the system
+    if (role === "creator" || role === "admin") {
+      providers = await db.select({
+        id: aiProviders.id,
+        name: aiProviders.name,
+        type: aiProviders.type,
+        model: aiProviders.model,
+        teamId: aiProviders.teamId,
+        isDefault: aiProviders.isDefault,
+        hasApiKey: db.sql<boolean>`CASE WHEN ${aiProviders.apiKey} IS NOT NULL AND ${aiProviders.apiKey} != '' THEN true ELSE false END`,
+      })
+      .from(aiProviders)
+      .orderBy(aiProviders.name);
+    } else {
+      // Regular users only see providers for their tenant and team
+      providers = await db.select({
+        id: aiProviders.id,
+        name: aiProviders.name,
+        type: aiProviders.type,
+        model: aiProviders.model,
+        teamId: aiProviders.teamId,
+        isDefault: aiProviders.isDefault,
+        hasApiKey: db.sql<boolean>`CASE WHEN ${aiProviders.apiKey} IS NOT NULL AND ${aiProviders.apiKey} != '' THEN true ELSE false END`,
+      })
+      .from(aiProviders)
+      .where(
+        and(
+          eq(aiProviders.tenantId, tenantId),
+          or(
+            isNull(aiProviders.teamId),
+            eq(aiProviders.teamId, teamId || 0)
+          ),
+          eq(aiProviders.enabled, true)
+        )
+      )
+      .orderBy(aiProviders.name);
+    }
+
+    await logAiProviderAccess({
+      userId,
+      tenantId,
+      teamId,
+      action: "list",
+      success: true,
+      details: `Retrieved ${providers.length} providers`,
+    });
+
+    return res.json({ providers });
+  } catch (error) {
+    console.error("Error getting AI providers:", error);
+    return res.status(500).json({ 
+      providers: [],
+      message: "Error getting AI providers" 
+    });
+  }
+});
+
+/**
+ * Get the default AI provider for the current user
+ */
+router.get("/providers/default", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ provider: null });
+    }
+
+    const { id: userId, tenantId, teamId } = req.user;
+    const provider = await getDefaultProviderForUser(tenantId, teamId);
+
+    if (!provider) {
+      return res.json({ provider: null });
+    }
+
+    // Don't send sensitive information to the client
+    const safeProvider = {
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      model: provider.model,
+      teamId: provider.teamId,
+      isDefault: provider.isDefault,
+      hasApiKey: !!provider.apiKey && provider.apiKey !== "",
+    };
+
+    await logAiProviderAccess({
+      userId,
+      tenantId,
+      teamId,
+      action: "getDefault",
+      success: true,
+      details: `Retrieved default provider: ${safeProvider.name}`,
+    });
+
+    return res.json({ provider: safeProvider });
+  } catch (error) {
+    console.error("Error getting default AI provider:", error);
+    return res.status(500).json({ 
+      provider: null,
+      message: "Error getting default AI provider" 
+    });
+  }
+});
+
+export default router;

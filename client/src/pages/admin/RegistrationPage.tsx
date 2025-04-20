@@ -476,6 +476,31 @@ const RegistrationPage = () => {
                                   size="sm"
                                   onClick={() => {
                                     setSelectedUserId(user.id);
+                                    setEditDialogOpen(true);
+                                    // Pre-populate the edit form with user data
+                                    editForm.reset({
+                                      username: user.username,
+                                      role: user.role,
+                                      name: user.name || "",
+                                      email: user.email || "",
+                                      companyId: user.tenantId,
+                                      companyName: "",
+                                      companySSO: false,
+                                      teamId: user.teamId,
+                                      teamName: "",
+                                      active: user.active
+                                    });
+                                  }}
+                                  className="mr-2"
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedUserId(user.id);
                                     setResetPasswordDialogOpen(true);
                                   }}
                                 >

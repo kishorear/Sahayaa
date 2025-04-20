@@ -641,5 +641,231 @@ router.delete("/users/:id", requireCreatorRole, async (req: Request, res: Respon
   }
 });
 
+/**
+ * Update a user
+ * PATCH /api/creators/users/:id
+ */
+router.patch("/users/:id", requireCreatorRole, async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { 
+      username, 
+      role, 
+      name, 
+      email, 
+      companyId, 
+      companyName, 
+      teamId, 
+      teamName,
+      active
+    } = req.body;
+    
+    // Validation
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+    
+    // Check if user exists
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    if (existingUser.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    const user = existingUser[0];
+    
+    // Check if username is already taken (if username is being changed)
+    if (username && username !== user.username) {
+      const usernameExists = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+      
+      if (usernameExists.length > 0) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+    }
+    
+    // Determine tenant ID (company)
+    let tenantId = user.tenantId;
+    let company = user.company;
+    
+    if (companyId && companyId !== user.tenantId) {
+      // Company is being changed to an existing one
+      tenantId = companyId;
+      
+      // Get company name for the record
+      const tenantData = await db
+        .select()
+        .from(tenants)
+        .where(eq(tenants.id, companyId))
+        .limit(1);
+      
+      if (tenantData.length > 0) {
+        company = tenantData[0].name;
+      }
+    } else if (companyName && (!user.company || companyName !== user.company)) {
+      // Creating a new company or updating company name
+      if (!companyId) {
+        // Create new company
+        const [newTenant] = await db
+          .insert(tenants)
+          .values({
+            name: companyName,
+            subdomain: companyName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+            apiKey: uuidv4(),
+            active: true,
+            settings: {},
+            branding: {}
+          })
+          .returning();
+        
+        tenantId = newTenant.id;
+        company = companyName;
+        
+        logCreatorAction(req.user!.id, "create_tenant", {
+          tenantName: companyName,
+          tenantId
+        }, undefined, tenantId);
+      } else {
+        // Just update the company name field
+        company = companyName;
+      }
+    }
+    
+    // Determine team ID
+    let userTeamId = user.teamId;
+    
+    if (teamId && teamId !== user.teamId) {
+      // Team is being changed to an existing one
+      userTeamId = teamId;
+      
+      // Remove from old team if exists
+      if (user.teamId) {
+        await db
+          .delete(teamMembers)
+          .where(and(
+            eq(teamMembers.userId, userId),
+            eq(teamMembers.teamId, user.teamId)
+          ));
+      }
+      
+      // Add to new team
+      const teamMemberExists = await db
+        .select()
+        .from(teamMembers)
+        .where(and(
+          eq(teamMembers.userId, userId),
+          eq(teamMembers.teamId, teamId)
+        ))
+        .limit(1);
+      
+      if (teamMemberExists.length === 0) {
+        await db
+          .insert(teamMembers)
+          .values({
+            userId,
+            teamId,
+            role: "member"
+          });
+      }
+    } else if (teamName && tenantId) {
+      // Creating a new team
+      const [newTeam] = await db
+        .insert(teams)
+        .values({
+          name: teamName,
+          tenantId,
+          description: `Team created by ${req.user!.username}`
+        })
+        .returning();
+      
+      userTeamId = newTeam.id;
+      
+      // Remove from old team if exists
+      if (user.teamId) {
+        await db
+          .delete(teamMembers)
+          .where(and(
+            eq(teamMembers.userId, userId),
+            eq(teamMembers.teamId, user.teamId)
+          ));
+      }
+      
+      // Add to new team
+      await db
+        .insert(teamMembers)
+        .values({
+          userId,
+          teamId: userTeamId,
+          role: "member"
+        });
+      
+      logCreatorAction(req.user!.id, "create_team", {
+        teamName,
+        teamId: userTeamId,
+        tenantId
+      }, undefined, tenantId);
+    }
+    
+    // Prepare update data
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+    
+    if (username) updateData.username = username;
+    if (role) updateData.role = role;
+    if (name !== undefined) updateData.name = name || null;
+    if (email !== undefined) updateData.email = email || null;
+    if (tenantId !== user.tenantId) updateData.tenantId = tenantId;
+    if (company !== user.company) updateData.company = company;
+    if (userTeamId !== user.teamId) updateData.teamId = userTeamId;
+    if (active !== undefined) updateData.active = active;
+    
+    // Update the user
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    
+    // Log the action
+    logCreatorAction(req.user!.id, "update_user", {
+      userId,
+      username: updatedUser.username,
+      tenantId: updatedUser.tenantId,
+      teamId: updatedUser.teamId,
+      role: updatedUser.role
+    }, userId, updatedUser.tenantId);
+    
+    // Return success response
+    return res.status(200).json({
+      message: "User updated successfully",
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        role: updatedUser.role,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        tenantId: updatedUser.tenantId,
+        teamId: updatedUser.teamId,
+        company: updatedUser.company,
+        active: updatedUser.active,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+        profilePicture: updatedUser.profilePicture
+      }
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return res.status(500).json({ message: "Failed to update user" });
+  }
+});
+
 // Export the router
 export default router;

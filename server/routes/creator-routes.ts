@@ -368,6 +368,7 @@ router.post("/users", requireCreatorRole, async (req: Request, res: Response) =>
       email: email || null,
       tenantId,
       teamId: userTeamId || null,
+      company: companyName || null, // Add the company field
       profilePicture: null,
       mfaEnabled: false,
       mfaSecret: null,

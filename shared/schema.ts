@@ -305,6 +305,7 @@ export type InsertWidgetAnalytics = z.infer<typeof insertWidgetAnalyticsSchema>;
 export const aiProviders = pgTable("ai_providers", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
+  teamId: integer("teamId"), // Optional, if null, applies to all teams in tenant
   provider: text("provider").notNull(), // 'openai', 'anthropic', 'google', 'aws', 'azure', 'custom'
   name: text("name").notNull(), // Display name for the provider
   model: text("model").notNull(), // Model name to use, e.g., 'gpt-4', 'claude-3', etc.

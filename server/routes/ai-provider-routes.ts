@@ -4,7 +4,7 @@ import * as schema from '../../shared/schema';
 import { eq, and, or, isNull } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { checkAiProviderAccess, hasAiProviderAccess } from '../ai/middleware';
+import { checkAiProviderAccess } from '../ai/middleware/check-ai-provider';
 import { isCreatorOrAdminRole } from '../utils';
 import { getAiProviderAccessForUser } from '../ai/service';
 import { logAiProviderAccess, logAiProviderManagement } from '../ai/audit-log';

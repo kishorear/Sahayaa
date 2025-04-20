@@ -3,86 +3,71 @@ import { getAiProviderAccessForUser } from '../service';
 import { logAiProviderAccess } from '../audit-log';
 
 /**
- * Middleware to check if a user has access to AI provider features
- * Enforces tenant and team-scoped access control
+ * Middleware to check if a user has access to AI providers
+ * This ensures users can only access AI features if they have
+ * provider access configured for their tenant and team
  */
-export function checkAiProviderAccess(req: Request, res: Response, next: NextFunction) {
-  // Skip access check for non-authenticated requests
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).json({ 
-      message: 'Authentication required to access AI features'
-    });
+export async function checkAiProviderAccess(req: Request, res: Response, next: NextFunction) {
+  // Skip check if no authenticated user
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const userId = req.user.id;
-  const tenantId = req.user.tenantId;
-  const teamId = req.user.teamId;
-  
-  // Check if user has access to AI providers based on their tenant and team
-  getAiProviderAccessForUser(tenantId, teamId)
-    .then(hasAccess => {
-      if (hasAccess) {
-        // Log successful access
-        logAiProviderAccess(
-          userId,
-          tenantId,
-          teamId,
-          'middleware_access',
-          true,
-          {
-            path: req.path,
-            method: req.method,
-            ipAddress: req.ip,
-            userAgent: req.get('User-Agent')
-          }
-        ).catch(err => console.error('Failed to log successful AI access:', err));
-        
-        next();
-      } else {
-        // Log failed access attempt
-        logAiProviderAccess(
-          userId,
-          tenantId,
-          teamId,
-          'middleware_access',
-          false,
-          {
-            path: req.path,
-            method: req.method,
-            reason: 'No AI providers available for tenant/team',
-            ipAddress: req.ip,
-            userAgent: req.get('User-Agent')
-          }
-        ).catch(err => console.error('Failed to log failed AI access:', err));
-        
-        res.status(403).json({
-          message: 'You do not have access to AI features. Contact your administrator to set up AI providers for your team.'
-        });
-      }
-    })
-    .catch(error => {
-      console.error('Error checking AI provider access:', error);
-      res.status(500).json({ message: 'Error checking AI provider access' });
-    });
-}
-
-/**
- * Utility function to check if a user has AI provider access
- * Returns a promise that resolves to true/false
- * Used for conditional checks in application logic
- */
-export async function hasAiProviderAccess(req: Request): Promise<boolean> {
-  if (!req.isAuthenticated() || !req.user) {
-    return false;
-  }
-  
   try {
-    return await getAiProviderAccessForUser(
-      req.user.tenantId,
-      req.user.teamId
-    );
+    const { id: userId, tenantId, teamId, role } = req.user;
+
+    // Admin and creator users always have access to AI features
+    if (role === 'admin' || role === 'creator') {
+      // Log the check but continue
+      logAiProviderAccess(
+        userId,
+        tenantId,
+        teamId,
+        'provider_access_check',
+        true,
+        { reason: `User has ${role} role with automatic access` }
+      ).catch(err => console.error('Failed to log AI provider access:', err));
+      
+      return next();
+    }
+    
+    // Check if the user has access to AI providers
+    const hasAccess = await getAiProviderAccessForUser(tenantId, teamId);
+    
+    // Log the access check
+    logAiProviderAccess(
+      userId,
+      tenantId,
+      teamId,
+      'provider_access_check',
+      hasAccess,
+      { reason: hasAccess ? 'User has provider access' : 'No providers available for user' }
+    ).catch(err => console.error('Failed to log AI provider access:', err));
+    
+    if (hasAccess) {
+      return next();
+    }
+    
+    // If no access, return a 403 Forbidden response
+    return res.status(403).json({
+      message: 'AI features are not available for your account',
+      details: 'Contact your administrator to set up AI providers for your team'
+    });
   } catch (error) {
-    console.error('Error in hasAiProviderAccess:', error);
-    return false;
+    console.error('Error checking AI provider access:', error);
+    
+    // Log the error
+    logAiProviderAccess(
+      req.user.id,
+      req.user.tenantId,
+      req.user.teamId,
+      'provider_access_check',
+      false,
+      { error: String(error) }
+    ).catch(err => console.error('Failed to log AI provider access:', err));
+    
+    // Continue to avoid breaking the application completely
+    // but log an error for investigation
+    return next();
   }
 }

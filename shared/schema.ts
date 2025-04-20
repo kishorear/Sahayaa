@@ -306,13 +306,19 @@ export const aiProviders = pgTable("ai_providers", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   teamId: integer("teamId"), // Optional, if null, applies to all teams in tenant
-  provider: text("provider").notNull(), // 'openai', 'anthropic', 'google', 'aws', 'azure', 'custom'
+  type: text("type").notNull(), // 'openai', 'anthropic', 'google', 'aws', 'azure', 'custom'
   name: text("name").notNull(), // Display name for the provider
   model: text("model").notNull(), // Model name to use, e.g., 'gpt-4', 'claude-3', etc.
   apiKey: text("apiKey"), // API key (stored securely)
-  endpoint: text("endpoint"), // Optional custom endpoint URL
+  baseUrl: text("baseUrl"), // Base URL for API requests
+  isPrimary: boolean("isPrimary").default(false), // Whether this is the primary provider
   isDefault: boolean("isDefault").default(false), // Whether this is the default provider
   enabled: boolean("enabled").default(true), // Whether this provider is enabled
+  settings: json("settings").default({}), // Provider-specific settings
+  useForClassification: boolean("useForClassification").default(true), // Use for ticket classification
+  useForAutoResolve: boolean("useForAutoResolve").default(true), // Use for auto-resolving tickets
+  useForChat: boolean("useForChat").default(true), // Use for chat responses
+  useForEmail: boolean("useForEmail").default(true), // Use for email responses
   priority: integer("priority").default(50).notNull(), // Priority (1-100, higher = more priority)
   contextWindow: integer("contextWindow").default(8000).notNull(), // Max context window size
   maxTokens: integer("maxTokens").default(1000).notNull(), // Max output tokens

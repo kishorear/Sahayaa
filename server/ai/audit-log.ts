@@ -1,17 +1,16 @@
 import { db } from '../db';
-import * as schema from '../../shared/schema';
+import { aiProviderAudit } from '../../shared/schema';
 
 /**
- * Log AI provider access attempts (both successful and failed)
- * Essential for security auditing and compliance monitoring
+ * Log AI provider access attempts and management operations
+ * This is important for security auditing and debugging
  * 
- * @param userId The user ID making the access attempt
- * @param tenantId The tenant ID context of the access
- * @param teamId The team ID context of the access (if applicable)
- * @param action The action being performed (e.g., 'api_call', 'middleware_access', etc.)
- * @param success Whether the access attempt was successful
- * @param metadata Additional context about the access (optional)
- * @returns Promise that resolves when logging is complete
+ * @param userId User ID of the person performing the action
+ * @param tenantId Tenant ID context
+ * @param teamId Team ID context (optional)
+ * @param action Type of action (access, create, update, delete, etc.)
+ * @param success Whether the action was successful
+ * @param details Additional details about the action
  */
 export async function logAiProviderAccess(
   userId: number,
@@ -19,92 +18,59 @@ export async function logAiProviderAccess(
   teamId: number | null,
   action: string,
   success: boolean,
-  metadata: Record<string, any> = {}
+  details?: Record<string, any>
 ): Promise<void> {
   try {
-    await db.insert(schema.aiProviderAudit).values({
+    await db.insert(aiProviderAudit).values({
       userId,
       tenantId,
       teamId,
       action,
       success,
-      details: metadata,
-      timestamp: new Date()
+      details: details || {}
     });
+    
+    // Use console.debug so we don't fill logs in production but can enable for troubleshooting
+    console.debug(`AI provider audit log: ${action} by user ${userId} (tenant: ${tenantId}, team: ${teamId}) - ${success ? 'Success' : 'Failed'}`);
   } catch (error) {
-    console.error('Failed to log AI provider access:', error);
-    // Non-throwing - logging failures shouldn't break application flow
+    // If audit logging fails, we don't want to break the application
+    // But we do want to log the error for investigation
+    console.error('Failed to log AI provider access/action:', error);
   }
 }
 
 /**
- * Log management operations on AI providers (create, update, delete)
- * Provides audit trail for configuration changes
+ * Log AI provider management actions (create, update, delete)
+ * This is more specific than the general access log and includes provider ID
  * 
- * @param userId The user ID performing the management action
- * @param tenantId The tenant ID context
- * @param teamId The team ID context (if applicable)
- * @param operation The operation being performed ('create', 'update', 'delete')
- * @param providerId The ID of the AI provider being managed
- * @param details Additional details about the operation
- * @returns Promise that resolves when logging is complete
+ * @param userId User ID of the person performing the action
+ * @param tenantId Tenant ID context
+ * @param teamId Team ID context (optional)
+ * @param action Type of action (create, update, delete)
+ * @param providerId ID of the AI provider being managed
+ * @param details Additional details about the action
  */
 export async function logAiProviderManagement(
   userId: number,
   tenantId: number,
   teamId: number | null,
-  operation: 'create' | 'update' | 'delete',
+  action: string,
   providerId: number,
-  details: Record<string, any> = {}
+  details?: Record<string, any>
 ): Promise<void> {
   try {
-    await db.insert(schema.aiProviderAudit).values({
+    await db.insert(aiProviderAudit).values({
       userId,
       tenantId,
       teamId,
-      action: operation,
+      action: `provider_${action}`,
       providerId,
-      details,
-      timestamp: new Date()
+      success: true, // Assume success since this is called after successful operation
+      details: details || {}
     });
+    
+    console.debug(`AI provider management: ${action} provider ${providerId} by user ${userId} (tenant: ${tenantId}, team: ${teamId})`);
   } catch (error) {
-    console.error(`Failed to log AI provider ${operation} operation:`, error);
-    // Non-throwing - logging failures shouldn't break application flow
-  }
-}
-
-/**
- * Log AI provider usage in actual operations
- * Useful for usage metrics, billing, and performance monitoring
- * 
- * @param userId The user ID using the AI provider
- * @param tenantId The tenant ID context
- * @param teamId The team ID context (if applicable)
- * @param providerId The ID of the AI provider being used
- * @param operationType The type of operation ('classification', 'chat', 'auto_resolve', etc.)
- * @param performanceMetrics Performance data (tokens, latency, etc.)
- * @returns Promise that resolves when logging is complete
- */
-export async function logAiProviderUsage(
-  userId: number,
-  tenantId: number,
-  teamId: number | null,
-  providerId: number,
-  operationType: string,
-  performanceMetrics: Record<string, any> = {}
-): Promise<void> {
-  try {
-    await db.insert(schema.aiProviderAudit).values({
-      userId,
-      tenantId,
-      teamId,
-      action: `usage_${operationType}`,
-      providerId,
-      details: performanceMetrics,
-      timestamp: new Date()
-    });
-  } catch (error) {
-    console.error('Failed to log AI provider usage:', error);
-    // Non-throwing - logging failures shouldn't break application flow
+    console.error('Failed to log AI provider management action:', error);
   }
 }

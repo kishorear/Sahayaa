@@ -106,7 +106,7 @@ export interface IStorage {
   deleteDataSource(id: number, tenantId?: number): Promise<boolean>;
   
   // AI provider operations
-  getAiProviders(tenantId: number): Promise<AiProvider[]>;
+  getAiProviders(tenantId: number, teamId?: number | null): Promise<AiProvider[]>;
   getAiProviderById(id: number, tenantId?: number): Promise<AiProvider | undefined>;
   getAiProvidersByType(type: string, tenantId: number): Promise<AiProvider[]>;
   getPrimaryAiProvider(tenantId: number): Promise<AiProvider | undefined>;
@@ -4656,9 +4656,9 @@ class StorageWrapper implements IStorage {
   }
   
   // AI provider operations
-  async getAiProviders(tenantId: number): Promise<AiProvider[]> {
+  async getAiProviders(tenantId: number, teamId?: number | null): Promise<AiProvider[]> {
     try {
-      return await this.storageImpl.getAiProviders(tenantId);
+      return await this.storageImpl.getAiProviders(tenantId, teamId);
     } catch (error) {
       console.error(`Error in getAiProviders():`, error);
       throw error;

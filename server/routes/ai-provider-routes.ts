@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { db } from '../db';
 import * as schema from '../../shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
+import { checkAiProviderAccess } from '../ai/middleware';
+import { isCreatorOrAdminRole } from '../utils';
 
 const router = Router();
 
@@ -17,24 +19,42 @@ const insertAIProviderSchema = createInsertSchema(schema.aiProviders, {
   isDefault: z.boolean().default(false),
   enabled: z.boolean().default(true),
   tenantId: z.number(),
+  teamId: z.number().nullable().optional(),
   priority: z.number().int().min(1).max(100).default(50),
   contextWindow: z.number().int().min(1000).max(100000).default(8000),
   maxTokens: z.number().int().min(100).max(10000).default(1000),
   temperature: z.number().min(0).max(1).default(0.7),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
-// Get all AI providers for a tenant
-router.get('/tenants/:tenantId/ai-providers', async (req, res) => {
+// Get all AI providers for a tenant, respecting team scoping
+router.get('/tenants/:tenantId/ai-providers', checkAiProviderAccess, async (req, res) => {
   try {
     const tenantId = parseInt(req.params.tenantId);
     
     // Check if user has access to this tenant
-    if (req.user?.role !== 'creator' && req.user?.tenantId !== tenantId) {
+    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to access AI providers for this tenant' });
     }
     
-    const aiProviders = await db.select().from(schema.aiProviders)
-      .where(eq(schema.aiProviders.tenantId, tenantId));
+    let aiProviders;
+    
+    // For creator and admin roles, show all providers for the tenant
+    if (isCreatorOrAdminRole(req.user?.role)) {
+      aiProviders = await db.select().from(schema.aiProviders)
+        .where(eq(schema.aiProviders.tenantId, tenantId));
+    } else {
+      // For other roles, filter by teamId (matching teamId or null for tenant-wide providers)
+      const teamId = req.user?.teamId || null;
+      
+      aiProviders = await db.select().from(schema.aiProviders)
+        .where(and(
+          eq(schema.aiProviders.tenantId, tenantId),
+          or(
+            eq(schema.aiProviders.teamId, teamId),
+            isNull(schema.aiProviders.teamId)
+          )
+        ));
+    }
     
     return res.json(aiProviders);
   } catch (error) {
@@ -44,13 +64,18 @@ router.get('/tenants/:tenantId/ai-providers', async (req, res) => {
 });
 
 // Create a new AI provider for a tenant
-router.post('/tenants/:tenantId/ai-providers', async (req, res) => {
+router.post('/tenants/:tenantId/ai-providers', checkAiProviderAccess, async (req, res) => {
   try {
     const tenantId = parseInt(req.params.tenantId);
     
     // Check if user has access to this tenant
-    if (req.user?.role !== 'creator' && req.user?.tenantId !== tenantId) {
+    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to create AI providers for this tenant' });
+    }
+    
+    // Only creator and admin can create providers
+    if (!isCreatorOrAdminRole(req.user?.role)) {
+      return res.status(403).json({ message: 'Only administrators and creators can create AI providers' });
     }
     
     // Validate request body
@@ -63,14 +88,27 @@ router.post('/tenants/:tenantId/ai-providers', async (req, res) => {
       return res.status(400).json({ message: 'Invalid request data', errors: result.error.errors });
     }
     
-    // If setting as default, unset any existing default providers
+    // If setting as default, unset any existing default providers in same scope (tenant-wide or team-specific)
     if (result.data.isDefault) {
-      await db.update(schema.aiProviders)
-        .set({ isDefault: false })
-        .where(and(
-          eq(schema.aiProviders.tenantId, tenantId),
-          eq(schema.aiProviders.isDefault, true)
-        ));
+      // If provider is team-specific, only unset defaults for that team
+      if (result.data.teamId) {
+        await db.update(schema.aiProviders)
+          .set({ isDefault: false })
+          .where(and(
+            eq(schema.aiProviders.tenantId, tenantId),
+            eq(schema.aiProviders.teamId, result.data.teamId),
+            eq(schema.aiProviders.isDefault, true)
+          ));
+      } else {
+        // For tenant-wide providers, unset defaults for tenant-wide providers only
+        await db.update(schema.aiProviders)
+          .set({ isDefault: false })
+          .where(and(
+            eq(schema.aiProviders.tenantId, tenantId),
+            isNull(schema.aiProviders.teamId),
+            eq(schema.aiProviders.isDefault, true)
+          ));
+      }
     }
     
     // Insert the new AI provider
@@ -86,14 +124,19 @@ router.post('/tenants/:tenantId/ai-providers', async (req, res) => {
 });
 
 // Update an AI provider
-router.patch('/tenants/:tenantId/ai-providers/:providerId', async (req, res) => {
+router.patch('/tenants/:tenantId/ai-providers/:providerId', checkAiProviderAccess, async (req, res) => {
   try {
     const tenantId = parseInt(req.params.tenantId);
     const providerId = parseInt(req.params.providerId);
     
     // Check if user has access to this tenant
-    if (req.user?.role !== 'creator' && req.user?.tenantId !== tenantId) {
+    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to update AI providers for this tenant' });
+    }
+    
+    // Only creator and admin can update providers
+    if (!isCreatorOrAdminRole(req.user?.role)) {
+      return res.status(403).json({ message: 'Only administrators and creators can update AI providers' });
     }
     
     // Get the existing provider to check if it belongs to the tenant
@@ -120,14 +163,32 @@ router.patch('/tenants/:tenantId/ai-providers/:providerId', async (req, res) => 
       return res.status(400).json({ message: 'Invalid request data', errors: result.error.errors });
     }
     
-    // If setting as default and it's not already default, unset any existing default providers
+    // If setting as default and it's not already default, unset any existing default providers in same scope
     if (result.data.isDefault && !existingProvider[0].isDefault) {
-      await db.update(schema.aiProviders)
-        .set({ isDefault: false })
-        .where(and(
-          eq(schema.aiProviders.tenantId, tenantId),
-          eq(schema.aiProviders.isDefault, true)
-        ));
+      // Determine if we're updating a team-specific or tenant-wide provider
+      const teamId = result.data.teamId !== undefined 
+        ? result.data.teamId 
+        : existingProvider[0].teamId;
+      
+      // If provider is team-specific, only unset defaults for that team
+      if (teamId) {
+        await db.update(schema.aiProviders)
+          .set({ isDefault: false })
+          .where(and(
+            eq(schema.aiProviders.tenantId, tenantId),
+            eq(schema.aiProviders.teamId, teamId),
+            eq(schema.aiProviders.isDefault, true)
+          ));
+      } else {
+        // For tenant-wide providers, unset defaults for tenant-wide providers only
+        await db.update(schema.aiProviders)
+          .set({ isDefault: false })
+          .where(and(
+            eq(schema.aiProviders.tenantId, tenantId),
+            isNull(schema.aiProviders.teamId),
+            eq(schema.aiProviders.isDefault, true)
+          ));
+      }
     }
     
     // Special handling for the API key - don't update if not provided
@@ -153,14 +214,19 @@ router.patch('/tenants/:tenantId/ai-providers/:providerId', async (req, res) => 
 });
 
 // Delete an AI provider
-router.delete('/tenants/:tenantId/ai-providers/:providerId', async (req, res) => {
+router.delete('/tenants/:tenantId/ai-providers/:providerId', checkAiProviderAccess, async (req, res) => {
   try {
     const tenantId = parseInt(req.params.tenantId);
     const providerId = parseInt(req.params.providerId);
     
     // Check if user has access to this tenant
-    if (req.user?.role !== 'creator' && req.user?.tenantId !== tenantId) {
+    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to delete AI providers for this tenant' });
+    }
+    
+    // Only creator and admin can delete providers
+    if (!isCreatorOrAdminRole(req.user?.role)) {
+      return res.status(403).json({ message: 'Only administrators and creators can delete AI providers' });
     }
     
     // Get the provider to check if it exists and belongs to the tenant
@@ -183,7 +249,10 @@ router.delete('/tenants/:tenantId/ai-providers/:providerId', async (req, res) =>
         eq(schema.aiProviders.tenantId, tenantId)
       ));
     
-    return res.json({ message: 'AI provider deleted successfully' });
+    return res.json({ 
+      message: 'AI provider deleted successfully',
+      provider: existingProvider[0]
+    });
   } catch (error) {
     console.error('Error deleting AI provider:', error);
     return res.status(500).json({ message: 'Internal server error' });

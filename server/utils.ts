@@ -1,6 +1,16 @@
 import * as crypto from "crypto";
 
 /**
+ * Check if a user role is a creator or admin role
+ * @param role The user role to check
+ * @returns true if the role is creator or administrator, false otherwise
+ */
+export function isCreatorOrAdminRole(role?: string): boolean {
+  if (!role) return false;
+  return role === 'creator' || role === 'administrator';
+}
+
+/**
  * Generate a random password with a specified length
  * @param length The length of the password to generate
  * @returns A random password string

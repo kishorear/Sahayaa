@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { db } from "../db";
 import { tenants, users, teams, teamMembers } from "@shared/schema";
-import { eq, and, desc, like, or, asc } from "drizzle-orm";
+import { eq, and, desc, like, or, asc, sql } from "drizzle-orm";
 import { hashPassword } from "../auth";
 import { v4 as uuidv4 } from "uuid";
 import { checkCreatorRole } from "../tenant-middleware";
@@ -108,7 +108,7 @@ router.get("/users", requireCreatorRole, async (req: Request, res: Response) => 
     
     // Get total count for pagination
     const countQuery = db
-      .select({ count: db.sql`count(*)` })
+      .select({ count: sql`count(*)` })
       .from(users)
       .where(searchCondition);
     

@@ -185,21 +185,9 @@ export class AIProviderFactory {
       return this.getProvider(tenantId, configs[0].type);
     }
     
-    // Fall back to default OpenAI with environment variables
-    try {
-      const defaultConfig: AIProviderConfig = {
-        type: 'openai',
-        isPrimary: true
-      };
-      
-      const provider = new OpenAIProvider(defaultConfig);
-      const key = `${tenantId}:openai`;
-      this.providers.set(key, provider);
-      return provider;
-    } catch (error) {
-      console.error(`Failed to create default OpenAI provider for tenant ${tenantId}:`, error);
-      return null;
-    }
+    // No fallback to default/environment providers - strict tenant isolation
+    console.warn(`No AI provider configured for tenant ${tenantId}`);
+    return null;
   }
   
   /**

@@ -321,11 +321,25 @@ export const aiProviders = pgTable("ai_providers", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+// Audit log for AI provider access and management
+export const aiProviderAudit = pgTable("ai_provider_audit", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // User who performed the action
+  tenantId: integer("tenant_id").notNull(), // Tenant context
+  teamId: integer("team_id"), // Team context (optional)
+  timestamp: timestamp("timestamp").defaultNow().notNull(), // When the action occurred
+  action: text("action").notNull(), // Action type (access, create, update, delete, etc.)
+  providerId: integer("provider_id"), // Provider ID if applicable
+  success: boolean("success").default(true), // Whether access was granted/action succeeded
+  details: json("details"), // Additional details about the action
+});
+
 export const insertAiProviderSchema = createInsertSchema(aiProviders)
   .omit({ id: true, createdAt: true, updatedAt: true });
 
 export type AiProvider = typeof aiProviders.$inferSelect;
 export type InsertAiProvider = z.infer<typeof insertAiProviderSchema>;
+export type AiProviderAudit = typeof aiProviderAudit.$inferSelect;
 
 // Support document schema
 export const supportDocuments = pgTable("support_documents", {

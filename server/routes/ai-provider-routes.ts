@@ -4,10 +4,60 @@ import * as schema from '../../shared/schema';
 import { eq, and, or, isNull } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { checkAiProviderAccess } from '../ai/middleware';
+import { checkAiProviderAccess, hasAiProviderAccess } from '../ai/middleware';
 import { isCreatorOrAdminRole } from '../utils';
+import { getAiProviderAccessForUser } from '../ai/service';
 
 const router = Router();
+
+// Check if AI providers are available for the current user
+router.get('/ai/providers/available', async (req, res) => {
+  try {
+    // Authentication check
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ 
+        available: false,
+        message: 'Not authenticated'
+      });
+    }
+    
+    const tenantId = req.user.tenantId;
+    const teamId = req.user.teamId;
+    
+    // Creator and admin roles always have access
+    if (isCreatorOrAdminRole(req.user.role)) {
+      // Still check if there are providers configured for this tenant
+      const providers = await db.select({ count: schema.aiProviders.id })
+        .from(schema.aiProviders)
+        .where(eq(schema.aiProviders.tenantId, tenantId));
+        
+      const hasProviders = providers.length > 0 && providers[0].count > 0;
+      
+      return res.json({ 
+        available: hasProviders,
+        message: hasProviders ? 'AI providers available' : 'No AI providers configured for this tenant',
+        role: 'admin_or_creator'
+      });
+    }
+    
+    // Check if any providers are available for this tenant and team
+    const hasAccess = await getAiProviderAccessForUser(tenantId, teamId);
+    
+    // Log the check for audit purposes
+    console.log(`AI provider access check for user ${req.user.id} (tenant ${tenantId}, team ${teamId}): ${hasAccess ? 'Granted' : 'Denied'}`);
+    
+    return res.json({
+      available: hasAccess,
+      message: hasAccess ? 'AI providers available' : 'No AI providers configured for your tenant/team'
+    });
+  } catch (error) {
+    console.error('Error checking AI provider availability:', error);
+    return res.status(500).json({ 
+      available: false,
+      message: 'Internal server error'
+    });
+  }
+});
 
 // Schema for creating/updating AI providers
 const insertAIProviderSchema = createInsertSchema(schema.aiProviders, {

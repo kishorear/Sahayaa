@@ -2,15 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, InfoIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { InsertUser } from "@shared/schema";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -18,42 +17,16 @@ const loginSchema = z.object({
   role: z.enum(["administrator", "support_engineer", "user"]).default("user"),
 });
 
-const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
-  role: z.enum(["administrator", "support_engineer", "user"]).default("user"),
-  teamId: z.number().optional(), // Team ID is optional
-});
-
-// Extend the InsertUser type to include newTeam for creating a new team during registration
-type RegisterData = InsertUser & {
-  newTeam?: string;
-};
-
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation } = useAuth();
   
-  // Initialize the forms before any conditional returns
+  // Initialize the form before any conditional returns
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       username: "",
       password: "",
       role: "user",
-    },
-  });
-
-  const registerForm = useForm<z.infer<typeof registerSchema>>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      name: "",
-      email: "",
-      role: "user",
-      teamId: undefined,
     },
   });
   
@@ -64,15 +37,6 @@ export default function AuthPage() {
 
   function onLoginSubmit(data: z.infer<typeof loginSchema>) {
     loginMutation.mutate(data);
-  }
-
-  function onRegisterSubmit(data: z.infer<typeof registerSchema>) {
-    // Set a default team ID for compatibility
-    const userData = {
-      ...data,
-      teamId: 1 // Use default team
-    };
-    registerMutation.mutate(userData);
   }
 
   return (
@@ -165,6 +129,15 @@ export default function AuthPage() {
                       </Button>
                     </form>
                   </Form>
+                  
+                  <div className="mt-6">
+                    <Alert variant="secondary" className="bg-muted/50">
+                      <InfoIcon className="h-4 w-4 mr-2" />
+                      <AlertDescription>
+                        Need an account? Please contact a system creator to register as a new user.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
                 </CardContent>
               </Card>
           </div>

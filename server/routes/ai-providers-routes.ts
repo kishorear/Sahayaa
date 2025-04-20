@@ -39,8 +39,8 @@ const insertAIProviderSchema = createInsertSchema(schema.aiProviders)
 // Get all AI providers
 router.get('/', async (req: Request, res: Response) => {
   try {
-    // Must be authenticated
-    if (!req.isAuthenticated() || !req.user) {
+    // Authentication is handled by the middleware in routes.ts
+    if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
@@ -90,8 +90,8 @@ router.get('/', async (req: Request, res: Response) => {
 // Create a new AI provider
 router.post('/', async (req: Request, res: Response) => {
   try {
-    // Must be authenticated and have admin or creator role
-    if (!req.isAuthenticated() || !req.user) {
+    // Authentication is handled by the middleware in routes.ts
+    if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
@@ -179,8 +179,8 @@ router.post('/', async (req: Request, res: Response) => {
 // Get a specific AI provider
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    // Must be authenticated
-    if (!req.isAuthenticated() || !req.user) {
+    // Authentication is handled by the middleware in routes.ts
+    if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
@@ -235,8 +235,8 @@ router.get('/:id', async (req: Request, res: Response) => {
 // Update an AI provider
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
-    // Must be authenticated and have admin or creator role
-    if (!req.isAuthenticated() || !req.user) {
+    // Authentication is handled by the middleware in routes.ts
+    if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
@@ -350,8 +350,8 @@ router.patch('/:id', async (req: Request, res: Response) => {
 // Delete an AI provider
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    // Must be authenticated and have admin or creator role
-    if (!req.isAuthenticated() || !req.user) {
+    // Authentication is handled by the middleware in routes.ts
+    if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
@@ -420,8 +420,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
 // Get AI provider status
 router.get('/status', async (req: Request, res: Response) => {
   try {
-    // Must be authenticated
-    if (!req.isAuthenticated() || !req.user) {
+    // Authentication is handled by the middleware in routes.ts
+    if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 

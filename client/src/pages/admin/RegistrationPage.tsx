@@ -1407,14 +1407,14 @@ const RegistrationPage = () => {
                           <FormControl>
                             <Select
                               value={field.value?.toString() || ""}
-                              onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                              onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
                               disabled={!editForm.watch("companyId")}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select team" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">No Team</SelectItem>
+                                <SelectItem value="null">No Team</SelectItem>
                                 {getFilteredTeamsForEdit().map((team) => (
                                   <SelectItem key={team.id} value={team.id.toString()}>
                                     {team.name}

@@ -38,7 +38,7 @@ import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
 // Import creator routes for multi-tenant management
 import creatorRoutes from "./routes/creator-routes";
 // Import AI provider availability routes
-import { registerAIAvailabilityRoutes } from "./routes/ai-availability-routes";
+import aiAvailabilityRoutes from "./routes/ai-availability-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -172,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerWidgetDownloadRoutes(app);
   
   // Register AI availability routes
-  registerAIAvailabilityRoutes(app);
+  app.use('/api/ai', aiAvailabilityRoutes);
   
   // Initialize SSO service for all tenants
   try {

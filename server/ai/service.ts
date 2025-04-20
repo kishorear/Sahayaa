@@ -202,14 +202,14 @@ export async function getAIProviderById(
     
     if (!provider) {
       // Log failed access attempt
-      logAiProviderAccess(
+      await logAiProviderAccess({
         userId,
         tenantId,
         teamId,
-        'provider_by_id',
-        false,
-        { providerId, reason: 'Provider not found or not enabled' }
-      ).catch(err => console.error('Failed to log provider access:', err));
+        action: 'provider_by_id',
+        success: false,
+        details: `Provider not found or not enabled: ${providerId}`
+      });
       
       return undefined;
     }
@@ -217,14 +217,14 @@ export async function getAIProviderById(
     // Check if provider belongs to the user's tenant
     if (provider.tenantId !== tenantId) {
       // Log failed access attempt
-      logAiProviderAccess(
+      await logAiProviderAccess({
         userId,
         tenantId,
         teamId,
-        'provider_by_id',
-        false,
-        { providerId, reason: 'Provider tenant mismatch' }
-      ).catch(err => console.error('Failed to log provider access:', err));
+        action: 'provider_by_id',
+        success: false,
+        details: `Provider tenant mismatch: ${providerId}`
+      });
       
       return undefined;
     }
@@ -232,45 +232,81 @@ export async function getAIProviderById(
     // Check if provider is accessible to the user's team
     if (teamId && provider.teamId !== null && provider.teamId !== teamId) {
       // Log failed access attempt
-      logAiProviderAccess(
+      await logAiProviderAccess({
         userId,
         tenantId,
         teamId,
-        'provider_by_id',
-        false,
-        { providerId, reason: 'Provider team mismatch' }
-      ).catch(err => console.error('Failed to log provider access:', err));
+        action: 'provider_by_id',
+        success: false,
+        details: `Provider team mismatch: ${providerId}`
+      });
       
       return undefined;
     }
     
     // Create provider instance
-    const providerInstance = AIProviderFactory.createProvider(provider);
+    const providerInstance = AIProviderFactory.getInstance(provider);
     
     // Log successful access
-    logAiProviderAccess(
+    await logAiProviderAccess({
       userId,
       tenantId,
       teamId,
-      'provider_by_id',
-      true,
-      { providerId, providerType: provider.provider }
-    ).catch(err => console.error('Failed to log provider access:', err));
+      action: 'provider_by_id',
+      success: true,
+      details: `Provider accessed: ${provider.name} (${provider.type})`
+    });
     
     return providerInstance;
   } catch (error) {
     console.error('Error getting AI provider by ID:', error);
     
     // Log error access attempt
-    logAiProviderAccess(
+    await logAiProviderAccess({
       userId,
       tenantId,
       teamId,
-      'provider_by_id',
-      false,
-      { providerId, error: String(error) }
-    ).catch(err => console.error('Failed to log provider access:', err));
+      action: 'provider_by_id',
+      success: false,
+      details: `Error accessing provider ${providerId}: ${error}`
+    });
     
     return undefined;
   }
+}
+
+/**
+ * Get a provider for a user based on tenant and team
+ * This is a convenience wrapper for getAIProviders that returns the first provider or undefined
+ * 
+ * @param tenantId The tenant ID of the user
+ * @param teamId The team ID of the user (optional)
+ * @returns The first available AI provider or undefined if none available
+ */
+export async function getAIProviderForUser(
+  tenantId: number, 
+  teamId?: number | null
+): Promise<AiProvider | undefined> {
+  try {
+    const providers = await getAIProviders(tenantId, teamId);
+    return providers.length > 0 ? providers[0] : undefined;
+  } catch (error) {
+    console.error('Error getting AI provider for user:', error);
+    return undefined;
+  }
+}
+
+/**
+ * Get the default provider for a user based on tenant and team
+ * Alias for getDefaultAIProvider with a more user-focused name
+ * 
+ * @param tenantId The tenant ID of the user
+ * @param teamId The team ID of the user (optional)
+ * @returns The default AI provider or undefined if none available
+ */
+export async function getDefaultProviderForUser(
+  tenantId: number,
+  teamId?: number | null
+): Promise<AiProvider | undefined> {
+  return getDefaultAIProvider(tenantId, teamId);
 }

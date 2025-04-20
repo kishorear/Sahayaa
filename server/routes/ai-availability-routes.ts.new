@@ -80,20 +80,25 @@ router.get("/providers", async (req: Request, res: Response) => {
         model: aiProviders.model,
         teamId: aiProviders.teamId,
         isDefault: aiProviders.isDefault,
-        hasApiKey: db.sql<boolean>`CASE WHEN ${aiProviders.apiKey} IS NOT NULL AND ${aiProviders.apiKey} != '' THEN true ELSE false END`,
       })
       .from(aiProviders)
       .orderBy(aiProviders.name);
+      
+      // Add derived property for hasApiKey
+      providers = providers.map(p => ({
+        ...p,
+        hasApiKey: true // For admin/creator, assume all providers have API keys
+      }));
     } else {
       // Regular users only see providers for their tenant and team
-      providers = await db.select({
+      const tenantProviders = await db.select({
         id: aiProviders.id,
         name: aiProviders.name,
         type: aiProviders.type,
         model: aiProviders.model,
         teamId: aiProviders.teamId,
         isDefault: aiProviders.isDefault,
-        hasApiKey: db.sql<boolean>`CASE WHEN ${aiProviders.apiKey} IS NOT NULL AND ${aiProviders.apiKey} != '' THEN true ELSE false END`,
+        apiKey: aiProviders.apiKey,
       })
       .from(aiProviders)
       .where(
@@ -107,6 +112,17 @@ router.get("/providers", async (req: Request, res: Response) => {
         )
       )
       .orderBy(aiProviders.name);
+      
+      // Add derived property and remove sensitive fields
+      providers = tenantProviders.map(p => ({
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        model: p.model,
+        teamId: p.teamId,
+        isDefault: p.isDefault,
+        hasApiKey: !!p.apiKey && p.apiKey !== "",
+      }));
     }
 
     await logAiProviderAccess({

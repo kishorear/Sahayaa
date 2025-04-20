@@ -2,37 +2,36 @@ import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 
-interface CreatorProtectedRouteProps {
-  path: string;
-  component: React.ComponentType<any>;
-}
-
+/**
+ * A route component that only allows access to users with the creator role
+ */
 export function CreatorProtectedRoute({
   path,
   component: Component,
-}: CreatorProtectedRouteProps) {
+}: {
+  path: string;
+  component: () => React.JSX.Element;
+}) {
   const { user, isLoading } = useAuth();
-  
-  return (
-    <Route path={path}>
-      {(params) => {
-        // Show loading state while auth is checked
-        if (isLoading) {
-          return (
-            <div className="flex items-center justify-center min-h-screen">
-              <Loader2 className="h-8 w-8 animate-spin text-border" />
-            </div>
-          );
-        }
-        
-        // If not authenticated or not a creator, redirect to creator login
-        if (!user || user.role !== "creator") {
-          return <Redirect to="/creator/login" />;
-        }
-        
-        // If authenticated as creator, render the protected component
-        return <Component params={params} />;
-      }}
-    </Route>
-  );
+
+  if (isLoading) {
+    return (
+      <Route path={path}>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-border" />
+        </div>
+      </Route>
+    );
+  }
+
+  // Check if user exists and has creator role
+  if (!user || user.role !== "creator") {
+    return (
+      <Route path={path}>
+        <Redirect to="/creator/login" />
+      </Route>
+    );
+  }
+
+  return <Route path={path} component={Component} />;
 }

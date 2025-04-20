@@ -275,135 +275,15 @@ export async function setupAuth(app: Express) {
     };
   };
 
-  // Register routes
+  // Register routes - DISABLED PUBLIC REGISTRATION
+  // This endpoint is disabled as registration is restricted to creator users only
+  // See creator-routes.ts for the /api/creator/users endpoint that handles user registration
   app.post("/api/register", async (req, res) => {
-    try {
-      console.log("Registration attempt received:", { 
-        body: req.body,
-        method: req.method,
-        path: req.path,
-        headers: { 
-          'content-type': req.get('content-type'),
-          'user-agent': req.get('user-agent')
-        }
-      });
-      
-      const { username, password, name, email, role, teamId, newTeam } = req.body;
-
-      if (!username || !password) {
-        console.log("Registration failed: Missing username or password");
-        return res.status(400).json({ message: "Username and password are required" });
-      }
-
-      // Check if user already exists
-      try {
-        const existingUser = await storage.getUserByUsername(username);
-        if (existingUser) {
-          console.log(`Registration failed: Username ${username} already exists`);
-          return res.status(400).json({ message: "Username is already taken" });
-        }
-      } catch (checkError) {
-        console.error("Error checking for existing user:", checkError);
-        return res.status(500).json({ message: "Error checking username availability" });
-      }
-
-      // Validate role - only allow admin users to create other admins
-      // Special case: If this is the first user, allow them to be an admin
-      const requestedRole = role || "user";
-      
-      // Check if any users exist
-      try {
-        const userCount = await db.select({ count: sql`count(*)` }).from(users);
-        console.log("User count result:", userCount);
-        const isFirstUser = userCount[0].count === '0';
-        
-        // Only enforce admin restriction if it's not the first user
-        if (requestedRole === "admin" && !isFirstUser && (!req.user || req.user.role !== "admin")) {
-          console.log("Registration failed: Unauthorized attempt to create admin account");
-          return res.status(403).json({ message: "Only admins can create admin accounts" });
-        }
-      } catch (countError) {
-        console.error("Error checking user count:", countError);
-        return res.status(500).json({ message: "Error checking existing users" });
-      }
-
-      // Create new user with hashed password
-      let user;
-      try {
-        const hashedPassword = await hashPassword(password);
-        console.log("Password hashed successfully, creating user...");
-        
-        // Handle team creation or selection
-        let userTeamId = teamId || null;
-        
-        // Create a new team if requested
-        if (newTeam) {
-          try {
-            console.log(`Creating new team: ${newTeam}`);
-            const team = await storage.createTeam({
-              name: newTeam,
-              description: `Team created by ${username} during registration`,
-              tenantId: 1  // Default tenant ID, in a multi-tenant setup you'd get this from the request
-            });
-            
-            if (team) {
-              userTeamId = team.id;
-              console.log(`New team created with ID: ${userTeamId}`);
-            }
-          } catch (teamError) {
-            console.error("Error creating team:", teamError);
-            return res.status(500).json({ message: "Error creating team", details: teamError.message });
-          }
-        }
-        
-        // Create the user with team assignment
-        user = await storage.createUser({
-          username,
-          password: hashedPassword,
-          name: name || null,
-          email: email || null,
-          role: requestedRole,
-          teamId: userTeamId,
-          tenantId: 1  // Default tenant ID, in a multi-tenant setup you'd get this from the request
-        });
-        
-        console.log(`User created successfully: ${username} (ID: ${user.id}) with team ID: ${userTeamId}`);
-      } catch (createError) {
-        console.error("Error creating user:", createError);
-        return res.status(500).json({ message: "Error creating user account", details: createError.message });
-      }
-
-      // Login the user (set session)
-      try {
-        req.session.userId = user.id;
-        await new Promise<void>((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) {
-              console.error("Error saving session:", err);
-              reject(err);
-            } else {
-              resolve();
-            }
-          });
-        });
-        console.log(`Session created for user ID: ${user.id}`);
-      } catch (sessionError) {
-        console.error("Error saving session:", sessionError);
-        // Continue anyway - user is created but might need to log in manually
-      }
-
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
-      console.log("Registration successful, sending response");
-      res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).json({ 
-        message: "Internal server error", 
-        details: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
-    }
+    // Return an error message indicating that public registration is disabled
+    return res.status(403).json({ 
+      message: "Public registration is disabled. Please contact a creator user to create an account.",
+      code: "REGISTRATION_DISABLED"
+    });
   });
 
   app.post("/api/login", async (req, res) => {

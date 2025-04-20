@@ -23,7 +23,7 @@ import DocumentsPage from "@/pages/admin/DocumentsPage"; // Knowledge base docum
 import MCPTestPage from "@/pages/MCP-Test-Page"; // MCP Testing Page
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
-import CreatorLoginPage from "@/pages/CreatorLoginPage"; // Creator login page
+import CreatorLoginPage from "@/pages/creator/CreatorLoginPage"; // Creator login page
 import CreatorDashboardPage from "@/pages/creator/CreatorDashboardPage"; // Creator dashboard
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";

@@ -11,6 +11,22 @@ import {
 } from '@shared/schema';
 import { eq, and, isNull, ne, desc } from 'drizzle-orm';
 import { comparePasswords, hashPassword } from '../auth';
+import { z } from 'zod';
+import { storage } from '../storage';
+
+// Create a validation schema for user registration
+const creatorUserRegistrationSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters long"),
+  password: z.string().min(6, "Password must be at least 6 characters long"),
+  companyId: z.number().optional(),
+  companyName: z.string().optional(),
+  companySSO: z.string().optional(),
+  teamId: z.number().optional(),
+  teamName: z.string().optional(),
+  role: z.string().default("user"),
+  name: z.string().optional(),
+  email: z.string().email("Invalid email format").optional(),
+});
 
 const router = Router();
 
@@ -432,6 +448,188 @@ router.post('/teams', requireCreator, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error creating team:', error);
     return res.status(500).json({ message: 'Error creating team' });
+  }
+});
+
+/**
+ * POST /api/creator/register
+ * Register a new user with company information
+ * This endpoint handles the creation of a company (tenant) if needed
+ * and registers a new user with the appropriate associations
+ */
+router.post('/register', requireCreator, async (req: Request, res: Response) => {
+  try {
+    console.log('Creator user registration request received:', req.body);
+    
+    // Validate request data
+    let validationResult;
+    try {
+      validationResult = creatorUserRegistrationSchema.parse(req.body);
+    } catch (validationError: any) {
+      console.error('Validation error:', validationError);
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        errors: validationError.errors || validationError.message 
+      });
+    }
+    
+    const { 
+      username, 
+      password, 
+      companyId, 
+      companyName, 
+      companySSO, 
+      teamId, 
+      teamName,
+      role, 
+      name, 
+      email 
+    } = validationResult;
+    
+    // Step 1: Determine tenant (company) ID
+    let userTenantId = companyId;
+    
+    // If no company ID provided, but company name is given, create or find company
+    if (!userTenantId && companyName) {
+      console.log(`No tenant ID provided, looking for tenant with name: ${companyName}`);
+      
+      // Check if company with this name already exists
+      const existingTenants = await db.select().from(tenants)
+        .where(eq(tenants.name, companyName))
+        .limit(1);
+      
+      if (existingTenants.length > 0) {
+        // Use existing company
+        userTenantId = existingTenants[0].id;
+        console.log(`Found existing tenant with ID: ${userTenantId}`);
+      } else {
+        // Create new company as a tenant
+        console.log(`Creating new tenant for company: ${companyName}`);
+        
+        // Generate subdomain from company name
+        const subdomain = companyName.toLowerCase()
+          .replace(/[^a-z0-9]/g, '') // Remove special characters
+          .substring(0, 20); // Limit length
+        
+        // Generate a random API key
+        const apiKey = Math.random().toString(36).substring(2, 15) + 
+                      Math.random().toString(36).substring(2, 15);
+        
+        // Create the tenant record
+        const newTenant = await storage.createTenant({
+          name: companyName,
+          subdomain: subdomain,
+          apiKey: apiKey,
+          active: true,
+          settings: {
+            ssoEnabled: !!companySSO,
+            ssoProvider: companySSO || null,
+            emailEnabled: true,
+            aiEnabled: true
+          },
+          branding: {
+            primaryColor: '#4F46E5',
+            logo: null,
+            companyName: companyName,
+            emailTemplate: 'default'
+          }
+        });
+        
+        userTenantId = newTenant.id;
+        console.log(`Created new tenant with ID: ${userTenantId}`);
+      }
+    }
+    
+    // If we still don't have a tenant ID, return an error
+    if (!userTenantId) {
+      return res.status(400).json({ 
+        message: 'Either companyId or companyName must be provided' 
+      });
+    }
+    
+    // Step 2: Determine team ID
+    let userTeamId = teamId;
+    
+    // If no team ID but team name is provided, create or find team
+    if (!userTeamId && teamName) {
+      console.log(`No team ID provided, looking for team with name: ${teamName} in tenant: ${userTenantId}`);
+      
+      // Check if team with this name already exists in the tenant
+      const existingTeams = await db.select().from(teams)
+        .where(and(
+          eq(teams.name, teamName),
+          eq(teams.tenantId, userTenantId)
+        ))
+        .limit(1);
+      
+      if (existingTeams.length > 0) {
+        // Use existing team
+        userTeamId = existingTeams[0].id;
+        console.log(`Found existing team with ID: ${userTeamId}`);
+      } else {
+        // Create new team in the tenant
+        console.log(`Creating new team: ${teamName} in tenant: ${userTenantId}`);
+        
+        const newTeam = await storage.createTeam({
+          name: teamName,
+          description: `Team created by creator user for ${companyName || 'company ' + userTenantId}`,
+          tenantId: userTenantId
+        });
+        
+        userTeamId = newTeam.id;
+        console.log(`Created new team with ID: ${userTeamId}`);
+      }
+    }
+    
+    // Step 3: Validate that username doesn't already exist in the tenant
+    const existingUser = await storage.getUserByUsername(username, userTenantId);
+    if (existingUser) {
+      return res.status(409).json({ 
+        message: `Username '${username}' already exists in this company` 
+      });
+    }
+    
+    // Step 4: Hash the password
+    const hashedPassword = await hashPassword(password);
+    
+    // Step 5: Create the user
+    const newUser = await storage.createUser({
+      username,
+      password: hashedPassword,
+      role: role || 'user',
+      name: name || null,
+      email: email || null,
+      company: companyName || null,
+      tenantId: userTenantId,
+      teamId: userTeamId || null,
+      // Set SSO fields if companySSO is provided
+      ssoEnabled: !!companySSO,
+      ssoProvider: companySSO || null,
+      ssoProviderId: null,
+      ssoProviderData: companySSO ? { enabled: true, provider: companySSO } : {}
+    });
+    
+    console.log(`User created successfully: ${username} (ID: ${newUser.id})`);
+    
+    // Remove sensitive data from response
+    const { password: _, ...userWithoutPassword } = newUser;
+    
+    // Return user data with tenant and team information
+    return res.status(201).json({
+      ...userWithoutPassword,
+      tenant: {
+        id: userTenantId,
+        name: companyName
+      },
+      team: userTeamId ? { id: userTeamId, name: teamName } : null
+    });
+    
+  } catch (error) {
+    console.error('Error registering user by creator:', error);
+    return res.status(500).json({ 
+      message: 'Error registering user',
+      details: error.message
+    });
   }
 });
 

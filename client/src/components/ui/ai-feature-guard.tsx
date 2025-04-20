@@ -1,67 +1,78 @@
-import { ReactNode } from "react";
-import { useAiProviderAvailability } from "@/hooks/use-ai-provider";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2 } from "lucide-react";
+import React from 'react';
+import { useAiProviderAvailability } from '@/hooks/use-ai-provider';
+import { Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
 
-interface AiFeatureGuardProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  tooltipMessage?: string;
-}
+type AIFeatureGuardProps = {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+  loadingComponent?: React.ReactNode;
+  hideOnUnavailable?: boolean;
+  featureDescription?: string;
+};
 
 /**
- * A component that conditionally renders AI features based on whether
- * AI providers are configured for the current user's tenant/team
+ * Component that conditionally renders AI-powered features only when available
+ * 
+ * @param children The AI-powered feature components to conditionally render
+ * @param fallback Optional component to show when AI is unavailable
+ * @param loadingComponent Optional component to show during loading
+ * @param hideOnUnavailable Whether to hide completely when unavailable (default: false)
+ * @param featureDescription Optional description of the feature for error messages
  */
-export function AiFeatureGuard({
+export function AIFeatureGuard({
   children,
   fallback,
-  tooltipMessage = "AI features are not available for your account. Contact your administrator."
-}: AiFeatureGuardProps) {
-  const { 
-    aiProvidersAvailable, 
-    isLoadingProviders, 
-    errorMessage 
-  } = useAiProviderAvailability();
+  loadingComponent,
+  hideOnUnavailable = false,
+  featureDescription = "This AI feature"
+}: AIFeatureGuardProps) {
+  const { isAvailable, isLoading, error } = useAiProviderAvailability();
 
-  // Show a loading state
-  if (isLoadingProviders) {
-    return (
-      <div className="flex items-center text-muted-foreground">
-        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        <span className="text-sm">Checking AI availability...</span>
+  // While loading, show loading component or default loading state
+  if (isLoading) {
+    return loadingComponent || (
+      <div className="flex items-center justify-center py-4 text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        <span>Checking AI availability...</span>
       </div>
     );
   }
 
-  // If AI providers are available, render the children
-  if (aiProvidersAvailable) {
-    return <>{children}</>;
+  // If error occurred, show error state
+  if (error) {
+    return hideOnUnavailable ? null : (
+      <div className="p-4 border rounded-md bg-muted">
+        <div className="flex items-center text-destructive mb-2">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          <span className="font-medium">Error checking AI availability</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {featureDescription} is temporarily unavailable. Please try again later.
+        </p>
+      </div>
+    );
   }
 
-  // If fallback is provided, render it
-  if (fallback) {
-    return <>{fallback}</>;
+  // If AI isn't available, show fallback or default unavailable state
+  if (!isAvailable) {
+    if (hideOnUnavailable) {
+      return null;
+    }
+
+    return fallback || (
+      <div className="p-4 border rounded-md bg-muted">
+        <div className="flex items-center text-amber-500 mb-2">
+          <ShieldAlert className="h-4 w-4 mr-2" />
+          <span className="font-medium">AI Features Unavailable</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {featureDescription} is not available for your account. 
+          Please contact your administrator to enable AI features for your team.
+        </p>
+      </div>
+    );
   }
 
-  // Otherwise render a tooltip explaining why the feature is unavailable
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="text-muted-foreground cursor-not-allowed opacity-50">
-            {children}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-xs">
-          <p>{tooltipMessage}</p>
-          {errorMessage && errorMessage !== "Not authenticated" && (
-            <p className="text-xs mt-1 text-destructive">
-              {errorMessage}
-            </p>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+  // AI is available, render the feature
+  return <>{children}</>;
 }

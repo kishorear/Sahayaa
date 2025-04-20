@@ -183,6 +183,30 @@ router.post('/tenants/:tenantId/ai-providers', checkAiProviderAccess, async (req
       .values(result.data)
       .returning();
     
+    // Log the creation for audit purposes
+    try {
+      if (req.user) {
+        await logAiProviderManagement(
+          req.user.id,
+          tenantId,
+          result.data.teamId || null,
+          'create',
+          aiProvider.id,
+          {
+            name: aiProvider.name,
+            provider: aiProvider.provider,
+            model: aiProvider.model,
+            teamScoped: result.data.teamId ? true : false,
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          }
+        );
+      }
+    } catch (logError) {
+      console.error('Failed to log AI provider creation:', logError);
+      // Non-blocking - continue even if logging fails
+    }
+    
     return res.status(201).json(aiProvider);
   } catch (error) {
     console.error('Error creating AI provider:', error);
@@ -273,6 +297,28 @@ router.patch('/tenants/:tenantId/ai-providers/:providerId', checkAiProviderAcces
       ))
       .returning();
     
+    // Log the update for audit purposes
+    try {
+      if (req.user) {
+        await logAiProviderManagement(
+          req.user.id,
+          tenantId,
+          updatedProvider.teamId,
+          'update',
+          providerId,
+          {
+            name: updatedProvider.name,
+            changes: Object.keys(updateData),
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          }
+        );
+      }
+    } catch (logError) {
+      console.error('Failed to log AI provider update:', logError);
+      // Non-blocking - continue even if logging fails
+    }
+    
     return res.json(updatedProvider);
   } catch (error) {
     console.error('Error updating AI provider:', error);
@@ -315,6 +361,30 @@ router.delete('/tenants/:tenantId/ai-providers/:providerId', checkAiProviderAcce
         eq(schema.aiProviders.id, providerId),
         eq(schema.aiProviders.tenantId, tenantId)
       ));
+    
+    // Log the deletion for audit purposes
+    try {
+      if (req.user) {
+        await logAiProviderManagement(
+          req.user.id,
+          tenantId,
+          existingProvider[0].teamId,
+          'delete',
+          providerId,
+          {
+            name: existingProvider[0].name,
+            provider: existingProvider[0].provider,
+            model: existingProvider[0].model,
+            teamScoped: existingProvider[0].teamId ? true : false,
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          }
+        );
+      }
+    } catch (logError) {
+      console.error('Failed to log AI provider deletion:', logError);
+      // Non-blocking - continue even if logging fails
+    }
     
     return res.json({ 
       message: 'AI provider deleted successfully',

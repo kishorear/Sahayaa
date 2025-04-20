@@ -1,91 +1,68 @@
 import { Request, Response, NextFunction } from 'express';
-import { isCreatorOrAdminRole } from '../../utils';
-import { logAiProviderAccess } from '../audit-log';
 import { getAiProviderAccessForUser } from '../service';
+import { logAiProviderAccess } from '../audit-log';
 
 /**
  * Middleware to check if a user has access to AI provider features
  * Enforces tenant and team-scoped access control
  */
 export function checkAiProviderAccess(req: Request, res: Response, next: NextFunction) {
+  // Skip access check for non-authenticated requests
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).json({ 
-      message: 'Authentication required to access AI providers' 
+      message: 'Authentication required to access AI features'
     });
   }
 
   const userId = req.user.id;
   const tenantId = req.user.tenantId;
   const teamId = req.user.teamId;
-  const userRole = req.user.role;
   
-  // Creator and admin roles always have access
-  if (isCreatorOrAdminRole(userRole)) {
-    // Still log the access for audit purposes
-    logAiProviderAccess(
-      userId,
-      tenantId,
-      teamId,
-      'middleware_access',
-      true,
-      { 
-        role: userRole,
-        path: req.path,
-        method: req.method
-      }
-    ).catch(err => console.error('Failed to log AI provider access:', err));
-    
-    return next();
-  }
-  
-  // For regular users, check if AI providers are available for their tenant/team
+  // Check if user has access to AI providers based on their tenant and team
   getAiProviderAccessForUser(tenantId, teamId)
     .then(hasAccess => {
-      // Log the access attempt
-      logAiProviderAccess(
-        userId,
-        tenantId,
-        teamId,
-        'middleware_access',
-        hasAccess,
-        { 
-          role: userRole,
-          path: req.path,
-          method: req.method
-        }
-      ).catch(err => console.error('Failed to log AI provider access:', err));
-      
       if (hasAccess) {
+        // Log successful access
+        logAiProviderAccess(
+          userId,
+          tenantId,
+          teamId,
+          'middleware_access',
+          true,
+          {
+            path: req.path,
+            method: req.method,
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          }
+        ).catch(err => console.error('Failed to log successful AI access:', err));
+        
         next();
       } else {
+        // Log failed access attempt
+        logAiProviderAccess(
+          userId,
+          tenantId,
+          teamId,
+          'middleware_access',
+          false,
+          {
+            path: req.path,
+            method: req.method,
+            reason: 'No AI providers available for tenant/team',
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          }
+        ).catch(err => console.error('Failed to log failed AI access:', err));
+        
         res.status(403).json({
-          message: 'AI provider access denied. No AI providers are configured for your tenant/team.',
-          error: 'AI_PROVIDER_NOT_AVAILABLE'
+          message: 'You do not have access to AI features. Contact your administrator to set up AI providers for your team.'
         });
       }
     })
     .catch(error => {
       console.error('Error checking AI provider access:', error);
-      
-      // Log the failed access attempt
-      logAiProviderAccess(
-        userId,
-        tenantId,
-        teamId,
-        'middleware_access',
-        false,
-        { 
-          role: userRole,
-          path: req.path,
-          method: req.method,
-          error: error.message
-        }
-      ).catch(err => console.error('Failed to log AI provider access failure:', err));
-      
-      res.status(500).json({
-        message: 'Error checking AI provider access',
-        error: 'INTERNAL_SERVER_ERROR'
-      });
+      res.status(500).json({ message: 'Error checking AI provider access' });
     });
 }
 
@@ -98,16 +75,14 @@ export async function hasAiProviderAccess(req: Request): Promise<boolean> {
   if (!req.isAuthenticated() || !req.user) {
     return false;
   }
-
-  const tenantId = req.user.tenantId;
-  const teamId = req.user.teamId;
-  const userRole = req.user.role;
   
-  // Creator and admin roles always have access
-  if (isCreatorOrAdminRole(userRole)) {
-    return true;
+  try {
+    return await getAiProviderAccessForUser(
+      req.user.tenantId,
+      req.user.teamId
+    );
+  } catch (error) {
+    console.error('Error in hasAiProviderAccess:', error);
+    return false;
   }
-  
-  // For regular users, check if AI providers are available for their tenant/team
-  return getAiProviderAccessForUser(tenantId, teamId);
 }

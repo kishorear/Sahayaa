@@ -53,6 +53,7 @@ import { Loader2, UserCog, Key, Shield, ExternalLink, Trash2, ImageIcon } from "
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
+  company: z.string().min(2, "Company name must be at least 2 characters").optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -99,10 +100,12 @@ export default function ProfilePage() {
     defaultValues: {
       name: profile?.name || '',
       email: profile?.email || '',
+      company: profile?.company || '',
     },
     values: {
       name: profile?.name || '',
       email: profile?.email || '',
+      company: profile?.company || '',
     },
   });
 
@@ -366,7 +369,10 @@ export default function ProfilePage() {
                 />
               </div>
               <h3 className="text-xl font-bold">{profile?.name || profile?.username}</h3>
-              <p className="text-sm text-muted-foreground mb-2">{profile?.email}</p>
+              <p className="text-sm text-muted-foreground">{profile?.email}</p>
+              {profile?.company && (
+                <p className="text-sm text-muted-foreground mb-2">{profile.company}</p>
+              )}
               
               <div className="w-full mt-4 px-4">
                 <div className="flex justify-between text-sm py-2 border-b">
@@ -381,6 +387,12 @@ export default function ProfilePage() {
                   <span className="font-medium">Account Created</span>
                   <span>{new Date(profile?.createdAt).toLocaleDateString()}</span>
                 </div>
+                {profile?.company && (
+                  <div className="flex justify-between text-sm py-2 border-b">
+                    <span className="font-medium">Company</span>
+                    <span>{profile.company}</span>
+                  </div>
+                )}
                 {profile?.teamId && (
                   <div className="flex justify-between text-sm py-2 border-b">
                     <span className="font-medium">Team ID</span>
@@ -473,6 +485,23 @@ export default function ProfilePage() {
                             </FormControl>
                             <FormDescription>
                               Your email address will be used for notifications and password resets.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={profileForm.control}
+                        name="company"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Company</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your company or organization" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              The company or organization you represent.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

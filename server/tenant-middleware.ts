@@ -80,14 +80,14 @@ export const tenantSubdomainAuth = async (req: Request, res: Response, next: Nex
 };
 
 /**
- * Middleware to check if a user is a creator and set the appropriate flag
+ * Middleware to check if a user has cross-tenant access (creator or admin)
  * This middleware should be applied early in the chain
  */
 export const checkCreatorRole = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user && req.user.role === 'creator') {
+  if (req.user && (req.user.role === 'creator' || req.user.role === 'admin' || req.user.role === 'administrator')) {
     // Set a flag that can be used by downstream middlewares and routes
     req.isCreatorUser = true;
-    console.log(`User ${req.user.username} (ID: ${req.user.id}) has creator role - cross-tenant access enabled`);
+    console.log(`User ${req.user.username} (ID: ${req.user.id}) has ${req.user.role} role - cross-tenant access enabled`);
   } else {
     req.isCreatorUser = false;
   }
@@ -97,7 +97,7 @@ export const checkCreatorRole = (req: Request, res: Response, next: NextFunction
 /**
  * Middleware to restrict access to tenant resources
  * Ensures a user can only access resources belonging to their tenant
- * Creator role users are exempt from this restriction
+ * Creator and admin role users are exempt from this restriction
  */
 export const tenantResourceGuard = (req: Request, res: Response, next: NextFunction) => {
   // If user is not authenticated, skip (auth middleware will handle)
@@ -105,8 +105,8 @@ export const tenantResourceGuard = (req: Request, res: Response, next: NextFunct
     return next();
   }
   
-  // Creator role has cross-tenant access
-  if (req.isCreatorUser || req.user.role === 'creator') {
+  // Creator and admin role have cross-tenant access
+  if (req.isCreatorUser || req.user.role === 'creator' || req.user.role === 'admin' || req.user.role === 'administrator') {
     return next();
   }
   

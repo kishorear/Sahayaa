@@ -68,6 +68,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("member"), // creator, administrator, support_engineer, user, member
   name: text("name"),
   email: text("email"),
+  company: text("company"), // Company or organization name
   profilePicture: text("profilePicture"), // URL or path to profile picture
   
   // MFA fields
@@ -98,6 +99,7 @@ export const insertUserSchema = createInsertSchema(users)
     role: true,
     name: true,
     email: true,
+    company: true,
     profilePicture: true,
     tenantId: true,
     teamId: true,
@@ -107,6 +109,7 @@ export const insertUserSchema = createInsertSchema(users)
 export const updateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").optional(),
   email: z.string().email("Please enter a valid email").optional(),
+  company: z.string().min(2, "Company name must be at least 2 characters").optional(),
   profilePicture: z.string().nullable().optional(),
 });
 

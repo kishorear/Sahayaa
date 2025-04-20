@@ -21,15 +21,19 @@ export async function logAiProviderAccess(
   details?: Record<string, any>
 ): Promise<void> {
   try {
-    await db.insert(schema.aiProviderAudit).values({
-      userId,
-      tenantId,
-      teamId,
-      action,
-      success,
-      details: details ? JSON.stringify(details) : null,
-      timestamp: new Date()
-    });
+    await db.execute(
+      `INSERT INTO ai_provider_audit (user_id, tenant_id, team_id, action, success, details, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        userId,
+        tenantId,
+        teamId,
+        action,
+        success,
+        details ? JSON.stringify(details) : null,
+        new Date()
+      ]
+    );
   } catch (error) {
     console.error('Error logging AI provider access:', error);
     // Non-blocking - continue execution even if logging fails
@@ -56,15 +60,20 @@ export async function logAiProviderManagement(
   details?: Record<string, any>
 ): Promise<void> {
   try {
-    await db.insert(schema.aiProviderAudit).values({
-      userId,
-      tenantId,
-      teamId,
-      action,
-      providerId: providerId || null,
-      details: details ? JSON.stringify(details) : null,
-      timestamp: new Date()
-    });
+    await db.execute(
+      `INSERT INTO ai_provider_audit (user_id, tenant_id, team_id, action, provider_id, success, details, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        userId,
+        tenantId,
+        teamId,
+        action,
+        providerId || null,
+        true, // Management actions are always "successful" if they reach this point
+        details ? JSON.stringify(details) : null,
+        new Date()
+      ]
+    );
   } catch (error) {
     console.error('Error logging AI provider management action:', error);
     // Non-blocking - continue execution even if logging fails

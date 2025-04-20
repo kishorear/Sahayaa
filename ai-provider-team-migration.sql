@@ -9,8 +9,9 @@ CREATE TABLE IF NOT EXISTS ai_provider_audit (
     tenant_id INTEGER NOT NULL,
     team_id INTEGER,
     provider_id INTEGER,
+    success BOOLEAN DEFAULT TRUE,
     details JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create index on audit log table

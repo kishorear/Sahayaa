@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { checkAiProviderAccess, hasAiProviderAccess } from '../ai/middleware';
 import { isCreatorOrAdminRole } from '../utils';
 import { getAiProviderAccessForUser } from '../ai/service';
+import { logAiProviderAccess, logAiProviderManagement } from '../ai/audit-log';
 
 const router = Router();
 
@@ -43,8 +44,24 @@ router.get('/ai/providers/available', async (req, res) => {
     // Check if any providers are available for this tenant and team
     const hasAccess = await getAiProviderAccessForUser(tenantId, teamId);
     
-    // Log the check for audit purposes
-    console.log(`AI provider access check for user ${req.user.id} (tenant ${tenantId}, team ${teamId}): ${hasAccess ? 'Granted' : 'Denied'}`);
+    // Log to audit database
+    try {
+      await logAiProviderAccess(
+        req.user.id,
+        tenantId,
+        teamId,
+        'check_availability',
+        hasAccess,
+        {
+          userRole: req.user.role,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        }
+      );
+    } catch (logError) {
+      console.error('Failed to log AI provider access check:', logError);
+      // Non-blocking - continue even if logging fails
+    }
     
     return res.json({
       available: hasAccess,

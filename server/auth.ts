@@ -22,6 +22,7 @@ declare global {
     interface User {
       id: number;
       tenantId: number;
+      teamId: number | null; // Team ID for team-scoped access control
       username: string;
       password: string;
       role: string;

@@ -39,6 +39,8 @@ import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
 import creatorRoutes from "./routes/creator-routes";
 // Import AI provider availability routes
 import aiAvailabilityRoutes from "./routes/ai-availability-routes";
+// Import AI providers routes
+import aiProvidersRoutes from "./routes/ai-providers-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -172,7 +174,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerWidgetDownloadRoutes(app);
   
   // Register AI availability routes
-  app.use('/api/ai', aiAvailabilityRoutes);
+  app.use('/api/ai', requireAuth, aiAvailabilityRoutes);
+  
+  // Register AI providers routes - this endpoint must match what the frontend expects: /api/ai-providers
+  // Apply authentication middleware to ensure req.isAuthenticated is available
+  app.use('/api/ai-providers', requireAuth, aiProvidersRoutes);
   
   // Initialize SSO service for all tenants
   try {

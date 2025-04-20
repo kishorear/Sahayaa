@@ -18,20 +18,27 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
  */
 async function loadProvidersFromDatabase(tenantId: number, teamId?: number | null): Promise<AiProvider[]> {
   try {
-    let query = db.select().from(aiProviders)
-      .where(eq(aiProviders.tenantId, tenantId))
-      .where(eq(aiProviders.enabled, true));
-
-    // If teamId is provided, filter by teamId or null (providers available to all teams)
+    // Create filters
+    let filters = and(
+      eq(aiProviders.tenantId, tenantId),
+      eq(aiProviders.enabled, true)
+    );
+    
+    // If teamId is provided, add team filter
     if (teamId !== undefined && teamId !== null) {
-      query = query.where(or(
-        eq(aiProviders.teamId, teamId),
-        isNull(aiProviders.teamId)
-      ));
+      filters = and(
+        filters,
+        or(
+          eq(aiProviders.teamId, teamId),
+          isNull(aiProviders.teamId)
+        )
+      );
     }
-
-    // Order by priority (highest first)
-    const providers = await query.orderBy(aiProviders.priority);
+    
+    // Execute query with filters and sort
+    const providers = await db.select().from(aiProviders)
+      .where(filters)
+      .orderBy(aiProviders.priority);
     
     return providers;
   } catch (error) {
@@ -197,8 +204,10 @@ export async function getAIProviderById(
   try {
     // Get provider from database directly (no caching for ID-based lookup)
     const [provider] = await db.select().from(aiProviders)
-      .where(eq(aiProviders.id, providerId))
-      .where(eq(aiProviders.enabled, true));
+      .where(and(
+        eq(aiProviders.id, providerId),
+        eq(aiProviders.enabled, true)
+      ));
     
     if (!provider) {
       // Log failed access attempt

@@ -271,6 +271,30 @@ export class AIProviderFactory {
   }
   
   /**
+   * Get a provider instance from database model
+   * 
+   * @param provider Database provider model
+   * @returns AI provider instance
+   */
+  static getInstance(provider: AiProvider): AIProviderInterface {
+    // Convert DB model to config
+    const config = convertDbProviderToConfig(provider);
+    
+    try {
+      // Create new provider
+      return this.createProvider(config);
+    } catch (error) {
+      console.error(`Failed to create provider ${provider.type} (ID: ${provider.id}):`, error);
+      // Fallback to custom provider in case of error
+      return new CustomProvider({
+        type: 'custom',
+        model: provider.model || 'unknown',
+        settings: provider.settings as Record<string, any>
+      });
+    }
+  }
+  
+  /**
    * Load AI provider configurations from database
    * 
    * @param tenantId Tenant ID to load providers for

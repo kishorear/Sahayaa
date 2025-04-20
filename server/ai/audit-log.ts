@@ -1,69 +1,67 @@
 import { db } from '../db';
 import { aiProviderAudit } from '../../shared/schema';
 
-// Interface for AI provider access log entry
+/**
+ * Interface for AI provider access log entries
+ */
 export interface AiProviderAccessLogEntry {
   userId: number;
   tenantId: number;
-  teamId?: number | null;
-  action: string;
+  teamId?: number;
+  action: 'list' | 'view' | 'use' | 'check' | 'provider_by_id' | 'getDefault';
   success: boolean;
-  details: string | Record<string, any>;
+  details: string;
 }
 
 /**
- * Log AI provider access attempts to the audit log
- * This function logs when users attempt to access or use AI providers
- * 
- * @param entry The audit log entry details
+ * Interface for AI provider management log entries
  */
-export async function logAiProviderAccess(entry: AiProviderAccessLogEntry): Promise<void> {
-  try {
-    await db.insert(aiProviderAudit).values({
-      userId: entry.userId,
-      tenantId: entry.tenantId,
-      teamId: entry.teamId,
-      action: entry.action,
-      timestamp: new Date(),
-      success: entry.success,
-      details: typeof entry.details === 'string'
-        ? JSON.stringify({ message: entry.details })
-        : JSON.stringify(entry.details)
-    });
-  } catch (error) {
-    console.error('Error logging AI provider access:', error);
-    // Don't throw - this is a non-critical operation
-  }
-}
-
-// Interface for AI provider management log entry
 export interface AiProviderManagementLogEntry {
   userId: number;
   tenantId: number;
-  providerId?: number;
-  action: 'create' | 'update' | 'delete' | 'enable' | 'disable';
-  providerDetails: any;
+  action: 'create' | 'update' | 'delete';
+  providerId: number;
+  details: Record<string, any>;
 }
 
 /**
- * Log AI provider management operations to the audit log
- * This function logs when providers are created, updated, deleted, etc.
- * 
- * @param entry The audit log entry details
+ * Logs an AI provider access event
  */
-export async function logAiProviderManagement(entry: AiProviderManagementLogEntry): Promise<void> {
+export async function logAiProviderAccess(logEntry: AiProviderAccessLogEntry): Promise<void> {
   try {
     await db.insert(aiProviderAudit).values({
-      userId: entry.userId,
-      tenantId: entry.tenantId,
-      providerId: entry.providerId,
-      action: entry.action,
-      timestamp: new Date(),
-      success: true, // Management actions are only logged when successful
-      details: JSON.stringify(entry.providerDetails)
+      userId: logEntry.userId,
+      tenantId: logEntry.tenantId,
+      teamId: logEntry.teamId || null,
+      action: `ai_provider_${logEntry.action}`,
+      providerId: null,
+      success: logEntry.success,
+      details: { 
+        details: logEntry.details 
+      },
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error logging AI provider access:', error);
+  }
+}
+
+/**
+ * Logs an AI provider management event
+ */
+export async function logAiProviderManagement(logEntry: AiProviderManagementLogEntry): Promise<void> {
+  try {
+    await db.insert(aiProviderAudit).values({
+      userId: logEntry.userId,
+      tenantId: logEntry.tenantId,
+      teamId: null,
+      action: `ai_provider_${logEntry.action}`,
+      providerId: logEntry.providerId,
+      success: true,
+      details: logEntry.details,
+      timestamp: new Date()
     });
   } catch (error) {
     console.error('Error logging AI provider management:', error);
-    // Don't throw - this is a non-critical operation
   }
 }

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { db } from '../db';
 import * as schema from '../../shared/schema';
 import { eq, and, or, isNull } from 'drizzle-orm';
@@ -7,6 +7,9 @@ import { z } from 'zod';
 import { isCreatorOrAdminRole } from '../utils';
 import { getAiProviderAccessForUser, reloadProvidersFromDatabase } from '../ai/service';
 import { logAiProviderAccess, logAiProviderManagement } from '../ai/audit-log';
+
+// Use extended Request type from Express that has user property
+import { Request } from 'express-serve-static-core';
 
 const router = Router();
 
@@ -145,7 +148,6 @@ router.post('/', async (req: Request, res: Response) => {
         await logAiProviderManagement({
           userId: req.user.id,
           tenantId,
-          teamId: result.data.teamId,
           action: 'create',
           providerId: provider.id,
           details: {
@@ -319,7 +321,6 @@ router.patch('/:id', async (req: Request, res: Response) => {
         await logAiProviderManagement({
           userId: req.user.id,
           tenantId,
-          teamId: updatedProvider.teamId,
           action: 'update',
           providerId,
           details: {
@@ -386,7 +387,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
         await logAiProviderManagement({
           userId: req.user.id,
           tenantId,
-          teamId: existingProvider[0].teamId,
           action: 'delete',
           providerId,
           details: {

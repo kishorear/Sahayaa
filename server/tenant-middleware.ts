@@ -80,14 +80,18 @@ export const tenantSubdomainAuth = async (req: Request, res: Response, next: Nex
 };
 
 /**
- * Middleware to check if a user has cross-tenant access (creator or admin)
+ * Middleware to check if a user has cross-tenant access (creator role only)
  * This middleware should be applied early in the chain
  */
 export const checkCreatorRole = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user && (req.user.role === 'creator' || req.user.role === 'admin' || req.user.role === 'administrator')) {
+  if (req.user && req.user.role === 'creator') {
     // Set a flag that can be used by downstream middlewares and routes
     req.isCreatorUser = true;
-    console.log(`User ${req.user.username} (ID: ${req.user.id}) has ${req.user.role} role - cross-tenant access enabled`);
+    console.log(`User ${req.user.username} (ID: ${req.user.id}) has creator role - cross-tenant access enabled`);
+  } else if (req.user && (req.user.role === 'admin' || req.user.role === 'administrator')) {
+    // Admin/administrator roles do not have cross-tenant access
+    req.isCreatorUser = false;
+    console.log(`User ${req.user.username} (ID: ${req.user.id}) has ${req.user.role} role - tenant-specific access only`);
   } else {
     req.isCreatorUser = false;
   }
@@ -97,7 +101,7 @@ export const checkCreatorRole = (req: Request, res: Response, next: NextFunction
 /**
  * Middleware to restrict access to tenant resources
  * Ensures a user can only access resources belonging to their tenant
- * Creator and admin role users are exempt from this restriction
+ * Only creator role users are exempt from this restriction
  */
 export const tenantResourceGuard = (req: Request, res: Response, next: NextFunction) => {
   // If user is not authenticated, skip (auth middleware will handle)
@@ -105,7 +109,7 @@ export const tenantResourceGuard = (req: Request, res: Response, next: NextFunct
     return next();
   }
   
-  // Creator and admin role have cross-tenant access
+  // Only creator role has cross-tenant access
   if (req.isCreatorUser) {
     return next();
   }

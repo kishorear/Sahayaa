@@ -930,7 +930,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/metrics/summary", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
-      const tickets = await storage.getAllTickets();
+      
+      // Check if user is a creator to determine tenant filtering
+      const isCreator = req.user?.role === 'creator';
+      
+      // For non-creator users, filter by their tenant
+      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      
+      // Get tickets with proper tenant filtering
+      const tickets = await storage.getAllTickets(tenantId);
       
       // Filter tickets based on timePeriod
       const cutoffDate = getTimePeriodCutoff(timePeriod);
@@ -1023,7 +1031,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/metrics/categories", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
-      const tickets = await storage.getAllTickets();
+      
+      // Check if user is a creator to determine tenant filtering
+      const isCreator = req.user?.role === 'creator';
+      
+      // For non-creator users, filter by their tenant
+      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      
+      // Get tickets with proper tenant filtering
+      const tickets = await storage.getAllTickets(tenantId);
       
       // Filter tickets based on timePeriod
       const cutoffDate = getTimePeriodCutoff(timePeriod);

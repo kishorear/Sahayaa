@@ -26,7 +26,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       const tenantId = req.user?.tenantId || 1;
       
       // If user is a creator, allow cross-tenant operations
-      if (req.isCreatorUser) {
+      if (req.user?.role === 'creator') {
         console.log(`Creator role detected - adding user ${userId} to team ${teamId} with cross-tenant access`);
         
         // Verify team exists (no tenant restriction)
@@ -122,7 +122,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       const tenantId = req.user?.tenantId || 1;
       
       // If user is a creator, allow cross-tenant operations
-      if (req.isCreatorUser) {
+      if (req.user?.role === 'creator') {
         console.log(`Creator role detected - removing user ${userId} from team ${teamId} with cross-tenant access`);
         
         // Verify user exists and is in the team without tenant restriction
@@ -183,45 +183,29 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       const tenantId = req.user?.tenantId || 1;
       
       // If user is a creator, allow cross-tenant operations
-      if (req.isCreatorUser) {
+      if (req.user?.role === 'creator') {
         console.log(`Creator role detected - retrieving all team members with cross-tenant access`);
         
         // If tenantId query parameter is provided, filter by that tenant
-        let query = db.select({
-          id: users.id,
-          username: users.username,
-          role: users.role,
-          name: users.name,
-          email: users.email,
-          tenantId: users.tenantId,
-          teamId: users.teamId,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt
-        }).from(users);
+        let whereClause;
         
         if (req.query.tenantId) {
           const queryTenantId = parseInt(req.query.tenantId as string);
           if (!isNaN(queryTenantId)) {
-            query = query.where(eq(users.tenantId, queryTenantId));
+            whereClause = eq(users.tenantId, queryTenantId);
           }
         }
         
-        const result = await query;
+        // Execute the query with the where clause if it exists
+        const result = whereClause
+          ? await db.select().from(users).where(whereClause)
+          : await db.select().from(users);
         return res.status(200).json(result);
       }
       
       // Regular tenant-specific operations for non-creator users
-      const result = await db.select({
-        id: users.id,
-        username: users.username,
-        role: users.role,
-        name: users.name,
-        email: users.email,
-        tenantId: users.tenantId,
-        teamId: users.teamId,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt
-      }).from(users)
+      const result = await db.select()
+        .from(users)
         .where(eq(users.tenantId, tenantId));
       
       return res.status(200).json(result);
@@ -244,7 +228,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       const tenantId = req.user?.tenantId || 1;
       
       // If user is a creator, allow cross-tenant operations
-      if (req.isCreatorUser) {
+      if (req.user?.role === 'creator') {
         console.log(`Creator role detected - retrieving team member ${id} with cross-tenant access`);
         
         const result = await db.select().from(users)
@@ -359,7 +343,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       }
       
       // If user is a creator, allow cross-tenant operations
-      if (req.isCreatorUser) {
+      if (req.user?.role === 'creator') {
         console.log(`Creator role detected - updating team member ${id} with cross-tenant access`);
         
         // Check if user exists
@@ -437,7 +421,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       const tenantId = req.user?.tenantId || 1;
       
       // If user is a creator, allow cross-tenant operations
-      if (req.isCreatorUser) {
+      if (req.user?.role === 'creator') {
         console.log(`Creator role detected - deleting team member ${id} with cross-tenant access`);
         
         // Check if user exists

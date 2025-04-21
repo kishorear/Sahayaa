@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { users, teams } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { hashPassword } from '../auth';
 
 const router = Router();
 
@@ -171,6 +172,324 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       return res.status(200).json(result[0]);
     } catch (error) {
       console.error('Error removing user from team:', error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Get all team members (used by the TeamPage.tsx)
+  app.get("/api/team-members", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+    try {
+      // Get the tenant context from the user
+      const tenantId = req.user?.tenantId || 1;
+      
+      // If user is a creator, allow cross-tenant operations
+      if (req.isCreatorUser) {
+        console.log(`Creator role detected - retrieving all team members with cross-tenant access`);
+        
+        // If tenantId query parameter is provided, filter by that tenant
+        let query = db.select({
+          id: users.id,
+          username: users.username,
+          role: users.role,
+          name: users.name,
+          email: users.email,
+          tenantId: users.tenantId,
+          teamId: users.teamId,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt
+        }).from(users);
+        
+        if (req.query.tenantId) {
+          const queryTenantId = parseInt(req.query.tenantId as string);
+          if (!isNaN(queryTenantId)) {
+            query = query.where(eq(users.tenantId, queryTenantId));
+          }
+        }
+        
+        const result = await query;
+        return res.status(200).json(result);
+      }
+      
+      // Regular tenant-specific operations for non-creator users
+      const result = await db.select({
+        id: users.id,
+        username: users.username,
+        role: users.role,
+        name: users.name,
+        email: users.email,
+        tenantId: users.tenantId,
+        teamId: users.teamId,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt
+      }).from(users)
+        .where(eq(users.tenantId, tenantId));
+      
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Get a specific team member
+  app.get("/api/team-members/:id", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Get the tenant context from the user
+      const tenantId = req.user?.tenantId || 1;
+      
+      // If user is a creator, allow cross-tenant operations
+      if (req.isCreatorUser) {
+        console.log(`Creator role detected - retrieving team member ${id} with cross-tenant access`);
+        
+        const result = await db.select().from(users)
+          .where(eq(users.id, id))
+          .limit(1);
+        
+        if (result.length === 0) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        
+        return res.status(200).json(result[0]);
+      }
+      
+      // Regular tenant-specific operations for non-creator users
+      const result = await db.select().from(users)
+        .where(and(
+          eq(users.id, id),
+          eq(users.tenantId, tenantId)
+        ))
+        .limit(1);
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: "User not found or access denied" });
+      }
+      
+      return res.status(200).json(result[0]);
+    } catch (error) {
+      console.error('Error fetching team member:', error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Create a new team member
+  app.post("/api/team-members", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+    try {
+      const { username, password, role, name, email } = req.body;
+      
+      if (!username || !password || !role) {
+        return res.status(400).json({ message: "Missing required fields: username, password, and role are required" });
+      }
+      
+      // Get the tenant context from the user
+      const tenantId = req.user?.tenantId || 1;
+      
+      // Check if username already exists
+      const existingUser = await db.select().from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+      
+      if (existingUser.length > 0) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      
+      // Hash the password
+      const hashedPassword = await hashPassword(password);
+      
+      // Create the user
+      const result = await db.insert(users)
+        .values({
+          username,
+          password: hashedPassword,
+          role,
+          name: name || null,
+          email: email || null,
+          tenantId,
+          teamId: null,
+          mfaEnabled: false,
+          ssoEnabled: false,
+          profilePicture: null,
+        })
+        .returning();
+      
+      if (result.length === 0) {
+        return res.status(500).json({ message: "Failed to create user" });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = result[0];
+      
+      return res.status(200).json(userWithoutPassword);
+    } catch (error) {
+      console.error('Error creating team member:', error);
+      return res.status(500).json({ message: "Internal server error", error: String(error) });
+    }
+  });
+  
+  // Update a team member
+  app.patch("/api/team-members/:id", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const { username, password, role, name, email } = req.body;
+      
+      // Get the tenant context from the user
+      const tenantId = req.user?.tenantId || 1;
+      
+      // Prepare update data
+      const updateData: any = {};
+      
+      if (username) updateData.username = username;
+      if (role) updateData.role = role;
+      if (name !== undefined) updateData.name = name || null;
+      if (email !== undefined) updateData.email = email || null;
+      
+      // If password is provided, hash it
+      if (password) {
+        updateData.password = await hashPassword(password);
+      }
+      
+      // If user is a creator, allow cross-tenant operations
+      if (req.isCreatorUser) {
+        console.log(`Creator role detected - updating team member ${id} with cross-tenant access`);
+        
+        // Check if user exists
+        const userResult = await db.select().from(users)
+          .where(eq(users.id, id))
+          .limit(1);
+        
+        if (userResult.length === 0) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Update the user
+        const result = await db.update(users)
+          .set(updateData)
+          .where(eq(users.id, id))
+          .returning();
+        
+        if (result.length === 0) {
+          return res.status(500).json({ message: "Failed to update user" });
+        }
+        
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = result[0];
+        
+        return res.status(200).json(userWithoutPassword);
+      }
+      
+      // Regular tenant-specific operations for non-creator users
+      
+      // Check if user exists and belongs to tenant
+      const userResult = await db.select().from(users)
+        .where(and(
+          eq(users.id, id),
+          eq(users.tenantId, tenantId)
+        ))
+        .limit(1);
+      
+      if (userResult.length === 0) {
+        return res.status(404).json({ message: "User not found or access denied" });
+      }
+      
+      // Update the user
+      const result = await db.update(users)
+        .set(updateData)
+        .where(and(
+          eq(users.id, id),
+          eq(users.tenantId, tenantId)
+        ))
+        .returning();
+      
+      if (result.length === 0) {
+        return res.status(500).json({ message: "Failed to update user" });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = result[0];
+      
+      return res.status(200).json(userWithoutPassword);
+    } catch (error) {
+      console.error('Error updating team member:', error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Delete a team member
+  app.delete("/api/team-members/:id", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Get the tenant context from the user
+      const tenantId = req.user?.tenantId || 1;
+      
+      // If user is a creator, allow cross-tenant operations
+      if (req.isCreatorUser) {
+        console.log(`Creator role detected - deleting team member ${id} with cross-tenant access`);
+        
+        // Check if user exists
+        const userResult = await db.select().from(users)
+          .where(eq(users.id, id))
+          .limit(1);
+        
+        if (userResult.length === 0) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Delete the user
+        const result = await db.delete(users)
+          .where(eq(users.id, id))
+          .returning();
+        
+        if (result.length === 0) {
+          return res.status(500).json({ message: "Failed to delete user" });
+        }
+        
+        return res.status(200).json({ message: "User deleted successfully" });
+      }
+      
+      // Regular tenant-specific operations for non-creator users
+      
+      // Check if user exists and belongs to tenant
+      const userResult = await db.select().from(users)
+        .where(and(
+          eq(users.id, id),
+          eq(users.tenantId, tenantId)
+        ))
+        .limit(1);
+      
+      if (userResult.length === 0) {
+        return res.status(404).json({ message: "User not found or access denied" });
+      }
+      
+      // Delete the user
+      const result = await db.delete(users)
+        .where(and(
+          eq(users.id, id),
+          eq(users.tenantId, tenantId)
+        ))
+        .returning();
+      
+      if (result.length === 0) {
+        return res.status(500).json({ message: "Failed to delete user" });
+      }
+      
+      return res.status(200).json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting team member:', error);
       return res.status(500).json({ message: "Internal server error" });
     }
   });

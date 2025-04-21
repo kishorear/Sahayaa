@@ -974,7 +974,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate AI resolution percentage
       // Get widget analytics to count auto-resolved chats that didn't create tickets
-      const widgetAnalytics = await storage.getAllWidgetAnalytics();
+      // Apply tenant filter for non-creator users
+      const widgetAnalytics = isCreator ? 
+        await storage.getAllWidgetAnalytics() : 
+        await storage.getWidgetAnalyticsByTenantId(tenantId || 0);
       
       // Count auto-resolved conversations from widget analytics metadata
       let autoResolvedChatsCount = 0;
@@ -1071,7 +1074,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/metrics/recent", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 5;
-      const tickets = await storage.getAllTickets();
+      
+      // Check if user is a creator to determine tenant filtering
+      const isCreator = req.user?.role === 'creator';
+      
+      // For non-creator users, filter by their tenant
+      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      
+      // Get tickets with proper tenant filtering
+      const tickets = await storage.getAllTickets(tenantId);
       
       // Sort by createdAt (descending) and take the most recent ones
       const recentTickets = tickets
@@ -1088,7 +1099,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/metrics/response-time", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
-      const tickets = await storage.getAllTickets();
+      
+      // Check if user is a creator to determine tenant filtering
+      const isCreator = req.user?.role === 'creator';
+      
+      // For non-creator users, filter by their tenant
+      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      
+      // Get tickets with proper tenant filtering
+      const tickets = await storage.getAllTickets(tenantId);
       
       // Filter tickets based on timePeriod
       const cutoffDate = getTimePeriodCutoff(timePeriod);
@@ -1142,7 +1161,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/metrics/ticket-volume", requireRole(['admin', 'support-agent']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
-      const tickets = await storage.getAllTickets();
+      
+      // Check if user is a creator to determine tenant filtering
+      const isCreator = req.user?.role === 'creator';
+      
+      // For non-creator users, filter by their tenant
+      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      
+      // Get tickets with proper tenant filtering
+      const tickets = await storage.getAllTickets(tenantId);
       
       // Filter tickets based on timePeriod
       const cutoffDate = getTimePeriodCutoff(timePeriod);

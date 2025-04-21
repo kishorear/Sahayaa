@@ -7,11 +7,26 @@ import {
   summarizeConversationWithAI 
 } from './openai-service';
 import { buildAIContext } from './data-source-service';
+import { AIProviderFactory } from './ai/providers';
 
-// Determine if we're using OpenAI or local implementation
-const USE_OPENAI = typeof process.env.OPENAI_API_KEY === 'string' && process.env.OPENAI_API_KEY.startsWith('sk-');
+// This function checks if we should use AI providers from database
+// Based on whether any provider is available for the tenant
+async function shouldUseAIProvider(tenantId?: number): Promise<boolean> {
+  if (!tenantId) return false;
+  
+  // Try to get a provider for chat from the factory
+  const provider = AIProviderFactory.getProviderForOperation(tenantId, 'chat');
+  return provider !== null;
+}
 
-console.log(USE_OPENAI ? "OpenAI implementation initialized" : "Local AI implementation initialized");
+// For backward compatibility, we keep the fallback only for development
+const FALLBACK_TO_OPENAI = process.env.NODE_ENV === 'development' && 
+                         typeof process.env.OPENAI_API_KEY === 'string' && 
+                         process.env.OPENAI_API_KEY.startsWith('sk-');
+
+console.log(FALLBACK_TO_OPENAI ? 
+  "OpenAI fallback available for development" : 
+  "Strict tenant-scoped AI providers enforced");
 
 export type ChatMessage = {
   role: 'user' | 'assistant' | 'system';
@@ -28,8 +43,8 @@ type TicketClassification = {
 
 // Analyze a support request and classify it
 export async function classifyTicket(title: string, description: string, tenantId?: number): Promise<TicketClassification> {
-  // Use OpenAI if available
-  if (USE_OPENAI) {
+  // Use configured AI provider if available
+  if (await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI) {
     try {
       // Get relevant knowledge from data sources with tenant context if available
       const combinedText = `${title} ${description}`;

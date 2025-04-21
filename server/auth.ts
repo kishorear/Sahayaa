@@ -259,16 +259,11 @@ export async function setupAuth(app: Express) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      if (allowedRoles.includes(req.user.role) || req.user.role === 'admin') {
-        next();
-      } else {
-        res.status(403).json({ message: "Forbidden: Insufficient permissions" });
-      }
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      if (allowedRoles.includes(req.user.role) || req.user.role === 'admin') {
+      // Allow if the user has one of the required roles OR is admin OR is creator
+      if (allowedRoles.includes(req.user.role) || 
+          req.user.role === 'admin' || 
+          req.user.role === 'creator' ||
+          req.user.role === 'administrator') {
         next();
       } else {
         res.status(403).json({ message: "Forbidden: Insufficient permissions" });

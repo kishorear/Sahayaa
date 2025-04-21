@@ -182,11 +182,11 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       // Get the tenant context from the user
       const tenantId = req.user?.tenantId || 1;
       
-      // If user is a creator, allow cross-tenant operations
+      // Handle different user roles
       if (req.user?.role === 'creator') {
         console.log(`Creator role detected - retrieving all team members with cross-tenant access`);
         
-        // If tenantId query parameter is provided, filter by that tenant
+        // Creator can access all tenants or filter by specific tenant
         let whereClause;
         
         if (req.query.tenantId) {
@@ -201,9 +201,17 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
           ? await db.select().from(users).where(whereClause)
           : await db.select().from(users);
         return res.status(200).json(result);
+      } else if (req.user?.role === 'administrator' || req.user?.role === 'admin') {
+        console.log(`Administrator role detected - retrieving team members for tenant ${tenantId}`);
+        
+        // Administrators can only access users within their tenant
+        const result = await db.select()
+          .from(users)
+          .where(eq(users.tenantId, tenantId));
+        return res.status(200).json(result);
       }
       
-      // Regular tenant-specific operations for non-creator users
+      // Regular tenant-specific operations for any other roles
       const result = await db.select()
         .from(users)
         .where(eq(users.tenantId, tenantId));
@@ -227,10 +235,11 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       // Get the tenant context from the user
       const tenantId = req.user?.tenantId || 1;
       
-      // If user is a creator, allow cross-tenant operations
+      // Handle different user roles
       if (req.user?.role === 'creator') {
         console.log(`Creator role detected - retrieving team member ${id} with cross-tenant access`);
         
+        // Creator can access any user across tenants
         const result = await db.select().from(users)
           .where(eq(users.id, id))
           .limit(1);
@@ -240,9 +249,25 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
         }
         
         return res.status(200).json(result[0]);
+      } else if (req.user?.role === 'administrator' || req.user?.role === 'admin') {
+        console.log(`Administrator role detected - retrieving team member ${id} for tenant ${tenantId}`);
+        
+        // Administrators can only access users within their tenant
+        const result = await db.select().from(users)
+          .where(and(
+            eq(users.id, id),
+            eq(users.tenantId, tenantId)
+          ))
+          .limit(1);
+        
+        if (result.length === 0) {
+          return res.status(404).json({ message: "User not found or access denied" });
+        }
+        
+        return res.status(200).json(result[0]);
       }
       
-      // Regular tenant-specific operations for non-creator users
+      // Regular tenant-specific operations for other roles
       const result = await db.select().from(users)
         .where(and(
           eq(users.id, id),
@@ -342,11 +367,11 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
         updateData.password = await hashPassword(password);
       }
       
-      // If user is a creator, allow cross-tenant operations
+      // Handle different user roles
       if (req.user?.role === 'creator') {
         console.log(`Creator role detected - updating team member ${id} with cross-tenant access`);
         
-        // Check if user exists
+        // Creator can update any user across tenants
         const userResult = await db.select().from(users)
           .where(eq(users.id, id))
           .limit(1);
@@ -369,9 +394,41 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
         const { password: _, ...userWithoutPassword } = result[0];
         
         return res.status(200).json(userWithoutPassword);
+      } else if (req.user?.role === 'administrator' || req.user?.role === 'admin') {
+        console.log(`Administrator role detected - updating team member ${id} for tenant ${tenantId}`);
+        
+        // Administrators can only update users within their tenant
+        const userResult = await db.select().from(users)
+          .where(and(
+            eq(users.id, id),
+            eq(users.tenantId, tenantId)
+          ))
+          .limit(1);
+        
+        if (userResult.length === 0) {
+          return res.status(404).json({ message: "User not found or access denied" });
+        }
+        
+        // Update the user
+        const result = await db.update(users)
+          .set(updateData)
+          .where(and(
+            eq(users.id, id),
+            eq(users.tenantId, tenantId)
+          ))
+          .returning();
+        
+        if (result.length === 0) {
+          return res.status(500).json({ message: "Failed to update user" });
+        }
+        
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = result[0];
+        
+        return res.status(200).json(userWithoutPassword);
       }
       
-      // Regular tenant-specific operations for non-creator users
+      // Regular tenant-specific operations for other roles
       
       // Check if user exists and belongs to tenant
       const userResult = await db.select().from(users)
@@ -420,11 +477,11 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
       // Get the tenant context from the user
       const tenantId = req.user?.tenantId || 1;
       
-      // If user is a creator, allow cross-tenant operations
+      // Handle different user roles
       if (req.user?.role === 'creator') {
         console.log(`Creator role detected - deleting team member ${id} with cross-tenant access`);
         
-        // Check if user exists
+        // Creator can delete any user across tenants
         const userResult = await db.select().from(users)
           .where(eq(users.id, id))
           .limit(1);
@@ -443,9 +500,37 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
         }
         
         return res.status(200).json({ message: "User deleted successfully" });
+      } else if (req.user?.role === 'administrator' || req.user?.role === 'admin') {
+        console.log(`Administrator role detected - deleting team member ${id} for tenant ${tenantId}`);
+        
+        // Administrators can only delete users within their tenant
+        const userResult = await db.select().from(users)
+          .where(and(
+            eq(users.id, id),
+            eq(users.tenantId, tenantId)
+          ))
+          .limit(1);
+        
+        if (userResult.length === 0) {
+          return res.status(404).json({ message: "User not found or access denied" });
+        }
+        
+        // Delete the user
+        const result = await db.delete(users)
+          .where(and(
+            eq(users.id, id),
+            eq(users.tenantId, tenantId)
+          ))
+          .returning();
+        
+        if (result.length === 0) {
+          return res.status(500).json({ message: "Failed to delete user" });
+        }
+        
+        return res.status(200).json({ message: "User deleted successfully" });
       }
       
-      // Regular tenant-specific operations for non-creator users
+      // Regular tenant-specific operations for other roles
       
       // Check if user exists and belongs to tenant
       const userResult = await db.select().from(users)

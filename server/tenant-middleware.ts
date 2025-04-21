@@ -106,7 +106,7 @@ export const tenantResourceGuard = (req: Request, res: Response, next: NextFunct
   }
   
   // Creator and admin role have cross-tenant access
-  if (req.isCreatorUser || req.user.role === 'creator' || req.user.role === 'admin' || req.user.role === 'administrator') {
+  if (req.isCreatorUser) {
     return next();
   }
   

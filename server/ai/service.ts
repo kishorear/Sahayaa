@@ -57,6 +57,10 @@ export async function reloadProvidersFromDatabase(tenantId?: number): Promise<vo
     if (tenantId) {
       const providers = await loadProvidersFromDatabase(tenantId);
       aiProvidersCache.set(tenantId, providers);
+      
+      // Update the provider factory with the loaded providers
+      AIProviderFactory.loadProvidersFromDatabase(tenantId, providers);
+      
       console.log(`Reloaded ${providers.length} AI providers for tenant ${tenantId}`);
     } else {
       // Otherwise, find all unique tenantIds with providers and reload each
@@ -67,6 +71,9 @@ export async function reloadProvidersFromDatabase(tenantId?: number): Promise<vo
       for (const { tenantId } of allProviders) {
         const providers = await loadProvidersFromDatabase(tenantId);
         aiProvidersCache.set(tenantId, providers);
+        
+        // Update the provider factory with the loaded providers
+        AIProviderFactory.loadProvidersFromDatabase(tenantId, providers);
       }
       
       console.log(`Reloaded AI providers for ${aiProvidersCache.size} tenants`);

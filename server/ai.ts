@@ -147,8 +147,8 @@ export async function classifyTicket(title: string, description: string, tenantI
 
 // Attempt to resolve a ticket automatically
 export async function attemptAutoResolve(title: string, description: string, previousMessages: ChatMessage[] = [], tenantId?: number): Promise<{resolved: boolean; response: string}> {
-  // Use OpenAI if available
-  if (USE_OPENAI) {
+  // Use configured AI provider if available
+  if (await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI) {
     try {
       // Get relevant knowledge from data sources
       const combinedText = `${title} ${description}`;
@@ -254,8 +254,8 @@ export async function generateChatResponse(
   messageHistory: ChatMessage[],
   userMessage: string
 ): Promise<string> {
-  // Use OpenAI if available
-  if (USE_OPENAI) {
+  // Use configured AI provider if available
+  if (await shouldUseAIProvider(ticketContext.tenantId) || FALLBACK_TO_OPENAI) {
     try {
       // Get relevant knowledge from data sources with tenant context if available
       const knowledgeContext = await buildAIContext(userMessage, ticketContext.tenantId);
@@ -367,7 +367,7 @@ export async function generateChatResponse(
 // Generate a summary of multiple messages for ticket context
 // Generate a title for a ticket based on conversation
 export async function generateTicketTitle(messages: ChatMessage[], tenantId?: number): Promise<string> {
-  if (USE_OPENAI) {
+  if (await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI) {
     try {
       // Get relevant knowledge from data sources with tenant context if available
       const allText = messages.map(m => m.content).join(' ');
@@ -427,8 +427,8 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
 }
 
 export async function summarizeConversation(messages: ChatMessage[], tenantId?: number): Promise<string> {
-  // Use OpenAI if available
-  if (USE_OPENAI) {
+  // Use configured AI provider if available
+  if (await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI) {
     try {
       // Get conversation content to build context
       const conversationText = messages.map(m => m.content).join(' ');

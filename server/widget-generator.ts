@@ -98,7 +98,7 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
  * Generates a README.md file with installation instructions
  */
 function generateReadmeContent(config: WidgetConfig): string {
-  return `# SupportAI Chat Widget
+  return `# SAHAYAA.AI Chat Widget
 
 ## Installation Instructions
 
@@ -106,7 +106,7 @@ function generateReadmeContent(config: WidgetConfig): string {
 Add the following script tag to your website's HTML, right before the closing \`</body>\` tag:
 
 \`\`\`html
-<!-- SupportAI Chat Widget -->
+<!-- SAHAYAA.AI Chat Widget -->
 <script>
   window.supportAiConfig = {
     tenantId: ${config.tenantId},
@@ -133,10 +133,10 @@ npm install supportai-widget
 Then import and use it in your application:
 
 \`\`\`javascript
-import { SupportAIChat } from 'supportai-widget';
+import { SahayaaAIChat } from 'sahayaa-widget';
 
 // Initialize the chat widget
-SupportAIChat.init({
+SahayaaAIChat.init({
   tenantId: ${config.tenantId},
   apiKey: "${config.apiKey}",
   primaryColor: "${config.primaryColor}",
@@ -156,17 +156,17 @@ For Windows applications, you can use the included \`install-widget.bat\` script
 
 | Option | Description |
 |--------|-------------|
-| tenantId | Your SupportAI tenant ID |
+| tenantId | Your SAHAYAA.AI tenant ID |
 | apiKey | Your API key for authentication |
 | primaryColor | The primary color of the widget |
 | position | Widget position (right, left, center) |
 | greetingMessage | Initial message displayed in the chat |
 | autoOpen | Whether to automatically open the chat widget |
-| branding | Whether to show SupportAI branding |
+| branding | Whether to show SAHAYAA.AI branding |
 | reportData | Whether to send analytics data |
 
 ## Need Help?
-See the documentation.md file for more detailed documentation, or contact SupportAI support for assistance.
+See the documentation.md file for more detailed documentation, or contact SAHAYAA.AI support for assistance.
 `;
 }
 
@@ -175,24 +175,24 @@ See the documentation.md file for more detailed documentation, or contact Suppor
  */
 function generateWindowsBatchFile(config: WidgetConfig): string {
   return `@echo off
-echo SupportAI Chat Widget Installer
+echo SAHAYAA.AI Chat Widget Installer
 echo =================================
 echo.
-echo This script will help you install the SupportAI Chat Widget in your application.
+echo This script will help you install the SAHAYAA.AI Chat Widget in your application.
 echo.
 echo [1] Installing widget files...
 timeout /t 2 > nul
 
-if not exist "%APPDATA%\\SupportAI" mkdir "%APPDATA%\\SupportAI"
-copy supportai-widget.js "%APPDATA%\\SupportAI\\" > nul
-copy supportai-widget.css "%APPDATA%\\SupportAI\\" > nul
-copy supportai-widget.min.js "%APPDATA%\\SupportAI\\" > nul
+if not exist "%APPDATA%\\SAHAYAA.AI" mkdir "%APPDATA%\\SAHAYAA.AI"
+copy sahayaa-widget.js "%APPDATA%\\SAHAYAA.AI\\" > nul
+copy sahayaa-widget.css "%APPDATA%\\SAHAYAA.AI\\" > nul
+copy sahayaa-widget.min.js "%APPDATA%\\SAHAYAA.AI\\" > nul
 
 echo [2] Creating configuration...
 timeout /t 1 > nul
 
 (
-echo window.supportAiConfig = {
+echo window.sahayaaAiConfig = {
 echo   tenantId: ${config.tenantId},
 echo   apiKey: "${config.apiKey}",
 echo   primaryColor: "${config.primaryColor}",
@@ -203,15 +203,15 @@ echo   branding: ${config.branding},
 echo   reportData: ${config.reportData},
 echo   adminId: ${config.adminId}
 echo };
-) > "%APPDATA%\\SupportAI\\supportai-config.js"
+) > "%APPDATA%\\SAHAYAA.AI\\sahayaa-config.js"
 
 echo [3] Installation complete!
 echo.
-echo The widget has been installed to: %APPDATA%\\SupportAI
+echo The widget has been installed to: %APPDATA%\\SAHAYAA.AI
 echo.
 echo To use in your application, add these lines to your HTML:
-echo ^<script src="%APPDATA%\\SupportAI\\supportai-config.js"^>^</script^>
-echo ^<script src="%APPDATA%\\SupportAI\\supportai-widget.js"^>^</script^>
+echo ^<script src="%APPDATA%\\SAHAYAA.AI\\sahayaa-config.js"^>^</script^>
+echo ^<script src="%APPDATA%\\SAHAYAA.AI\\sahayaa-widget.js"^>^</script^>
 echo.
 echo Press any key to exit...
 pause > nul
@@ -222,8 +222,8 @@ pause > nul
  * Generates CSS for the widget with the specified primary color
  */
 function generateWidgetCSS(primaryColor: string): string {
-  return `/* SupportAI Chat Widget Styles */
-.supportai-widget-container {
+  return `/* SAHAYAA.AI Chat Widget Styles */
+.sahayaa-widget-container {
   position: fixed;
   z-index: 9999;
   bottom: 20px;

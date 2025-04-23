@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="90" fill="#4F46E5" />
+  
+  <!-- Inner Light Ring -->
+  <circle cx="100" cy="100" r="75" fill="#6366F1" />
+  
+  <!-- Center Element representing AI/Support -->
+  <g>
+    <!-- Abstract Representation of "S" for SAHAYAA -->
+    <path d="M75 60 Q60 65, 65 80 Q70 95, 85 100 Q70 105, 65 120 Q60 135, 75 140" 
+          stroke="white" stroke-width="8" fill="transparent" stroke-linecap="round" />
+    
+    <!-- Abstract Chat/Message Bubbles representing Communication -->
+    <circle cx="120" cy="70" r="15" fill="white" opacity="0.9" />
+    <circle cx="135" cy="100" r="12" fill="white" opacity="0.7" />
+    <circle cx="120" cy="130" r="10" fill="white" opacity="0.5" />
+    
+    <!-- Connection Lines -->
+    <line x1="105" y1="70" x2="115" y2="70" stroke="white" stroke-width="3" />
+    <line x1="120" y1="85" x2="125" y2="95" stroke="white" stroke-width="3" />
+    <line x1="130" y1="112" x2="125" y2="120" stroke="white" stroke-width="3" />
+  </g>
+  
+  <!-- Text "SAHAYAA.AI" -->
+  <text x="100" y="175" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">SAHAYAA.AI</text>
+</svg>

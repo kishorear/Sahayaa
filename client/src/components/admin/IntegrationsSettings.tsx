@@ -52,7 +52,9 @@ export default function IntegrationsSettings() {
     queryKey: ["/api/integrations"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/integrations");
-      return res.json();
+      const data = await res.json();
+      console.log("Fetched integrations data:", data);
+      return data;
     },
   });
 

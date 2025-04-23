@@ -1,12 +1,12 @@
-# SupportAI Chat Widget API Documentation
+# SAHAYAA.AI Chat Widget API Documentation
 
 ## Overview
 
-The SupportAI Chat Widget API allows you to integrate the SupportAI chat functionality directly into your website or application. This document provides technical details on endpoints, methods, and integration options.
+The SAHAYAA.AI Chat Widget API allows you to integrate the SAHAYAA.AI chat functionality directly into your website or application. This document provides technical details on endpoints, methods, and integration options.
 
 ## Authentication
 
-All API requests require authentication using your SupportAI API key. You can find or generate this key in your SupportAI admin dashboard under Settings > API Keys.
+All API requests require authentication using your SAHAYAA.AI API key. You can find or generate this key in your SAHAYAA.AI admin dashboard under Settings > API Keys.
 
 Include your API key in all requests using the `X-API-Key` header:
 
@@ -19,7 +19,7 @@ X-API-Key: your_api_key_here
 All API endpoints use the following base URL:
 
 ```
-https://api.supportai.com/v1
+https://api.sahayaa.ai/v1
 ```
 
 ## Endpoints
@@ -100,7 +100,7 @@ Updates the widget configuration for the specified tenant.
 POST /widget/messages
 ```
 
-Sends a message from the chat widget to the SupportAI system.
+Sends a message from the chat widget to the SAHAYAA.AI system.
 
 **Request Body:**
 ```json

@@ -20,7 +20,7 @@ export default function Home() {
               <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
               </svg>
-              <span className="ml-2 text-xl font-bold">SupportAI</span>
+              <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm">
@@ -42,7 +42,7 @@ export default function Home() {
               AI-Powered Support That Resolves Issues Instantly
             </h1>
             <p className="text-xl mb-8 text-indigo-100">
-              SupportAI automatically handles, routes, and resolves customer tickets
+              SAHAYAA.AI automatically handles, routes, and resolves customer tickets
               to provide faster support and reduce team workload.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -209,7 +209,7 @@ export default function Home() {
                 <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
                 </svg>
-                <span className="ml-2 text-xl font-bold text-white">SupportAI</span>
+                <span className="ml-2 text-xl font-bold text-white">SAHAYAA.AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>
             </div>
@@ -223,7 +223,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} SupportAI. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} SAHAYAA.AI. All rights reserved.</p>
           </div>
         </div>
       </footer>

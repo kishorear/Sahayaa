@@ -18,6 +18,7 @@ import {
   UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LogoIcon from "@/components/LogoIcon";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -122,7 +123,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               >
                 <ChevronLeft className="h-5 w-5 text-gray-300" />
               </button>
-              <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-8 h-8" />
+              <LogoIcon className="w-8 h-8" />
               <span className="ml-2 text-xl font-bold text-white">SAHAYAA.AI</span>
             </div>
           </div>
@@ -215,6 +216,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Mobile sidebar (when open) */}
         {isMobileMenuOpen && (
           <div className="md:hidden bg-gray-800 w-full absolute z-10">
+            <div className="flex items-center px-4 py-3 border-b border-gray-700">
+              <LogoIcon className="w-8 h-8 mr-2" />
+              <span className="text-xl font-bold text-white">SAHAYAA.AI</span>
+            </div>
             {user && (
               <Link href="/admin/profile">
                 <div className="px-4 py-3 border-b border-gray-700 cursor-pointer hover:bg-gray-700">

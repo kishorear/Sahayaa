@@ -108,7 +108,7 @@ Add the following script tag to your website's HTML, right before the closing \`
 \`\`\`html
 <!-- SAHAYAA.AI Chat Widget -->
 <script>
-  window.supportAiConfig = {
+  window.sahayaaAiConfig = {
     tenantId: ${config.tenantId},
     apiKey: "${config.apiKey}",
     primaryColor: "${config.primaryColor}",
@@ -120,14 +120,14 @@ Add the following script tag to your website's HTML, right before the closing \`
     adminId: ${config.adminId}
   };
 </script>
-<script src="supportai-widget.js" async></script>
+<script src="sahayaa-widget.js" async></script>
 \`\`\`
 
 ### Option 2: Using NPM
 Install the widget package using npm:
 
 \`\`\`bash
-npm install supportai-widget
+npm install sahayaa-widget
 \`\`\`
 
 Then import and use it in your application:
@@ -231,7 +231,7 @@ function generateWidgetCSS(primaryColor: string): string {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
-.supportai-widget-button {
+.sahayaa-widget-button {
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -245,17 +245,17 @@ function generateWidgetCSS(primaryColor: string): string {
   transition: all 0.3s ease;
 }
 
-.supportai-widget-button:hover {
+.sahayaa-widget-button:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
-.supportai-widget-icon {
+.sahayaa-widget-icon {
   width: 30px;
   height: 30px;
 }
 
-.supportai-chat-window {
+.sahayaa-chat-window {
   position: absolute;
   bottom: 70px;
   right: 0;
@@ -273,13 +273,13 @@ function generateWidgetCSS(primaryColor: string): string {
   pointer-events: none;
 }
 
-.supportai-chat-window.open {
+.sahayaa-chat-window.open {
   opacity: 1;
   transform: translateY(0);
   pointer-events: all;
 }
 
-.supportai-chat-header {
+.sahayaa-chat-header {
   padding: 15px;
   background-color: ${primaryColor};
   color: white;
@@ -289,23 +289,23 @@ function generateWidgetCSS(primaryColor: string): string {
   align-items: center;
 }
 
-.supportai-chat-close {
+.sahayaa-chat-close {
   cursor: pointer;
   opacity: 0.8;
   transition: opacity 0.2s;
 }
 
-.supportai-chat-close:hover {
+.sahayaa-chat-close:hover {
   opacity: 1;
 }
 
-.supportai-chat-messages {
+.sahayaa-chat-messages {
   flex-grow: 1;
   padding: 15px;
   overflow-y: auto;
 }
 
-.supportai-message {
+.sahayaa-message {
   margin-bottom: 10px;
   max-width: 80%;
   padding: 10px 15px;
@@ -313,27 +313,27 @@ function generateWidgetCSS(primaryColor: string): string {
   word-break: break-word;
 }
 
-.supportai-message-user {
+.sahayaa-message-user {
   background-color: ${primaryColor};
   color: white;
   margin-left: auto;
   border-bottom-right-radius: 4px;
 }
 
-.supportai-message-assistant {
+.sahayaa-message-assistant {
   background-color: #f0f0f0;
   color: #333;
   margin-right: auto;
   border-bottom-left-radius: 4px;
 }
 
-.supportai-chat-input {
+.sahayaa-chat-input {
   display: flex;
   padding: 10px;
   border-top: 1px solid #eee;
 }
 
-.supportai-chat-input input {
+.sahayaa-chat-input input {
   flex-grow: 1;
   border: 1px solid #ddd;
   border-radius: 20px;
@@ -342,11 +342,11 @@ function generateWidgetCSS(primaryColor: string): string {
   outline: none;
 }
 
-.supportai-chat-input input:focus {
+.sahayaa-chat-input input:focus {
   border-color: ${primaryColor};
 }
 
-.supportai-send-button {
+.sahayaa-send-button {
   background-color: ${primaryColor};
   color: white;
   border: none;
@@ -360,11 +360,11 @@ function generateWidgetCSS(primaryColor: string): string {
   transition: all 0.2s;
 }
 
-.supportai-send-button:hover {
+.sahayaa-send-button:hover {
   transform: scale(1.05);
 }
 
-.supportai-branding {
+.sahayaa-branding {
   font-size: 11px;
   text-align: center;
   padding: 5px;

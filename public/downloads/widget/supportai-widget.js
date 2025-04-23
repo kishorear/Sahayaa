@@ -1,9 +1,11 @@
 /**
  * SAHAYAA.AI Chat Widget
- * A lightweight client-side chat widget for customer support
+ * A lightweight client-side chat widget for intelligent customer support
  * 
  * This file will be customized with your specific configuration settings
  * when downloaded from the SAHAYAA.AI admin dashboard.
+ * 
+ * SAHAYAA.AI: Empowering Support with Intelligent Assistance
  */
 
 (function() {
@@ -16,7 +18,7 @@
     autoOpen: __AUTO_OPEN__,
     branding: __BRANDING__,
     reportData: __REPORT_DATA__,
-    serverUrl: "https://sahayaa.ai/api"
+    serverUrl: "https://api.sahayaa.ai"
   };
 
   // Merge the default configuration with any user-provided configuration
@@ -135,7 +137,7 @@
       header.style.backgroundColor = config.primaryColor;
       
       const title = document.createElement('div');
-      title.textContent = 'Support Chat';
+      title.textContent = 'SAHAYAA.AI Chat';
       
       const closeButton = document.createElement('div');
       closeButton.className = 'sahayaa-chat-close';
@@ -150,18 +152,18 @@
       
       // Create messages container
       this.messagesContainer = document.createElement('div');
-      this.messagesContainer.className = 'supportai-chat-messages';
+      this.messagesContainer.className = 'sahayaa-chat-messages';
       
       // Create input area
       const inputArea = document.createElement('div');
-      inputArea.className = 'supportai-chat-input';
+      inputArea.className = 'sahayaa-chat-input';
       
       this.inputField = document.createElement('input');
       this.inputField.type = 'text';
-      this.inputField.placeholder = 'Type your message...';
+      this.inputField.placeholder = 'Ask SAHAYAA.AI...';
       
       const sendButton = document.createElement('button');
-      sendButton.className = 'supportai-send-button';
+      sendButton.className = 'sahayaa-send-button';
       sendButton.innerHTML = '&#10148;';
       sendButton.style.backgroundColor = config.primaryColor;
       sendButton.onclick = () => this.sendMessage();
@@ -173,7 +175,7 @@
       let branding = null;
       if (config.branding) {
         branding = document.createElement('div');
-        branding.className = 'supportai-branding';
+        branding.className = 'sahayaa-branding';
         branding.textContent = 'Powered by SAHAYAA.AI';
       }
       
@@ -286,7 +288,7 @@
      */
     addMessage(role, content) {
       const message = document.createElement('div');
-      message.className = `supportai-message supportai-message-${role}`;
+      message.className = `sahayaa-message sahayaa-message-${role}`;
       message.textContent = content;
       
       this.messagesContainer.appendChild(message);
@@ -301,7 +303,7 @@
     simulateResponse(userMessage) {
       // Simulate typing indicator
       const typingIndicator = document.createElement('div');
-      typingIndicator.className = 'supportai-message supportai-message-assistant';
+      typingIndicator.className = 'sahayaa-message sahayaa-message-assistant';
       typingIndicator.textContent = '...';
       this.messagesContainer.appendChild(typingIndicator);
       

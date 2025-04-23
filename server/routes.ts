@@ -990,10 +990,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate AI resolution percentage
       // Get widget analytics to count auto-resolved chats that didn't create tickets
-      // Apply tenant filter for non-creator users
-      const widgetAnalytics = isCreator ? 
-        await storage.getAllWidgetAnalytics() : 
-        await storage.getWidgetAnalyticsByTenantId(tenantId || 0);
+      // Apply tenant filter for all users (creators can specify which tenant they want)
+      const widgetAnalytics = await storage.getAllWidgetAnalytics(tenantId);
       
       // Count auto-resolved conversations from widget analytics metadata
       let autoResolvedChatsCount = 0;
@@ -1098,15 +1096,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/metrics/recent", requireRole(['admin', 'support-agent']), async (req, res) => {
+  app.get("/api/metrics/recent", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 5;
       
       // Check if user is a creator to determine tenant filtering
       const isCreator = req.user?.role === 'creator';
       
-      // For non-creator users, filter by their tenant
-      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      // Get tenant ID based on role and query parameters
+      let tenantId: number | undefined;
+      
+      if (isCreator && req.query.tenantId) {
+        // Creator role can filter by tenant if provided
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator) {
+        // Non-creator roles are always limited to their tenant
+        tenantId = req.user?.tenantId;
+      }
       
       // Get tickets with proper tenant filtering
       const tickets = await storage.getAllTickets(tenantId);

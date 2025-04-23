@@ -17,6 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import TenantSelector from "@/components/TenantSelector";
 
 // Define the team member type and valid roles
 type Role = "admin" | "support-agent" | "engineer" | "user";
@@ -54,12 +55,19 @@ export default function TeamPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<number | undefined>(undefined);
+  
+  // Check if user is a creator
+  const isCreator = currentUser?.role === 'creator';
 
   // Query to fetch team members
   const { data: teamMembers, isLoading } = useQuery<TeamMember[]>({
-    queryKey: ["/api/team-members"],
+    queryKey: ["/api/team-members", selectedTenantId],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/team-members");
+      const url = selectedTenantId 
+        ? `/api/team-members?tenantId=${selectedTenantId}` 
+        : "/api/team-members";
+      const response = await apiRequest("GET", url);
       return await response.json();
     },
   });
@@ -134,7 +142,7 @@ export default function TeamPage() {
         title: "Team member created",
         description: "The team member has been created successfully.",
       });
-      queryClient.invalidateQueries({queryKey: ["/api/team-members"]});
+      queryClient.invalidateQueries({queryKey: ["/api/team-members", selectedTenantId]});
       setIsAddDialogOpen(false);
       addForm.reset();
     },
@@ -168,7 +176,7 @@ export default function TeamPage() {
         title: "Team member updated",
         description: "The team member has been updated successfully.",
       });
-      queryClient.invalidateQueries({queryKey: ["/api/team-members"]});
+      queryClient.invalidateQueries({queryKey: ["/api/team-members", selectedTenantId]});
       setIsEditDialogOpen(false);
       setSelectedMember(null);
     },
@@ -196,7 +204,7 @@ export default function TeamPage() {
         title: "Team member deleted",
         description: "The team member has been deleted successfully.",
       });
-      queryClient.invalidateQueries({queryKey: ["/api/team-members"]});
+      queryClient.invalidateQueries({queryKey: ["/api/team-members", selectedTenantId]});
     },
     onError: (error: Error) => {
       toast({
@@ -276,13 +284,23 @@ export default function TeamPage() {
               Add, edit and remove team members
             </p>
           </div>
-          <Button 
-            onClick={() => setIsAddDialogOpen(true)} 
-            className="mb-2"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Team Member
-          </Button>
+          <div className="flex gap-4">
+            {/* Only show tenant selector for creator role */}
+            {isCreator && (
+              <TenantSelector
+                onTenantChange={setSelectedTenantId}
+                selectedTenantId={selectedTenantId}
+                className="w-[200px]"
+              />
+            )}
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              className="mb-2"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Team Member
+            </Button>
+          </div>
         </div>
 
         <Card>

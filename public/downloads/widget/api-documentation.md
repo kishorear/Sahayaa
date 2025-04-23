@@ -250,14 +250,14 @@ Retrieves analytics data for your chat widget.
 
 ## WebSocket API
 
-For real-time communication, the SupportAI Chat Widget offers a WebSocket API.
+For real-time communication, the SAHAYAA.AI Chat Widget offers a WebSocket API.
 
 ### Connection
 
 Connect to the WebSocket server:
 
 ```
-wss://ws.supportai.com/v1/chat?apiKey=your_api_key&tenantId=456
+wss://ws.sahayaa.ai/v1/chat?apiKey=your_api_key&tenantId=456
 ```
 
 ### Message Format
@@ -360,7 +360,7 @@ Error responses include a JSON object with more details:
   "error": {
     "code": "invalid_parameter",
     "message": "The 'tenantId' parameter is required",
-    "documentation_url": "https://docs.supportai.com/api/errors#invalid_parameter"
+    "documentation_url": "https://docs.sahayaa.ai/api/errors#invalid_parameter"
   }
 }
 ```
@@ -376,33 +376,33 @@ When you exceed the rate limit, you'll receive a `429 Too Many Requests` respons
 
 ## SDKs and Client Libraries
 
-SupportAI offers client libraries for easy integration:
+SAHAYAA.AI offers client libraries for easy integration:
 
-- JavaScript: [npm package](https://www.npmjs.com/package/supportai-widget)
-- React: [React component](https://www.npmjs.com/package/supportai-widget-react)
-- PHP: [Composer package](https://packagist.org/packages/supportai/widget-sdk)
-- Ruby: [Ruby gem](https://rubygems.org/gems/supportai-widget)
-- Python: [PyPI package](https://pypi.org/project/supportai-widget/)
+- JavaScript: [npm package](https://www.npmjs.com/package/sahayaa-widget)
+- React: [React component](https://www.npmjs.com/package/sahayaa-widget-react)
+- PHP: [Composer package](https://packagist.org/packages/sahayaa/widget-sdk)
+- Ruby: [Ruby gem](https://rubygems.org/gems/sahayaa-widget)
+- Python: [PyPI package](https://pypi.org/project/sahayaa-widget/)
 
 ## Testing
 
-For testing purposes, use your sandbox tenant and API key, available in the SupportAI admin dashboard under Settings > API Keys > Sandbox.
+For testing purposes, use your sandbox tenant and API key, available in the SAHAYAA.AI admin dashboard under Settings > API Keys > Sandbox.
 
 Sandbox environment base URL:
 ```
-https://sandbox-api.supportai.com/v1
+https://sandbox-api.sahayaa.ai/v1
 ```
 
 ## Additional Resources
 
-- [Full API Reference](https://docs.supportai.com/api)
-- [Widget Configuration Guide](https://docs.supportai.com/widget/configuration)
-- [Authentication and Security](https://docs.supportai.com/api/security)
-- [Sample Applications](https://github.com/supportai/widget-demos)
-- [API Changelog](https://docs.supportai.com/api/changelog)
+- [Full API Reference](https://docs.sahayaa.ai/api)
+- [Widget Configuration Guide](https://docs.sahayaa.ai/widget/configuration)
+- [Authentication and Security](https://docs.sahayaa.ai/api/security)
+- [Sample Applications](https://github.com/sahayaa/widget-demos)
+- [API Changelog](https://docs.sahayaa.ai/api/changelog)
 
 ---
 
-For any questions or support, please contact our API team at api-support@supportai.com.
+For any questions or support, please contact our API team at api-support@sahayaa.ai.
 
 *Last updated: April 3, 2025*

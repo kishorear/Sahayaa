@@ -26,7 +26,7 @@ export interface WidgetConfig {
 export async function generateWidgetPackage(config: WidgetConfig, res: Response): Promise<void> {
   // Set response headers for zip download
   res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', 'attachment; filename=supportai-chat-widget.zip');
+  res.setHeader('Content-Disposition', 'attachment; filename=sahayaa-chat-widget.zip');
 
   // Create zip archive
   const archive = archiver('zip', {
@@ -44,7 +44,7 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   archive.file(path.join(baseDir, 'api-documentation.md'), { name: 'api-documentation.md' });
 
   // Read the widget JS template
-  const widgetJs = fs.readFileSync(path.join(baseDir, 'supportai-widget.js'), 'utf8');
+  const widgetJs = fs.readFileSync(path.join(baseDir, 'sahayaa-widget.js'), 'utf8');
 
   // Read the sample implementation template
   const sampleHtml = fs.readFileSync(path.join(baseDir, 'sample-implementation.html'), 'utf8');
@@ -75,7 +75,7 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   const readmeContent = generateReadmeContent(config);
 
   // Add the customized files to the archive
-  archive.append(customizedWidgetJs, { name: 'supportai-widget.js' });
+  archive.append(customizedWidgetJs, { name: 'sahayaa-widget.js' });
   archive.append(customizedSampleHtml, { name: 'sample-implementation.html' });
   archive.append(readmeContent, { name: 'README.md' });
 
@@ -85,10 +85,10 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
 
   // Create a simple CSS file for styling the widget
   const cssContent = generateWidgetCSS(config.primaryColor);
-  archive.append(cssContent, { name: 'supportai-widget.css' });
+  archive.append(cssContent, { name: 'sahayaa-widget.css' });
 
   // Create a minified version of the widget JS
-  archive.append(customizedWidgetJs, { name: 'supportai-widget.min.js' });
+  archive.append(customizedWidgetJs, { name: 'sahayaa-widget.min.js' });
 
   // Finalize the archive
   await archive.finalize();

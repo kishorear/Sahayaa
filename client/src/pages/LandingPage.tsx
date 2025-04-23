@@ -13,7 +13,7 @@ export default function LandingPage() {
               <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
               </svg>
-              <span className="ml-2 text-xl font-bold">SupportAI</span>
+              <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
             </div>
             <div className="flex items-center space-x-6">
               <Link href="/pricing">

@@ -1,9 +1,9 @@
 /**
- * SupportAI Chat Widget
+ * SAHAYAA.AI Chat Widget
  * A lightweight client-side chat widget for customer support
  * 
  * This file will be customized with your specific configuration settings
- * when downloaded from the SupportAI admin dashboard.
+ * when downloaded from the SAHAYAA.AI admin dashboard.
  */
 
 (function() {
@@ -16,7 +16,7 @@
     autoOpen: __AUTO_OPEN__,
     branding: __BRANDING__,
     reportData: __REPORT_DATA__,
-    serverUrl: "https://supportai.com/api"
+    serverUrl: "https://sahayaa.ai/api"
   };
 
   // Merge the default configuration with any user-provided configuration
@@ -174,7 +174,7 @@
       if (config.branding) {
         branding = document.createElement('div');
         branding.className = 'supportai-branding';
-        branding.textContent = 'Powered by SupportAI';
+        branding.textContent = 'Powered by SAHAYAA.AI';
       }
       
       // Assemble chat window

@@ -20,7 +20,7 @@ export class MfaService {
    */
   async generateMfaSecret(user: User): Promise<{ secret: string; qrCodeUrl: string }> {
     const secret = speakeasy.generateSecret({
-      name: `SupportAI:${user.username}`,
+      name: `SAHAYAA.AI:${user.username}`,
       length: 20,
     });
 

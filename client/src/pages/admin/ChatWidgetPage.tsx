@@ -39,28 +39,28 @@ export default function ChatWidgetPage() {
     adminId: ${user?.id || 'YOUR_ADMIN_ID'}
   };
 </script>
-<script src="https://supportai.com/widget.js" async></script>`;
+<script src="https://sahayaa.ai/widget.js" async></script>`;
   };
   
   // Generate NPM package installation instructions
   const getNpmInstallCode = () => {
     return `# Using npm
-npm install supportai-widget
+npm install sahayaa-widget
 
 # Using yarn
-yarn add supportai-widget`;
+yarn add sahayaa-widget`;
   };
   
   // Generate React component usage example
   const getReactUsageCode = () => {
-    return `import { SupportAIChat } from 'supportai-widget';
+    return `import { SahayaaAIChat } from 'sahayaa-widget';
 
 function App() {
   return (
     <div className="your-app">
       {/* Your application content */}
       
-      <SupportAIChat
+      <SahayaaAIChat
         tenantId="${user?.tenantId || 'YOUR_TENANT_ID'}"
         apiKey="${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}"
         primaryColor="${primaryColor}"
@@ -268,10 +268,10 @@ function App() {
                   </pre>
                   <h3 className="text-sm font-medium mt-4 mb-2">Initialize the widget</h3>
                   <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-sm overflow-x-auto">
-{`import { initSupportAI } from 'supportai-widget';
+{`import { initSahayaaAI } from 'sahayaa-widget';
 
 // Initialize the widget
-initSupportAI({
+initSahayaaAI({
   tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
   apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
   primaryColor: "${primaryColor}",
@@ -416,7 +416,7 @@ initSupportAI({
                 <div>
                   <h3 className="font-bold">Monitor and adjust</h3>
                   <p className="text-gray-500 dark:text-gray-400">
-                    Use the SupportAI dashboard to monitor chat interactions and adjust your widget
+                    Use the SAHAYAA.AI dashboard to monitor chat interactions and adjust your widget
                     configuration as needed based on user feedback.
                   </p>
                 </div>

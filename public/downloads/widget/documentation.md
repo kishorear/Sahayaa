@@ -1,8 +1,8 @@
-# SupportAI Chat Widget Documentation
+# SAHAYAA.AI Chat Widget Documentation
 
 ## Overview
 
-The SupportAI Chat Widget is a customizable, lightweight chat interface that integrates directly with your SupportAI account. It provides your website visitors with instant AI-powered support and connects them with human agents when needed.
+The SAHAYAA.AI Chat Widget is a customizable, lightweight chat interface that integrates directly with your SAHAYAA.AI account. It provides your website visitors with instant AI-powered support and connects them with human agents when needed.
 
 ## Quick Start
 
@@ -11,9 +11,9 @@ The SupportAI Chat Widget is a customizable, lightweight chat interface that int
 Add the following script tags to your website, right before the closing `</body>` tag:
 
 ```html
-<!-- SupportAI Chat Widget -->
+<!-- SAHAYAA.AI Chat Widget -->
 <script>
-  window.supportAiConfig = {
+  window.sahayaaAiConfig = {
     tenantId: YOUR_TENANT_ID,
     apiKey: "YOUR_API_KEY",
     primaryColor: "#6366F1",
@@ -25,7 +25,7 @@ Add the following script tags to your website, right before the closing `</body>
     adminId: YOUR_ADMIN_ID
   };
 </script>
-<script src="https://supportai.com/widget.js" async></script>
+<script src="https://sahayaa.ai/widget.js" async></script>
 ```
 
 ### NPM Package
@@ -34,19 +34,19 @@ Install the package using npm or yarn:
 
 ```bash
 # Using npm
-npm install supportai-widget
+npm install sahayaa-widget
 
 # Using yarn
-yarn add supportai-widget
+yarn add sahayaa-widget
 ```
 
 Then import and initialize the widget in your application:
 
 ```javascript
-import { initSupportAI } from 'supportai-widget';
+import { initSahayaaAI } from 'sahayaa-widget';
 
 // Initialize the widget
-initSupportAI({
+initSahayaaAI({
   tenantId: YOUR_TENANT_ID,
   apiKey: "YOUR_API_KEY",
   primaryColor: "#6366F1",
@@ -64,14 +64,14 @@ initSupportAI({
 For React applications, you can use the provided component:
 
 ```jsx
-import { SupportAIChat } from 'supportai-widget';
+import { SahayaaAIChat } from 'sahayaa-widget';
 
 function App() {
   return (
     <div className="your-app">
       {/* Your application content */}
       
-      <SupportAIChat
+      <SahayaaAIChat
         tenantId="YOUR_TENANT_ID"
         apiKey="YOUR_API_KEY"
         primaryColor="#6366F1"
@@ -91,32 +91,32 @@ function App() {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `tenantId` | number | N/A | **Required**. Your SupportAI tenant ID. |
-| `apiKey` | string | N/A | **Required**. Your SupportAI API key. |
+| `tenantId` | number | N/A | **Required**. Your SAHAYAA.AI tenant ID. |
+| `apiKey` | string | N/A | **Required**. Your SAHAYAA.AI API key. |
 | `primaryColor` | string | "#6366F1" | The primary color for the widget, used for the chat button and user messages. |
 | `position` | string | "right" | The position of the chat widget on the screen. Options: "left", "right". |
 | `greetingMessage` | string | "How can I help you today?" | The initial message displayed when the chat window opens. |
 | `autoOpen` | boolean | false | Whether to automatically open the chat window when the page loads. |
-| `branding` | boolean | true | Whether to show "Powered by SupportAI" in the widget. |
-| `reportData` | boolean | true | Whether to send analytics data back to SupportAI. |
+| `branding` | boolean | true | Whether to show "Powered by SAHAYAA.AI" in the widget. |
+| `reportData` | boolean | true | Whether to send analytics data back to SAHAYAA.AI. |
 | `adminId` | number | null | Your admin ID for tracking and analytics. |
 
 ## JavaScript API
 
-The widget exposes a JavaScript API through the `window.SupportAI` object:
+The widget exposes a JavaScript API through the `window.SahayaaAI` object:
 
 ```javascript
 // Open the chat window
-window.SupportAI.open();
+window.SahayaaAI.open();
 
 // Close the chat window
-window.SupportAI.close();
+window.SahayaaAI.close();
 
 // Toggle the chat window
-window.SupportAI.toggle();
+window.SahayaaAI.toggle();
 
 // Update configuration at runtime
-window.SupportAI.updateConfig({
+window.SahayaaAI.updateConfig({
   primaryColor: "#FF0000",
   greetingMessage: "New greeting message"
 });
@@ -131,23 +131,23 @@ The widget automatically inherits some styles from your website but maintains it
 For advanced customization, you can use CSS to target the widget elements:
 
 ```css
-#supportai-widget-container {
+#sahayaa-widget-container {
   /* Custom styles for the widget container */
 }
 
-#supportai-chat-button {
+#sahayaa-chat-button {
   /* Custom styles for the chat button */
 }
 
-#supportai-chat-window {
+#sahayaa-chat-window {
   /* Custom styles for the chat window */
 }
 
-.supportai-message.supportai-user {
+.sahayaa-message.sahayaa-user {
   /* Custom styles for user messages */
 }
 
-.supportai-message.supportai-assistant {
+.sahayaa-message.sahayaa-assistant {
   /* Custom styles for assistant messages */
 }
 ```
@@ -159,19 +159,19 @@ For advanced customization, you can use CSS to target the widget elements:
 You can listen for events from the widget using the following:
 
 ```javascript
-document.addEventListener('supportai:opened', function() {
+document.addEventListener('sahayaa:opened', function() {
   console.log('Chat window was opened');
 });
 
-document.addEventListener('supportai:closed', function() {
+document.addEventListener('sahayaa:closed', function() {
   console.log('Chat window was closed');
 });
 
-document.addEventListener('supportai:messageSent', function(e) {
+document.addEventListener('sahayaa:messageSent', function(e) {
   console.log('Message sent:', e.detail.message);
 });
 
-document.addEventListener('supportai:messageReceived', function(e) {
+document.addEventListener('sahayaa:messageReceived', function(e) {
   console.log('Message received:', e.detail.message);
 });
 ```
@@ -182,11 +182,11 @@ You can programmatically control the widget from anywhere in your application:
 
 ```javascript
 // Open the chat and send a message
-window.SupportAI.open();
+window.SahayaaAI.open();
 setTimeout(() => {
-  const inputElement = document.getElementById('supportai-input');
+  const inputElement = document.getElementById('sahayaa-input');
   inputElement.value = "Hello, I need help with my order";
-  document.getElementById('supportai-send').click();
+  document.getElementById('sahayaa-send').click();
 }, 500);
 ```
 
@@ -202,15 +202,15 @@ setTimeout(() => {
 
 ### Browser Compatibility
 
-The SupportAI Chat Widget is compatible with all modern browsers:
+The SAHAYAA.AI Chat Widget is compatible with all modern browsers:
 - Chrome, Firefox, Safari: Latest 2 versions
 - Edge: Latest version
 - Internet Explorer: Not supported
 
 ## Getting Help
 
-If you need assistance with the SupportAI Chat Widget, please contact our support team at support@supportai.com or through your SupportAI admin dashboard.
+If you need assistance with the SAHAYAA.AI Chat Widget, please contact our support team at support@sahayaa.ai or through your SAHAYAA.AI admin dashboard.
 
 ---
 
-© 2025 SupportAI. All rights reserved.
+© 2025 SAHAYAA.AI. All rights reserved.

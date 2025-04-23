@@ -22,11 +22,11 @@
   // Merge the default configuration with any user-provided configuration
   const config = {
     ...defaultConfig,
-    ...(window.supportAiConfig || {})
+    ...(window.sahayaaAiConfig || {})
   };
 
   // Create a class to encapsulate the widget functionality
-  class SupportAIWidget {
+  class SahayaaAIWidget {
     constructor() {
       // Store the DOM elements
       this.container = null;
@@ -78,7 +78,7 @@
      */
     createWidgetContainer() {
       this.container = document.createElement('div');
-      this.container.className = 'supportai-widget-container';
+      this.container.className = 'sahayaa-widget-container';
       
       // Apply positioning based on configuration
       if (config.position === 'left') {
@@ -98,7 +98,7 @@
      */
     createChatButton() {
       this.button = document.createElement('div');
-      this.button.className = 'supportai-widget-button';
+      this.button.className = 'sahayaa-widget-button';
       this.button.style.backgroundColor = config.primaryColor;
       
       // Add chat icon
@@ -111,7 +111,7 @@
       icon.setAttribute('stroke-width', '2');
       icon.setAttribute('stroke-linecap', 'round');
       icon.setAttribute('stroke-linejoin', 'round');
-      icon.className = 'supportai-widget-icon';
+      icon.className = 'sahayaa-widget-icon';
       
       const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path1.setAttribute('d', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z');
@@ -127,18 +127,18 @@
      */
     createChatWindow() {
       this.chatWindow = document.createElement('div');
-      this.chatWindow.className = 'supportai-chat-window';
+      this.chatWindow.className = 'sahayaa-chat-window';
       
       // Create chat header
       const header = document.createElement('div');
-      header.className = 'supportai-chat-header';
+      header.className = 'sahayaa-chat-header';
       header.style.backgroundColor = config.primaryColor;
       
       const title = document.createElement('div');
       title.textContent = 'Support Chat';
       
       const closeButton = document.createElement('div');
-      closeButton.className = 'supportai-chat-close';
+      closeButton.className = 'sahayaa-chat-close';
       closeButton.innerHTML = '&times;';
       closeButton.onclick = (e) => {
         e.stopPropagation();
@@ -348,7 +348,7 @@
     reportEvent(eventType, metadata = {}) {
       // In a production environment, this would send the event to the server
       // For this example, we'll just log it to the console
-      console.log('SupportAI Event:', eventType, {
+      console.log('SAHAYAA.AI Event:', eventType, {
         tenantId: config.tenantId,
         sessionId: this.sessionId,
         timestamp: new Date().toISOString(),
@@ -395,21 +395,21 @@
   
   // Initialize the widget when the page is loaded
   if (document.readyState === 'complete') {
-    new SupportAIWidget();
+    new SahayaaAIWidget();
   } else {
     window.addEventListener('load', () => {
-      new SupportAIWidget();
+      new SahayaaAIWidget();
     });
   }
   
   // Export the widget for use in other scripts
-  window.SupportAIChat = {
+  window.SahayaaAIChat = {
     init: function(customConfig) {
-      window.supportAiConfig = {
+      window.sahayaaAiConfig = {
         ...config,
         ...customConfig
       };
-      new SupportAIWidget();
+      new SahayaaAIWidget();
     }
   };
 })();

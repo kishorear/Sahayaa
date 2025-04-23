@@ -54,8 +54,14 @@ export default function ContactUsPage() {
     }
   });
   
+  // Define email status type
+  interface EmailStatusType {
+    supportEmail?: string;
+    configured: boolean;
+  }
+
   // Check if email is configured
-  const { data: emailStatus, isLoading: isLoadingEmailStatus } = useQuery({
+  const { data: emailStatus, isLoading: isLoadingEmailStatus } = useQuery<EmailStatusType, Error, EmailStatusType>({
     queryKey: ['/api/email/status'],
     retry: false
   });
@@ -93,10 +99,8 @@ export default function ContactUsPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
-                </svg>
-                <span className="ml-2 text-xl font-bold">SupportAI</span>
+                <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
               </div>
             </Link>
             <div className="flex items-center space-x-6">
@@ -162,7 +166,7 @@ export default function ContactUsPage() {
                     <div>
                       <h3 className="font-medium">Email</h3>
                       <p className="text-gray-600 dark:text-gray-400">
-                        {emailStatus?.supportEmail || "support@supportai.example.com"}
+                        {emailStatus?.supportEmail || "support@sahayaa.ai"}
                       </p>
                     </div>
                   </div>
@@ -300,10 +304,8 @@ export default function ContactUsPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
-                </svg>
-                <span className="ml-2 text-xl font-bold text-white">SupportAI</span>
+                <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold text-white">SAHAYAA.AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>
             </div>
@@ -329,7 +331,7 @@ export default function ContactUsPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} SupportAI. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} SAHAYAA.AI. All rights reserved.</p>
           </div>
         </div>
       </footer>

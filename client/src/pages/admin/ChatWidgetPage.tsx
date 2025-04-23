@@ -25,9 +25,9 @@ export default function ChatWidgetPage() {
   
   // Generate the embed code based on the selected options
   const getEmbedCode = () => {
-    return `<!-- SupportAI Chat Widget -->
+    return `<!-- SAHAYAA.AI Chat Widget -->
 <script>
-  window.supportAiConfig = {
+  window.sahayaaAiConfig = {
     tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
     apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
     primaryColor: "${primaryColor}",
@@ -139,7 +139,7 @@ function App() {
           <div>
             <h1 className="text-3xl font-bold">Chat Widget</h1>
             <p className="text-gray-500 dark:text-gray-400">
-              Customize and embed the SupportAI chat widget in your application
+              Customize and embed the SAHAYAA.AI chat widget in your application
             </p>
           </div>
           <Button onClick={() => handleDownload("widget package")}>
@@ -214,7 +214,7 @@ function App() {
                   onCheckedChange={(checked) => setIncludeBranding(!!checked)}
                 />
                 <Label htmlFor="branding" className="cursor-pointer">
-                  Include "Powered by SupportAI" branding
+                  Include "Powered by SAHAYAA.AI" branding
                 </Label>
               </div>
             </CardContent>

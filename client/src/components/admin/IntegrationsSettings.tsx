@@ -303,19 +303,19 @@ export default function IntegrationsSettings() {
           <TabsList className="mb-4">
             <TabsTrigger value="zendesk">
               Zendesk
-              {integrations?.zendesk?.enabled === true && (
+              {integrations?.zendesk?.enabled ? (
                 <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 hover:bg-green-50">
                   Active
                 </Badge>
-              )}
+              ) : null}
             </TabsTrigger>
             <TabsTrigger value="jira">
               Jira
-              {integrations?.jira?.enabled === true && (
+              {integrations?.jira?.enabled ? (
                 <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 hover:bg-green-50">
                   Active
                 </Badge>
-              )}
+              ) : null}
             </TabsTrigger>
           </TabsList>
 
@@ -513,8 +513,8 @@ export default function IntegrationsSettings() {
           </Button>
           
           {/* Only show sync button if integration is enabled */}
-          {((activeTab === "zendesk" && integrations?.zendesk?.enabled === true) || 
-            (activeTab === "jira" && integrations?.jira?.enabled === true)) && (
+          {((activeTab === "zendesk" && integrations?.zendesk?.enabled) || 
+            (activeTab === "jira" && integrations?.jira?.enabled)) && (
             <Button 
               type="button" 
               variant="secondary"

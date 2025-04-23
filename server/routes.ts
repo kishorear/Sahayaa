@@ -243,7 +243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (assignedTo && !isNaN(assignedTo)) {
-        filteredTickets = filteredTickets.filter(ticket => ticket.assignedTo === assignedTo);
+        // Convert assignedTo to string for comparison since the column is text type
+        const assignedToString = String(assignedTo);
+        filteredTickets = filteredTickets.filter(ticket => ticket.assignedTo === assignedToString);
       }
       
       res.status(200).json(filteredTickets);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Ticket } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import TenantSelector from "@/components/TenantSelector";
 import { 
   Search, 
   Filter, 
@@ -70,12 +72,25 @@ export default function EnhancedTicketList() {
   const [filterAssignedTo, setFilterAssignedTo] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentView, setCurrentView] = useState<string>("all");
+  const [selectedTenantId, setSelectedTenantId] = useState<number | undefined>(undefined);
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Only creator role users should have access to tenant filtering
+  const isCreator = user?.role?.toLowerCase() === 'creator';
 
-  // Fetch tickets
+  // Fetch tickets with tenant filter for creator role
   const { data: tickets, isLoading } = useQuery<Ticket[]>({
-    queryKey: ['/api/tickets'],
+    queryKey: ['/api/tickets', selectedTenantId],
+    queryFn: async () => {
+      const tenantParam = selectedTenantId ? `?tenantId=${selectedTenantId}` : '';
+      const response = await fetch(`/api/tickets${tenantParam}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch tickets');
+      }
+      return response.json();
+    }
   });
 
   // Update ticket status mutation
@@ -146,14 +161,26 @@ export default function EnhancedTicketList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Ticket Management</h2>
-        <Link href="/admin/tickets/new">
-          <Button>
-            <MessageSquare className="mr-2 h-4 w-4" />
-            New Ticket
-          </Button>
-        </Link>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          {/* Tenant Selector - Only visible for creator role */}
+          {isCreator && (
+            <TenantSelector
+              onTenantChange={setSelectedTenantId}
+              selectedTenantId={selectedTenantId}
+              className="w-full sm:w-[220px]"
+              label="Filter by Tenant"
+            />
+          )}
+          
+          <Link href="/admin/tickets/new">
+            <Button>
+              <MessageSquare className="mr-2 h-4 w-4" />
+              New Ticket
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>

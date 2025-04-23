@@ -7,22 +7,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketCategoryDistribution } from '@shared/schema';
+import TenantSelector from "@/components/TenantSelector";
+import { useAuth } from "@/hooks/use-auth";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 export default function AnalyticsDashboard() {
+  const { user } = useAuth();
   const [timePeriod, setTimePeriod] = useState("weekly");
+  const [selectedTenantId, setSelectedTenantId] = useState<number | undefined>(undefined);
+  
+  // Only show tenant selector for creator role
+  const isCreator = user?.role?.toLowerCase() === 'creator';
 
-  // Fetch data for ticket analytics
+  // Fetch data for ticket analytics with tenant filtering for creator role
   const { data: summaryData, isLoading: summaryLoading } = useQuery<{
     totalTickets: number;
     resolvedTickets: number;
     avgResponseTime: string;
     aiResolvedPercentage: string;
   }>({
-    queryKey: ['/api/metrics/summary', timePeriod],
+    queryKey: ['/api/metrics/summary', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const response = await fetch(`/api/metrics/summary?timePeriod=${timePeriod}`);
+      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+      const response = await fetch(`/api/metrics/summary?timePeriod=${timePeriod}${tenantParam}`);
       if (!response.ok) {
         throw new Error('Failed to fetch metrics summary');
       }
@@ -31,9 +39,10 @@ export default function AnalyticsDashboard() {
   });
 
   const { data: categoryData, isLoading: categoryLoading } = useQuery<TicketCategoryDistribution[]>({
-    queryKey: ['/api/metrics/categories', timePeriod],
+    queryKey: ['/api/metrics/categories', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const response = await fetch(`/api/metrics/categories?timePeriod=${timePeriod}`);
+      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+      const response = await fetch(`/api/metrics/categories?timePeriod=${timePeriod}${tenantParam}`);
       if (!response.ok) {
         throw new Error('Failed to fetch category metrics');
       }
@@ -43,9 +52,10 @@ export default function AnalyticsDashboard() {
 
   // Response time metrics from real data
   const { data: responseTimeData = [], isLoading: responseTimeLoading } = useQuery<{name: string, avg: number}[]>({
-    queryKey: ['/api/metrics/response-time', timePeriod],
+    queryKey: ['/api/metrics/response-time', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const response = await fetch(`/api/metrics/response-time?timePeriod=${timePeriod}`);
+      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+      const response = await fetch(`/api/metrics/response-time?timePeriod=${timePeriod}${tenantParam}`);
       if (!response.ok) {
         throw new Error('Failed to fetch response time metrics');
       }
@@ -55,9 +65,10 @@ export default function AnalyticsDashboard() {
 
   // Daily ticket volume from real data
   const { data: ticketVolumeData = [], isLoading: volumeLoading } = useQuery<{name: string, volume: number}[]>({
-    queryKey: ['/api/metrics/ticket-volume', timePeriod],
+    queryKey: ['/api/metrics/ticket-volume', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const response = await fetch(`/api/metrics/ticket-volume?timePeriod=${timePeriod}`);
+      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+      const response = await fetch(`/api/metrics/ticket-volume?timePeriod=${timePeriod}${tenantParam}`);
       if (!response.ok) {
         throw new Error('Failed to fetch ticket volume metrics');
       }
@@ -75,45 +86,57 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h2>
-        <div className="flex items-center gap-2">
-          {(summaryLoading || categoryLoading || responseTimeLoading || volumeLoading) && (
-            <div className="flex items-center text-sm text-muted-foreground">
-              <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Updating...
-            </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          {/* Tenant Selector - Only visible for creator role */}
+          {isCreator && (
+            <TenantSelector
+              onTenantChange={setSelectedTenantId}
+              selectedTenantId={selectedTenantId}
+              className="w-full sm:w-[220px]"
+              label="Filter by Tenant"
+            />
           )}
-          <Select value={timePeriod} onValueChange={setTimePeriod}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select time period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="quarterly">Quarterly</SelectItem>
-            </SelectContent>
-          </Select>
+          
+          <div className="flex items-center gap-2">
+            {(summaryLoading || categoryLoading || responseTimeLoading || volumeLoading) && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Updating...
+              </div>
+            )}
+            <Select value={timePeriod} onValueChange={setTimePeriod}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select time period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 

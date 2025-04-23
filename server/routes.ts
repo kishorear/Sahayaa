@@ -41,6 +41,8 @@ import creatorRoutes from "./routes/creator-routes";
 import aiAvailabilityRoutes from "./routes/ai-availability-routes";
 // Import AI providers routes
 import aiProvidersRoutes from "./routes/ai-providers-routes";
+// Import tenant routes for creator role
+import { tenantRoutes } from "./routes/tenant-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 
@@ -179,6 +181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register AI providers routes - this endpoint must match what the frontend expects: /api/ai-providers
   // Apply authentication middleware to ensure req.isAuthenticated is available
   app.use('/api/ai-providers', requireAuth, aiProvidersRoutes);
+  
+  // Register tenant routes - access restricted to creator role users only
+  app.use('/api', requireAuth, tenantRoutes);
   
   // Initialize SSO service for all tenants
   try {
@@ -927,15 +932,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DASHBOARD METRICS - Require admin or support-agent roles
-  app.get("/api/metrics/summary", requireRole(['admin', 'support-agent']), async (req, res) => {
+  app.get("/api/metrics/summary", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering
       const isCreator = req.user?.role === 'creator';
       
-      // For non-creator users, filter by their tenant
-      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      // Get tenant ID based on role and query parameters
+      let tenantId: number | undefined;
+      
+      if (isCreator && req.query.tenantId) {
+        // Creator role can filter by tenant if provided
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator) {
+        // Non-creator roles are always limited to their tenant
+        tenantId = req.user?.tenantId;
+      }
       
       // Get tickets with proper tenant filtering
       const tickets = await storage.getAllTickets(tenantId);
@@ -1031,15 +1047,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/metrics/categories", requireRole(['admin', 'support-agent']), async (req, res) => {
+  app.get("/api/metrics/categories", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering
       const isCreator = req.user?.role === 'creator';
       
-      // For non-creator users, filter by their tenant
-      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      // Get tenant ID based on role and query parameters
+      let tenantId: number | undefined;
+      
+      if (isCreator && req.query.tenantId) {
+        // Creator role can filter by tenant if provided
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator) {
+        // Non-creator roles are always limited to their tenant
+        tenantId = req.user?.tenantId;
+      }
       
       // Get tickets with proper tenant filtering
       const tickets = await storage.getAllTickets(tenantId);
@@ -1096,15 +1123,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // API endpoint for response time metrics
-  app.get("/api/metrics/response-time", requireRole(['admin', 'support-agent']), async (req, res) => {
+  app.get("/api/metrics/response-time", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering
       const isCreator = req.user?.role === 'creator';
       
-      // For non-creator users, filter by their tenant
-      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      // Get tenant ID based on role and query parameters
+      let tenantId: number | undefined;
+      
+      if (isCreator && req.query.tenantId) {
+        // Creator role can filter by tenant if provided
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator) {
+        // Non-creator roles are always limited to their tenant
+        tenantId = req.user?.tenantId;
+      }
       
       // Get tickets with proper tenant filtering
       const tickets = await storage.getAllTickets(tenantId);
@@ -1158,15 +1196,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // API endpoint for ticket volume metrics
-  app.get("/api/metrics/ticket-volume", requireRole(['admin', 'support-agent']), async (req, res) => {
+  app.get("/api/metrics/ticket-volume", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering
       const isCreator = req.user?.role === 'creator';
       
-      // For non-creator users, filter by their tenant
-      const tenantId = isCreator ? undefined : req.user?.tenantId;
+      // Get tenant ID based on role and query parameters
+      let tenantId: number | undefined;
+      
+      if (isCreator && req.query.tenantId) {
+        // Creator role can filter by tenant if provided
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator) {
+        // Non-creator roles are always limited to their tenant
+        tenantId = req.user?.tenantId;
+      }
       
       // Get tickets with proper tenant filtering
       const tickets = await storage.getAllTickets(tenantId);

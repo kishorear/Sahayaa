@@ -13,10 +13,8 @@ export default function HowItWorksPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
-                </svg>
-                <span className="ml-2 text-xl font-bold">SupportAI</span>
+                <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
               </div>
             </Link>
             <div className="flex items-center space-x-6">
@@ -229,14 +227,12 @@ export default function HowItWorksPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="flex items-center">
-              <svg className="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
-              </svg>
-              <span className="ml-2 text-lg font-bold">SupportAI</span>
+              <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-6 h-6" />
+              <span className="ml-2 text-lg font-bold">SAHAYAA.AI</span>
             </div>
             
             <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} SupportAI. All rights reserved.
+              &copy; {new Date().getFullYear()} SAHAYAA.AI. All rights reserved.
             </div>
           </div>
         </div>

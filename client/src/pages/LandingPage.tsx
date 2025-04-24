@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
+import LogoIcon from "@/components/LogoIcon";
 
 export default function LandingPage() {
   return (
@@ -10,7 +11,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img src={import.meta.env.BASE_URL + "logo-icon.svg"} alt="SAHAYAA.AI Logo" className="w-8 h-8" />
+              <LogoIcon className="w-8 h-8" />
               <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
             </div>
             <div className="flex items-center space-x-6">
@@ -75,7 +76,7 @@ export default function LandingPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="mb-4 p-3 bg-indigo-100 rounded-full w-14 h-14 flex items-center justify-center">
-                  <img src={import.meta.env.BASE_URL + "logo-icon.svg"} alt="SAHAYAA.AI Logo" className="w-8 h-8" />
+                  <LogoIcon className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">Intelligent Routing</h3>
                 <p className="text-gray-600">
@@ -259,7 +260,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <img src={import.meta.env.BASE_URL + "logo-icon.svg"} alt="SAHAYAA.AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold text-white">SAHAYAA.AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>

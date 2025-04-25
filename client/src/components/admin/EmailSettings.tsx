@@ -68,19 +68,47 @@ export default function EmailSettings() {
       } catch (error) {
         // Don't show toast for 401 unauthorized errors - this is expected when not logged in
         if (!(error instanceof Error && error.message.includes("401"))) {
-          toast({
-            title: "Error Loading Configuration",
-            description: error instanceof Error ? error.message : "Could not load email configuration",
-            variant: "destructive",
-          });
+          // Only show toast for errors that aren't connection-related (those will be shown in the alert banner)
+          if (!(error instanceof Error && 
+              (error.message.includes("timeout") || 
+               error.message.includes("connect") || 
+               error.message.includes("network")))) {
+            toast({
+              title: "Error Loading Configuration",
+              description: error instanceof Error ? error.message : "Could not load email configuration",
+              variant: "destructive",
+            });
+          }
         }
-        // Return empty configuration instead of throwing
-        return {
-          smtp: null,
-          imap: null,
-          settings: null
-        };
+        // Throw the error so it can be caught by React Query's error handling
+        throw error;
       }
+    },
+    // Add retry configuration to handle connection issues
+    retry: (failureCount, error) => {
+      // Don't retry 401 unauthorized errors
+      if (error instanceof Error && error.message.includes("401")) {
+        return false;
+      }
+      
+      // Retry network and timeout errors up to 3 times with exponential backoff
+      if (error instanceof Error && 
+          (error.message.includes("timeout") || 
+           error.message.includes("connect") ||
+           error.message.includes("network"))) {
+        return failureCount < 3;
+      }
+      
+      // Don't retry other errors
+      return false;
+    },
+    // Use a stale time of 1 minute to reduce unnecessary refetches
+    staleTime: 60000,
+    // Fallback data for when the request fails
+    placeholderData: {
+      smtp: null,
+      imap: null,
+      settings: null
     }
   });
 
@@ -151,40 +179,50 @@ export default function EmailSettings() {
             ticketSubjectPrefix?: string;
             checkInterval?: number;
           };
+          message?: string;
+          config?: null;
         }
 
         // Safely cast the response
         const parsedConfig: ConfigResponse = emailConfigResponse;
         
-        if (!parsedConfig || !parsedConfig.smtp || !parsedConfig.imap || !parsedConfig.settings) {
+        // Handle cases where the response contains a message like "No email configuration found"
+        if (parsedConfig.message && parsedConfig.config === null) {
+          console.log("No email configuration exists:", parsedConfig.message);
+          // Just use defaults, no need to return
+        }
+        
+        // If any parts of the configuration are missing, don't try to use them
+        if (!parsedConfig.smtp || !parsedConfig.imap || !parsedConfig.settings) {
           console.log("Email configuration is incomplete or in unexpected format", parsedConfig);
+          // Just use default form values, continue with defaults
           return;
         }
         
         // Create a properly typed config object with defaults
         const config: EmailConfigValues = {
           smtp: {
-            host: parsedConfig.smtp.host || "",
-            port: Number(parsedConfig.smtp.port) || 465,
-            secure: parsedConfig.smtp.secure !== undefined ? Boolean(parsedConfig.smtp.secure) : true,
+            host: parsedConfig.smtp?.host || "",
+            port: Number(parsedConfig.smtp?.port) || 465,
+            secure: parsedConfig.smtp?.secure !== undefined ? Boolean(parsedConfig.smtp.secure) : true,
             auth: {
-              user: parsedConfig.smtp.auth?.user || "",
-              pass: parsedConfig.smtp.auth?.pass || "",
+              user: parsedConfig.smtp?.auth?.user || "",
+              pass: parsedConfig.smtp?.auth?.pass || "",
             },
           },
           imap: {
-            host: parsedConfig.imap.host || "",
-            port: Number(parsedConfig.imap.port) || 993,
-            user: parsedConfig.imap.user || "",
-            password: parsedConfig.imap.password || "",
-            tls: parsedConfig.imap.tls !== undefined ? Boolean(parsedConfig.imap.tls) : true,
-            authTimeout: Number(parsedConfig.imap.authTimeout) || 10000,
+            host: parsedConfig.imap?.host || "",
+            port: Number(parsedConfig.imap?.port) || 993,
+            user: parsedConfig.imap?.user || "",
+            password: parsedConfig.imap?.password || "",
+            tls: parsedConfig.imap?.tls !== undefined ? Boolean(parsedConfig.imap.tls) : true,
+            authTimeout: Number(parsedConfig.imap?.authTimeout) || 10000,
           },
           settings: {
-            fromName: parsedConfig.settings.fromName || "Support Team",
-            fromEmail: parsedConfig.settings.fromEmail || "",
-            ticketSubjectPrefix: parsedConfig.settings.ticketSubjectPrefix || "[Support]",
-            checkInterval: Number(parsedConfig.settings.checkInterval) || 60000,
+            fromName: parsedConfig.settings?.fromName || "Support Team",
+            fromEmail: parsedConfig.settings?.fromEmail || "",
+            ticketSubjectPrefix: parsedConfig.settings?.ticketSubjectPrefix || "[Support]",
+            checkInterval: Number(parsedConfig.settings?.checkInterval) || 60000,
           }
         };
         
@@ -212,7 +250,22 @@ export default function EmailSettings() {
   // Mutation for saving email configuration
   const configMutation = useMutation({
     mutationFn: async (data: EmailConfigValues) => {
-      return await apiRequest("POST", "/api/email/config", data);
+      try {
+        return await apiRequest("POST", "/api/email/config", data);
+      } catch (error) {
+        // Check if it's an authentication error
+        if (error instanceof Error && error.message.includes("401")) {
+          throw new Error("Authentication required. Please login to save email configuration.");
+        }
+        // Format connection errors with more helpful messages
+        if (error instanceof Error && 
+            (error.message.includes("timeout") || 
+             error.message.includes("connect") ||
+             error.message.includes("network"))) {
+          throw new Error("Connection error. Please try again when the server is responsive.");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -220,20 +273,59 @@ export default function EmailSettings() {
         description: "Your email settings have been saved successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/email/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email/config"] });
     },
     onError: (error) => {
-      toast({
-        title: "Error Saving Configuration",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Only show toast for non-connection errors (connection errors show in the alert banner)
+      if (!(error instanceof Error && 
+          (error.message.includes("timeout") || 
+           error.message.includes("connect") ||
+           error.message.includes("network")))) {
+        toast({
+          title: "Error Saving Configuration",
+          description: error instanceof Error ? error.message : "An unknown error occurred",
+          variant: "destructive",
+        });
+      }
     },
+    // Add retry for connection issues
+    retry: (failureCount, error) => {
+      // Don't retry auth errors
+      if (error instanceof Error && error.message.includes("401")) {
+        return false;
+      }
+      
+      // Retry connection errors up to 2 times
+      if (error instanceof Error && 
+          (error.message.includes("timeout") || 
+           error.message.includes("connect") ||
+           error.message.includes("network"))) {
+        return failureCount < 2;
+      }
+      
+      return false;
+    }
   });
 
   // Mutation for sending test email
   const testEmailMutation = useMutation({
     mutationFn: async (data: TestEmailValues) => {
-      return await apiRequest("POST", "/api/email/test", data);
+      try {
+        return await apiRequest("POST", "/api/email/test", data);
+      } catch (error) {
+        // Check if it's an authentication error
+        if (error instanceof Error && error.message.includes("401")) {
+          throw new Error("Authentication required. Please login to send test emails.");
+        }
+        // Format connection errors with more helpful messages
+        if (error instanceof Error && 
+            (error.message.includes("timeout") || 
+             error.message.includes("connect") ||
+             error.message.includes("network"))) {
+          throw new Error("Connection error. Please try again when the server is responsive.");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -243,12 +335,35 @@ export default function EmailSettings() {
       setTestMode(false);
     },
     onError: (error) => {
-      toast({
-        title: "Error Sending Test Email",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Only show toast for non-connection errors (connection errors show in the alert banner)
+      if (!(error instanceof Error && 
+          (error.message.includes("timeout") || 
+           error.message.includes("connect") ||
+           error.message.includes("network")))) {
+        toast({
+          title: "Error Sending Test Email",
+          description: error instanceof Error ? error.message : "An unknown error occurred",
+          variant: "destructive",
+        });
+      }
     },
+    // Add retry for connection issues
+    retry: (failureCount, error) => {
+      // Don't retry auth errors
+      if (error instanceof Error && error.message.includes("401")) {
+        return false;
+      }
+      
+      // Retry connection errors up to 2 times
+      if (error instanceof Error && 
+          (error.message.includes("timeout") || 
+           error.message.includes("connect") ||
+           error.message.includes("network"))) {
+        return failureCount < 2;
+      }
+      
+      return false;
+    }
   });
 
   // Handle form submission for configuration
@@ -264,7 +379,33 @@ export default function EmailSettings() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold tracking-tight">Email Integration</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-3xl font-bold tracking-tight">Email Integration</h2>
+          {configLoading && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <div className="w-3 h-3 mr-2 rounded-full bg-yellow-400 animate-pulse"></div>
+              Loading...
+            </div>
+          )}
+          {configError && configError instanceof Error && 
+            (configError.message.includes("timeout") || 
+             configError.message.includes("connect") || 
+             configError.message.includes("network") ||
+             configError.message.includes("refused") ||
+             configError.message.includes("socket")) && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <div className="w-3 h-3 mr-2 rounded-full bg-orange-400 animate-pulse"></div>
+              Reconnecting...
+            </div>
+          )}
+          {!configLoading && !configError && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <div className="w-3 h-3 mr-2 rounded-full bg-green-500"></div>
+              Connected
+            </div>
+          )}
+        </div>
+        
         {!testMode ? (
           <Button
             variant="outline"
@@ -288,6 +429,33 @@ export default function EmailSettings() {
       <p className="text-muted-foreground">
         Configure email integration to automatically process support requests received via email.
       </p>
+      
+      {/* Show appropriate error based on the type */}
+      {configError && configError instanceof Error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>
+            {configError.message.includes("401") ? "Authentication Required" : 
+             configError.message.includes("timeout") || 
+             configError.message.includes("connect") ||
+             configError.message.includes("network") ||
+             configError.message.includes("refused") ||
+             configError.message.includes("socket") ? 
+             "Connection Error" : "Error Loading Configuration"}
+          </AlertTitle>
+          <AlertDescription>
+            {configError.message.includes("401") ? 
+              "You need to be logged in to view and modify email configuration settings." :
+             configError.message.includes("timeout") || 
+             configError.message.includes("connect") ||
+             configError.message.includes("network") ||
+             configError.message.includes("refused") ||
+             configError.message.includes("socket") ?
+              "Unable to connect to the server. The system will automatically retry. You can continue editing the form and save when the connection is restored." :
+              "An error occurred while loading the email configuration. Please try again later."}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {testMode ? (
         <Card>

@@ -14,9 +14,11 @@ const LogoIcon: React.FC<LogoIconProps> = ({ className = "w-8 h-8" }) => {
       {/* Background Circle */}
       <circle cx="32" cy="32" r="30" fill="#4F46E5" />
       
-      {/* Exclamation Mark */}
-      <rect x="29" y="15" width="6" height="22" rx="3" fill="white" />
-      <circle cx="32" cy="45" r="3" fill="white" />
+      {/* Chat Bubble */}
+      <path d="M20 24h24v12H32l-6 6v-6h-6V24z" fill="white" />
+      
+      {/* AI Symbol */}
+      <path d="M28 28h8v4h-8v-4z" fill="#4F46E5" />
     </svg>
   );
 };

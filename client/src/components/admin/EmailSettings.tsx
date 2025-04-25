@@ -58,7 +58,7 @@ export default function EmailSettings() {
   const [isLoading, setIsLoading] = useState(false);
   
   // Query to fetch existing email configuration
-  const { data: emailConfigResponse, isLoading: configLoading } = useQuery({
+  const { data: emailConfigResponse, isLoading: configLoading, error: configError } = useQuery({
     queryKey: ['/api/email/config'],
     queryFn: async () => {
       try {
@@ -66,12 +66,20 @@ export default function EmailSettings() {
         // Parse the JSON response if it's a string, otherwise return as is
         return typeof response === 'string' ? JSON.parse(response) : response;
       } catch (error) {
-        toast({
-          title: "Error Loading Configuration",
-          description: error instanceof Error ? error.message : "Could not load email configuration",
-          variant: "destructive",
-        });
-        throw error;
+        // Don't show toast for 401 unauthorized errors - this is expected when not logged in
+        if (!(error instanceof Error && error.message.includes("401"))) {
+          toast({
+            title: "Error Loading Configuration",
+            description: error instanceof Error ? error.message : "Could not load email configuration",
+            variant: "destructive",
+          });
+        }
+        // Return empty configuration instead of throwing
+        return {
+          smtp: null,
+          imap: null,
+          settings: null
+        };
       }
     }
   });

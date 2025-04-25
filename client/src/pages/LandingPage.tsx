@@ -11,7 +11,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <LogoIcon className="w-8 h-8" />
+              <LogoIcon className="w-10 h-10" />
               <span className="ml-2 text-xl font-bold">Support AI</span>
             </div>
             <div className="flex items-center space-x-6">
@@ -76,7 +76,7 @@ export default function LandingPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="mb-4 p-3 bg-indigo-100 rounded-full w-14 h-14 flex items-center justify-center">
-                  <LogoIcon className="w-8 h-8" />
+                  <LogoIcon className="w-10 h-10" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">Intelligent Routing</h3>
                 <p className="text-gray-600">
@@ -260,7 +260,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <LogoIcon className="w-8 h-8" />
+                <LogoIcon className="w-10 h-10" />
                 <span className="ml-2 text-xl font-bold text-white">Support AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>

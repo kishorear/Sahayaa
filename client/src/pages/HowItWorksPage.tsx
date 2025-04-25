@@ -13,8 +13,8 @@ export default function HowItWorksPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-8 h-8" />
-                <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
+                <img src="/logo.svg" alt="Support AI Logo" className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold">Support AI</span>
               </div>
             </Link>
             <div className="flex items-center space-x-6">
@@ -227,12 +227,12 @@ export default function HowItWorksPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="flex items-center">
-              <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-6 h-6" />
-              <span className="ml-2 text-lg font-bold">SAHAYAA.AI</span>
+              <img src="/logo.svg" alt="Support AI Logo" className="w-6 h-6" />
+              <span className="ml-2 text-lg font-bold">Support AI</span>
             </div>
             
             <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} SAHAYAA.AI. All rights reserved.
+              &copy; {new Date().getFullYear()} Support AI. All rights reserved.
             </div>
           </div>
         </div>

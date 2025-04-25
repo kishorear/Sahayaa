@@ -13,6 +13,7 @@ import {
   JiraConfig,
   JiraService
 } from "../integrations/jira";
+import { isCreatorOrAdminRole } from "../utils";
 
 // Validation schemas for integration configurations
 const zendeskConfigSchema = z.object({
@@ -156,6 +157,17 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   // Configure a specific integration
   app.post('/api/integrations/:type', requireAuth, async (req: Request, res: Response) => {
     try {
+      // Check if user has permissions to modify integrations
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      // Only creator role or administrator role can update integrations
+      const { role } = req.user;
+      if (!isCreatorOrAdminRole(role)) {
+        return res.status(403).json({ message: 'Only administrators and creators can update integrations' });
+      }
+      
       console.log('Received integration configuration request:', {
         type: req.params.type,
         body: {
@@ -382,6 +394,17 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   // Sync existing tickets with external integration
   app.post('/api/integrations/:type/sync', requireAuth, async (req: Request, res: Response) => {
     try {
+      // Check if user has permissions to sync tickets
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      // Only creator role or administrator role can update integrations
+      const { role } = req.user;
+      if (!isCreatorOrAdminRole(role)) {
+        return res.status(403).json({ message: 'Only administrators and creators can sync tickets with integrations' });
+      }
+      
       const type = integrationTypeSchema.parse(req.params.type);
       
       // Check if integration is enabled and configured
@@ -495,6 +518,17 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   // Test integration connection
   app.post('/api/integrations/:type/test', requireAuth, async (req: Request, res: Response) => {
     try {
+      // Check if user has permissions to test integrations
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      // Only creator role or administrator role can test integrations
+      const { role } = req.user;
+      if (!isCreatorOrAdminRole(role)) {
+        return res.status(403).json({ message: 'Only administrators and creators can test integrations' });
+      }
+      
       // Debug the raw request before it's processed by any middleware
       console.log('Integration test endpoint hit:', {
         method: req.method,

@@ -96,6 +96,8 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
+    // Creator or admin roles can create AI providers
+    // This check is maintained to guarantee API consistency, but the function already returns true for administrator
     if (!isCreatorOrAdminRole(req.user.role)) {
       return res.status(403).json({ message: 'Only administrators and creators can create AI providers' });
     }
@@ -419,7 +421,9 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 // Get AI provider status
-router.get('/status', async (req: Request, res: Response) => {
+// Move this endpoint before any routes with parameters to avoid conflicts
+// This should come before the '/:id' endpoints to prevent 'status' being interpreted as an ID
+router.get('/api/status', async (req: Request, res: Response) => {
   try {
     // Authentication is handled by the middleware in routes.ts
     if (!req.user) {

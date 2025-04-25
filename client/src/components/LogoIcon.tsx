@@ -14,16 +14,23 @@ const LogoIcon: React.FC<LogoIconProps> = ({ className = "w-8 h-8" }) => {
       viewBox="0 0 64 64" 
       className={className}
     >
-      {/* Perfect circle with solid pastel blue fill */}
-      <circle cx="32" cy="32" r="30" fill={pastelBlue} />
+      {/* Thin circle with pastel blue stroke */}
+      <circle 
+        cx="32" 
+        cy="32" 
+        r="30" 
+        fill="none" 
+        stroke={pastelBlue} 
+        strokeWidth="2" 
+      />
       
       {/* White exclamation mark - geometric sans-serif style */}
       <g>
         {/* Dot part of exclamation mark */}
-        <circle cx="32" cy="45" r="4" fill="white" />
+        <circle cx="32" cy="45" r="4" fill={pastelBlue} />
         
         {/* Vertical part of exclamation mark - straight sides */}
-        <rect x="28" y="15" width="8" height="23" fill="white" />
+        <rect x="28" y="15" width="8" height="23" fill={pastelBlue} />
       </g>
     </svg>
   );

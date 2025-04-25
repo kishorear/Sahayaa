@@ -25,9 +25,9 @@ export default function ChatWidgetPage() {
   
   // Generate the embed code based on the selected options
   const getEmbedCode = () => {
-    return `<!-- SAHAYAA.AI Chat Widget -->
+    return `<!-- Support AI Chat Widget -->
 <script>
-  window.sahayaaAiConfig = {
+  window.supportAiConfig = {
     tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
     apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
     primaryColor: "${primaryColor}",
@@ -39,28 +39,28 @@ export default function ChatWidgetPage() {
     adminId: ${user?.id || 'YOUR_ADMIN_ID'}
   };
 </script>
-<script src="https://sahayaa.ai/widget.js" async></script>`;
+<script src="https://support.ai/widget.js" async></script>`;
   };
   
   // Generate NPM package installation instructions
   const getNpmInstallCode = () => {
     return `# Using npm
-npm install sahayaa-widget
+npm install support-ai-widget
 
 # Using yarn
-yarn add sahayaa-widget`;
+yarn add support-ai-widget`;
   };
   
   // Generate React component usage example
   const getReactUsageCode = () => {
-    return `import { SahayaaAIChat } from 'sahayaa-widget';
+    return `import { SupportAIChat } from 'support-ai-widget';
 
 function App() {
   return (
     <div className="your-app">
       {/* Your application content */}
       
-      <SahayaaAIChat
+      <SupportAIChat
         tenantId="${user?.tenantId || 'YOUR_TENANT_ID'}"
         apiKey="${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}"
         primaryColor="${primaryColor}"
@@ -139,7 +139,7 @@ function App() {
           <div>
             <h1 className="text-3xl font-bold">Chat Widget</h1>
             <p className="text-gray-500 dark:text-gray-400">
-              Customize and embed the SAHAYAA.AI chat widget in your application
+              Customize and embed the Support AI chat widget in your application
             </p>
           </div>
           <Button onClick={() => handleDownload("widget package")}>
@@ -214,7 +214,7 @@ function App() {
                   onCheckedChange={(checked) => setIncludeBranding(!!checked)}
                 />
                 <Label htmlFor="branding" className="cursor-pointer">
-                  Include "Powered by SAHAYAA.AI" branding
+                  Include "Powered by Support AI" branding
                 </Label>
               </div>
             </CardContent>
@@ -268,10 +268,10 @@ function App() {
                   </pre>
                   <h3 className="text-sm font-medium mt-4 mb-2">Initialize the widget</h3>
                   <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-sm overflow-x-auto">
-{`import { initSahayaaAI } from 'sahayaa-widget';
+{`import { initSupportAI } from 'support-ai-widget';
 
 // Initialize the widget
-initSahayaaAI({
+initSupportAI({
   tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
   apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
   primaryColor: "${primaryColor}",
@@ -416,7 +416,7 @@ initSahayaaAI({
                 <div>
                   <h3 className="font-bold">Monitor and adjust</h3>
                   <p className="text-gray-500 dark:text-gray-400">
-                    Use the SAHAYAA.AI dashboard to monitor chat interactions and adjust your widget
+                    Use the Support AI dashboard to monitor chat interactions and adjust your widget
                     configuration as needed based on user feedback.
                   </p>
                 </div>

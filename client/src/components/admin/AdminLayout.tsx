@@ -124,7 +124,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <ChevronLeft className="h-5 w-5 text-gray-300" />
               </button>
               <LogoIcon className="w-8 h-8" />
-              <span className="ml-2 text-xl font-bold text-white">SAHAYAA.AI</span>
+              <span className="ml-2 text-xl font-bold text-white">Support AI</span>
             </div>
           </div>
           <div className="flex flex-col flex-grow px-4 pb-4 overflow-y-auto">
@@ -218,7 +218,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <div className="md:hidden bg-gray-800 w-full absolute z-10">
             <div className="flex items-center px-4 py-3 border-b border-gray-700">
               <LogoIcon className="w-8 h-8 mr-2" />
-              <span className="text-xl font-bold text-white">SAHAYAA.AI</span>
+              <span className="text-xl font-bold text-white">Support AI</span>
             </div>
             {user && (
               <Link href="/admin/profile">

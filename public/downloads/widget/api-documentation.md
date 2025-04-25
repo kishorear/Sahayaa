@@ -1,12 +1,12 @@
-# SAHAYAA.AI Chat Widget API Documentation
+# Support AI Chat Widget API Documentation
 
 ## Overview
 
-The SAHAYAA.AI Chat Widget API allows you to integrate the SAHAYAA.AI chat functionality directly into your website or application. This document provides technical details on endpoints, methods, and integration options.
+The Support AI Chat Widget API allows you to integrate the Support AI chat functionality directly into your website or application. This document provides technical details on endpoints, methods, and integration options.
 
 ## Authentication
 
-All API requests require authentication using your SAHAYAA.AI API key. You can find or generate this key in your SAHAYAA.AI admin dashboard under Settings > API Keys.
+All API requests require authentication using your Support AI API key. You can find or generate this key in your Support AI admin dashboard under Settings > API Keys.
 
 Include your API key in all requests using the `X-API-Key` header:
 
@@ -19,7 +19,7 @@ X-API-Key: your_api_key_here
 All API endpoints use the following base URL:
 
 ```
-https://api.sahayaa.ai/v1
+https://api.support.ai/v1
 ```
 
 ## Endpoints
@@ -100,7 +100,7 @@ Updates the widget configuration for the specified tenant.
 POST /widget/messages
 ```
 
-Sends a message from the chat widget to the SAHAYAA.AI system.
+Sends a message from the chat widget to the Support AI system.
 
 **Request Body:**
 ```json
@@ -250,14 +250,14 @@ Retrieves analytics data for your chat widget.
 
 ## WebSocket API
 
-For real-time communication, the SAHAYAA.AI Chat Widget offers a WebSocket API.
+For real-time communication, the Support AI Chat Widget offers a WebSocket API.
 
 ### Connection
 
 Connect to the WebSocket server:
 
 ```
-wss://ws.sahayaa.ai/v1/chat?apiKey=your_api_key&tenantId=456
+wss://ws.support.ai/v1/chat?apiKey=your_api_key&tenantId=456
 ```
 
 ### Message Format
@@ -360,7 +360,7 @@ Error responses include a JSON object with more details:
   "error": {
     "code": "invalid_parameter",
     "message": "The 'tenantId' parameter is required",
-    "documentation_url": "https://docs.sahayaa.ai/api/errors#invalid_parameter"
+    "documentation_url": "https://docs.support.ai/api/errors#invalid_parameter"
   }
 }
 ```
@@ -376,33 +376,33 @@ When you exceed the rate limit, you'll receive a `429 Too Many Requests` respons
 
 ## SDKs and Client Libraries
 
-SAHAYAA.AI offers client libraries for easy integration:
+Support AI offers client libraries for easy integration:
 
-- JavaScript: [npm package](https://www.npmjs.com/package/sahayaa-widget)
-- React: [React component](https://www.npmjs.com/package/sahayaa-widget-react)
-- PHP: [Composer package](https://packagist.org/packages/sahayaa/widget-sdk)
-- Ruby: [Ruby gem](https://rubygems.org/gems/sahayaa-widget)
-- Python: [PyPI package](https://pypi.org/project/sahayaa-widget/)
+- JavaScript: [npm package](https://www.npmjs.com/package/support-ai-widget)
+- React: [React component](https://www.npmjs.com/package/support-ai-widget-react)
+- PHP: [Composer package](https://packagist.org/packages/support-ai/widget-sdk)
+- Ruby: [Ruby gem](https://rubygems.org/gems/support-ai-widget)
+- Python: [PyPI package](https://pypi.org/project/support-ai-widget/)
 
 ## Testing
 
-For testing purposes, use your sandbox tenant and API key, available in the SAHAYAA.AI admin dashboard under Settings > API Keys > Sandbox.
+For testing purposes, use your sandbox tenant and API key, available in the Support AI admin dashboard under Settings > API Keys > Sandbox.
 
 Sandbox environment base URL:
 ```
-https://sandbox-api.sahayaa.ai/v1
+https://sandbox-api.support.ai/v1
 ```
 
 ## Additional Resources
 
-- [Full API Reference](https://docs.sahayaa.ai/api)
-- [Widget Configuration Guide](https://docs.sahayaa.ai/widget/configuration)
-- [Authentication and Security](https://docs.sahayaa.ai/api/security)
-- [Sample Applications](https://github.com/sahayaa/widget-demos)
-- [API Changelog](https://docs.sahayaa.ai/api/changelog)
+- [Full API Reference](https://docs.support.ai/api)
+- [Widget Configuration Guide](https://docs.support.ai/widget/configuration)
+- [Authentication and Security](https://docs.support.ai/api/security)
+- [Sample Applications](https://github.com/support-ai/widget-demos)
+- [API Changelog](https://docs.support.ai/api/changelog)
 
 ---
 
-For any questions or support, please contact our API team at api-support@sahayaa.ai.
+For any questions or support, please contact our API team at api-support@support.ai.
 
 *Last updated: April 3, 2025*

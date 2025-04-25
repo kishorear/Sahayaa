@@ -114,27 +114,27 @@
     <h2>Advanced Usage</h2>
     <p>For advanced use cases, you can programmatically control the widget using JavaScript:</p>
     <pre><code>// Open the chat window
-SahayaaAIChat.open();
+SupportAIChat.open();
 
 // Close the chat window
-SahayaaAIChat.close();
+SupportAIChat.close();
 
 // Send a message programmatically
-SahayaaAIChat.sendMessage("Hello from code!");
+SupportAIChat.sendMessage("Hello from code!");
 
 // Listen for events
-SahayaaAIChat.on('message_sent', function(data) {
+SupportAIChat.on('message_sent', function(data) {
   console.log('User sent a message:', data.content);
 });</code></pre>
   </section>
 
   <footer>
-    <p>&copy; 2025 SAHAYAA.AI. All rights reserved.</p>
+    <p>&copy; 2025 Support AI. All rights reserved.</p>
   </footer>
 
-  <!-- SAHAYAA.AI Chat Widget -->
+  <!-- Support AI Chat Widget -->
   <script>
-    window.sahayaaAiConfig = {
+    window.supportAiConfig = {
       tenantId: __TENANT_ID__,
       apiKey: "__API_KEY__",
       primaryColor: "__PRIMARY_COLOR__",
@@ -146,6 +146,6 @@ SahayaaAIChat.on('message_sent', function(data) {
       adminId: __ADMIN_ID__
     };
   </script>
-  <script src="sahayaa-widget.js" async></script>
+  <script src="supportai-widget.js" async></script>
 </body>
 </html>

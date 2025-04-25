@@ -14,11 +14,8 @@ const LogoIcon: React.FC<LogoIconProps> = ({ className = "w-8 h-8" }) => {
       viewBox="0 0 64 64" 
       className={className}
     >
-      {/* Bold Circle in white */}
-      <circle cx="32" cy="32" r="30" fill="white" />
-      
-      {/* Inner Circle with light blue */}
-      <circle cx="32" cy="32" r="28" fill={lightBlueColor} />
+      {/* Solid bold circle in light blue */}
+      <circle cx="32" cy="32" r="30" fill={lightBlueColor} />
       
       {/* Exclamation Mark in white */}
       <circle cx="32" cy="45" r="3" fill="white" />

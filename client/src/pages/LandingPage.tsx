@@ -12,7 +12,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <LogoIcon className="w-8 h-8" />
-              <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
+              <span className="ml-2 text-xl font-bold">Support AI</span>
             </div>
             <div className="flex items-center space-x-6">
               <Link href="/pricing">
@@ -46,7 +46,7 @@ export default function LandingPage() {
               AI-Powered Support That Resolves Issues Instantly
             </h1>
             <p className="text-xl mb-8 text-indigo-100">
-              SAHAYAA.AI automatically handles, routes, and resolves customer tickets
+              Support AI automatically handles, routes, and resolves customer tickets
               to provide faster support and reduce team workload.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -201,7 +201,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-gray-600 italic">
-                  "SAHAYAA.AI has reduced our support response time by 70% and allowed our engineering team to focus on building product instead of handling routine support questions."
+                  "Support AI has reduced our support response time by 70% and allowed our engineering team to focus on building product instead of handling routine support questions."
                 </p>
               </CardContent>
             </Card>
@@ -261,7 +261,7 @@ export default function LandingPage() {
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
                 <LogoIcon className="w-8 h-8" />
-                <span className="ml-2 text-xl font-bold text-white">SAHAYAA.AI</span>
+                <span className="ml-2 text-xl font-bold text-white">Support AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>
             </div>
@@ -287,7 +287,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} SAHAYAA.AI. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Support AI. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -99,8 +99,8 @@ export default function ContactUsPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-8 h-8" />
-                <span className="ml-2 text-xl font-bold">SAHAYAA.AI</span>
+                <img src="/logo.svg" alt="Support AI Logo" className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold">Support AI</span>
               </div>
             </Link>
             <div className="flex items-center space-x-6">
@@ -166,7 +166,7 @@ export default function ContactUsPage() {
                     <div>
                       <h3 className="font-medium">Email</h3>
                       <p className="text-gray-600 dark:text-gray-400">
-                        {emailStatus?.supportEmail || "support@sahayaa.ai"}
+                        {emailStatus?.supportEmail || "support@supportai.com"}
                       </p>
                     </div>
                   </div>
@@ -304,8 +304,8 @@ export default function ContactUsPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <img src="/logo.svg" alt="SAHAYAA.AI Logo" className="w-8 h-8" />
-                <span className="ml-2 text-xl font-bold text-white">SAHAYAA.AI</span>
+                <img src="/logo.svg" alt="Support AI Logo" className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold text-white">Support AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>
             </div>
@@ -331,7 +331,7 @@ export default function ContactUsPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} SAHAYAA.AI. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Support AI. All rights reserved.</p>
           </div>
         </div>
       </footer>

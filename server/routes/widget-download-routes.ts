@@ -1,67 +1,66 @@
-import { Express, Request, Response } from 'express';
-import { generateWidgetPackage, WidgetConfig } from '../widget-generator';
-import { db } from '../db';
-import { users } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import type { Express, Request, Response } from "express";
+import { z } from "zod";
+import { generateWidgetPackage, type WidgetConfig } from "../widget-generator";
 
 /**
- * Register routes for widget download functionality
- * @param app Express application
+ * Widget download request validation schema
  */
-export function registerWidgetDownloadRoutes(app: Express) {
+const widgetDownloadSchema = z.object({
+  tenantId: z.string().transform(val => parseInt(val, 10)),
+  userId: z.string().transform(val => parseInt(val, 10)),
+  primaryColor: z.string().default('6366F1'),
+  position: z.enum(['right', 'left', 'center']).default('right'),
+  greetingMessage: z.string().default('How can I help you today?'),
+  autoOpen: z.string().transform(val => val === 'true').default('false'),
+  branding: z.string().transform(val => val === 'true').default('true'),
+  reportData: z.string().transform(val => val === 'true').default('true')
+});
+
+/**
+ * Register routes for widget download
+ */
+export function registerWidgetDownloadRoutes(app: Express): void {
   /**
-   * Route to download the customized widget package
-   * Accepts configuration parameters to personalize the widget
+   * Download custom widget package
+   * 
+   * GET /api/widgets/download
    */
   app.get('/api/widgets/download', async (req: Request, res: Response) => {
     try {
-      // Get configuration from query parameters
-      const tenantId = parseInt(req.query.tenantId as string) || 1;
-      const userId = parseInt(req.query.userId as string) || 1;
-      const primaryColor = (req.query.primaryColor as string) || '#6366F1';
-      const position = (req.query.position as string) || 'right';
-      const greetingMessage = (req.query.greetingMessage as string) || 'How can I help you today?';
-      const autoOpen = (req.query.autoOpen as string) === 'true';
-      const branding = (req.query.branding as string) !== 'false';
-      const reportData = (req.query.reportData as string) !== 'false';
+      // Validate query parameters
+      const queryResult = widgetDownloadSchema.safeParse(req.query);
       
-      // Get the user from database - using a more basic query to avoid column name case sensitivity issues
-      const user = await db.execute(
-        sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`
-      ).then(result => result.rows[0]);
-      
-      if (!user) {
-        return res.status(404).json({ 
-          error: 'User not found',
-          message: 'The specified user does not exist.'
+      if (!queryResult.success) {
+        return res.status(400).json({ 
+          error: 'Invalid widget configuration',
+          details: queryResult.error.format()
         });
       }
       
-      // Generate a unique API key
-      const apiKey = `${userId}_${tenantId}_${new Date().getTime()}`;
+      const queryParams = queryResult.data;
+      
+      // Generate API key for widget
+      const apiKey = `wgt_${Math.random().toString(36).substring(2, 15)}`;
       
       // Create widget configuration
-      const config: WidgetConfig = {
-        tenantId,
+      const widgetConfig: WidgetConfig = {
+        tenantId: queryParams.tenantId,
+        adminId: queryParams.userId,
         apiKey,
-        primaryColor,
-        position,
-        greetingMessage,
-        autoOpen,
-        branding,
-        reportData,
-        adminId: userId
+        primaryColor: queryParams.primaryColor,
+        position: queryParams.position,
+        greetingMessage: queryParams.greetingMessage,
+        autoOpen: queryParams.autoOpen,
+        branding: queryParams.branding,
+        reportData: queryParams.reportData
       };
       
-      // Generate and send the widget package
-      await generateWidgetPackage(config, res);
+      // Generate and download the widget package
+      await generateWidgetPackage(widgetConfig, res);
       
     } catch (error) {
       console.error('Error generating widget package:', error);
-      res.status(500).json({ 
-        error: 'Server error',
-        message: 'An error occurred while generating the widget package.'
-      });
+      res.status(500).json({ error: 'Failed to generate widget package' });
     }
   });
 }

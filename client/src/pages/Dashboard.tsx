@@ -5,10 +5,30 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart3, Users, Ticket, Clock, ArrowUpRight, 
-  ArrowRight, Download, MessageSquare, Settings
+  ArrowRight, Download, MessageSquare, Settings,
+  CheckCircle2, X
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 // Define types for the metrics data
 interface SummaryMetrics {
@@ -28,8 +48,36 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   
+  // State for tracking widget download dialog
+  const [showWidgetDialog, setShowWidgetDialog] = useState(false);
+  const [widgetConfig, setWidgetConfig] = useState({
+    primaryColor: '6366F1', // Default indigo color
+    position: 'right',
+    greetingMessage: 'How can I help you today?',
+    autoOpen: false,
+    branding: true,
+    reportData: true
+  });
+  
+  // Function to handle widget download with configuration
+  const handleWidgetConfigChange = (key: string, value: any) => {
+    setWidgetConfig(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+  
   // Function to handle widget download
   const handleWidgetDownload = () => {
+    // Show configuration dialog
+    setShowWidgetDialog(true);
+  };
+  
+  // Function to actually download the widget package
+  const downloadWidgetPackage = () => {
+    // Close dialog
+    setShowWidgetDialog(false);
+    
     // Show toast notification
     toast({
       title: "Downloading widget package",
@@ -40,12 +88,12 @@ export default function Dashboard() {
     const queryParams = new URLSearchParams({
       tenantId: String(user?.tenantId || 1),
       userId: String(user?.id || 1),
-      primaryColor: '6366F1', // Default primary color
-      position: 'right',
-      greetingMessage: encodeURIComponent('How can I help you today?'),
-      autoOpen: 'false',
-      branding: 'true',
-      reportData: 'true'
+      primaryColor: widgetConfig.primaryColor.replace('#', ''), // Remove # if present
+      position: widgetConfig.position,
+      greetingMessage: encodeURIComponent(widgetConfig.greetingMessage),
+      autoOpen: widgetConfig.autoOpen.toString(),
+      branding: widgetConfig.branding.toString(),
+      reportData: widgetConfig.reportData.toString()
     });
     
     // Download the widget package
@@ -66,6 +114,124 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Widget Configuration Dialog */}
+      <Dialog open={showWidgetDialog} onOpenChange={setShowWidgetDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Configure Chat Widget</DialogTitle>
+            <DialogDescription>
+              Customize your embedded chat widget appearance and behavior before downloading.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="primaryColor" className="text-right">
+                Primary Color
+              </Label>
+              <div className="col-span-3 flex items-center gap-3">
+                <Input
+                  id="primaryColor"
+                  type="text"
+                  placeholder="#6366F1"
+                  value={widgetConfig.primaryColor}
+                  onChange={(e) => handleWidgetConfigChange('primaryColor', e.target.value)}
+                  className="w-full"
+                />
+                <div 
+                  className="w-6 h-6 rounded border" 
+                  style={{backgroundColor: widgetConfig.primaryColor.startsWith('#') ? widgetConfig.primaryColor : `#${widgetConfig.primaryColor}`}}
+                ></div>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="position" className="text-right">
+                Position
+              </Label>
+              <Select 
+                value={widgetConfig.position}
+                onValueChange={(value) => handleWidgetConfigChange('position', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select position" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="right">Right</SelectItem>
+                  <SelectItem value="left">Left</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="greetingMessage" className="text-right">
+                Greeting
+              </Label>
+              <Input
+                id="greetingMessage"
+                type="text"
+                value={widgetConfig.greetingMessage}
+                onChange={(e) => handleWidgetConfigChange('greetingMessage', e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="autoOpen" className="text-right">
+                Auto Open
+              </Label>
+              <div className="flex items-center space-x-2 col-span-3">
+                <Switch
+                  id="autoOpen"
+                  checked={widgetConfig.autoOpen}
+                  onCheckedChange={(checked) => handleWidgetConfigChange('autoOpen', checked)}
+                />
+                <Label htmlFor="autoOpen" className="text-sm text-muted-foreground">
+                  Automatically open the chat when loaded
+                </Label>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="branding" className="text-right">
+                Show Branding
+              </Label>
+              <div className="flex items-center space-x-2 col-span-3">
+                <Switch
+                  id="branding"
+                  checked={widgetConfig.branding}
+                  onCheckedChange={(checked) => handleWidgetConfigChange('branding', checked)}
+                />
+                <Label htmlFor="branding" className="text-sm text-muted-foreground">
+                  Display Support AI branding on widget
+                </Label>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="reportData" className="text-right">
+                Analytics
+              </Label>
+              <div className="flex items-center space-x-2 col-span-3">
+                <Switch
+                  id="reportData"
+                  checked={widgetConfig.reportData}
+                  onCheckedChange={(checked) => handleWidgetConfigChange('reportData', checked)}
+                />
+                <Label htmlFor="reportData" className="text-sm text-muted-foreground">
+                  Send analytics data back to Support AI
+                </Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWidgetDialog(false)}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button onClick={downloadWidgetPackage}>
+              <Download className="mr-2 h-4 w-4" />
+              Download Widget
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>

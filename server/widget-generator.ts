@@ -26,7 +26,7 @@ export interface WidgetConfig {
 export async function generateWidgetPackage(config: WidgetConfig, res: Response): Promise<void> {
   // Set response headers for zip download
   res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', 'attachment; filename=sahayaa-chat-widget.zip');
+  res.setHeader('Content-Disposition', 'attachment; filename=support-chat-widget.zip');
 
   // Create zip archive
   const archive = archiver('zip', {
@@ -75,7 +75,7 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   const readmeContent = generateReadmeContent(config);
 
   // Add the customized files to the archive
-  archive.append(customizedWidgetJs, { name: 'sahayaa-widget.js' });
+  archive.append(customizedWidgetJs, { name: 'supportai-widget.js' });
   archive.append(customizedSampleHtml, { name: 'sample-implementation.html' });
   archive.append(readmeContent, { name: 'README.md' });
 
@@ -85,10 +85,10 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
 
   // Create a simple CSS file for styling the widget
   const cssContent = generateWidgetCSS(config.primaryColor);
-  archive.append(cssContent, { name: 'sahayaa-widget.css' });
+  archive.append(cssContent, { name: 'supportai-widget.css' });
 
   // Create a minified version of the widget JS
-  archive.append(customizedWidgetJs, { name: 'sahayaa-widget.min.js' });
+  archive.append(customizedWidgetJs, { name: 'supportai-widget.min.js' });
 
   // Finalize the archive
   await archive.finalize();
@@ -98,7 +98,7 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
  * Generates a README.md file with installation instructions
  */
 function generateReadmeContent(config: WidgetConfig): string {
-  return `# SAHAYAA.AI Chat Widget
+  return `# Support AI Chat Widget
 
 ## Installation Instructions
 
@@ -106,9 +106,9 @@ function generateReadmeContent(config: WidgetConfig): string {
 Add the following script tag to your website's HTML, right before the closing \`</body>\` tag:
 
 \`\`\`html
-<!-- SAHAYAA.AI Chat Widget -->
+<!-- Support AI Chat Widget -->
 <script>
-  window.sahayaaAiConfig = {
+  window.supportAiConfig = {
     tenantId: ${config.tenantId},
     apiKey: "${config.apiKey}",
     primaryColor: "${config.primaryColor}",
@@ -120,23 +120,23 @@ Add the following script tag to your website's HTML, right before the closing \`
     adminId: ${config.adminId}
   };
 </script>
-<script src="sahayaa-widget.js" async></script>
+<script src="supportai-widget.js" async></script>
 \`\`\`
 
 ### Option 2: Using NPM
 Install the widget package using npm:
 
 \`\`\`bash
-npm install sahayaa-widget
+npm install supportai-widget
 \`\`\`
 
 Then import and use it in your application:
 
 \`\`\`javascript
-import { SahayaaAIChat } from 'sahayaa-widget';
+import { SupportAIChat } from 'supportai-widget';
 
 // Initialize the chat widget
-SahayaaAIChat.init({
+SupportAIChat.init({
   tenantId: ${config.tenantId},
   apiKey: "${config.apiKey}",
   primaryColor: "${config.primaryColor}",
@@ -156,17 +156,17 @@ For Windows applications, you can use the included \`install-widget.bat\` script
 
 | Option | Description |
 |--------|-------------|
-| tenantId | Your SAHAYAA.AI tenant ID |
+| tenantId | Your Support AI tenant ID |
 | apiKey | Your API key for authentication |
 | primaryColor | The primary color of the widget |
 | position | Widget position (right, left, center) |
 | greetingMessage | Initial message displayed in the chat |
 | autoOpen | Whether to automatically open the chat widget |
-| branding | Whether to show SAHAYAA.AI branding |
+| branding | Whether to show Support AI branding |
 | reportData | Whether to send analytics data |
 
 ## Need Help?
-See the documentation.md file for more detailed documentation, or contact SAHAYAA.AI support for assistance.
+See the documentation.md file for more detailed documentation, or contact Support AI support for assistance.
 `;
 }
 
@@ -175,24 +175,24 @@ See the documentation.md file for more detailed documentation, or contact SAHAYA
  */
 function generateWindowsBatchFile(config: WidgetConfig): string {
   return `@echo off
-echo SAHAYAA.AI Chat Widget Installer
+echo Support AI Chat Widget Installer
 echo =================================
 echo.
-echo This script will help you install the SAHAYAA.AI Chat Widget in your application.
+echo This script will help you install the Support AI Chat Widget in your application.
 echo.
 echo [1] Installing widget files...
 timeout /t 2 > nul
 
-if not exist "%APPDATA%\\SAHAYAA.AI" mkdir "%APPDATA%\\SAHAYAA.AI"
-copy sahayaa-widget.js "%APPDATA%\\SAHAYAA.AI\\" > nul
-copy sahayaa-widget.css "%APPDATA%\\SAHAYAA.AI\\" > nul
-copy sahayaa-widget.min.js "%APPDATA%\\SAHAYAA.AI\\" > nul
+if not exist "%APPDATA%\\SupportAI" mkdir "%APPDATA%\\SupportAI"
+copy supportai-widget.js "%APPDATA%\\SupportAI\\" > nul
+copy supportai-widget.css "%APPDATA%\\SupportAI\\" > nul
+copy supportai-widget.min.js "%APPDATA%\\SupportAI\\" > nul
 
 echo [2] Creating configuration...
 timeout /t 1 > nul
 
 (
-echo window.sahayaaAiConfig = {
+echo window.supportAiConfig = {
 echo   tenantId: ${config.tenantId},
 echo   apiKey: "${config.apiKey}",
 echo   primaryColor: "${config.primaryColor}",
@@ -203,15 +203,15 @@ echo   branding: ${config.branding},
 echo   reportData: ${config.reportData},
 echo   adminId: ${config.adminId}
 echo };
-) > "%APPDATA%\\SAHAYAA.AI\\sahayaa-config.js"
+) > "%APPDATA%\\SupportAI\\supportai-config.js"
 
 echo [3] Installation complete!
 echo.
-echo The widget has been installed to: %APPDATA%\\SAHAYAA.AI
+echo The widget has been installed to: %APPDATA%\\SupportAI
 echo.
 echo To use in your application, add these lines to your HTML:
-echo ^<script src="%APPDATA%\\SAHAYAA.AI\\sahayaa-config.js"^>^</script^>
-echo ^<script src="%APPDATA%\\SAHAYAA.AI\\sahayaa-widget.js"^>^</script^>
+echo ^<script src="%APPDATA%\\SupportAI\\supportai-config.js"^>^</script^>
+echo ^<script src="%APPDATA%\\SupportAI\\supportai-widget.js"^>^</script^>
 echo.
 echo Press any key to exit...
 pause > nul
@@ -222,8 +222,8 @@ pause > nul
  * Generates CSS for the widget with the specified primary color
  */
 function generateWidgetCSS(primaryColor: string): string {
-  return `/* SAHAYAA.AI Chat Widget Styles */
-.sahayaa-widget-container {
+  return `/* Support AI Chat Widget Styles */
+.support-widget-container {
   position: fixed;
   z-index: 9999;
   bottom: 20px;
@@ -231,7 +231,7 @@ function generateWidgetCSS(primaryColor: string): string {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
-.sahayaa-widget-button {
+.support-widget-button {
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -245,17 +245,17 @@ function generateWidgetCSS(primaryColor: string): string {
   transition: all 0.3s ease;
 }
 
-.sahayaa-widget-button:hover {
+.support-widget-button:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
-.sahayaa-widget-icon {
+.support-widget-icon {
   width: 30px;
   height: 30px;
 }
 
-.sahayaa-chat-window {
+.support-chat-window {
   position: absolute;
   bottom: 70px;
   right: 0;
@@ -273,13 +273,13 @@ function generateWidgetCSS(primaryColor: string): string {
   pointer-events: none;
 }
 
-.sahayaa-chat-window.open {
+.support-chat-window.open {
   opacity: 1;
   transform: translateY(0);
   pointer-events: all;
 }
 
-.sahayaa-chat-header {
+.support-chat-header {
   padding: 15px;
   background-color: ${primaryColor};
   color: white;
@@ -289,23 +289,23 @@ function generateWidgetCSS(primaryColor: string): string {
   align-items: center;
 }
 
-.sahayaa-chat-close {
+.support-chat-close {
   cursor: pointer;
   opacity: 0.8;
   transition: opacity 0.2s;
 }
 
-.sahayaa-chat-close:hover {
+.support-chat-close:hover {
   opacity: 1;
 }
 
-.sahayaa-chat-messages {
+.support-chat-messages {
   flex-grow: 1;
   padding: 15px;
   overflow-y: auto;
 }
 
-.sahayaa-message {
+.support-message {
   margin-bottom: 10px;
   max-width: 80%;
   padding: 10px 15px;
@@ -313,27 +313,27 @@ function generateWidgetCSS(primaryColor: string): string {
   word-break: break-word;
 }
 
-.sahayaa-message-user {
+.support-message-user {
   background-color: ${primaryColor};
   color: white;
   margin-left: auto;
   border-bottom-right-radius: 4px;
 }
 
-.sahayaa-message-assistant {
+.support-message-assistant {
   background-color: #f0f0f0;
   color: #333;
   margin-right: auto;
   border-bottom-left-radius: 4px;
 }
 
-.sahayaa-chat-input {
+.support-chat-input {
   display: flex;
   padding: 10px;
   border-top: 1px solid #eee;
 }
 
-.sahayaa-chat-input input {
+.support-chat-input input {
   flex-grow: 1;
   border: 1px solid #ddd;
   border-radius: 20px;
@@ -342,11 +342,11 @@ function generateWidgetCSS(primaryColor: string): string {
   outline: none;
 }
 
-.sahayaa-chat-input input:focus {
+.support-chat-input input:focus {
   border-color: ${primaryColor};
 }
 
-.sahayaa-send-button {
+.support-send-button {
   background-color: ${primaryColor};
   color: white;
   border: none;
@@ -360,11 +360,11 @@ function generateWidgetCSS(primaryColor: string): string {
   transition: all 0.2s;
 }
 
-.sahayaa-send-button:hover {
+.support-send-button:hover {
   transform: scale(1.05);
 }
 
-.sahayaa-branding {
+.support-branding {
   font-size: 11px;
   text-align: center;
   padding: 5px;

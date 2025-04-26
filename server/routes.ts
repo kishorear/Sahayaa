@@ -148,6 +148,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register SSO routes
   registerSsoRoutes(app, requireAuth, requireRole);
   
+  // Register widget download routes
+  registerWidgetDownloadRoutes(app);
+  
   // Register widget analytics routes
   registerWidgetAnalyticsRoutes(app, requireAuth);
   
@@ -171,9 +174,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register download routes (no auth required - public downloads)
   registerDownloadRoutes(app);
-  
-  // Register widget download routes
-  registerWidgetDownloadRoutes(app);
   
   // Register AI availability routes
   app.use('/api/ai', requireAuth, aiAvailabilityRoutes);

@@ -44,7 +44,7 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   archive.file(path.join(baseDir, 'api-documentation.md'), { name: 'api-documentation.md' });
 
   // Read the widget JS template
-  const widgetJs = fs.readFileSync(path.join(baseDir, 'sahayaa-widget.js'), 'utf8');
+  const widgetJs = fs.readFileSync(path.join(baseDir, 'support-widget.js'), 'utf8');
 
   // Read the sample implementation template
   const sampleHtml = fs.readFileSync(path.join(baseDir, 'sample-implementation.html'), 'utf8');

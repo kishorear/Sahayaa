@@ -380,11 +380,13 @@ export default function Dashboard() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                       Download the complete package to customize appearance and behavior.
                     </p>
-                    <Link href="/admin/settings">
-                      <Button size="sm" className="w-full">
-                        Configure Widget
-                      </Button>
-                    </Link>
+                    <Button 
+                      size="sm" 
+                      className="w-full"
+                      onClick={handleWidgetDownload}
+                    >
+                      Configure Widget
+                    </Button>
                   </div>
                 </div>
               </div>

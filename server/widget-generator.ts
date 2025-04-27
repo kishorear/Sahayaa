@@ -74,8 +74,24 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   // Create a README.md file with installation instructions
   const readmeContent = generateReadmeContent(config);
 
+  // Read the universal script template
+  const universalScript = fs.readFileSync(path.join(baseDir, 'universal-support-script.js'), 'utf8');
+  
+  // Customize the universal script with the provided configuration
+  const customizedUniversalScript = universalScript
+    .replace('__TENANT_ID__', config.tenantId.toString())
+    .replace('__API_KEY__', config.apiKey)
+    .replace('__PRIMARY_COLOR__', config.primaryColor)
+    .replace('__POSITION__', config.position)
+    .replace('__GREETING_MESSAGE__', config.greetingMessage)
+    .replace('__AUTO_OPEN__', config.autoOpen.toString())
+    .replace('__BRANDING__', config.branding.toString())
+    .replace('__REPORT_DATA__', config.reportData.toString())
+    .replace('__ADMIN_ID__', config.adminId.toString());
+    
   // Add the customized files to the archive
   archive.append(customizedWidgetJs, { name: 'supportai-widget.js' });
+  archive.append(customizedUniversalScript, { name: 'supportai-universal.js' });
   archive.append(customizedSampleHtml, { name: 'sample-implementation.html' });
   archive.append(readmeContent, { name: 'README.md' });
 
@@ -102,7 +118,7 @@ function generateReadmeContent(config: WidgetConfig): string {
 
 ## Installation Instructions
 
-### Option 1: For Websites
+### Option 1: Standard Widget Integration
 Add the following script tag to your website's HTML, right before the closing \`</body>\` tag:
 
 \`\`\`html
@@ -123,7 +139,21 @@ Add the following script tag to your website's HTML, right before the closing \`
 <script src="supportai-widget.js" async></script>
 \`\`\`
 
-### Option 2: Using NPM
+### Option 2: Grammarly-Style Universal Integration
+For a more seamless, Grammarly-like experience that adds support across all text input fields:
+
+\`\`\`html
+<!-- Support AI Universal Integration -->
+<script src="supportai-universal.js" async></script>
+\`\`\`
+
+The universal integration provides these additional features:
+- Automatically detects and monitors text fields
+- Provides context-sensitive help based on user's current activity
+- Uses Shadow DOM for style isolation
+- Works across all pages without interfering with your site's functionality
+
+### Option 3: Using NPM
 Install the widget package using npm:
 
 \`\`\`bash
@@ -149,7 +179,7 @@ SupportAIChat.init({
 });
 \`\`\`
 
-### Option 3: For Windows Applications
+### Option 4: For Windows Applications
 For Windows applications, you can use the included \`install-widget.bat\` script to add the widget to your application. Double-click the batch file and follow the on-screen instructions.
 
 ## Configuration Options
@@ -185,6 +215,7 @@ timeout /t 2 > nul
 
 if not exist "%APPDATA%\\SupportAI" mkdir "%APPDATA%\\SupportAI"
 copy supportai-widget.js "%APPDATA%\\SupportAI\\" > nul
+copy supportai-universal.js "%APPDATA%\\SupportAI\\" > nul
 copy supportai-widget.css "%APPDATA%\\SupportAI\\" > nul
 copy supportai-widget.min.js "%APPDATA%\\SupportAI\\" > nul
 
@@ -209,9 +240,12 @@ echo [3] Installation complete!
 echo.
 echo The widget has been installed to: %APPDATA%\\SupportAI
 echo.
-echo To use in your application, add these lines to your HTML:
+echo To use the standard widget in your application, add these lines to your HTML:
 echo ^<script src="%APPDATA%\\SupportAI\\supportai-config.js"^>^</script^>
 echo ^<script src="%APPDATA%\\SupportAI\\supportai-widget.js"^>^</script^>
+echo.
+echo For the Grammarly-style universal integration, use:
+echo ^<script src="%APPDATA%\\SupportAI\\supportai-universal.js"^>^</script^>
 echo.
 echo Press any key to exit...
 pause > nul

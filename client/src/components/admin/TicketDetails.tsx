@@ -119,7 +119,7 @@ export default function TicketDetails() {
           <CardContent className="p-0">
             <div className="p-6 border-b border-gray-200 bg-gray-50">
               <div className="flex items-start">
-                <Avatar className="h-10 w-10 mr-4">
+                <Avatar className="h-10 w-10 mr-4 flex-shrink-0">
                   <AvatarFallback>U</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
@@ -130,19 +130,21 @@ export default function TicketDetails() {
                     </time>
                   </div>
                   <div className="mt-1">
-                    <p className="text-sm text-gray-800">{ticket.description}</p>
+                    <div className="max-h-[300px] overflow-y-auto p-3 bg-white rounded-md border border-gray-100 shadow-sm">
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{ticket.description}</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
               {ticket.messages && ticket.messages.length > 0 ? (
                 ticket.messages.map((message) => (
                   <div key={message.id} className="p-6">
                     <div className="flex items-start">
-                      <Avatar className="h-10 w-10 mr-4">
+                      <Avatar className="h-10 w-10 mr-4 flex-shrink-0">
                         {message.sender === "ai" ? (
                           <AvatarFallback className="bg-indigo-100 text-primary">
                             <Bot className="h-6 w-6" />
@@ -167,7 +169,15 @@ export default function TicketDetails() {
                           </time>
                         </div>
                         <div className="mt-1">
-                          <p className="text-sm text-gray-800 whitespace-pre-wrap">{message.content}</p>
+                          <div className={`p-3 rounded-md border ${
+                            message.sender === "ai" 
+                              ? "bg-blue-50 border-blue-100" 
+                              : message.sender === "user"
+                              ? "bg-gray-50 border-gray-100"
+                              : "bg-green-50 border-green-100"
+                          }`}>
+                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{message.content}</p>
+                          </div>
                         </div>
                       </div>
                     </div>

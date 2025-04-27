@@ -157,7 +157,7 @@ The universal integration provides these additional features:
 - Uses Shadow DOM for style isolation
 - Works across all pages without interfering with your site's functionality
 
-Check out the included `universal-sample.html` file for a live demonstration of the universal integration's features.
+For a live demonstration of these features, check out the included universal-sample.html file.
 
 ### Option 3: Using NPM
 Install the widget package using npm:

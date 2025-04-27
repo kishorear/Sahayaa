@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { useState } from "react";
 import { formatDistance, format } from "date-fns";
-import { Ticket, Message, InsertMessage } from "@shared/schema";
+import { Ticket, Message, InsertMessage, User as UserSchema } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,12 @@ export default function TicketDetails() {
 
   const { data: ticket, isLoading: ticketLoading } = useQuery<Ticket & { messages: Message[] }>({
     queryKey: [`/api/tickets/${ticketId}`],
+  });
+
+  // Fetch creator user information if createdBy is available
+  const { data: creator } = useQuery<UserSchema>({
+    queryKey: [`/api/users/${ticket?.createdBy}`],
+    enabled: !!ticket?.createdBy, // Only fetch if createdBy exists
   });
 
   const createMessageMutation = useMutation({
@@ -124,7 +130,9 @@ export default function TicketDetails() {
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium">Customer</span>
+                    <span className="text-sm font-medium">
+                      {creator?.username || creator?.name || (ticket.createdBy ? `User #${ticket.createdBy}` : "Unknown")}
+                    </span>
                     <time className="text-xs text-gray-500">
                       {format(new Date(ticket.createdAt), "MMM d, yyyy 'at' h:mm a")}
                     </time>
@@ -161,7 +169,7 @@ export default function TicketDetails() {
                             {message.sender === "ai"
                               ? "AI Assistant"
                               : message.sender === "user"
-                              ? "Customer"
+                              ? (creator?.username || creator?.name || (ticket.createdBy ? `User #${ticket.createdBy}` : "Customer"))
                               : "Support Team"}
                           </span>
                           <time className="text-xs text-gray-500">

@@ -89,10 +89,14 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
     .replace('__REPORT_DATA__', config.reportData.toString())
     .replace('__ADMIN_ID__', config.adminId.toString());
     
+  // Read the universal sample HTML
+  const universalSampleHtml = fs.readFileSync(path.join(baseDir, 'universal-sample.html'), 'utf8');
+  
   // Add the customized files to the archive
   archive.append(customizedWidgetJs, { name: 'supportai-widget.js' });
   archive.append(customizedUniversalScript, { name: 'supportai-universal.js' });
   archive.append(customizedSampleHtml, { name: 'sample-implementation.html' });
+  archive.append(universalSampleHtml, { name: 'universal-sample.html' });
   archive.append(readmeContent, { name: 'README.md' });
 
   // Create a Windows batch file for installation
@@ -152,6 +156,8 @@ The universal integration provides these additional features:
 - Provides context-sensitive help based on user's current activity
 - Uses Shadow DOM for style isolation
 - Works across all pages without interfering with your site's functionality
+
+Check out the included `universal-sample.html` file for a live demonstration of the universal integration's features.
 
 ### Option 3: Using NPM
 Install the widget package using npm:

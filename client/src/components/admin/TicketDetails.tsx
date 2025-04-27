@@ -124,7 +124,7 @@ export default function TicketDetails() {
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex justify-between">
-                    <h3 className="text-sm font-medium">Customer</h3>
+                    <span className="text-sm font-medium">Customer</span>
                     <time className="text-xs text-gray-500">
                       {format(new Date(ticket.createdAt), "MMM d, yyyy 'at' h:mm a")}
                     </time>
@@ -157,13 +157,13 @@ export default function TicketDetails() {
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex justify-between">
-                          <h3 className="text-sm font-medium">
+                          <span className="text-sm font-medium">
                             {message.sender === "ai"
                               ? "AI Assistant"
                               : message.sender === "user"
                               ? "Customer"
                               : "Support Team"}
-                          </h3>
+                          </span>
                           <time className="text-xs text-gray-500">
                             {format(new Date(message.createdAt), "MMM d, yyyy 'at' h:mm a")}
                           </time>

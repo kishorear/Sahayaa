@@ -138,8 +138,8 @@ export default function TicketDetails() {
                     </time>
                   </div>
                   <div className="mt-1">
-                    <div className="max-h-[300px] overflow-y-auto p-3 bg-white rounded-md border border-gray-100 shadow-sm">
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{ticket.description}</p>
+                    <div className="max-h-[400px] overflow-y-auto p-4 bg-white rounded-md border border-gray-100 shadow-sm">
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
                     </div>
                   </div>
                 </div>
@@ -184,7 +184,7 @@ export default function TicketDetails() {
                               ? "bg-gray-50 border-gray-100"
                               : "bg-green-50 border-green-100"
                           }`}>
-                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{message.content}</p>
+                            <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{message.content}</p>
                           </div>
                         </div>
                       </div>
@@ -305,7 +305,7 @@ export default function TicketDetails() {
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">AI Notes</h3>
                   <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-sm text-gray-700">
-                    {ticket.aiNotes}
+                    <p className="whitespace-pre-wrap leading-relaxed">{ticket.aiNotes}</p>
                   </div>
                 </div>
               )}

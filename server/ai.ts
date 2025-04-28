@@ -588,9 +588,10 @@ export async function summarizeConversation(messages: ChatMessage[], tenantId?: 
       
       // Create base system prompt for summary
       const baseSystemPrompt = `
-      Please summarize the following support conversation in a concise paragraph. 
-      Focus on the main issue, any solutions provided, and the current status (resolved or needs further action).
-      Provide a clear, professional summary that captures the key points of the conversation.
+      Summarize this support conversation in 1-2 short, simple sentences only. 
+      No bullet points, no markdown formatting, no headings.
+      Just provide a brief description of the issue and current status.
+      Your response should be 30 words or less and in plain text format.
       `;
       
       // First try using the Model Context Protocol

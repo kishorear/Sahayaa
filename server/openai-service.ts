@@ -252,12 +252,13 @@ export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Pr
     
     // Create the prompt for summarization
     let promptContent = `
-    Please summarize the following support conversation in a concise paragraph. 
-    Focus on the main issue, any solutions provided, and the current status (resolved or needs further action).
+    Summarize this support conversation in 1-2 short, simple sentences only.
+    No bullet points, no markdown formatting, no headings.
+    Keep it brief - your response should be 30 words or less in plain text.
     
     ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
     
-    Provide a clear, professional summary:
+    Brief summary:
     `;
     
     // Prepare messages array for the API call

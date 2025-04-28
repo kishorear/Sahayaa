@@ -8,6 +8,7 @@ import {
 } from './openai-service';
 import { buildAIContext } from './data-source-service';
 import { AIProviderFactory } from './ai/providers';
+import { enhanceModelContextWithDocuments } from './model-context-protocol';
 
 // This function checks if we should use AI providers from database
 // Based on whether any provider is available for the tenant
@@ -257,17 +258,52 @@ export async function generateChatResponse(
   // Use configured AI provider if available
   if (await shouldUseAIProvider(ticketContext.tenantId) || FALLBACK_TO_OPENAI) {
     try {
-      // Get relevant knowledge from data sources with tenant context if available
-      const knowledgeContext = await buildAIContext(userMessage, ticketContext.tenantId);
+      // Base system prompt without context enhancements
+      const baseSystemPrompt = `You are an AI support assistant for a SaaS product. You're currently helping with a ticket in the "${ticketContext.category}" category.
+        Ticket #${ticketContext.id}: "${ticketContext.title}"
+        Original description: "${ticketContext.description}"
+        
+        Provide helpful, concise responses based on this context. If you can fully resolve the issue, indicate this clearly in your response.
+        If you need more information or the issue requires human intervention, make that clear as well.`;
       
-      // Log if knowledge context was found
-      if (knowledgeContext) {
-        console.log(`Using knowledge context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+      // Use Model Context Protocol to enhance the system prompt with relevant document context
+      const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
+        userMessage,
+        baseSystemPrompt,
+        ticketContext.tenantId
+      );
+      
+      // Log context information for debugging
+      if (documents && documents.trim().length > 0) {
+        console.log(`Using document context (MCP) for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+        
+        // If we have document context from MCP, create a modified message history with the enhanced prompt
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: enhancedPrompt
+        };
+        
+        // Filter out any existing system messages and add our new enhanced one
+        const filteredMessageHistory = messageHistory.filter(msg => msg.role !== 'system');
+        const enhancedMessageHistory = [systemMessage, ...filteredMessageHistory];
+        
+        // Pass the document context as knowledge context parameter
+        return await generateChatResponseWithAI(ticketContext, enhancedMessageHistory, userMessage, documents);
       } else {
-        console.log(`No relevant knowledge context found for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+        console.log(`No document context found (MCP). Trying data source context for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+        
+        // Fall back to older buildAIContext method if no documents found (for backward compatibility)
+        const knowledgeContext = await buildAIContext(userMessage, ticketContext.tenantId);
+        
+        // Log if the data source context was found
+        if (knowledgeContext) {
+          console.log(`Using data source context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+        } else {
+          console.log(`No relevant context found from any source for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+        }
+        
+        return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
       }
-      
-      return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
     } catch (error) {
       console.error("OpenAI chat response failed, falling back to local:", error);
       // Fall back to local implementation
@@ -372,15 +408,73 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
   
   if (useAI) {
     try {
-      // Get relevant knowledge from data sources with tenant context if available
+      // Get all user message contents for context building
       const allText = messages.map(m => m.content).join(' ');
+      const userMessages = messages.filter(m => m.role === 'user');
+      
+      // If no user messages, just return a default title
+      if (userMessages.length === 0) {
+        return "Support Request";
+      }
+      
+      // Create a base system prompt for ticket title generation
+      const baseSystemPrompt = `
+      You are an AI assistant tasked with creating a concise and descriptive title for a support ticket.
+      Analyze the conversation and create a short, specific title that clearly identifies the main issue.
+      
+      Guidelines for creating the title:
+      1. Focus on the core problem (error codes, specific failure points)
+      2. Be specific rather than generic (e.g., "Login 500 Error" instead of "Login Problem")
+      3. Include error codes if present (e.g., "404", "500", "INVALID_TOKEN")
+      4. Keep the title under 50 characters if possible
+      5. Do not use placeholders or generic titles like "Support Request" or "Help Needed"
+      
+      Return ONLY the title with no additional text, explanations or formatting.
+      `;
+      
+      // First try using the Model Context Protocol
+      const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
+        allText,
+        baseSystemPrompt,
+        tenantId
+      );
+      
+      // If we found relevant documents using MCP
+      if (documents && documents.trim().length > 0) {
+        console.log(`Using document context (MCP) for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        
+        // Create enhanced system message using MCP result
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: enhancedPrompt
+        };
+        
+        // Keep only non-system messages from original set
+        const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+        
+        // Build new messages array with enhanced system prompt
+        const enhancedMessages = [systemMessage, ...userAndAssistantMessages];
+        
+        // Generate title using enhanced messages
+        const aiTitle = await generateTicketTitleWithAI(enhancedMessages);
+        console.log(`AI-generated ticket title (MCP): "${aiTitle}"`);
+        
+        // Validate title before returning
+        if (aiTitle && aiTitle !== 'Support Request') {
+          return aiTitle;
+        } else {
+          console.warn(`AI returned generic title "${aiTitle}" with MCP, trying data source context...`);
+        }
+      }
+      
+      // Fall back to the data source context method if MCP didn't work
       const knowledgeContext = await buildAIContext(allText, tenantId);
       
       // Log if knowledge context was found
       if (knowledgeContext) {
-        console.log(`Using knowledge context for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        console.log(`Using data source context for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       } else {
-        console.log(`No relevant knowledge context found for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        console.log(`No relevant context found from any source for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       }
       
       // If we have knowledge context, add it as a system message
@@ -396,7 +490,7 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
       }
       
       const aiTitle = await generateTicketTitleWithAI(messagesToSend);
-      console.log(`AI-generated ticket title: "${aiTitle}"`);
+      console.log(`AI-generated ticket title (data source): "${aiTitle}"`);
       
       // Additional validation to prevent default title from being used
       if (aiTitle && aiTitle !== 'Support Request') {
@@ -491,13 +585,49 @@ export async function summarizeConversation(messages: ChatMessage[], tenantId?: 
     try {
       // Get conversation content to build context
       const conversationText = messages.map(m => m.content).join(' ');
+      
+      // Create base system prompt for summary
+      const baseSystemPrompt = `
+      Please summarize the following support conversation in a concise paragraph. 
+      Focus on the main issue, any solutions provided, and the current status (resolved or needs further action).
+      Provide a clear, professional summary that captures the key points of the conversation.
+      `;
+      
+      // First try using the Model Context Protocol
+      const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
+        conversationText,
+        baseSystemPrompt,
+        tenantId
+      );
+      
+      // If we found relevant documents using MCP
+      if (documents && documents.trim().length > 0) {
+        console.log(`Using document context (MCP) for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        
+        // Create enhanced system message using MCP result
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: enhancedPrompt
+        };
+        
+        // Keep only non-system messages from original set
+        const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+        
+        // Build new messages array with enhanced system prompt
+        const enhancedMessages = [systemMessage, ...userAndAssistantMessages];
+        
+        // Generate summary using enhanced messages
+        return await summarizeConversationWithAI(enhancedMessages);
+      }
+      
+      // Fall back to the data source context method if MCP didn't work
       const knowledgeContext = await buildAIContext(conversationText, tenantId);
       
       // Log if knowledge context was found
       if (knowledgeContext) {
-        console.log(`Using knowledge context for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        console.log(`Using data source context for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       } else {
-        console.log(`No relevant knowledge context found for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        console.log(`No relevant context found from any source for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
       }
       
       // If we have knowledge context, add it as a system message

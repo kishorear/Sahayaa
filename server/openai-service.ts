@@ -174,7 +174,7 @@ export async function generateChatResponseWithAI(
       model: "gpt-4o",
       messages,
       temperature: 0.7,
-      max_tokens: 500
+      max_tokens: 800
     });
 
     return response.choices[0].message.content || "I couldn't generate a response at this time.";
@@ -192,14 +192,14 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
   try {
     console.log('Generating ticket title with OpenAI...');
     const systemPrompt = `
-    You are an AI assistant tasked with creating a concise and descriptive title for a support ticket.
-    Analyze the conversation and create a short, specific title that clearly identifies the main issue.
+    You are an AI assistant tasked with creating a descriptive title for a support ticket.
+    Analyze the conversation and create a specific title that clearly identifies the issue.
     
     Guidelines for creating the title:
     1. Focus on the core problem (error codes, specific failure points)
     2. Be specific rather than generic (e.g., "Login 500 Error" instead of "Login Problem")
     3. Include error codes if present (e.g., "404", "500", "INVALID_TOKEN")
-    4. Keep the title under 50 characters if possible
+    4. Create a title of appropriate length that captures the key aspects of the issue
     5. Do not use placeholders or generic titles like "Support Request" or "Help Needed"
     
     Return ONLY the title with no additional text, explanations or formatting.
@@ -221,7 +221,7 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
       model: "gpt-4o", // Using the newest model for better title generation
       messages: completionMessages,
       temperature: 0.3, // Lower temperature for more focused, less creative responses
-      max_tokens: 50 // Short response as we just want a title
+      max_tokens: 100 // Allow for more descriptive titles
     });
     
     const generatedTitle = completion.choices[0].message.content?.trim() || 'Support Request';
@@ -252,13 +252,18 @@ export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Pr
     
     // Create the prompt for summarization
     let promptContent = `
-    Summarize this support conversation in 1-2 short, simple sentences only.
-    No bullet points, no markdown formatting, no headings.
-    Keep it brief - your response should be 30 words or less in plain text.
+    Provide a detailed summary of this support conversation that captures:
+    - The main issue or request from the user
+    - Key information exchanged during the conversation
+    - Current status (resolved or needs further action) 
+    - Any important technical details mentioned
+    
+    Your summary should be comprehensive while still being concise and well-structured.
+    Use proper paragraphs instead of bullet points or markdown formatting.
     
     ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
     
-    Brief summary:
+    Detailed summary:
     `;
     
     // Prepare messages array for the API call
@@ -279,7 +284,7 @@ export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Pr
       model: "gpt-4o",
       messages: apiMessages,
       temperature: 0.3,
-      max_tokens: 250
+      max_tokens: 600
     });
 
     return response.choices[0].message.content || "Summary unavailable";

@@ -419,14 +419,14 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
       
       // Create a base system prompt for ticket title generation
       const baseSystemPrompt = `
-      You are an AI assistant tasked with creating a concise and descriptive title for a support ticket.
-      Analyze the conversation and create a short, specific title that clearly identifies the main issue.
+      You are an AI assistant tasked with creating a descriptive title for a support ticket.
+      Analyze the conversation and create a specific title that clearly identifies the issue.
       
       Guidelines for creating the title:
       1. Focus on the core problem (error codes, specific failure points)
       2. Be specific rather than generic (e.g., "Login 500 Error" instead of "Login Problem")
       3. Include error codes if present (e.g., "404", "500", "INVALID_TOKEN")
-      4. Keep the title under 50 characters if possible
+      4. Create a title of appropriate length that captures the key aspects of the issue
       5. Do not use placeholders or generic titles like "Support Request" or "Help Needed"
       
       Return ONLY the title with no additional text, explanations or formatting.
@@ -588,10 +588,14 @@ export async function summarizeConversation(messages: ChatMessage[], tenantId?: 
       
       // Create base system prompt for summary
       const baseSystemPrompt = `
-      Summarize this support conversation in 1-2 short, simple sentences only. 
-      No bullet points, no markdown formatting, no headings.
-      Just provide a brief description of the issue and current status.
-      Your response should be 30 words or less and in plain text format.
+      Provide a detailed summary of this support conversation that captures:
+      - The main issue or request from the user
+      - Key information exchanged during the conversation
+      - Current status (resolved or needs further action)
+      - Any important technical details mentioned
+      
+      Your summary should be comprehensive while still being concise and well-structured.
+      Use proper paragraphs instead of bullet points or markdown formatting.
       `;
       
       // First try using the Model Context Protocol

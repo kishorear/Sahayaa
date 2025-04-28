@@ -43,7 +43,15 @@ export class AnthropicProvider implements AIProviderInterface {
         max_tokens: 1024
       });
 
-      return response.content[0].text;
+      // Handle content response safely
+      if (response.content[0]) {
+        // Using type assertion to safely handle the response
+        const contentBlock = response.content[0] as any;
+        if (contentBlock.type === 'text' && contentBlock.text) {
+          return contentBlock.text;
+        }
+      }
+      return "Response content unavailable";
     } catch (error) {
       console.error("Error calling Anthropic for chat response:", error);
       throw new Error("Failed to generate chat response with Anthropic");
@@ -99,8 +107,15 @@ export class AnthropicProvider implements AIProviderInterface {
         max_tokens: 1024
       });
 
-      // Extract and parse the JSON response
-      const content = response.content[0].text;
+      // Extract and parse the JSON response (handling content type safely)
+      let content = "";
+      if (response.content[0]) {
+        // Using type assertion to safely handle the response
+        const contentBlock = response.content[0] as any;
+        if (contentBlock.type === 'text' && contentBlock.text) {
+          content = contentBlock.text;
+        }
+      }
       
       // Find JSON content between curly braces
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -149,7 +164,15 @@ export class AnthropicProvider implements AIProviderInterface {
         max_tokens: 1024
       });
 
-      const responseText = response.content[0].text;
+      // Handle content type safely
+      let responseText = "";
+      if (response.content[0]) {
+        // Using type assertion to safely handle the response
+        const contentBlock = response.content[0] as any;
+        if (contentBlock.type === 'text' && contentBlock.text) {
+          responseText = contentBlock.text;
+        }
+      }
       
       // Check if the response indicates resolution
       const resolved = responseText.includes("[ISSUE RESOLVED]");
@@ -184,22 +207,36 @@ export class AnthropicProvider implements AIProviderInterface {
       
       // Create the prompt for summarization
       let prompt = `
-      Please summarize the following support conversation in a concise paragraph. 
-      Focus on the main issue, any solutions provided, and the current status (resolved or needs further action).
+      Provide a detailed summary of this support conversation that captures:
+      - The main issue or request from the user
+      - Key information exchanged during the conversation
+      - Current status (resolved or needs further action)
+      - Any important technical details mentioned
+      
+      Your summary should be comprehensive while still being concise and well-structured.
+      Use proper paragraphs instead of bullet points or markdown formatting.
       
       ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
       
-      Provide a clear, professional summary:
+      Detailed summary:
       `;
       
       const response = await this.client.messages.create({
         model: this.model,
         system: system,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1024
+        max_tokens: 1800
       });
 
-      return response.content[0].text;
+      // Handle content type safely
+      if (response.content[0]) {
+        // Using type assertion to safely handle the response
+        const contentBlock = response.content[0] as any;
+        if (contentBlock.type === 'text' && contentBlock.text) {
+          return contentBlock.text;
+        }
+      }
+      return "Response content unavailable";
     } catch (error) {
       console.error("Error calling Anthropic for conversation summarization:", error);
       throw new Error("Failed to summarize conversation with Anthropic");
@@ -227,9 +264,15 @@ export class AnthropicProvider implements AIProviderInterface {
       
       // Create prompt for title generation
       let prompt = `
-      Based on the following conversation, generate a concise, specific title (maximum 60 characters) 
-      that accurately describes the technical issue. Focus on the actual problem, and include error codes if mentioned.
-      The title should help support agents quickly understand the issue.
+      You are an AI assistant tasked with creating a descriptive title for a support ticket.
+      Analyze the conversation and create a specific title that clearly identifies the issue.
+      
+      Guidelines for creating the title:
+      1. Focus on the core problem (error codes, specific failure points)
+      2. Be specific rather than generic (e.g., "Login 500 Error" instead of "Login Problem")
+      3. Include error codes if present (e.g., "404", "500", "INVALID_TOKEN")
+      4. Create a title of appropriate length that captures the key aspects of the issue
+      5. Do not use placeholders or generic titles like "Support Request" or "Help Needed"
       
       ${messages.slice(-5).map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
       
@@ -240,13 +283,20 @@ export class AnthropicProvider implements AIProviderInterface {
         model: this.model,
         system: system,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 100
+        max_tokens: 150
       });
       
       // Get the title and make sure it's not too long
-      let title = response.content[0].text.trim();
-      if (title.length > 60) {
-        title = title.substring(0, 57) + '...';
+      let title = "Support Request";
+      if (response.content[0]) {
+        // Using type assertion to safely handle the response
+        const contentBlock = response.content[0] as any;
+        if (contentBlock.type === 'text' && contentBlock.text) {
+          title = contentBlock.text.trim();
+          if (title.length > 60) {
+            title = title.substring(0, 57) + '...';
+          }
+        }
       }
       
       return title;

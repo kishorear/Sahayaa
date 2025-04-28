@@ -367,7 +367,10 @@ export async function generateChatResponse(
 // Generate a summary of multiple messages for ticket context
 // Generate a title for a ticket based on conversation
 export async function generateTicketTitle(messages: ChatMessage[], tenantId?: number): Promise<string> {
-  if (await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI) {
+  // Check if we should use AI provider (either tenant-specific or global fallback)
+  const useAI = await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI;
+  
+  if (useAI) {
     try {
       // Get relevant knowledge from data sources with tenant context if available
       const allText = messages.map(m => m.content).join(' ');
@@ -392,38 +395,94 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
         messagesToSend = [systemMessage, ...messages];
       }
       
-      return await generateTicketTitleWithAI(messagesToSend);
+      const aiTitle = await generateTicketTitleWithAI(messagesToSend);
+      console.log(`AI-generated ticket title: "${aiTitle}"`);
+      
+      // Additional validation to prevent default title from being used
+      if (aiTitle && aiTitle !== 'Support Request') {
+        return aiTitle;
+      } else {
+        console.warn(`AI returned generic title "${aiTitle}", falling back to local title generation`);
+      }
     } catch (error) {
-      console.error("OpenAI title generation failed, falling back to local:", error);
-      // Fall back to local implementation
+      console.error("AI title generation failed, falling back to local:", error);
+      // Continue to fallback implementation below
     }
+  } else {
+    console.log("No AI provider available for ticket title generation, using local implementation");
   }
   
-  // Local fallback implementation
-  // Extract title from first user message
+  // Enhanced local fallback implementation for more descriptive titles in production
+  // First, check if we have any user messages
   const userMessages = messages.filter(m => m.role === 'user');
-  if (userMessages.length > 0) {
-    const firstMessage = userMessages[0].content;
-    
-    // Look for error codes
-    const errorCodeMatch = firstMessage.match(/(\b[45]\d{2}\b|error code)/i);
-    if (errorCodeMatch) {
-      return `${errorCodeMatch[0]} Error Issue`;
-    }
-    
-    // Try to extract first sentence if not too long
-    const firstSentence = firstMessage.split(/[.!?]/)[0];
-    if (firstSentence && firstSentence.length < 60) {
-      return firstSentence;
-    }
-    
-    // Just truncate if too long
-    return firstMessage.length > 50 
-      ? firstMessage.substring(0, 47) + '...'
-      : firstMessage;
+  if (userMessages.length === 0) {
+    return "Support Request"; // No user messages to analyze
   }
   
-  return "Support Request";
+  // Get the full text of all user messages to analyze patterns
+  const allUserText = userMessages.map(m => m.content).join(' ');
+  const firstMessage = userMessages[0].content;
+  const lastMessage = userMessages[userMessages.length - 1].content;
+  
+  // Look for error codes or specific patterns in any user message
+  const errorCodeMatch = allUserText.match(/(\b[45]\d{2}\b|error code:?\s*([a-z0-9_-]+))/i);
+  if (errorCodeMatch) {
+    return `${errorCodeMatch[0]} Error Issue`;
+  }
+  
+  // Check for common issue types across all messages
+  if (/password|login|sign[- ]in|account access|authentication/i.test(allUserText)) {
+    return "Account Access Issue";
+  }
+  
+  if (/payment|billing|charge|invoice|subscription|credit card/i.test(allUserText)) {
+    return "Billing or Payment Issue";
+  }
+  
+  if (/install|setup|configuration|getting started/i.test(allUserText)) {
+    return "Installation/Setup Help";
+  }
+  
+  if (/bug|error|crash|not working|fails?|failed|broken/i.test(allUserText)) {
+    // Try to extract what specifically is broken
+    const brokenMatch = allUserText.match(/(\w+(?:\s+\w+){0,4})\s+(?:is|are|not working|broken|fails)/i);
+    if (brokenMatch) {
+      return `${brokenMatch[1]} Issue`;
+    }
+    return "Technical Error";
+  }
+  
+  if (/feature request|enhancement|suggestion|would be nice/i.test(allUserText)) {
+    return "Feature Request";
+  }
+  
+  if (/how (?:do|can|to)|where is|what is/i.test(allUserText)) {
+    return "How-To Question";
+  }
+  
+  // Try to extract an issue statement from the first or last user message
+  // First try the first sentence of the last message (often most relevant)
+  const lastFirstSentence = lastMessage.split(/[.!?]/)[0].trim();
+  if (lastFirstSentence && lastFirstSentence.length > 10 && lastFirstSentence.length < 60) {
+    return lastFirstSentence;
+  }
+  
+  // Then try the first sentence of the first message if last message wasn't suitable
+  const firstSentence = firstMessage.split(/[.!?]/)[0].trim();
+  if (firstSentence && firstSentence.length > 10 && firstSentence.length < 60) {
+    return firstSentence;
+  }
+  
+  // If both failed, try to create a composite title using both first and last message
+  if (firstMessage.length < 30 && lastMessage.length < 30 && firstMessage !== lastMessage) {
+    return `${firstMessage.substring(0, 25)} – ${lastMessage.substring(0, 25)}`;
+  }
+  
+  // Just truncate the most valuable message if still nothing
+  const mostValuableMessage = lastMessage.length > firstMessage.length ? lastMessage : firstMessage;
+  return mostValuableMessage.length > 50 
+    ? mostValuableMessage.substring(0, 47) + '...'
+    : mostValuableMessage;
 }
 
 export async function summarizeConversation(messages: ChatMessage[], tenantId?: number): Promise<string> {

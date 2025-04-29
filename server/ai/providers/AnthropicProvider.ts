@@ -118,11 +118,53 @@ export class AnthropicProvider implements AIProviderInterface {
         }
       }
       
-      // Find JSON content between curly braces
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : content;
-      
-      return JSON.parse(jsonString);
+      try {
+        // Find JSON content between curly braces
+        const jsonRegex = /\{[\s\S]*\}/;
+        const match = content.match(jsonRegex);
+        
+        // If we found a JSON-like pattern, use that; otherwise use the whole content
+        const jsonContent = match ? match[0] : content;
+        let result: any;
+        
+        try {
+          result = JSON.parse(jsonContent);
+        } catch (initialParseError) {
+          // Try one more cleaning approach - sometimes there are unexpected characters
+          const cleanedContent = jsonContent
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
+            .replace(/\\(?!["\\/bfnrt])/g, "\\\\"); // Escape backslashes that aren't part of escape sequences
+          
+          console.warn("Initial JSON parse failed, trying with cleaned content");
+          result = JSON.parse(cleanedContent);
+        }
+        
+        // Validate the result structure and ensure all required fields exist
+        if (!result || typeof result !== 'object') {
+          throw new Error("Parsed result is not an object");
+        }
+        
+        // Create a validated result with defaults for any missing fields
+        const validatedResult = {
+          category: result.category || "other",
+          complexity: (result.complexity === 'simple' || result.complexity === 'medium' || result.complexity === 'complex') 
+            ? result.complexity 
+            : "medium",
+          assignedTo: result.assignedTo || "support",
+          canAutoResolve: !!result.canAutoResolve,
+          aiNotes: result.aiNotes || "This ticket has been automatically classified"
+        };
+        
+        if (!result.category || !result.complexity || !result.assignedTo) {
+          console.warn("Anthropic returned incomplete classification, added missing fields");
+        }
+        
+        return validatedResult;
+      } catch (jsonError) {
+        console.error("Failed to parse JSON response from Anthropic:", jsonError);
+        console.log("Raw response content:", content);
+        throw jsonError; // Re-throw to trigger the fallback in the outer catch block
+      }
     } catch (error) {
       console.error("Error calling Anthropic for ticket classification:", error);
       // Return a default classification instead of throwing an error

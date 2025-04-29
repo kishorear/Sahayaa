@@ -269,9 +269,20 @@ export async function generateChatResponse(
   messageHistory: ChatMessage[],
   userMessage: string
 ): Promise<string> {
-  // Use configured AI provider if available
-  if (await shouldUseAIProvider(ticketContext.tenantId) || FALLBACK_TO_OPENAI) {
-    try {
+  // Log request details for tracing
+  console.log(`Generating chat response for ticket #${ticketContext.id}, category: ${ticketContext.category}${ticketContext.tenantId ? `, tenant: ${ticketContext.tenantId}` : ''}`);
+  
+  // Start a timer to measure performance
+  const startTime = Date.now();
+  
+  // Attempt to use configured AI provider if available
+  let usedProvider = false;
+  try {
+    // Check if we can use an AI provider
+    const canUseProvider = await shouldUseAIProvider(ticketContext.tenantId);
+    usedProvider = canUseProvider || FALLBACK_TO_OPENAI;
+    
+    if (usedProvider) {
       // Base system prompt without context enhancements
       const baseSystemPrompt = `You are an AI support assistant for a SaaS product. You're currently helping with a ticket in the "${ticketContext.category}" category.
         Ticket #${ticketContext.id}: "${ticketContext.title}"
@@ -282,9 +293,16 @@ export async function generateChatResponse(
       
       let enhancedPrompt = baseSystemPrompt;
       let documents = '';
+      let knowledgeContext = '';
       
-      // First try Model Context Protocol
+      // Create a multi-layered approach with fallbacks:
+      // 1. First try Model Context Protocol (most advanced)
+      // 2. Fall back to data source context if MCP fails
+      // 3. If both fail, proceed with basic conversation
+      
+      // Layer 1: Model Context Protocol
       try {
+        console.log(`Attempting to enhance prompt with MCP for ticket #${ticketContext.id}`);
         const mcpResult = await enhanceModelContextWithDocuments(
           userMessage,
           baseSystemPrompt,
@@ -292,38 +310,51 @@ export async function generateChatResponse(
         );
         
         enhancedPrompt = mcpResult.enhancedPrompt;
-        documents = mcpResult.documents;
+        documents = mcpResult.documents || '';
         
         // Log context information for debugging
         if (documents && documents.trim().length > 0) {
-          console.log(`Using document context (MCP) for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+          console.log(`Successfully obtained MCP document context (${documents.length} chars) for ticket #${ticketContext.id}`);
         } else {
-          console.log(`No document context found (MCP) for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+          console.log(`MCP returned no documents for ticket #${ticketContext.id}, will try alternative context sources`);
         }
       } catch (mcpError) {
-        console.error("Error getting MCP context for chat response, will try alternative sources:", mcpError);
+        if (mcpError instanceof Error) {
+          console.error(`MCP enhancement failed for ticket #${ticketContext.id}: ${mcpError.message}`);
+        } else {
+          console.error(`MCP enhancement failed for ticket #${ticketContext.id} with non-Error object:`, mcpError);
+        }
       }
       
-      // If MCP didn't provide context, fall back to legacy data source context
-      let knowledgeContext = '';
+      // Layer 2: If MCP didn't provide context, fall back to legacy data source context
       if (!documents || documents.trim().length === 0) {
         try {
+          console.log(`Attempting to build context from data sources for ticket #${ticketContext.id}`);
           // Fall back to older buildAIContext method if no documents found (for backward compatibility)
           knowledgeContext = await buildAIContext(userMessage, ticketContext.tenantId);
           
           // Log if the data source context was found
-          if (knowledgeContext) {
-            console.log(`Using data source context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+          if (knowledgeContext && knowledgeContext.trim().length > 0) {
+            console.log(`Successfully obtained data source context (${knowledgeContext.length} chars) for ticket #${ticketContext.id}`);
           } else {
-            console.log(`No relevant context found from any source for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+            console.log(`Data sources returned no context for ticket #${ticketContext.id}, will proceed with basic conversation`);
           }
         } catch (contextError) {
-          console.error("Error getting data source context for chat response, will proceed without context:", contextError);
+          if (contextError instanceof Error) {
+            console.error(`Data source context generation failed for ticket #${ticketContext.id}: ${contextError.message}`);
+          } else {
+            console.error(`Data source context generation failed for ticket #${ticketContext.id} with non-Error object:`, contextError);
+          }
         }
       }
       
-      // Create a modified message history with the enhanced prompt if we have document context
+      // Prepare to call the AI with the best available context
+      let responseFromAI: string;
+      
+      // Determine which context to use (prioritize MCP over data sources)
       if (documents && documents.trim().length > 0) {
+        console.log(`Using MCP documents for AI response generation for ticket #${ticketContext.id}`);
+        // Create a modified message history with the enhanced prompt if we have document context
         const systemMessage: ChatMessage = {
           role: 'system',
           content: enhancedPrompt
@@ -334,18 +365,33 @@ export async function generateChatResponse(
         const enhancedMessageHistory = [systemMessage, ...filteredMessageHistory];
         
         // Pass the document context as knowledge context parameter
-        return await generateChatResponseWithAI(ticketContext, enhancedMessageHistory, userMessage, documents);
-      } else if (knowledgeContext) {
+        responseFromAI = await generateChatResponseWithAI(ticketContext, enhancedMessageHistory, userMessage, documents);
+      } else if (knowledgeContext && knowledgeContext.trim().length > 0) {
+        console.log(`Using data source knowledge for AI response generation for ticket #${ticketContext.id}`);
         // If no MCP documents but we have knowledge context, use that
-        return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
+        responseFromAI = await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
       } else {
+        console.log(`No context available, using basic conversation for ticket #${ticketContext.id}`);
         // If no context from any source, proceed with basic conversation
-        return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, '');
+        responseFromAI = await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, '');
       }
-    } catch (error) {
-      console.error("AI chat response failed, falling back to local implementation:", error);
-      // Fall back to local implementation
+      
+      // Record performance metrics
+      const duration = Date.now() - startTime;
+      console.log(`Generated AI response for ticket #${ticketContext.id} in ${duration}ms`);
+      
+      return responseFromAI;
     }
+  } catch (error) {
+    // Handle any unexpected errors in the AI flow
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Critical error in AI chat response for ticket #${ticketContext.id}: ${errorMessage}`, error);
+    usedProvider = false; // Mark that we need to use the fallback
+  }
+  
+  // If we couldn't use an AI provider or an error occurred, log this fact
+  if (!usedProvider) {
+    console.log(`Using fallback local implementation for ticket #${ticketContext.id}`);
   }
   
   // Local fallback implementation

@@ -156,20 +156,47 @@ export class OpenAIProvider implements AIProviderInterface {
       const content = response.choices[0].message.content || "{}";
       
       try {
-        const result = JSON.parse(content);
+        // Sometimes OpenAI might include backticks in response, try to extract JSON
+        const jsonRegex = /\{[\s\S]*\}/;
+        const match = content.match(jsonRegex);
         
-        // Validate the result structure
-        if (!result.category || !result.complexity || !result.assignedTo) {
-          console.warn("OpenAI returned incomplete classification, adding missing fields");
-          // Fix missing fields with sensible defaults
-          result.category = result.category || "other";
-          result.complexity = result.complexity || "medium";
-          result.assignedTo = result.assignedTo || "support";
-          result.canAutoResolve = !!result.canAutoResolve;
-          result.aiNotes = result.aiNotes || "This ticket has been automatically classified";
+        // If we found a JSON-like pattern, use that; otherwise use the whole content
+        const jsonContent = match ? match[0] : content;
+        let result: any;
+        
+        try {
+          result = JSON.parse(jsonContent);
+        } catch (initialParseError) {
+          // Try one more cleaning approach - sometimes there are unexpected characters
+          const cleanedContent = jsonContent
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
+            .replace(/\\(?!["\\/bfnrt])/g, "\\\\"); // Escape backslashes that aren't part of escape sequences
+          
+          console.warn("Initial JSON parse failed, trying with cleaned content");
+          result = JSON.parse(cleanedContent);
         }
         
-        return result;
+        // Validate the result structure and ensure all required fields exist
+        if (!result || typeof result !== 'object') {
+          throw new Error("Parsed result is not an object");
+        }
+        
+        // Create a validated result with defaults for any missing fields
+        const validatedResult = {
+          category: result.category || "other",
+          complexity: (result.complexity === 'simple' || result.complexity === 'medium' || result.complexity === 'complex') 
+            ? result.complexity 
+            : "medium",
+          assignedTo: result.assignedTo || "support",
+          canAutoResolve: !!result.canAutoResolve,
+          aiNotes: result.aiNotes || "This ticket has been automatically classified"
+        };
+        
+        if (!result.category || !result.complexity || !result.assignedTo) {
+          console.warn("OpenAI returned incomplete classification, added missing fields");
+        }
+        
+        return validatedResult;
       } catch (jsonError) {
         console.error("Failed to parse JSON response from OpenAI:", jsonError);
         console.log("Raw response content:", content);
@@ -179,7 +206,7 @@ export class OpenAIProvider implements AIProviderInterface {
           complexity: "medium",
           assignedTo: "support",
           canAutoResolve: false,
-          aiNotes: "This ticket requires support team attention"
+          aiNotes: "This ticket requires support team attention due to classification error"
         };
       }
     } catch (error) {
@@ -390,12 +417,32 @@ export class OpenAIProvider implements AIProviderInterface {
   }
   
   async isAvailable(): Promise<boolean> {
+    // If no API key was provided, don't even attempt the API call
+    if (!this.client.apiKey || typeof this.client.apiKey !== 'string' || this.client.apiKey.trim() === '') {
+      console.warn("OpenAI provider cannot be available: No API key provided");
+      return false;
+    }
+    
     try {
-      // Simple availability check
-      await this.client.models.list();
+      // Set strict timeout to prevent long-running operations
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error("OpenAI availability check timed out after 5000ms")), 5000);
+      });
+      
+      // Simple availability check using models.list which is lightweight
+      const apiPromise = this.client.models.list();
+      
+      // Race the API call against the timeout
+      await Promise.race([apiPromise, timeoutPromise]);
+      
+      console.log("OpenAI provider is available");
       return true;
     } catch (error) {
-      console.error("OpenAI provider is not available:", error);
+      if (error instanceof Error) {
+        console.error(`OpenAI provider is not available: ${error.message}`);
+      } else {
+        console.error("OpenAI provider is not available: Unknown error");
+      }
       return false;
     }
   }

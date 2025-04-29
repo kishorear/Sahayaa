@@ -283,8 +283,15 @@ export default function TeamPage() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Team Management</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Add, edit and remove team members
+              {hasEditPermission 
+                ? "Add, edit and remove team members" 
+                : "View team members (read-only access)"}
             </p>
+            {isEngineer && (
+              <div className="mt-2 text-sm p-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                <p>You have read-only access to team information</p>
+              </div>
+            )}
           </div>
           <div className="flex gap-4">
             {/* Only show tenant selector for creator role */}
@@ -295,13 +302,16 @@ export default function TeamPage() {
                 className="w-[200px]"
               />
             )}
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)} 
-              className="mb-2"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Team Member
-            </Button>
+            {/* Only show Add Team Member button for users with edit permissions */}
+            {hasEditPermission && (
+              <Button 
+                onClick={() => setIsAddDialogOpen(true)} 
+                className="mb-2"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Team Member
+              </Button>
+            )}
           </div>
         </div>
 
@@ -341,8 +351,8 @@ export default function TeamPage() {
                         </h3>
                         <p className="text-sm text-gray-500">{getRoleDisplayName(member.role)}</p>
                       </div>
-                      {/* Don't show edit/delete controls for current user */}
-                      {currentUser?.id !== member.id && (
+                      {/* Don't show edit/delete controls for current user or for engineers (read-only access) */}
+                      {currentUser?.id !== member.id && hasEditPermission && (
                         <div className="flex items-center space-x-2">
                           <Button 
                             variant="ghost" 

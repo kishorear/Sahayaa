@@ -484,133 +484,251 @@ export async function generateChatResponse(
   return "Thank you for providing that information. I've updated your ticket with these details. A member of our support team will review this and get back to you soon. Is there anything else you'd like to add to your ticket in the meantime?";
 }
 
-// Generate a summary of multiple messages for ticket context
 // Generate a title for a ticket based on conversation
 export async function generateTicketTitle(messages: ChatMessage[], tenantId?: number): Promise<string> {
-  // Check if we should use AI provider (either tenant-specific or global fallback)
-  const useAI = await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI;
+  // Start timing for metrics
+  const startTime = Date.now();
   
-  if (useAI) {
-    try {
-      // Get all user message contents for context building
+  // Log the request details
+  console.log(`Generating ticket title for ${messages.length} messages${tenantId ? ` for tenant ${tenantId}` : ''}`);
+  
+  // Validate messages
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    console.log("No messages provided for title generation, returning default title");
+    return "Support Request";
+  }
+  
+  // Check if there are user messages to analyze
+  let allUserMessages = messages.filter(m => m.role === 'user');
+  if (allUserMessages.length === 0) {
+    console.log("No user messages found, returning default title");
+    return "Support Request";
+  }
+  
+  // Tracking which approach is successful
+  let titleGenMethod = 'fallback';
+  let aiTitle: string | null = null;
+  
+  try {
+    // Check if we should use AI provider (either tenant-specific or global fallback)
+    const useAI = await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI;
+    
+    if (useAI) {
+      // Get all message contents for context building
       const allText = messages.map(m => m.content).join(' ');
-      const userMessages = messages.filter(m => m.role === 'user');
       
-      // If no user messages, just return a default title
-      if (userMessages.length === 0) {
-        return "Support Request";
-      }
-      
-      // Create a base system prompt for ticket title generation
+      // Create a robust system prompt for ticket title generation
       const baseSystemPrompt = `
-      You are an AI assistant tasked with creating a descriptive title for a support ticket.
-      Analyze the conversation and create a specific title that clearly identifies the issue.
+      You are an AI assistant specialized in creating concise, descriptive titles for support tickets.
       
-      Guidelines for creating the title:
-      1. Focus on the core problem (error codes, specific failure points)
-      2. Be specific rather than generic (e.g., "Login 500 Error" instead of "Login Problem")
-      3. Include error codes if present (e.g., "404", "500", "INVALID_TOKEN")
-      4. Create a title of appropriate length that captures the key aspects of the issue
-      5. Do not use placeholders or generic titles like "Support Request" or "Help Needed"
+      INSTRUCTIONS:
+      Analyze the conversation carefully and extract the CORE issue or request.
+      Create a title that clearly identifies the specific problem, feature request, or inquiry.
       
-      Return ONLY the title with no additional text, explanations or formatting.
+      TITLE REQUIREMENTS:
+      1. Length: 5-10 words (absolute maximum 15 words)
+      2. Structure: [Problem Area]: [Specific Issue] format (e.g., "Login System: Password Reset Email Not Arriving")
+      3. Specificity: Include exact error codes, component names, or feature references (e.g., "API Error 403: Invalid Authentication Token")
+      4. Clarity: Anyone reading the title should immediately understand what the ticket is about
+      5. Objectivity: Focus on technical facts, not subjective assessments
+      
+      FORMAT RULES:
+      - Use proper capitalization for the first letter of each significant word
+      - Never use quotation marks or other formatting characters in the title
+      - Do not include punctuation at the end of the title
+      - Do not start with generic terms like "Issue with" or "Problem regarding"
+      
+      Return ONLY the title text with NO additional explanations, quotation marks, or formatting.
       `;
       
-      // First try using the Model Context Protocol
+      // Multi-layered approach with fallbacks:
+      // Layer 1: Try Model Context Protocol (most advanced)
+      let mcpSuccessful = false;
       let enhancedPrompt = baseSystemPrompt;
       let documents = '';
       
       try {
+        console.log("Attempting to enhance title generation with MCP documents");
         const mcpResult = await enhanceModelContextWithDocuments(
           allText,
           baseSystemPrompt,
           tenantId
         );
-        enhancedPrompt = mcpResult.enhancedPrompt;
-        documents = mcpResult.documents;
+        enhancedPrompt = mcpResult.enhancedPrompt || baseSystemPrompt;
+        documents = mcpResult.documents || '';
+        
+        if (documents && documents.trim().length > 0) {
+          console.log(`Found relevant MCP documents (${documents.length} chars) for title generation`);
+          mcpSuccessful = true;
+        }
       } catch (mcpError) {
-        console.error("Error getting MCP context for ticket title generation, will try alternative sources:", mcpError);
-        // Continue without MCP context
-      }
-      
-      // If we found relevant documents using MCP
-      if (documents && documents.trim().length > 0) {
-        console.log(`Using document context (MCP) for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
-        
-        // Create enhanced system message using MCP result
-        const systemMessage: ChatMessage = {
-          role: 'system',
-          content: enhancedPrompt
-        };
-        
-        // Keep only non-system messages from original set
-        const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
-        
-        // Build new messages array with enhanced system prompt
-        const enhancedMessages = [systemMessage, ...userAndAssistantMessages];
-        
-        // Generate title using enhanced messages
-        const aiTitle = await generateTicketTitleWithAI(enhancedMessages);
-        console.log(`AI-generated ticket title (MCP): "${aiTitle}"`);
-        
-        // Validate title before returning
-        if (aiTitle && aiTitle !== 'Support Request') {
-          return aiTitle;
+        if (mcpError instanceof Error) {
+          console.error(`MCP enhancement failed for title generation: ${mcpError.message}`);
         } else {
-          console.warn(`AI returned generic title "${aiTitle}" with MCP, trying data source context...`);
+          console.error("MCP enhancement failed for title generation with non-Error object:", mcpError);
         }
       }
       
-      // Fall back to the data source context method if MCP didn't work
-      const knowledgeContext = await buildAIContext(allText, tenantId);
-      
-      // Log if knowledge context was found
-      if (knowledgeContext) {
-        console.log(`Using data source context for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
-      } else {
-        console.log(`No relevant context found from any source for ticket title generation. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      // If MCP was successful, try generating a title with the enhanced context
+      if (mcpSuccessful) {
+        try {
+          // Create enhanced system message using MCP result
+          const systemMessage: ChatMessage = {
+            role: 'system',
+            content: enhancedPrompt
+          };
+          
+          // Keep only non-system messages from original set
+          const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+          
+          // Build new messages array with enhanced system prompt
+          const enhancedMessages = [systemMessage, ...userAndAssistantMessages];
+          
+          // Generate title using enhanced messages
+          console.log("Generating ticket title with MCP context...");
+          aiTitle = await generateTicketTitleWithAI(enhancedMessages);
+          
+          // Validate the title is non-generic and useful
+          if (aiTitle && aiTitle.length > 5 && aiTitle !== 'Support Request' && 
+              !/^(support|help|assistance|issue|problem)$/i.test(aiTitle)) {
+            console.log(`Successfully generated ticket title with MCP: "${aiTitle}"`);
+            titleGenMethod = 'mcp';
+            
+            // Track performance
+            const duration = Date.now() - startTime;
+            console.log(`Title generation (MCP) completed in ${duration}ms`);
+            
+            return aiTitle;
+          } else {
+            console.warn(`MCP approach returned low-quality title: "${aiTitle}", trying data source context...`);
+            aiTitle = null; // Reset for next attempt
+          }
+        } catch (mcpTitleError) {
+          console.error("Error generating title with MCP context:", mcpTitleError);
+          // Continue to next approach
+        }
       }
       
-      // If we have knowledge context, add it as a system message
-      let messagesToSend = messages;
-      if (knowledgeContext) {
+      // Layer 2: Try with data source context
+      let dataSourceSuccessful = false;
+      let knowledgeContext = '';
+      
+      try {
+        console.log("Attempting to build data source context for title generation");
+        knowledgeContext = await buildAIContext(allText, tenantId);
+        
+        if (knowledgeContext && knowledgeContext.trim().length > 0) {
+          console.log(`Found relevant data source context (${knowledgeContext.length} chars) for title generation`);
+          dataSourceSuccessful = true;
+        } else {
+          console.log("No relevant data source context found for title generation");
+        }
+      } catch (contextError) {
+        if (contextError instanceof Error) {
+          console.error(`Data source context generation failed: ${contextError.message}`);
+        } else {
+          console.error("Data source context generation failed with non-Error object:", contextError);
+        }
+      }
+      
+      // If data source context was found, try generating a title with it
+      if (dataSourceSuccessful) {
+        try {
+          // Create system message with data source context
+          const systemMessage: ChatMessage = {
+            role: 'system',
+            content: `${baseSystemPrompt}\n\nHere is relevant context for this conversation:\n${knowledgeContext}`
+          };
+          
+          // Keep only non-system messages from original set
+          const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+          
+          // Build new messages array with the context-enhanced system prompt
+          const contextMessages = [systemMessage, ...userAndAssistantMessages];
+          
+          // Generate title with data source context
+          console.log("Generating ticket title with data source context...");
+          aiTitle = await generateTicketTitleWithAI(contextMessages);
+          
+          // Validate the title is non-generic and useful
+          if (aiTitle && aiTitle.length > 5 && aiTitle !== 'Support Request' && 
+              !/^(support|help|assistance|issue|problem)$/i.test(aiTitle)) {
+            console.log(`Successfully generated ticket title with data source context: "${aiTitle}"`);
+            titleGenMethod = 'data_source';
+            
+            // Track performance
+            const duration = Date.now() - startTime;
+            console.log(`Title generation (data source) completed in ${duration}ms`);
+            
+            return aiTitle;
+          } else {
+            console.warn(`Data source approach returned low-quality title: "${aiTitle}", trying basic context...`);
+            aiTitle = null; // Reset for next attempt
+          }
+        } catch (dataSourceTitleError) {
+          console.error("Error generating title with data source context:", dataSourceTitleError);
+          // Continue to next approach
+        }
+      }
+      
+      // Layer 3: Try with basic context (just the system prompt and messages)
+      try {
+        // Add the system prompt even without additional context
         const systemMessage: ChatMessage = {
           role: 'system',
-          content: knowledgeContext
+          content: baseSystemPrompt
         };
         
-        // Insert system message at the beginning
-        messagesToSend = [systemMessage, ...messages];
+        // Filter out any existing system messages
+        const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+        
+        // Generate title with original messages plus system prompt
+        console.log("Generating ticket title with basic context...");
+        aiTitle = await generateTicketTitleWithAI([systemMessage, ...userAndAssistantMessages]);
+        
+        // Validate the title is non-generic and useful
+        if (aiTitle && aiTitle.length > 5 && aiTitle !== 'Support Request' && 
+            !/^(support|help|assistance|issue|problem)$/i.test(aiTitle)) {
+          console.log(`Successfully generated ticket title with basic context: "${aiTitle}"`);
+          titleGenMethod = 'basic';
+          
+          // Track performance
+          const duration = Date.now() - startTime;
+          console.log(`Title generation (basic) completed in ${duration}ms`);
+          
+          return aiTitle;
+        } else {
+          console.warn(`Basic approach returned low-quality title: "${aiTitle}", falling back to local implementation...`);
+        }
+      } catch (basicTitleError) {
+        console.error("Error generating title with basic context:", basicTitleError);
+        // Fall back to local implementation
       }
-      
-      const aiTitle = await generateTicketTitleWithAI(messagesToSend);
-      console.log(`AI-generated ticket title (data source): "${aiTitle}"`);
-      
-      // Additional validation to prevent default title from being used
-      if (aiTitle && aiTitle !== 'Support Request') {
-        return aiTitle;
-      } else {
-        console.warn(`AI returned generic title "${aiTitle}", falling back to local title generation`);
-      }
-    } catch (error) {
-      console.error("AI title generation failed, falling back to local implementation:", error);
-      // Continue to fallback implementation below
+    } else {
+      console.log("No AI provider available for ticket title generation, using local implementation");
     }
-  } else {
-    console.log("No AI provider available for ticket title generation, using local implementation");
+  } catch (error) {
+    // Catch all errors in the AI flow
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Critical error in title generation flow: ${errorMessage}`, error);
+  }
+  
+  // If we have a title from any attempt, use it even if not perfect
+  if (aiTitle && aiTitle !== 'Support Request') {
+    console.log(`Using best available title: "${aiTitle}" (method: ${titleGenMethod})`);
+    return aiTitle;
   }
   
   // Enhanced local fallback implementation for more descriptive titles in production
-  // First, check if we have any user messages
-  const userMessages = messages.filter(m => m.role === 'user');
-  if (userMessages.length === 0) {
-    return "Support Request"; // No user messages to analyze
-  }
+  console.log("Using enhanced local fallback mechanism for title generation");
+  
+  // We've already filtered user messages above, so we can reuse that
+  // No need to filter again for userMessages
   
   // Get the full text of all user messages to analyze patterns
-  const allUserText = userMessages.map(m => m.content).join(' ');
-  const firstMessage = userMessages[0].content;
-  const lastMessage = userMessages[userMessages.length - 1].content;
+  const allUserText = allUserMessages.map(m => m.content).join(' ');
+  const firstMessage = allUserMessages[0].content;
+  const lastMessage = allUserMessages[allUserMessages.length - 1].content;
   
   // Look for error codes or specific patterns in any user message
   const errorCodeMatch = allUserText.match(/(\b[45]\d{2}\b|error code:?\s*([a-z0-9_-]+))/i);

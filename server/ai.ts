@@ -72,9 +72,10 @@ export async function classifyTicket(title: string, description: string, tenantI
     }
   }
   
-  // Local implementation as fallback
-  // Simple rule-based classification
+  // Local implementation as fallback with improved complexity classification
+  // Rule-based classification with smarter complexity determination
   const text = (title + " " + description).toLowerCase();
+  const wordCount = text.split(/\s+/).length;
   
   // Categories based on keywords
   let category = 'other';
@@ -82,6 +83,18 @@ export async function classifyTicket(title: string, description: string, tenantI
   let assignedTo = 'support';
   let canAutoResolve = false;
   let aiNotes = '';
+  
+  // Analyze the complexity of the issue based on multiple factors
+  const hasComplexTerms = /database|server|infrastructure|outage|security|breach|urgent|critical|production|down|broken|data loss|performance|slow/i.test(text);
+  const hasTechnicalTerms = /api|endpoint|code|function|error|exception|bug|crash|server|database|query|authentication|token|backend|frontend|interface/i.test(text);
+  const hasSimpleTerms = /reset password|how to|where is|can't find|looking for|documentation|guide|tutorial|help me|simple question/i.test(text);
+  
+  // Determine complexity based on content analysis
+  if (hasComplexTerms || (hasTechnicalTerms && wordCount > 100)) {
+    complexity = 'complex';
+  } else if (hasSimpleTerms && wordCount < 75) {
+    complexity = 'simple';
+  }
   
   // Category classification
   if (text.includes('login') || text.includes('password') || text.includes('sign in') || text.includes('account access')) {

@@ -19,14 +19,23 @@ export type OpenAIMessage = {
 export async function classifyTicketWithAI(title: string, description: string, knowledgeContext: string = '') {
   try {
     let prompt = `
-    You are an AI support ticket classifier. Based on the following ticket information, 
-    classify the ticket according to these criteria:
+    You are an AI support ticket classifier that accurately categorizes customer issues. 
+    Based on the following ticket information, classify the ticket according to these criteria:
     
     1. Category (one of: authentication, billing, feature_request, documentation, technical_issue, account, other)
-    2. Complexity (one of: simple, medium, complex)
+    
+    2. Complexity (one of: simple, medium, complex) based on these guidelines:
+       - "simple": Straightforward issues with clear solutions, minimal technical knowledge needed, can be solved quickly
+       - "medium": Issues requiring some investigation, moderate technical knowledge, or multiple steps to resolve
+       - "complex": Complicated issues requiring in-depth technical analysis, code changes, database work, or specialist knowledge
+    
     3. Department to assign to (one of: support, engineering, product, billing)
+    
     4. Whether the ticket can be automatically resolved (true or false)
+    
     5. Notes for additional context (optional)
+    
+    Make sure to carefully assess the complexity based on the technical nature of the problem, not just the length of the description.
     
     Ticket Title: ${title}
     Ticket Description: ${description}
@@ -72,13 +81,38 @@ export async function classifyTicketWithAI(title: string, description: string, k
     return result;
   } catch (error) {
     console.error("Error calling OpenAI for ticket classification:", error);
+    
+    // Analyze the title and description to make a better fallback decision about complexity
+    const text = (title + " " + description).toLowerCase();
+    let complexity: 'simple' | 'medium' | 'complex' = 'medium';
+    
+    // Check for indicators of complex issues
+    if (text.includes('critical') || 
+        text.includes('urgent') || 
+        text.includes('security') || 
+        text.includes('breach') || 
+        text.includes('production down') ||
+        text.includes('data loss') ||
+        text.includes('server crash')) {
+      complexity = 'complex';
+    } 
+    // Check for indicators of simple issues
+    else if ((text.includes('how to') || 
+              text.includes('where is') || 
+              text.includes('guide') || 
+              text.includes('documentation') ||
+              text.includes('password reset')) && 
+             text.length < 200) {
+      complexity = 'simple';
+    }
+    
     // Fall back to local classification with a more helpful message
     return {
       category: "other",
-      complexity: "medium",
+      complexity,
       assignedTo: "support",
       canAutoResolve: false,
-      aiNotes: "This ticket has been automatically classified. The system has determined it requires support team attention."
+      aiNotes: "This ticket has been automatically classified based on content analysis. The system has determined the complexity to be " + complexity + "."
     };
   }
 }

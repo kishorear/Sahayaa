@@ -331,7 +331,10 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function ComplexityBadge({ complexity }: { complexity: string | null }) {
-  switch (complexity) {
+  // Analyze the complexity value to ensure consistent display
+  const normalizedComplexity = complexity?.toLowerCase()?.trim();
+  
+  switch (normalizedComplexity) {
     case "simple":
       return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Simple</Badge>;
     case "medium":
@@ -339,7 +342,12 @@ function ComplexityBadge({ complexity }: { complexity: string | null }) {
     case "complex":
       return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Complex</Badge>;
     default:
-      return <Badge variant="outline">{complexity || "Medium"}</Badge>;
+      // If we have some value but it's not one of our standard values, show it as is
+      if (complexity) {
+        return <Badge variant="outline">{complexity}</Badge>;
+      }
+      // Only if complexity is null or empty string, show Unknown instead of defaulting to Medium
+      return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">Unknown</Badge>;
   }
 }
 

@@ -54,7 +54,8 @@ export class AnthropicProvider implements AIProviderInterface {
       return "Response content unavailable";
     } catch (error) {
       console.error("Error calling Anthropic for chat response:", error);
-      throw new Error("Failed to generate chat response with Anthropic");
+      // Return a fallback response instead of throwing an error
+      return "I apologize, but I'm experiencing difficulties processing your request right now. A support representative will assist you shortly.";
     }
   }
   
@@ -218,14 +219,19 @@ export class AnthropicProvider implements AIProviderInterface {
       
       // Create the prompt for summarization
       let prompt = `
-      Provide a detailed summary of this support conversation that captures:
+      Please provide a detailed and comprehensive summary of this support conversation.
+      
+      Include:
       - The main issue or request from the user
       - Key information exchanged during the conversation
+      - Any solutions attempted or provided
+      - Technical details mentioned
       - Current status (resolved or needs further action)
-      - Any important technical details mentioned
+      - Next steps or follow-up items
       
-      Your summary should be comprehensive while still being concise and well-structured.
-      Use proper paragraphs instead of bullet points or markdown formatting.
+      Your summary should be thorough while still being well-structured.
+      Use proper paragraphs and organize information logically.
+      Don't omit important details and don't impose any word count restrictions.
       
       ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
       
@@ -236,7 +242,7 @@ export class AnthropicProvider implements AIProviderInterface {
         model: this.model,
         system: system,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1800
+        max_tokens: 3000 // Increased to allow for more detailed summaries
       });
 
       // Handle content type safely
@@ -250,7 +256,9 @@ export class AnthropicProvider implements AIProviderInterface {
       return "Response content unavailable";
     } catch (error) {
       console.error("Error calling Anthropic for conversation summarization:", error);
-      throw new Error("Failed to summarize conversation with Anthropic");
+      // Create a basic summary instead of throwing an error
+      const userMessages = messages.filter(m => m.role === 'user');
+      return `This conversation includes ${userMessages.length} messages from the user and requires support team review.`;
     }
   }
   

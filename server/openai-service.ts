@@ -264,14 +264,19 @@ export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Pr
     
     // Create the prompt for summarization
     let promptContent = `
-    Provide a detailed summary of this support conversation that captures:
+    Please provide a detailed and comprehensive summary of this support conversation.
+    
+    Include:
     - The main issue or request from the user
     - Key information exchanged during the conversation
-    - Current status (resolved or needs further action) 
-    - Any important technical details mentioned
+    - Any solutions attempted or provided
+    - Technical details mentioned
+    - Current status (resolved or needs further action)
+    - Next steps or follow-up items
     
-    Your summary should be comprehensive while still being concise and well-structured.
-    Use proper paragraphs instead of bullet points or markdown formatting.
+    Your summary should be thorough while still being well-structured.
+    Use proper paragraphs and organize information logically.
+    Don't omit important details and don't impose any word count restrictions.
     
     ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
     
@@ -296,7 +301,7 @@ export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Pr
       model: "gpt-4o",
       messages: apiMessages,
       temperature: 0.3,
-      max_tokens: 600
+      max_tokens: 1000 // Increased to allow for more detailed summaries
     });
 
     return response.choices[0].message.content || "Summary unavailable";

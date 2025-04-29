@@ -49,18 +49,25 @@ export async function classifyTicket(title: string, description: string, tenantI
     try {
       // Get relevant knowledge from data sources with tenant context if available
       const combinedText = `${title} ${description}`;
-      const knowledgeContext = await buildAIContext(combinedText, tenantId);
+      let knowledgeContext = '';
       
-      // Log if knowledge context was found
-      if (knowledgeContext) {
-        console.log(`Using knowledge context for ticket classification. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
-      } else {
-        console.log(`No relevant knowledge context found for ticket classification. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      try {
+        knowledgeContext = await buildAIContext(combinedText, tenantId);
+        
+        // Log if knowledge context was found
+        if (knowledgeContext) {
+          console.log(`Using knowledge context for ticket classification. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        } else {
+          console.log(`No relevant knowledge context found for ticket classification. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        }
+      } catch (contextError) {
+        console.error("Error building AI context, will proceed without context:", contextError);
+        // Continue without context
       }
       
       return await classifyTicketWithAI(title, description, knowledgeContext);
     } catch (error) {
-      console.error("OpenAI classification failed, falling back to local:", error);
+      console.error("AI classification failed, falling back to local:", error);
       // Fall back to local implementation
     }
   }
@@ -153,18 +160,25 @@ export async function attemptAutoResolve(title: string, description: string, pre
     try {
       // Get relevant knowledge from data sources
       const combinedText = `${title} ${description}`;
-      const knowledgeContext = await buildAIContext(combinedText, tenantId);
+      let knowledgeContext = '';
       
-      // Log if knowledge context was found
-      if (knowledgeContext) {
-        console.log(`Using knowledge context for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
-      } else {
-        console.log(`No relevant knowledge context found for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      try {
+        knowledgeContext = await buildAIContext(combinedText, tenantId);
+        
+        // Log if knowledge context was found
+        if (knowledgeContext) {
+          console.log(`Using knowledge context for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        } else {
+          console.log(`No relevant knowledge context found for auto-resolve. Title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        }
+      } catch (contextError) {
+        console.error("Error building AI context for auto-resolve, will proceed without context:", contextError);
+        // Continue without context
       }
       
       return await attemptAutoResolveWithAI(title, description, previousMessages, knowledgeContext);
     } catch (error) {
-      console.error("OpenAI auto-resolve failed, falling back to local:", error);
+      console.error("AI auto-resolve failed, falling back to local:", error);
       // Fall back to local implementation
     }
   }

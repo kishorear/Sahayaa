@@ -326,17 +326,37 @@ export class AnthropicProvider implements AIProviderInterface {
   }
   
   async isAvailable(): Promise<boolean> {
+    // If no API key was provided, don't even attempt the API call
+    if (!this.client.apiKey || this.client.apiKey.trim() === '') {
+      console.warn("Anthropic provider cannot be available: No API key provided");
+      return false;
+    }
+    
     try {
-      // Simple availability check
-      await this.client.messages.create({
+      // Set strict timeout to prevent long-running operations
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error("Anthropic availability check timed out after 5000ms")), 5000);
+      });
+      
+      // Simple availability check with a small message
+      const apiPromise = this.client.messages.create({
         model: this.model,
         system: "You are a helpful assistant.",
         messages: [{ role: 'user', content: 'Hello' }],
-        max_tokens: 10
+        max_tokens: 5 // Minimal tokens for faster response
       });
+      
+      // Race the API call against the timeout
+      await Promise.race([apiPromise, timeoutPromise]);
+      
+      console.log("Anthropic provider is available");
       return true;
     } catch (error) {
-      console.error("Anthropic provider is not available:", error);
+      if (error instanceof Error) {
+        console.error(`Anthropic provider is not available: ${error.message}`);
+      } else {
+        console.error("Anthropic provider is not available: Unknown error");
+      }
       return false;
     }
   }

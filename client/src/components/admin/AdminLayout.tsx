@@ -49,13 +49,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/tickets", 
       label: "Tickets", 
       icon: TicketCheck,
-      roles: ["administrator", "support_engineer", "user", "creator"] // All roles need tickets
+      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All roles need tickets
     },
     { 
       path: "/admin/team", 
       label: "Team", 
       icon: Users,
-      roles: ["administrator", "creator"] // Only admins and creators manage team
+      roles: ["administrator", "creator", "engineer"] // Admins and creators manage team, engineers have read-only access
     },
     { 
       path: "/admin/registration", 
@@ -85,7 +85,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/profile", 
       label: "My Profile", 
       icon: UserCog,
-      roles: ["administrator", "support_engineer", "user", "creator"] // All users can manage their profile
+      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All users can manage their profile
     },
     { 
       path: "/admin/settings", 

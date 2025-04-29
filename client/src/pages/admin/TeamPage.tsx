@@ -57,8 +57,10 @@ export default function TeamPage() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [selectedTenantId, setSelectedTenantId] = useState<number | undefined>(undefined);
   
-  // Check if user is a creator
+  // Check user roles for permissions
   const isCreator = currentUser?.role === 'creator';
+  const isEngineer = currentUser?.role === 'engineer';
+  const hasEditPermission = !isEngineer; // Engineer users have read-only access
 
   // Query to fetch team members
   const { data: teamMembers, isLoading } = useQuery<TeamMember[]>({

@@ -674,95 +674,194 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
 }
 
 export async function summarizeConversation(messages: ChatMessage[], tenantId?: number): Promise<string> {
-  // Use configured AI provider if available
-  if (await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI) {
-    try {
+  // Start a timer to measure performance
+  const startTime = Date.now();
+  console.log(`Summarizing conversation with ${messages.length} messages${tenantId ? ` for tenant ${tenantId}` : ''}`);
+  
+  // Try to use AI provider if available
+  let usedProvider = false;
+  try {
+    // Check if we can use an AI provider
+    const canUseProvider = await shouldUseAIProvider(tenantId);
+    usedProvider = canUseProvider || FALLBACK_TO_OPENAI;
+    
+    if (usedProvider) {
+      // Validate input
+      if (messages.length === 0) {
+        console.log("No messages to summarize, returning early");
+        return "No conversation to summarize.";
+      }
+      
       // Get conversation content to build context
       const conversationText = messages.map(m => m.content).join(' ');
       
-      // Create base system prompt for summary
+      // Create base system prompt for summary - enhanced for detailed responses
       const baseSystemPrompt = `
-      Provide a detailed summary of this support conversation that captures:
-      - The main issue or request from the user
-      - Key information exchanged during the conversation
-      - Current status (resolved or needs further action)
-      - Any important technical details mentioned
+      You are an AI assistant tasked with creating a detailed and comprehensive summary of a support conversation.
       
-      Your summary should be comprehensive while still being concise and well-structured.
-      Use proper paragraphs instead of bullet points or markdown formatting.
+      Your summary should capture all of these elements:
+      - The main problem or request from the user (what they were trying to accomplish)
+      - Key information exchanged during the conversation (questions asked, answers provided)
+      - Technical details mentioned (error codes, specific features, configuration settings)
+      - Attempted solutions and their outcomes
+      - Current status (resolved completely, partially resolved, or needs further action)
+      - Any follow-up actions required by the user or support team
+      
+      Guidelines for your summary:
+      - Be thorough and include all important details from the conversation
+      - Use proper paragraphs and organize information logically
+      - Maintain a professional, neutral tone
+      - Don't impose any word count restrictions 
+      - Don't omit any significant technical details
+      
+      This summary will be used by support staff to understand the ticket history.
       `;
       
-      // First try using the Model Context Protocol
+      // Multi-layered approach with fallbacks:
+      // 1. First try Model Context Protocol (most advanced)
+      // 2. Fall back to data source context if MCP fails
+      // 3. If both fail, proceed with basic conversation
+      
+      // Layer 1: Model Context Protocol
       let enhancedPrompt = baseSystemPrompt;
       let documents = '';
+      let contextFromMCP = false;
       
       try {
+        console.log("Attempting to enhance summary with MCP documents");
         const mcpResult = await enhanceModelContextWithDocuments(
           conversationText,
           baseSystemPrompt,
           tenantId
         );
-        enhancedPrompt = mcpResult.enhancedPrompt;
-        documents = mcpResult.documents;
+        enhancedPrompt = mcpResult.enhancedPrompt || baseSystemPrompt;
+        documents = mcpResult.documents || '';
+        
+        if (documents && documents.trim().length > 0) {
+          contextFromMCP = true;
+          console.log(`Successfully obtained MCP document context (${documents.length} chars) for conversation summary`);
+        } else {
+          console.log("MCP returned no documents for conversation summary, will try alternative context sources");
+        }
       } catch (mcpError) {
-        console.error("Error getting MCP context for conversation summary, will try alternative sources:", mcpError);
-        // Continue without MCP context
+        if (mcpError instanceof Error) {
+          console.error(`MCP enhancement failed for conversation summary: ${mcpError.message}`);
+        } else {
+          console.error("MCP enhancement failed for conversation summary with non-Error object:", mcpError);
+        }
       }
       
-      // If we found relevant documents using MCP
-      if (documents && documents.trim().length > 0) {
-        console.log(`Using document context (MCP) for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
-        
-        // Create enhanced system message using MCP result
-        const systemMessage: ChatMessage = {
-          role: 'system',
-          content: enhancedPrompt
-        };
-        
-        // Keep only non-system messages from original set
-        const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
-        
-        // Build new messages array with enhanced system prompt
-        const enhancedMessages = [systemMessage, ...userAndAssistantMessages];
-        
-        // Generate summary using enhanced messages
-        return await summarizeConversationWithAI(enhancedMessages);
-      }
-      
-      // Fall back to the data source context method if MCP didn't work
+      // Layer 2: Data Source Context (if MCP didn't provide anything)
       let knowledgeContext = '';
+      let contextFromDataSources = false;
+      
+      if (!contextFromMCP) {
+        try {
+          console.log("Attempting to build context from data sources for conversation summary");
+          knowledgeContext = await buildAIContext(conversationText, tenantId);
+          
+          if (knowledgeContext && knowledgeContext.trim().length > 0) {
+            contextFromDataSources = true;
+            console.log(`Successfully obtained data source context (${knowledgeContext.length} chars) for conversation summary`);
+          } else {
+            console.log("Data sources returned no context for conversation summary");
+          }
+        } catch (contextError) {
+          if (contextError instanceof Error) {
+            console.error(`Data source context generation failed for conversation summary: ${contextError.message}`);
+          } else {
+            console.error("Data source context generation failed for conversation summary with non-Error object:", contextError);
+          }
+        }
+      }
+      
+      // Now use the best available context to generate the summary
+      let summary: string;
       
       try {
-        knowledgeContext = await buildAIContext(conversationText, tenantId);
-        
-        // Log if knowledge context was found
-        if (knowledgeContext) {
-          console.log(`Using data source context for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
-        } else {
-          console.log(`No relevant context found from any source for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        // If we found relevant documents using MCP
+        if (contextFromMCP) {
+          console.log("Using MCP context for conversation summary");
+          
+          // Create enhanced system message using MCP result
+          const systemMessage: ChatMessage = {
+            role: 'system',
+            content: enhancedPrompt
+          };
+          
+          // Keep only non-system messages from original set
+          const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+          
+          // Build new messages array with enhanced system prompt
+          const enhancedMessages = [systemMessage, ...userAndAssistantMessages];
+          
+          // Generate summary with enhanced context
+          summary = await summarizeConversationWithAI(enhancedMessages);
+        } 
+        // If we have knowledge context from data sources
+        else if (contextFromDataSources) {
+          console.log("Using data source context for conversation summary");
+          
+          // Create system message with data source context
+          const systemMessage: ChatMessage = {
+            role: 'system',
+            content: `${baseSystemPrompt}\n\nHere is relevant context for this conversation:\n${knowledgeContext}`
+          };
+          
+          // Keep only non-system messages from original set
+          const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+          
+          // Build new messages array with the context-enhanced system prompt
+          const contextMessages = [systemMessage, ...userAndAssistantMessages];
+          
+          // Generate summary with data source context
+          summary = await summarizeConversationWithAI(contextMessages);
+        } 
+        // If no context is available from any source
+        else {
+          console.log("No context available, using basic conversation for summary");
+          
+          // Add the system prompt even without additional context
+          const systemMessage: ChatMessage = {
+            role: 'system',
+            content: baseSystemPrompt
+          };
+          
+          // Filter out any existing system messages
+          const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+          
+          // Generate summary with original messages plus system prompt
+          summary = await summarizeConversationWithAI([systemMessage, ...userAndAssistantMessages]);
         }
-      } catch (contextError) {
-        console.error("Error building AI context for conversation summary, will proceed without context:", contextError);
-        // Continue without context
-      }
-      
-      // If we have knowledge context, add it as a system message
-      let messagesToSend = messages;
-      if (knowledgeContext) {
-        const systemMessage: ChatMessage = {
-          role: 'system',
-          content: knowledgeContext
-        };
         
-        // Insert system message at the beginning
-        messagesToSend = [systemMessage, ...messages];
+        // Ensure we got a valid summary back
+        if (!summary || summary.trim().length === 0) {
+          console.warn("Generated summary was empty, using fallback");
+          throw new Error("Empty summary returned from AI");
+        }
+        
+        // Record performance metrics
+        const duration = Date.now() - startTime;
+        console.log(`Generated conversation summary of ${summary.length} chars in ${duration}ms`);
+        
+        return summary;
+      } catch (summaryGenError) {
+        // Handle errors in the actual summary generation
+        const errorMessage = summaryGenError instanceof Error ? summaryGenError.message : 'Unknown error';
+        console.error(`Error in AI conversation summarization: ${errorMessage}`, summaryGenError);
+        throw summaryGenError; // Re-throw to trigger fallback
       }
-      
-      return await summarizeConversationWithAI(messagesToSend);
-    } catch (error) {
-      console.error("AI summarization failed, falling back to local implementation:", error);
-      // Fall back to local implementation
     }
+  } catch (error) {
+    // Handle any unexpected errors in the entire flow
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Critical error in AI conversation summarization: ${errorMessage}`, error);
+    usedProvider = false; // Mark that we need to use the fallback
+  }
+  
+  // If we couldn't use an AI provider or an error occurred, log this fact
+  if (!usedProvider) {
+    console.log("Using fallback method for conversation summarization");
   }
   
   // Local fallback implementation

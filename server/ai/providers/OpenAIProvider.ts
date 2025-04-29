@@ -78,7 +78,8 @@ export class OpenAIProvider implements AIProviderInterface {
       return response.choices[0].message.content || "I couldn't generate a response at this time.";
     } catch (error) {
       console.error("Error calling OpenAI for chat response:", error);
-      throw new Error("Failed to generate chat response with OpenAI");
+      // Return a fallback response instead of throwing an error
+      return "I apologize, but I'm experiencing difficulties processing your request right now. A support representative will assist you shortly.";
     }
   }
   
@@ -153,11 +154,45 @@ export class OpenAIProvider implements AIProviderInterface {
 
       // Parse the JSON response
       const content = response.choices[0].message.content || "{}";
-      const result = JSON.parse(content);
-      return result;
+      
+      try {
+        const result = JSON.parse(content);
+        
+        // Validate the result structure
+        if (!result.category || !result.complexity || !result.assignedTo) {
+          console.warn("OpenAI returned incomplete classification, adding missing fields");
+          // Fix missing fields with sensible defaults
+          result.category = result.category || "other";
+          result.complexity = result.complexity || "medium";
+          result.assignedTo = result.assignedTo || "support";
+          result.canAutoResolve = !!result.canAutoResolve;
+          result.aiNotes = result.aiNotes || "This ticket has been automatically classified";
+        }
+        
+        return result;
+      } catch (jsonError) {
+        console.error("Failed to parse JSON response from OpenAI:", jsonError);
+        console.log("Raw response content:", content);
+        // Return a default classification with a note about the parsing error
+        return {
+          category: "other",
+          complexity: "medium",
+          assignedTo: "support",
+          canAutoResolve: false,
+          aiNotes: "This ticket requires support team attention"
+        };
+      }
     } catch (error) {
       console.error("Error calling OpenAI for ticket classification:", error);
-      throw new Error("Failed to classify ticket with OpenAI");
+      // Return a default classification instead of throwing an error
+      // This ensures the API doesn't fail even if AI classification fails
+      return {
+        category: "other", 
+        complexity: "medium",
+        assignedTo: "support",
+        canAutoResolve: false,
+        aiNotes: "This ticket requires support team attention"
+      };
     }
   }
   
@@ -217,7 +252,11 @@ export class OpenAIProvider implements AIProviderInterface {
       return { resolved, response: cleanResponse };
     } catch (error) {
       console.error("Error calling OpenAI for ticket resolution:", error);
-      throw new Error("Failed to auto-resolve ticket with OpenAI");
+      // Return a fallback response instead of throwing an error
+      return { 
+        resolved: false, 
+        response: "I apologize, but I'm unable to process your request right now. A support representative will assist you shortly." 
+      };
     }
   }
   
@@ -296,12 +335,23 @@ export class OpenAIProvider implements AIProviderInterface {
       
       // Create the prompt for summarization
       let promptContent = `
-      Please summarize the following support conversation in a concise paragraph. 
-      Focus on the main issue, any solutions provided, and the current status (resolved or needs further action).
+      Please provide a detailed and comprehensive summary of this support conversation.
+      
+      Include:
+      - The main issue or request from the user
+      - Key information exchanged during the conversation
+      - Any solutions attempted or provided
+      - Technical details mentioned
+      - Current status (resolved or needs further action)
+      - Next steps or follow-up items
+      
+      Your summary should be thorough while still being well-structured.
+      Use proper paragraphs and organize information logically.
+      Don't omit important details and don't impose any word count restrictions.
       
       ${conversationMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
       
-      Provide a clear, professional summary:
+      Detailed summary:
       `;
       
       // Prepare messages array for the API call
@@ -327,13 +377,15 @@ export class OpenAIProvider implements AIProviderInterface {
         model: this.model,
         messages: apiMessages,
         temperature: 0.3,
-        max_tokens: 250
+        max_tokens: 1000 // Increased to allow for more detailed summaries
       });
 
       return response.choices[0].message.content || "Summary unavailable";
     } catch (error) {
       console.error("Error calling OpenAI for conversation summarization:", error);
-      throw new Error("Failed to summarize conversation with OpenAI");
+      // Create a basic summary instead of throwing an error
+      const userMessages = messages.filter(m => m.role === 'user');
+      return `This conversation includes ${userMessages.length} messages from the user and requires support team review.`;
     }
   }
   

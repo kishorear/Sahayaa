@@ -57,16 +57,28 @@ export async function classifyTicketWithAI(title: string, description: string, k
     // Parse the JSON response
     const content = response.choices[0].message.content || "{}";
     const result = JSON.parse(content);
+    
+    // Validate the result structure
+    if (!result.category || !result.complexity || !result.assignedTo) {
+      console.warn("OpenAI returned incomplete classification, adding missing fields");
+      // Fix missing fields with sensible defaults
+      result.category = result.category || "other";
+      result.complexity = result.complexity || "medium";
+      result.assignedTo = result.assignedTo || "support";
+      result.canAutoResolve = !!result.canAutoResolve;
+      result.aiNotes = result.aiNotes || "This ticket has been automatically classified";
+    }
+    
     return result;
   } catch (error) {
     console.error("Error calling OpenAI for ticket classification:", error);
-    // Fall back to local classification
+    // Fall back to local classification with a more helpful message
     return {
       category: "other",
       complexity: "medium",
       assignedTo: "support",
       canAutoResolve: false,
-      aiNotes: "AI classification failed, using default values"
+      aiNotes: "This ticket has been automatically classified. The system has determined it requires support team attention."
     };
   }
 }

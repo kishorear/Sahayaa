@@ -124,7 +124,14 @@ export class AnthropicProvider implements AIProviderInterface {
       return JSON.parse(jsonString);
     } catch (error) {
       console.error("Error calling Anthropic for ticket classification:", error);
-      throw new Error("Failed to classify ticket with Anthropic");
+      // Return a default classification instead of throwing an error
+      return {
+        category: "other",
+        complexity: "medium",
+        assignedTo: "support",
+        canAutoResolve: false,
+        aiNotes: "This ticket requires support team attention"
+      };
     }
   }
   
@@ -186,7 +193,11 @@ export class AnthropicProvider implements AIProviderInterface {
       return { resolved, response: cleanResponse };
     } catch (error) {
       console.error("Error calling Anthropic for ticket resolution:", error);
-      throw new Error("Failed to auto-resolve ticket with Anthropic");
+      // Return a fallback response instead of throwing an error
+      return { 
+        resolved: false, 
+        response: "I apologize, but I'm unable to process your request right now. A support representative will assist you shortly." 
+      };
     }
   }
   

@@ -280,18 +280,50 @@ export async function generateChatResponse(
         Provide helpful, concise responses based on this context. If you can fully resolve the issue, indicate this clearly in your response.
         If you need more information or the issue requires human intervention, make that clear as well.`;
       
-      // Use Model Context Protocol to enhance the system prompt with relevant document context
-      const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
-        userMessage,
-        baseSystemPrompt,
-        ticketContext.tenantId
-      );
+      let enhancedPrompt = baseSystemPrompt;
+      let documents = '';
       
-      // Log context information for debugging
-      if (documents && documents.trim().length > 0) {
-        console.log(`Using document context (MCP) for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+      // First try Model Context Protocol
+      try {
+        const mcpResult = await enhanceModelContextWithDocuments(
+          userMessage,
+          baseSystemPrompt,
+          ticketContext.tenantId
+        );
         
-        // If we have document context from MCP, create a modified message history with the enhanced prompt
+        enhancedPrompt = mcpResult.enhancedPrompt;
+        documents = mcpResult.documents;
+        
+        // Log context information for debugging
+        if (documents && documents.trim().length > 0) {
+          console.log(`Using document context (MCP) for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+        } else {
+          console.log(`No document context found (MCP) for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+        }
+      } catch (mcpError) {
+        console.error("Error getting MCP context for chat response, will try alternative sources:", mcpError);
+      }
+      
+      // If MCP didn't provide context, fall back to legacy data source context
+      let knowledgeContext = '';
+      if (!documents || documents.trim().length === 0) {
+        try {
+          // Fall back to older buildAIContext method if no documents found (for backward compatibility)
+          knowledgeContext = await buildAIContext(userMessage, ticketContext.tenantId);
+          
+          // Log if the data source context was found
+          if (knowledgeContext) {
+            console.log(`Using data source context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+          } else {
+            console.log(`No relevant context found from any source for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
+          }
+        } catch (contextError) {
+          console.error("Error getting data source context for chat response, will proceed without context:", contextError);
+        }
+      }
+      
+      // Create a modified message history with the enhanced prompt if we have document context
+      if (documents && documents.trim().length > 0) {
         const systemMessage: ChatMessage = {
           role: 'system',
           content: enhancedPrompt
@@ -303,23 +335,15 @@ export async function generateChatResponse(
         
         // Pass the document context as knowledge context parameter
         return await generateChatResponseWithAI(ticketContext, enhancedMessageHistory, userMessage, documents);
-      } else {
-        console.log(`No document context found (MCP). Trying data source context for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
-        
-        // Fall back to older buildAIContext method if no documents found (for backward compatibility)
-        const knowledgeContext = await buildAIContext(userMessage, ticketContext.tenantId);
-        
-        // Log if the data source context was found
-        if (knowledgeContext) {
-          console.log(`Using data source context for chat response. Ticket ID: ${ticketContext.id}, User message: "${userMessage.substring(0, 30)}${userMessage.length > 30 ? '...' : ''}"${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
-        } else {
-          console.log(`No relevant context found from any source for chat response. Ticket ID: ${ticketContext.id}${ticketContext.tenantId ? ` (tenant: ${ticketContext.tenantId})` : ''}`);
-        }
-        
+      } else if (knowledgeContext) {
+        // If no MCP documents but we have knowledge context, use that
         return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
+      } else {
+        // If no context from any source, proceed with basic conversation
+        return await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, '');
       }
     } catch (error) {
-      console.error("OpenAI chat response failed, falling back to local:", error);
+      console.error("AI chat response failed, falling back to local implementation:", error);
       // Fall back to local implementation
     }
   }
@@ -447,11 +471,21 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
       `;
       
       // First try using the Model Context Protocol
-      const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
-        allText,
-        baseSystemPrompt,
-        tenantId
-      );
+      let enhancedPrompt = baseSystemPrompt;
+      let documents = '';
+      
+      try {
+        const mcpResult = await enhanceModelContextWithDocuments(
+          allText,
+          baseSystemPrompt,
+          tenantId
+        );
+        enhancedPrompt = mcpResult.enhancedPrompt;
+        documents = mcpResult.documents;
+      } catch (mcpError) {
+        console.error("Error getting MCP context for ticket title generation, will try alternative sources:", mcpError);
+        // Continue without MCP context
+      }
       
       // If we found relevant documents using MCP
       if (documents && documents.trim().length > 0) {
@@ -513,7 +547,7 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
         console.warn(`AI returned generic title "${aiTitle}", falling back to local title generation`);
       }
     } catch (error) {
-      console.error("AI title generation failed, falling back to local:", error);
+      console.error("AI title generation failed, falling back to local implementation:", error);
       // Continue to fallback implementation below
     }
   } else {
@@ -613,11 +647,21 @@ export async function summarizeConversation(messages: ChatMessage[], tenantId?: 
       `;
       
       // First try using the Model Context Protocol
-      const { enhancedPrompt, documents } = await enhanceModelContextWithDocuments(
-        conversationText,
-        baseSystemPrompt,
-        tenantId
-      );
+      let enhancedPrompt = baseSystemPrompt;
+      let documents = '';
+      
+      try {
+        const mcpResult = await enhanceModelContextWithDocuments(
+          conversationText,
+          baseSystemPrompt,
+          tenantId
+        );
+        enhancedPrompt = mcpResult.enhancedPrompt;
+        documents = mcpResult.documents;
+      } catch (mcpError) {
+        console.error("Error getting MCP context for conversation summary, will try alternative sources:", mcpError);
+        // Continue without MCP context
+      }
       
       // If we found relevant documents using MCP
       if (documents && documents.trim().length > 0) {
@@ -640,13 +684,20 @@ export async function summarizeConversation(messages: ChatMessage[], tenantId?: 
       }
       
       // Fall back to the data source context method if MCP didn't work
-      const knowledgeContext = await buildAIContext(conversationText, tenantId);
+      let knowledgeContext = '';
       
-      // Log if knowledge context was found
-      if (knowledgeContext) {
-        console.log(`Using data source context for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
-      } else {
-        console.log(`No relevant context found from any source for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+      try {
+        knowledgeContext = await buildAIContext(conversationText, tenantId);
+        
+        // Log if knowledge context was found
+        if (knowledgeContext) {
+          console.log(`Using data source context for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        } else {
+          console.log(`No relevant context found from any source for conversation summary. Message count: ${messages.length}${tenantId ? ` (tenant: ${tenantId})` : ''}`);
+        }
+      } catch (contextError) {
+        console.error("Error building AI context for conversation summary, will proceed without context:", contextError);
+        // Continue without context
       }
       
       // If we have knowledge context, add it as a system message
@@ -663,7 +714,7 @@ export async function summarizeConversation(messages: ChatMessage[], tenantId?: 
       
       return await summarizeConversationWithAI(messagesToSend);
     } catch (error) {
-      console.error("OpenAI summarization failed, falling back to local:", error);
+      console.error("AI summarization failed, falling back to local implementation:", error);
       // Fall back to local implementation
     }
   }

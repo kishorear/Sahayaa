@@ -32,6 +32,12 @@ export default function TicketDetails() {
     queryKey: [`/api/tickets/${ticketId}`],
   });
 
+  // Fetch all tickets for the same tenant to calculate tenant-specific ticket number
+  const { data: allTenantTickets } = useQuery<Ticket[]>({
+    queryKey: ["/api/tickets"],
+    enabled: !!ticket?.tenantId, // Only fetch if we have the ticket
+  });
+
   // Fetch creator user information if createdBy is available
   const { data: creator } = useQuery<UserSchema>({
     queryKey: [`/api/users/${ticket?.createdBy}`],
@@ -96,6 +102,30 @@ export default function TicketDetails() {
     createMessageMutation.mutate(newMessage);
   };
 
+  // Function to get tenant-specific ticket number
+  const calculateTenantTicketNumber = (ticket: Ticket, allTickets?: Ticket[]) => {
+    if (!allTickets || !ticket) return ticket.id;
+    
+    // Filter tickets from the same tenant
+    const tenantTickets = allTickets.filter(t => t.tenantId === ticket.tenantId);
+    
+    // Sort them by creation date (oldest first)
+    const sortedTenantTickets = [...tenantTickets].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      
+      // If dates are the same, use ID as secondary sort
+      if (dateA === dateB) {
+        return a.id - b.id;
+      }
+      return dateA - dateB;
+    });
+    
+    // Find position of this ticket in the sorted array
+    const index = sortedTenantTickets.findIndex(t => t.id === ticket.id);
+    return index + 1;
+  };
+
   if (ticketLoading) {
     return <TicketDetailsSkeleton />;
   }
@@ -117,7 +147,7 @@ export default function TicketDetails() {
           <CardHeader className="px-6 py-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <CardTitle className="text-lg font-medium text-gray-900">
-                Ticket #{ticket.id}: {ticket.title}
+                Ticket #{calculateTenantTicketNumber(ticket, allTenantTickets)}: {ticket.title}
               </CardTitle>
               <StatusBadge status={ticket.status} />
             </div>

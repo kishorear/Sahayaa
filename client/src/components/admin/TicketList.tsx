@@ -27,6 +27,7 @@ export default function TicketList() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Filtered tickets based on search and filters
   const filteredTickets = tickets?.filter((ticket) => {
     // Search filter - only apply search if searchQuery has content
     const matchesSearch = 
@@ -42,6 +43,30 @@ export default function TicketList() {
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  // Function to get tenant-specific ticket number
+  const getTenantTicketNumber = (ticket: Ticket) => {
+    if (!tickets) return '?';
+    
+    // Get all tickets from the same tenant
+    const tenantTickets = tickets.filter(t => t.tenantId === ticket.tenantId);
+    
+    // Sort them by creation date (oldest first)
+    const sortedTenantTickets = [...tenantTickets].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      
+      // If dates are the same, use ID as secondary sort
+      if (dateA === dateB) {
+        return a.id - b.id;
+      }
+      return dateA - dateB;
+    });
+    
+    // Find position of this ticket in the sorted array
+    const index = sortedTenantTickets.findIndex(t => t.id === ticket.id);
+    return index + 1;
+  };
 
   return (
     <div>
@@ -129,7 +154,7 @@ export default function TicketList() {
                 ) : (
                   filteredTickets.map((ticket) => (
                     <TableRow key={ticket.id}>
-                      <TableCell className="font-medium">#{ticket.id}</TableCell>
+                      <TableCell className="font-medium">#{getTenantTicketNumber(ticket)}</TableCell>
                       <TableCell>{ticket.title}</TableCell>
                       <TableCell>
                         <StatusBadge status={ticket.status} />

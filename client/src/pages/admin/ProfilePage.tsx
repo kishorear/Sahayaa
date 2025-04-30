@@ -498,10 +498,17 @@ export default function ProfilePage() {
                           <FormItem>
                             <FormLabel>Company</FormLabel>
                             <FormControl>
-                              <Input placeholder="Your company or organization" {...field} />
+                              <Input 
+                                placeholder="Your company or organization" 
+                                {...field} 
+                                disabled={user?.role !== 'creator'} 
+                                className={user?.role !== 'creator' ? 'cursor-not-allowed opacity-70' : ''}
+                              />
                             </FormControl>
                             <FormDescription>
-                              The company or organization you represent.
+                              {user?.role === 'creator' 
+                                ? "The company or organization you represent." 
+                                : "Company name can only be modified by users with creator role."}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

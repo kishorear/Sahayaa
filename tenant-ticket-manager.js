@@ -170,23 +170,49 @@ async function createSampleTickets(tenantId, count = 5) {
     // Get current date
     const now = new Date();
     
+    // Sample data for randomization
+    const categories = ['technical_issue', 'billing', 'feature_request', 'account', 'documentation', 'authentication'];
+    const statuses = ['new', 'in_progress', 'resolved', 'closed'];
+    const complexities = ['simple', 'medium', 'complex'];
+    
     // Create sample tickets
     for (let i = 1; i <= count; i++) {
+      // Random selections
+      const category = categories[Math.floor(Math.random() * categories.length)];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const complexity = complexities[Math.floor(Math.random() * complexities.length)];
+      
       const newTicket = {
         tenantId: tenantId,
-        title: `Sample Ticket ${i} for Tenant ${tenantId}`,
-        description: `This is a test ticket created by the tenant ticket manager script (${i} of ${count})`,
-        status: 'open',
-        priority: 'medium',
-        category: 'technical_issue',
-        createdBy: 'system',
+        title: `Sample Ticket ${i} - ${category} (Tenant ${tenantId})`,
+        description: `This is a test ticket #${i} with ${category} category created for tenant ${tenantId}.`,
+        status: status,
+        complexity: complexity,
+        category: category,
+        createdBy: 1, // Admin user ID
         assignedTo: 'support',
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
+        aiResolved: Math.random() > 0.7 // 30% chance of being AI resolved
       };
       
+      // Add resolved timestamp for closed or resolved tickets
+      if (status === 'resolved' || status === 'closed') {
+        newTicket.resolvedAt = now;
+      }
+      
       const result = await db.insert(tickets).values(newTicket).returning();
-      console.log(`Created ticket ID ${result[0].id} for tenant ${tenantId}`);
+      
+      // Add AI notes for AI-resolved tickets
+      if (newTicket.aiResolved) {
+        await db.update(tickets)
+          .set({ 
+            aiNotes: `AI automatically resolved this ${category} issue by providing documentation and guidance.`
+          })
+          .where(eq(tickets.id, result[0].id));
+      }
+      
+      console.log(`Created ticket ID ${result[0].id} for tenant ${tenantId} (${category}, ${status}, ${complexity})`);
     }
     
     console.log(`Successfully created ${count} sample tickets for tenant ID ${tenantId}`);

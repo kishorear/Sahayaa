@@ -1,41 +1,16 @@
+// CommonJS version for better compatibility
 require('dotenv').config();
-const { Pool } = require('pg');
-const { eq, sql } = require('drizzle-orm');
-const { drizzle } = require('drizzle-orm/node-postgres');
-
-// Create a connection to the database
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// Create a Drizzle instance
-const db = drizzle(pool);
-
-// Define the ticket and message tables from schema
-const tickets = {
-  id: { name: 'id' },
-  tenantId: { name: 'tenant_id' },
-  title: { name: 'title' },
-  status: { name: 'status' },
-  category: { name: 'category' },
-  createdAt: { name: 'created_at' },
-  updatedAt: { name: 'updated_at' }
-};
-
-const messages = {
-  id: { name: 'id' },
-  ticketId: { name: 'ticket_id' }
-};
+const { db } = require('./server/db.ts');
+const { tickets, messages } = require('./shared/schema.ts');
+const { sql, eq } = require('drizzle-orm');
 
 /**
  * Reset Tenant Tickets
  * 
- * This script provides functionality to:
- * 1. View ticket counts by tenant
- * 2. Reset ticket sequence counters
- * 3. Delete all tickets for a specific tenant (with confirmation)
- * 4. Create sample tickets for testing
+ * This script resets tickets for a specific tenant:
+ * 1. Deletes all tickets for the specified tenant
+ * 2. Creates new sample tickets (optional)
+ * 3. Resets the ticket sequence if needed
  */
 
 // Parse command-line arguments
@@ -56,7 +31,7 @@ if (!tenantId && action !== 'help') {
  */
 function printHelp() {
   console.log(`
-Usage: node reset-tenant-tickets.cjs <tenantId> <action> [count]
+Usage: node reset-tenant-tickets.js <tenantId> <action> [count]
 
 Arguments:
   tenantId    Required. The ID of the tenant to manage tickets for
@@ -69,10 +44,10 @@ Arguments:
   count       Optional. Number of tickets to create (default: 5)
 
 Examples:
-  node reset-tenant-tickets.cjs 2 reset 10     # Reset tenant 2 tickets, create 10 new ones
-  node reset-tenant-tickets.cjs 1 delete       # Delete all tickets for tenant 1
-  node reset-tenant-tickets.cjs 3 create 20    # Create 20 sample tickets for tenant 3
-  node reset-tenant-tickets.cjs 2 count        # Show ticket count for tenant 2
+  node reset-tenant-tickets.js 2 reset 10     # Reset tenant 2 tickets, create 10 new ones
+  node reset-tenant-tickets.js 1 delete       # Delete all tickets for tenant 1
+  node reset-tenant-tickets.js 3 create 20    # Create 20 sample tickets for tenant 3
+  node reset-tenant-tickets.js 2 count        # Show ticket count for tenant 2
 `);
 }
 
@@ -84,8 +59,8 @@ async function getTicketCount(tenantId) {
     const result = await db.select({
       count: sql`COUNT(*)`.as('count')
     })
-    .from('tickets')
-    .where(eq(sql`tenant_id`, tenantId));
+    .from(tickets)
+    .where(eq(tickets.tenantId, tenantId));
     
     return result[0]?.count || 0;
   } catch (error) {
@@ -108,24 +83,22 @@ async function deleteTickets(tenantId) {
     
     // Get all ticket IDs for this tenant (for message deletion)
     const ticketIds = await db.select({
-      id: sql\`id\`
+      id: tickets.id
     })
-    .from('tickets')
-    .where(eq(sql\`tenant_id\`, tenantId));
+    .from(tickets)
+    .where(eq(tickets.tenantId, tenantId));
     
     // Delete associated messages first
     if (ticketIds.length > 0) {
       const ticketIdArray = ticketIds.map(t => t.id);
-      await db.execute(
-        sql\`DELETE FROM messages WHERE ticket_id IN (${ticketIdArray.join(', ')})\`
-      );
+      const deletedMessages = await db.delete(messages)
+        .where(sql`${messages.ticketId} IN (${ticketIdArray.join(', ')})`);
       console.log(`Deleted messages for ${ticketIdArray.length} tickets.`);
     }
     
     // Delete the tickets
-    await db.execute(
-      sql\`DELETE FROM tickets WHERE tenant_id = ${tenantId}\`
-    );
+    const deletedTickets = await db.delete(tickets)
+      .where(eq(tickets.tenantId, tenantId));
     
     console.log(`Successfully deleted ${ticketCount} tickets for tenant ${tenantId}.`);
     return ticketCount;
@@ -140,35 +113,37 @@ async function deleteTickets(tenantId) {
  */
 async function createSampleTickets(tenantId, count) {
   try {
-    const now = new Date().toISOString();
-    const categories = ['technical_issue', 'billing', 'feature_request', 'account', 'documentation'];
-    const statuses = ['open', 'in_progress', 'resolved', 'closed'];
-    const priorities = ['low', 'medium', 'high', 'critical'];
+    const now = new Date();
+    const categories = ['technical_issue', 'billing', 'feature_request', 'account', 'documentation', 'authentication'];
+    const statuses = ['new', 'in_progress', 'resolved', 'closed'];
+    const complexities = ['simple', 'medium', 'complex'];
     
     for (let i = 1; i <= count; i++) {
-      // Randomly select category, status, and priority
+      // Randomly select category, status, and complexity
       const category = categories[Math.floor(Math.random() * categories.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const priority = priorities[Math.floor(Math.random() * priorities.length)];
+      const complexity = complexities[Math.floor(Math.random() * complexities.length)];
       
-      // Insert a new ticket
-      await db.execute(
-        sql\`INSERT INTO tickets 
-            (tenant_id, title, description, status, priority, category, created_by, assigned_to, created_at, updated_at)
-            VALUES 
-            (${tenantId}, 
-             'Sample Ticket ${i} - ${category} (Tenant ${tenantId})', 
-             'This is a test ticket #${i} with ${category} category created for tenant ${tenantId}.', 
-             '${status}', 
-             '${priority}', 
-             '${category}', 
-             'system', 
-             'support', 
-             '${now}', 
-             '${now}')\`
-      );
+      const newTicket = {
+        tenantId: tenantId,
+        title: `Sample Ticket ${i} - ${category} (Tenant ${tenantId})`,
+        description: `This is a test ticket #${i} with ${category} category created for tenant ${tenantId}.`,
+        status: status,
+        complexity: complexity,
+        category: category,
+        createdBy: 1, // Admin user ID
+        assignedTo: 'support',
+        aiResolved: Math.random() > 0.7, // 30% chance of being AI resolved
+        createdAt: now,
+        updatedAt: now
+      };
       
-      console.log(`Created ticket for tenant ${tenantId} (${category}, ${status})`);
+      if (status === 'resolved' || status === 'closed') {
+        newTicket.resolvedAt = now;
+      }
+      
+      const result = await db.insert(tickets).values(newTicket).returning();
+      console.log(`Created ticket ID ${result[0].id} (${category}, ${status}) for tenant ${tenantId}`);
     }
     
     console.log(`Successfully created ${count} sample tickets for tenant ${tenantId}.`);
@@ -186,9 +161,9 @@ async function resetTicketSequence() {
   try {
     // Get the current max ticket ID
     const result = await db.select({
-      maxId: sql\`MAX(id)\`.as('maxId')
+      maxId: sql`MAX(${tickets.id})`.as('maxId')
     })
-    .from('tickets');
+    .from(tickets);
     
     const maxId = result[0]?.maxId || 0;
     
@@ -196,7 +171,7 @@ async function resetTicketSequence() {
       // Reset the sequence
       const sequenceName = 'tickets_id_seq';
       await db.execute(
-        sql\`SELECT setval('${sequenceName}', ${maxId}, true)\`
+        sql`SELECT setval('${sql.raw(sequenceName)}', ${maxId}, true)`
       );
       
       console.log(`Ticket sequence reset to ${maxId + 1}.`);
@@ -240,12 +215,12 @@ async function resetTicketSequence() {
         
         // Show summary by category
         const categoryCount = await db.select({
-          category: sql\`category\`,
-          count: sql\`COUNT(*)\`.as('count')
+          category: tickets.category,
+          count: sql`COUNT(*)`.as('count')
         })
-        .from('tickets')
-        .where(eq(sql\`tenant_id\`, tenantId))
-        .groupBy(sql\`category\`);
+        .from(tickets)
+        .where(eq(tickets.tenantId, tenantId))
+        .groupBy(tickets.category);
         
         console.log('Tickets by category:');
         console.table(categoryCount);
@@ -257,16 +232,9 @@ async function resetTicketSequence() {
         break;
     }
     
-    // Close the database connection
-    await pool.end();
-    
     process.exit(0);
   } catch (error) {
     console.error('Script failed:', error);
-    
-    // Close the database connection
-    await pool.end();
-    
     process.exit(1);
   }
 })();

@@ -1,7 +1,8 @@
-import 'dotenv/config';
-import { db } from './server/db.ts';
-import { tickets, messages } from './shared/schema.ts';
-import { sql, eq } from 'drizzle-orm';
+// CommonJS version for better compatibility
+require('dotenv').config();
+const { db } = require('./server/db');
+const { tickets, messages } = require('./shared/schema');
+const { sql, eq } = require('drizzle-orm');
 
 /**
  * Reset Tenant Tickets

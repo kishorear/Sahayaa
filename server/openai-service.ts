@@ -14,6 +14,48 @@ export type OpenAIMessage = {
 };
 
 /**
+ * Helper function to identify component from text for title generation
+ * This function is used across multiple places to ensure consistent title formatting
+ */
+function identifyComponent(text: string): string {
+  const lowerText = text.toLowerCase();
+  
+  if (/login|password|auth|sign[- ]in|account access/i.test(lowerText)) {
+    return "Authentication";
+  } 
+  if (/payment|billing|charge|invoice|subscription|credit card/i.test(lowerText)) {
+    return "Billing";
+  }
+  if (/data|database|record|entry|lost|missing/i.test(lowerText)) {
+    return "Database";
+  }
+  if (/ui|interface|button|screen|display|page|website/i.test(lowerText)) {
+    return "User Interface";
+  }
+  if (/api|request|endpoint|integration|service/i.test(lowerText)) {
+    return "API";
+  }
+  if (/error|bug|crash|fail|broken|not working/i.test(lowerText)) {
+    return "System Error";
+  }
+  if (/slow|performance|timeout|delay/i.test(lowerText)) {
+    return "Performance";
+  }
+  if (/install|setup|configure|deployment/i.test(lowerText)) {
+    return "Installation";
+  }
+  if (/report|analytics|stats|numbers|metric/i.test(lowerText)) {
+    return "Reporting";
+  }
+  if (/admin|permission|access|role|privilege/i.test(lowerText)) {
+    return "Administration";
+  }
+  
+  // Default component if no match
+  return "Support";
+}
+
+/**
  * Classifies a support ticket using OpenAI
  */
 export async function classifyTicketWithAI(title: string, description: string, knowledgeContext: string = '') {
@@ -524,44 +566,7 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
       return 'Technical Support Request'; // Ultimate fallback title
     }
     
-    // Helper function to identify components from text
-    function identifyComponent(text: string): string {
-      const lowerText = text.toLowerCase();
-      
-      if (/login|password|auth|sign[- ]in|account access/i.test(lowerText)) {
-        return "Authentication";
-      } 
-      if (/payment|billing|charge|invoice|subscription|credit card/i.test(lowerText)) {
-        return "Billing";
-      }
-      if (/data|database|record|entry|lost|missing/i.test(lowerText)) {
-        return "Database";
-      }
-      if (/ui|interface|button|screen|display|page|website/i.test(lowerText)) {
-        return "User Interface";
-      }
-      if (/api|request|endpoint|integration|service/i.test(lowerText)) {
-        return "API";
-      }
-      if (/error|bug|crash|fail|broken|not working/i.test(lowerText)) {
-        return "System Error";
-      }
-      if (/slow|performance|timeout|delay/i.test(lowerText)) {
-        return "Performance";
-      }
-      if (/install|setup|configure|deployment/i.test(lowerText)) {
-        return "Installation";
-      }
-      if (/report|analytics|stats|numbers|metric/i.test(lowerText)) {
-        return "Reporting";
-      }
-      if (/admin|permission|access|role|privilege/i.test(lowerText)) {
-        return "Administration";
-      }
-      
-      // Default component if no match
-      return "Support";
-    }
+    // Reference the helper function defined outside this function
   }
 }
 

@@ -735,6 +735,45 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
   // Enhanced local fallback implementation for more descriptive titles in production
   console.log("Using enhanced local fallback mechanism for title generation");
   
+  // Helper function to identify components from text
+  function identifyComponent(text: string): string {
+    const lowerText = text.toLowerCase();
+    
+    if (/login|password|auth|sign[- ]in|account access/i.test(lowerText)) {
+      return "Authentication";
+    } 
+    if (/payment|billing|charge|invoice|subscription|credit card/i.test(lowerText)) {
+      return "Billing";
+    }
+    if (/data|database|record|entry|lost|missing/i.test(lowerText)) {
+      return "Database";
+    }
+    if (/ui|interface|button|screen|display|page|website/i.test(lowerText)) {
+      return "User Interface";
+    }
+    if (/api|request|endpoint|integration|service/i.test(lowerText)) {
+      return "API";
+    }
+    if (/error|bug|crash|fail|broken|not working/i.test(lowerText)) {
+      return "System Error";
+    }
+    if (/slow|performance|timeout|delay/i.test(lowerText)) {
+      return "Performance";
+    }
+    if (/install|setup|configure|deployment/i.test(lowerText)) {
+      return "Installation";
+    }
+    if (/report|analytics|stats|numbers|metric/i.test(lowerText)) {
+      return "Reporting";
+    }
+    if (/admin|permission|access|role|privilege/i.test(lowerText)) {
+      return "Administration";
+    }
+    
+    // Default component if no match
+    return "Support";
+  }
+  
   // We've already filtered user messages above, so we can reuse that
   // No need to filter again for userMessages
   
@@ -746,62 +785,86 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
   // Look for error codes or specific patterns in any user message
   const errorCodeMatch = allUserText.match(/(\b[45]\d{2}\b|error code:?\s*([a-z0-9_-]+))/i);
   if (errorCodeMatch) {
-    return `${errorCodeMatch[0]} Error Issue`;
+    return `System Error: ${errorCodeMatch[0]} Issue`;
   }
   
   // Check for common issue types across all messages
   if (/password|login|sign[- ]in|account access|authentication/i.test(allUserText)) {
-    return "Account Access Issue";
+    return "Authentication: Account Access Issue";
   }
   
   if (/payment|billing|charge|invoice|subscription|credit card/i.test(allUserText)) {
-    return "Billing or Payment Issue";
+    return "Billing: Payment Processing Issue";
   }
   
   if (/install|setup|configuration|getting started/i.test(allUserText)) {
-    return "Installation/Setup Help";
+    return "Installation: Setup Assistance";
   }
   
   if (/bug|error|crash|not working|fails?|failed|broken/i.test(allUserText)) {
     // Try to extract what specifically is broken
     const brokenMatch = allUserText.match(/(\w+(?:\s+\w+){0,4})\s+(?:is|are|not working|broken|fails)/i);
     if (brokenMatch) {
-      return `${brokenMatch[1]} Issue`;
+      return `Technical Issue: ${brokenMatch[1]} Problem`;
     }
-    return "Technical Error";
+    return "System Error: Technical Malfunction";
   }
   
   if (/feature request|enhancement|suggestion|would be nice/i.test(allUserText)) {
-    return "Feature Request";
+    return "Feature Request: New Functionality";
   }
   
   if (/how (?:do|can|to)|where is|what is/i.test(allUserText)) {
-    return "How-To Question";
+    return "Documentation: Usage Instructions";
   }
   
-  // Try to extract an issue statement from the first or last user message
-  // First try the first sentence of the last message (often most relevant)
-  const lastFirstSentence = lastMessage.split(/[.!?]/)[0].trim();
-  if (lastFirstSentence && lastFirstSentence.length > 10 && lastFirstSentence.length < 60) {
-    return lastFirstSentence;
+  // Try to extract a meaningful title from the first message
+  if (firstMessage.length > 5 && firstMessage.length < 60) {
+    // Process the first message into a title format
+    const firstSentence = firstMessage.split(/[.!?]/)[0].trim();
+    if (firstSentence && firstSentence.length > 8) {
+      const wordLimit = 8;
+      const component = identifyComponent(firstSentence);
+      const words = firstSentence.split(/\s+/).slice(0, wordLimit);
+      
+      const processedTitle = words
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+        
+      return `${component}: ${processedTitle}`;
+    }
   }
   
-  // Then try the first sentence of the first message if last message wasn't suitable
-  const firstSentence = firstMessage.split(/[.!?]/)[0].trim();
-  if (firstSentence && firstSentence.length > 10 && firstSentence.length < 60) {
-    return firstSentence;
+  // Try the last message if first message wasn't suitable
+  if (lastMessage.length > 5 && lastMessage.length < 60) {
+    const lastSentence = lastMessage.split(/[.!?]/)[0].trim();
+    if (lastSentence && lastSentence.length > 8) {
+      const wordLimit = 8;
+      const component = identifyComponent(lastSentence);
+      const words = lastSentence.split(/\s+/).slice(0, wordLimit);
+      
+      const processedTitle = words
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+        
+      return `${component}: ${processedTitle}`;
+    }
   }
   
-  // If both failed, try to create a composite title using both first and last message
-  if (firstMessage.length < 30 && lastMessage.length < 30 && firstMessage !== lastMessage) {
-    return `${firstMessage.substring(0, 25)} – ${lastMessage.substring(0, 25)}`;
+  // Create a composite title using both messages if they're different
+  if (firstMessage !== lastMessage && 
+      firstMessage.length < 30 && 
+      lastMessage.length < 30) {
+    const component = identifyComponent(firstMessage + " " + lastMessage);
+    return `${component}: ${firstMessage.substring(0, 20).trim()} - ${lastMessage.substring(0, 20).trim()}`;
   }
   
-  // Just truncate the most valuable message if still nothing
+  // Final fallback for when all else fails
   const mostValuableMessage = lastMessage.length > firstMessage.length ? lastMessage : firstMessage;
-  return mostValuableMessage.length > 50 
-    ? mostValuableMessage.substring(0, 47) + '...'
-    : mostValuableMessage;
+  const component = identifyComponent(mostValuableMessage);
+  return `${component}: ${mostValuableMessage.length > 40 
+    ? mostValuableMessage.substring(0, 37) + '...'
+    : mostValuableMessage}`;
 }
 
 export async function summarizeConversation(messages: ChatMessage[], tenantId?: number): Promise<string> {

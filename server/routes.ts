@@ -1074,9 +1074,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNaN(tenantId)) {
           tenantId = undefined;
         }
-      } else if (!isCreator) {
+      } else if (!isCreator && req.user) {
         // Non-creator roles are always limited to their tenant
-        tenantId = req.user?.tenantId;
+        tenantId = req.user.tenantId;
+        console.log(`Categories metrics: Filtering by tenant ID: ${tenantId} for user role: ${req.user.role}`);
+      }
+      
+      // Safety check - if tenantId is still undefined but user is not a creator, use their tenant ID
+      if (tenantId === undefined && !isCreator && req.user) {
+        tenantId = req.user.tenantId;
+        console.log(`Categories metrics: Fallback tenant filtering applied: ${tenantId}`);
       }
       
       // Get tickets with proper tenant filtering
@@ -1125,9 +1132,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNaN(tenantId)) {
           tenantId = undefined;
         }
-      } else if (!isCreator) {
+      } else if (!isCreator && req.user) {
         // Non-creator roles are always limited to their tenant
-        tenantId = req.user?.tenantId;
+        tenantId = req.user.tenantId;
+        console.log(`Recent metrics: Filtering by tenant ID: ${tenantId} for user role: ${req.user.role}`);
+      }
+      
+      // Safety check - if tenantId is still undefined but user is not a creator, use their tenant ID
+      if (tenantId === undefined && !isCreator && req.user) {
+        tenantId = req.user.tenantId;
+        console.log(`Recent metrics: Fallback tenant filtering applied: ${tenantId}`);
       }
       
       // Get tickets with proper tenant filtering
@@ -1161,9 +1175,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNaN(tenantId)) {
           tenantId = undefined;
         }
-      } else if (!isCreator) {
+      } else if (!isCreator && req.user) {
         // Non-creator roles are always limited to their tenant
-        tenantId = req.user?.tenantId;
+        tenantId = req.user.tenantId;
+        console.log(`Response time metrics: Filtering by tenant ID: ${tenantId} for user role: ${req.user.role}`);
+      }
+      
+      // Safety check - if tenantId is still undefined but user is not a creator, use their tenant ID
+      if (tenantId === undefined && !isCreator && req.user) {
+        tenantId = req.user.tenantId;
+        console.log(`Response time metrics: Fallback tenant filtering applied: ${tenantId}`);
       }
       
       // Get tickets with proper tenant filtering
@@ -1234,9 +1255,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNaN(tenantId)) {
           tenantId = undefined;
         }
-      } else if (!isCreator) {
+      } else if (!isCreator && req.user) {
         // Non-creator roles are always limited to their tenant
-        tenantId = req.user?.tenantId;
+        tenantId = req.user.tenantId;
+        console.log(`Ticket volume metrics: Filtering by tenant ID: ${tenantId} for user role: ${req.user.role}`);
+      }
+      
+      // Safety check - if tenantId is still undefined but user is not a creator, use their tenant ID
+      if (tenantId === undefined && !isCreator && req.user) {
+        tenantId = req.user.tenantId;
+        console.log(`Ticket volume metrics: Fallback tenant filtering applied: ${tenantId}`);
       }
       
       // Get tickets with proper tenant filtering

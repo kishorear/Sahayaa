@@ -176,6 +176,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="hidden md:flex mr-4 items-center">
                   <div className="text-right">
                     <p className="text-sm font-medium">{user.name || user.username}</p>
+                    {user.company && (
+                      <p className="text-xs text-gray-500">{user.company}</p>
+                    )}
                     <p className="text-xs text-gray-500 capitalize">{user.role} {user.teamId ? `• Team ${user.teamId}` : ''}</p>
                   </div>
                 </div>
@@ -248,6 +251,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium text-white">{user.name || user.username}</p>
+                      {user.company && (
+                        <p className="text-xs text-gray-400">{user.company}</p>
+                      )}
                       <p className="text-xs text-gray-400 capitalize">{user.role} {user.teamId ? `• Team ${user.teamId}` : ''}</p>
                     </div>
                   </div>

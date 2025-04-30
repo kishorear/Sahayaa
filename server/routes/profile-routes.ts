@@ -101,6 +101,13 @@ export function registerProfileRoutes(app: Express, requireAuth: any) {
       
       const updates = result.data;
       
+      // If company name is being updated, check if user has creator role
+      if (updates.company !== undefined && req.user.role !== 'creator') {
+        return res.status(403).json({ 
+          message: "Only users with creator role can modify the company name"
+        });
+      }
+      
       // Update the user
       const updatedUser = await storage.updateUser(req.user.id, {
         ...updates,

@@ -453,7 +453,7 @@ export async function generateChatResponse(
       }
       
       // Prepare to call the AI with the best available context
-      let responseFromAI: string;
+      let responseFromAI: string = "";
       
       // Try generating chat response with AI up to 3 times with increasing backoff
       const maxRetries = 3;

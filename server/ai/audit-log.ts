@@ -7,7 +7,7 @@ import { aiProviderAudit } from '../../shared/schema';
 export interface AiProviderAccessLogEntry {
   userId: number;
   tenantId: number;
-  teamId?: number;
+  teamId?: number | null;
   action: 'list' | 'view' | 'use' | 'check' | 'provider_by_id' | 'getDefault';
   success: boolean;
   details: string;

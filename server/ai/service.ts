@@ -286,7 +286,7 @@ export async function getAIProviderById(
       await logAiProviderAccess({
         userId,
         tenantId,
-        teamId,
+        teamId: teamId ?? undefined,  // Convert null to undefined 
         action: 'provider_by_id',
         success: false,
         details: `Provider not found or not enabled: ${providerId}`
@@ -301,7 +301,7 @@ export async function getAIProviderById(
       await logAiProviderAccess({
         userId,
         tenantId,
-        teamId,
+        teamId: teamId ?? undefined,  // Convert null to undefined
         action: 'provider_by_id',
         success: false,
         details: `Provider tenant mismatch: ${providerId}`
@@ -316,7 +316,7 @@ export async function getAIProviderById(
       await logAiProviderAccess({
         userId,
         tenantId,
-        teamId,
+        teamId: teamId ?? undefined,  // Convert null to undefined
         action: 'provider_by_id',
         success: false,
         details: `Provider team mismatch: ${providerId}`
@@ -332,7 +332,7 @@ export async function getAIProviderById(
     await logAiProviderAccess({
       userId,
       tenantId,
-      teamId,
+      teamId: teamId ?? undefined,  // Convert null to undefined
       action: 'provider_by_id',
       success: true,
       details: `Provider accessed: ${provider.name} (${provider.type})`
@@ -346,7 +346,7 @@ export async function getAIProviderById(
     await logAiProviderAccess({
       userId,
       tenantId,
-      teamId,
+      teamId: teamId ?? undefined,  // Convert null to undefined
       action: 'provider_by_id',
       success: false,
       details: `Error accessing provider ${providerId}: ${error}`

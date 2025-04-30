@@ -65,7 +65,56 @@ export async function classifyTicket(title: string, description: string, tenantI
         // Continue without context
       }
       
-      return await classifyTicketWithAI(title, description, knowledgeContext);
+      // Try classifying with AI up to 3 times with increasing backoff
+      const maxRetries = 3;
+      let lastError = null;
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            const backoffMs = Math.pow(2, attempt) * 1000;
+            console.log(`Retry attempt ${attempt+1}/${maxRetries} for AI classification with ${backoffMs}ms backoff...`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+          }
+          
+          const result = await classifyTicketWithAI(title, description, knowledgeContext);
+          
+          // Verify the AI notes field is present and not empty
+          if (!result.aiNotes || result.aiNotes.trim() === '') {
+            console.warn('AI classification returned empty aiNotes, adding default notes');
+            result.aiNotes = 'This ticket has been automatically classified by the AI system.';
+          }
+          
+          console.log(`Successfully classified ticket with AI on attempt ${attempt+1}, aiNotes length: ${result.aiNotes?.length || 0}`);
+          return result;
+        } catch (error) {
+          const retryError = error as Error;
+          lastError = retryError;
+          console.error(`AI classification attempt ${attempt+1} failed:`, retryError);
+          
+          // Only continue retrying for connection issues, not for other errors
+          if (retryError && retryError.message && (
+              retryError.message.includes('timeout') || 
+              retryError.message.includes('network') ||
+              retryError.message.includes('connection') ||
+              retryError.message.includes('ECONNRESET')
+            )) {
+            console.log(`Retryable error detected, will attempt again if retries remain`);
+          } else {
+            console.log(`Non-retryable error detected, falling back to local implementation`);
+            break;
+          }
+          
+          // On last attempt, fallback to local
+          if (attempt === maxRetries - 1) {
+            console.error(`All ${maxRetries} attempts at AI classification failed, falling back to local method`);
+            break;
+          }
+        }
+      }
+      
+      console.error("AI classification failed after all retries, falling back to local:", lastError);
+      // Fall back to local implementation
     } catch (error) {
       console.error("AI classification failed, falling back to local:", error);
       // Fall back to local implementation
@@ -189,7 +238,48 @@ export async function attemptAutoResolve(title: string, description: string, pre
         // Continue without context
       }
       
-      return await attemptAutoResolveWithAI(title, description, previousMessages, knowledgeContext);
+      // Try auto-resolving with AI up to 3 times with increasing backoff
+      const maxRetries = 3;
+      let lastError = null;
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            const backoffMs = Math.pow(2, attempt) * 1000;
+            console.log(`Retry attempt ${attempt+1}/${maxRetries} for AI auto-resolve with ${backoffMs}ms backoff...`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+          }
+          
+          const result = await attemptAutoResolveWithAI(title, description, previousMessages, knowledgeContext);
+          console.log(`Successfully attempted auto-resolve with AI on attempt ${attempt+1}, resolved: ${result.resolved}`);
+          return result;
+        } catch (retryError) {
+          lastError = retryError;
+          console.error(`AI auto-resolve attempt ${attempt+1} failed:`, retryError);
+          
+          // Only continue retrying for connection issues, not for other errors
+          if (retryError.message && (
+              retryError.message.includes('timeout') || 
+              retryError.message.includes('network') ||
+              retryError.message.includes('connection') ||
+              retryError.message.includes('ECONNRESET')
+            )) {
+            console.log(`Retryable error detected, will attempt again if retries remain`);
+          } else {
+            console.log(`Non-retryable error detected, falling back to local implementation`);
+            break;
+          }
+          
+          // On last attempt, fallback to local
+          if (attempt === maxRetries - 1) {
+            console.error(`All ${maxRetries} attempts at AI auto-resolve failed, falling back to local method`);
+            break;
+          }
+        }
+      }
+      
+      console.error("AI auto-resolve failed after all retries, falling back to local:", lastError);
+      // Fall back to local implementation
     } catch (error) {
       console.error("AI auto-resolve failed, falling back to local:", error);
       // Fall back to local implementation

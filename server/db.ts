@@ -11,24 +11,24 @@ console.log("Database URL available:", !!process.env.DATABASE_URL);
 
 // Create a function to get database connection with retries
 function createDbPool() {
-  // Default DB connection configuration with more aggressive timeouts
+  // Default DB connection configuration with optimized timeouts for stability
   const dbConfig = {
     connectionString: process.env.DATABASE_URL,
     ssl: isProduction ? { rejectUnauthorized: false } : false,
-    // Reduce connection timeout to fail fast if the database is unreachable
-    connectionTimeoutMillis: 3000,
+    // Increase connection timeout to handle network latency in production
+    connectionTimeoutMillis: 10000, // 10 seconds
     // Add idle timeout to clean up unused connections
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 60000, // 60 seconds
     // Limit connection pool size to prevent overwhelming the database
-    max: 10,
-    // Add a more aggressive query timeout
-    statement_timeout: 10000, // 10 seconds
+    max: 15, // Increased pool size for more concurrent connections
+    // More tolerant query timeout
+    statement_timeout: 20000, // 20 seconds
     // Add keepalive settings to help with connection reliability
     keepalive: true,
-    // Client will automatically try to reconnect up to 5 times
-    max_retries: 5,
+    // Client will automatically try to reconnect up to 10 times
+    max_retries: 10,
     // How long to wait between retries (ms)
-    retry_interval: 2000,
+    retry_interval: 3000,
   };
 
   console.log("Database connection config:", {

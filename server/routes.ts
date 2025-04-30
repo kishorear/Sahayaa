@@ -954,9 +954,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isNaN(tenantId)) {
           tenantId = undefined;
         }
-      } else if (!isCreator) {
+      } else if (!isCreator && req.user) {
         // Non-creator roles are always limited to their tenant
-        tenantId = req.user?.tenantId;
+        tenantId = req.user.tenantId;
+        console.log(`Filtering metrics by tenant ID: ${tenantId} for user role: ${req.user.role}`);
+      }
+      
+      // Safety check - if tenantId is still undefined but user is not a creator, use their tenant ID
+      if (tenantId === undefined && !isCreator && req.user) {
+        tenantId = req.user.tenantId;
+        console.log(`Fallback tenant filtering applied: ${tenantId}`);
       }
       
       // Get tickets with proper tenant filtering

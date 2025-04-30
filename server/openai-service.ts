@@ -245,26 +245,31 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
   
   // Create a more specific and structured system prompt for reliable title generation
   const systemPrompt = `
-  You are an AI assistant specialized in creating concise, descriptive titles for support tickets.
+  You are an AI specialist focused exclusively on creating concise, accurate technical support ticket titles.
   
-  INSTRUCTIONS:
-  Analyze the conversation carefully and extract the CORE issue or request.
-  Create a title that clearly identifies the specific problem, feature request, or inquiry.
+  CRITICAL INSTRUCTIONS:
+  1. Analyze the conversation to identify the primary technical issue or request
+  2. Focus on ERROR CODES, specific components, or technical terms mentioned
+  3. Titles MUST follow the format: "[System/Component]: [Specific Technical Issue]"
+  4. ALWAYS include error codes when present (e.g., "Error 404", "API Error", "Database Exception")
   
-  TITLE REQUIREMENTS:
-  1. Length: 5-10 words (absolute maximum 15 words)
-  2. Structure: [Problem Area]: [Specific Issue] format (e.g., "Login System: Password Reset Email Not Arriving")
-  3. Specificity: Include exact error codes, component names, or feature references (e.g., "API Error 403: Invalid Authentication Token")
-  4. Clarity: Anyone reading the title should immediately understand what the ticket is about
-  5. Objectivity: Focus on technical facts, not subjective assessments
+  MANDATORY TITLE STRUCTURE:
+  - First part: The system, component, or area affected (Dashboard, API, Login System, Database, etc.)
+  - Second part: The specific technical issue or request (after the colon)
+  - Example good titles:
+     * "Login System: Password Reset Emails Not Delivered"
+     * "Payment API: Error 403 During Transaction Processing"
+     * "Database: Connection Timeout During High Traffic"
+     * "User Dashboard: Data Visualization Not Rendering"
+     * "Mobile App: Crash on Profile Image Upload"
   
-  FORMAT RULES:
-  - Use proper capitalization for the first letter of each significant word
-  - Never use quotation marks or other formatting characters in the title
-  - Do not include punctuation at the end of the title
-  - Do not start with generic terms like "Issue with" or "Problem regarding"
+  FORMAT REQUIREMENTS:
+  - Length: 5-10 words maximum
+  - Always include a colon separating the component from the issue
+  - Capitalize first letter of each significant word
+  - No quotation marks, no ending punctuation, no generic terms like "issue with"
   
-  Return ONLY the title text with NO additional explanations, quotation marks, or formatting.
+  You MUST ONLY return the title text itself, nothing else. No explanations, no quotation marks.
   `;
   
   try {
@@ -353,13 +358,19 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
           .replace(/[\n\r]+/g, ' ') // Replace any newlines with spaces
           .trim();
         
-        // Title validation
-        if (generatedTitle && 
+        // Enhanced title validation with focus on required format
+        // Check if title contains a colon (required format)
+        const hasColon = generatedTitle.includes(':');
+        
+        // Basic validation criteria
+        const basicValidation = generatedTitle && 
             generatedTitle.length >= 5 && 
             generatedTitle.length <= 100 && 
             generatedTitle !== 'Support Request' &&
-            !/^\s*issue|problem|request|inquiry\s*$/i.test(generatedTitle)) {
-          
+            !/^\s*issue|problem|request|inquiry\s*$/i.test(generatedTitle);
+            
+        if (basicValidation && hasColon) {
+          // Perfect - title meets all criteria
           console.log(`Successfully generated title on attempt ${attempt}: "${generatedTitle}"`);
           
           // Record performance metrics
@@ -367,6 +378,44 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
           console.log(`Title generation completed in ${duration}ms`);
           
           return generatedTitle;
+        } else if (basicValidation && !hasColon) {
+          // Title is good but missing colon - fix it
+          console.log(`Title missing colon, attempting to fix: "${generatedTitle}"`);
+          
+          // Try to identify a component/category to add before the title
+          const components = [
+            'System', 'Application', 'UI', 'API', 'Database', 'Login', 'Dashboard',
+            'User Interface', 'Backend', 'Account', 'Performance', 'Security'
+          ];
+          
+          // Check if we can identify an appropriate component from the content
+          const lcTitle = generatedTitle.toLowerCase();
+          let component = '';
+          
+          if (lcTitle.includes('login') || lcTitle.includes('password') || lcTitle.includes('auth')) {
+            component = 'Authentication';
+          } else if (lcTitle.includes('data') || lcTitle.includes('database') || lcTitle.includes('query')) {
+            component = 'Database';
+          } else if (lcTitle.includes('ui') || lcTitle.includes('interface') || lcTitle.includes('display')) {
+            component = 'User Interface';
+          } else if (lcTitle.includes('api') || lcTitle.includes('endpoint') || lcTitle.includes('request')) {
+            component = 'API';
+          } else if (lcTitle.includes('error') || lcTitle.includes('crash') || lcTitle.includes('bug')) {
+            component = 'System Error';
+          } else {
+            // Use a generic component if we can't determine one
+            component = 'Support';
+          }
+          
+          // Construct a properly formatted title
+          const fixedTitle = `${component}: ${generatedTitle.charAt(0).toUpperCase() + generatedTitle.slice(1)}`;
+          console.log(`Fixed title: "${fixedTitle}"`);
+          
+          // Record performance metrics
+          const duration = Date.now() - startTime;
+          console.log(`Title generation completed in ${duration}ms`);
+          
+          return fixedTitle;
         } else {
           console.warn(`Generated title failed validation: "${generatedTitle}"`);
           // Save this title as a fallback if it's better than nothing
@@ -398,30 +447,121 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
     const duration = Date.now() - startTime;
     console.error(`Title generation failed after ${duration}ms:`, error);
     
-    // Attempt to extract meaningful content for local fallback
+    // Enhanced local fallback mechanism for more descriptive titles when AI fails
     try {
-      // Extract user query for fallback title
+      // Get all user messages to analyze
       const userMessages = messages.filter(msg => msg.role === 'user');
-      if (userMessages.length > 0) {
-        const firstUserMessage = userMessages[0].content.trim();
-        // If the first user message is reasonably sized, use it as a basis for the title
-        if (firstUserMessage.length > 5 && firstUserMessage.length < 100) {
-          // Convert the message to a title-case format
-          const titleCase = firstUserMessage
-            .split(' ')
-            .slice(0, 8) // Take first 8 words max
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
-          
-          console.log(`Generated fallback title from user message: "${titleCase}"`);
-          return titleCase;
-        }
+      if (userMessages.length === 0) {
+        return "Support Request"; // No user messages to analyze
       }
+      
+      // Extract key content from user messages
+      const firstMessage = userMessages[0].content.trim();
+      const lastMessage = userMessages[userMessages.length - 1].content.trim();
+      const allUserContent = userMessages.map(m => m.content).join(' ');
+      
+      // Look for error codes or specific patterns in any user message
+      const errorCodeMatch = allUserContent.match(/(\b[45]\d{2}\b|error code:?\s*([a-z0-9_-]+))/i);
+      if (errorCodeMatch) {
+        return `System Error: ${errorCodeMatch[0]} Issue`;
+      }
+      
+      // Check for common issue types
+      if (/password|login|sign[- ]in|account access|authentication/i.test(allUserContent)) {
+        return "Authentication: Account Access Issue";
+      }
+      
+      if (/payment|billing|charge|invoice|subscription|credit card/i.test(allUserContent)) {
+        return "Billing: Payment Processing Issue";
+      }
+      
+      if (/install|setup|configuration|getting started/i.test(allUserContent)) {
+        return "Configuration: Setup Assistance";
+      }
+      
+      if (/bug|error|crash|not working|fails?|failed|broken/i.test(allUserContent)) {
+        // Try to extract what specifically is broken
+        const brokenMatch = allUserContent.match(/(\w+(?:\s+\w+){0,4})\s+(?:is|are|not working|broken|fails)/i);
+        if (brokenMatch) {
+          return `Technical Issue: ${brokenMatch[1]} Problem`;
+        }
+        return "System Error: Technical Malfunction";
+      }
+      
+      if (/feature request|enhancement|suggestion|would be nice/i.test(allUserContent)) {
+        return "Feature Request: New Functionality";
+      }
+      
+      if (/how (?:do|can|to)|where is|what is/i.test(allUserContent)) {
+        return "Documentation: Usage Instructions";
+      }
+      
+      // Try to extract a meaningful title from the first or last message
+      if (firstMessage.length > 5 && firstMessage.length < 60) {
+        // Process the first message into a title format
+        const wordLimit = 10;
+        const firstMessageWords = firstMessage.split(/\s+/).slice(0, wordLimit);
+        const component = identifyComponent(firstMessage);
+        
+        const processedTitle = firstMessageWords
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+          
+        return `${component}: ${processedTitle}`;
+      }
+      
+      // Create a composite title using both messages if they're different
+      if (firstMessage !== lastMessage && 
+          firstMessage.length < 30 && 
+          lastMessage.length < 30) {
+        return `Support: ${firstMessage.split(/\s+/).slice(0, 4).join(' ')} - ${lastMessage.split(/\s+/).slice(0, 4).join(' ')}`;
+      }
+      
+      // Return a simple formatted version of the first user message
+      return `Support: ${firstMessage.split(/\s+/).slice(0, 8).join(' ')}`;
     } catch (fallbackError) {
       console.error('Error generating fallback title:', fallbackError);
+      return 'Technical Support Request'; // Ultimate fallback title
     }
     
-    return 'Support Request'; // Ultimate fallback title
+    // Helper function to identify components from text
+    function identifyComponent(text: string): string {
+      const lowerText = text.toLowerCase();
+      
+      if (/login|password|auth|sign[- ]in|account access/i.test(lowerText)) {
+        return "Authentication";
+      } 
+      if (/payment|billing|charge|invoice|subscription|credit card/i.test(lowerText)) {
+        return "Billing";
+      }
+      if (/data|database|record|entry|lost|missing/i.test(lowerText)) {
+        return "Database";
+      }
+      if (/ui|interface|button|screen|display|page|website/i.test(lowerText)) {
+        return "User Interface";
+      }
+      if (/api|request|endpoint|integration|service/i.test(lowerText)) {
+        return "API";
+      }
+      if (/error|bug|crash|fail|broken|not working/i.test(lowerText)) {
+        return "System Error";
+      }
+      if (/slow|performance|timeout|delay/i.test(lowerText)) {
+        return "Performance";
+      }
+      if (/install|setup|configure|deployment/i.test(lowerText)) {
+        return "Installation";
+      }
+      if (/report|analytics|stats|numbers|metric/i.test(lowerText)) {
+        return "Reporting";
+      }
+      if (/admin|permission|access|role|privilege/i.test(lowerText)) {
+        return "Administration";
+      }
+      
+      // Default component if no match
+      return "Support";
+    }
   }
 }
 

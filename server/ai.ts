@@ -253,12 +253,13 @@ export async function attemptAutoResolve(title: string, description: string, pre
           const result = await attemptAutoResolveWithAI(title, description, previousMessages, knowledgeContext);
           console.log(`Successfully attempted auto-resolve with AI on attempt ${attempt+1}, resolved: ${result.resolved}`);
           return result;
-        } catch (retryError) {
+        } catch (error) {
+          const retryError = error as Error;
           lastError = retryError;
           console.error(`AI auto-resolve attempt ${attempt+1} failed:`, retryError);
           
           // Only continue retrying for connection issues, not for other errors
-          if (retryError.message && (
+          if (retryError && retryError.message && (
               retryError.message.includes('timeout') || 
               retryError.message.includes('network') ||
               retryError.message.includes('connection') ||
@@ -454,29 +455,77 @@ export async function generateChatResponse(
       // Prepare to call the AI with the best available context
       let responseFromAI: string;
       
-      // Determine which context to use (prioritize MCP over data sources)
-      if (documents && documents.trim().length > 0) {
-        console.log(`Using MCP documents for AI response generation for ticket #${ticketContext.id}`);
-        // Create a modified message history with the enhanced prompt if we have document context
-        const systemMessage: ChatMessage = {
-          role: 'system',
-          content: enhancedPrompt
-        };
-        
-        // Filter out any existing system messages and add our new enhanced one
-        const filteredMessageHistory = messageHistory.filter(msg => msg.role !== 'system');
-        const enhancedMessageHistory = [systemMessage, ...filteredMessageHistory];
-        
-        // Pass the document context as knowledge context parameter
-        responseFromAI = await generateChatResponseWithAI(ticketContext, enhancedMessageHistory, userMessage, documents);
-      } else if (knowledgeContext && knowledgeContext.trim().length > 0) {
-        console.log(`Using data source knowledge for AI response generation for ticket #${ticketContext.id}`);
-        // If no MCP documents but we have knowledge context, use that
-        responseFromAI = await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
-      } else {
-        console.log(`No context available, using basic conversation for ticket #${ticketContext.id}`);
-        // If no context from any source, proceed with basic conversation
-        responseFromAI = await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, '');
+      // Try generating chat response with AI up to 3 times with increasing backoff
+      const maxRetries = 3;
+      let lastError = null;
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            const backoffMs = Math.pow(2, attempt) * 1000;
+            console.log(`Retry attempt ${attempt+1}/${maxRetries} for chat response generation with ${backoffMs}ms backoff...`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+          }
+          
+          // Determine which context to use (prioritize MCP over data sources)
+          if (documents && documents.trim().length > 0) {
+            console.log(`Using MCP documents for AI response generation for ticket #${ticketContext.id} (attempt ${attempt+1})`);
+            // Create a modified message history with the enhanced prompt if we have document context
+            const systemMessage: ChatMessage = {
+              role: 'system',
+              content: enhancedPrompt
+            };
+            
+            // Filter out any existing system messages and add our new enhanced one
+            const filteredMessageHistory = messageHistory.filter(msg => msg.role !== 'system');
+            const enhancedMessageHistory = [systemMessage, ...filteredMessageHistory];
+            
+            // Pass the document context as knowledge context parameter
+            responseFromAI = await generateChatResponseWithAI(ticketContext, enhancedMessageHistory, userMessage, documents);
+          } else if (knowledgeContext && knowledgeContext.trim().length > 0) {
+            console.log(`Using data source knowledge for AI response generation for ticket #${ticketContext.id} (attempt ${attempt+1})`);
+            // If no MCP documents but we have knowledge context, use that
+            responseFromAI = await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, knowledgeContext);
+          } else {
+            console.log(`No context available, using basic conversation for ticket #${ticketContext.id} (attempt ${attempt+1})`);
+            // If no context from any source, proceed with basic conversation
+            responseFromAI = await generateChatResponseWithAI(ticketContext, messageHistory, userMessage, '');
+          }
+          
+          // If we get here, the operation was successful
+          console.log(`Successfully generated chat response on attempt ${attempt+1}`);
+          break;
+        } catch (error) {
+          const retryError = error as Error;
+          lastError = retryError;
+          console.error(`Chat response generation attempt ${attempt+1} failed:`, retryError);
+          
+          // Only continue retrying for connection issues, not for other errors
+          if (retryError && retryError.message && (
+              retryError.message.includes('timeout') || 
+              retryError.message.includes('network') ||
+              retryError.message.includes('connection') ||
+              retryError.message.includes('ECONNRESET')
+            )) {
+            console.log(`Retryable error detected, will attempt again if retries remain`);
+          } else {
+            console.log(`Non-retryable error detected, falling back to simpler response`);
+            break;
+          }
+          
+          // On last attempt, fall back to a simple response
+          if (attempt === maxRetries - 1) {
+            console.error(`All ${maxRetries} attempts at generating chat response failed`);
+            responseFromAI = `I apologize, but I'm having trouble accessing the knowledge base at the moment. Let me provide a basic response: I'll help you with your issue regarding ${ticketContext.category}. Could you provide more details about your specific problem?`;
+            break;
+          }
+        }
+      }
+      
+      // Make sure we have a response
+      if (!responseFromAI) {
+        console.warn(`No AI response was generated for ticket #${ticketContext.id}, using default`);
+        responseFromAI = `I understand your question about ${ticketContext.category}. Let me assist you with that. Could you please provide some more details about what you're trying to accomplish?`;
       }
       
       // Record performance metrics

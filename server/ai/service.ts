@@ -17,34 +17,65 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
  * @returns Array of AI providers
  */
 async function loadProvidersFromDatabase(tenantId: number, teamId?: number | null): Promise<AiProvider[]> {
-  try {
-    // Create filters
-    let filters = and(
-      eq(aiProviders.tenantId, tenantId),
-      eq(aiProviders.enabled, true)
-    );
-    
-    // If teamId is provided, add team filter
-    if (teamId !== undefined && teamId !== null) {
-      filters = and(
-        filters,
-        or(
-          eq(aiProviders.teamId, teamId),
-          isNull(aiProviders.teamId)
-        )
+  // Try loading providers with retries for database connection issues
+  const maxRetries = 3;
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Add exponential backoff delay for retries
+      if (attempt > 0) {
+        const backoffMs = Math.pow(2, attempt) * 500; // 500ms, 1s, 2s
+        console.log(`Retrying loadProvidersFromDatabase for tenant ${tenantId} (attempt ${attempt+1}/${maxRetries}) after ${backoffMs}ms backoff...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+      }
+      
+      // Create filters
+      let filters = and(
+        eq(aiProviders.tenantId, tenantId),
+        eq(aiProviders.enabled, true)
       );
+      
+      // If teamId is provided, add team filter
+      if (teamId !== undefined && teamId !== null) {
+        filters = and(
+          filters,
+          or(
+            eq(aiProviders.teamId, teamId),
+            isNull(aiProviders.teamId)
+          )
+        );
+      }
+      
+      // Execute query with filters and sort
+      const providers = await db.select().from(aiProviders)
+        .where(filters)
+        .orderBy(aiProviders.priority);
+      
+      if (attempt > 0) {
+        console.log(`Successfully loaded ${providers.length} AI providers on retry ${attempt+1}`);
+      }
+      
+      return providers;
+    } catch (error) {
+      lastError = error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Error loading AI providers from database (attempt ${attempt+1}/${maxRetries}):`, errorMessage);
+      
+      // Only retry on connection-related errors
+      const isConnectionError = errorMessage.includes('timeout') || 
+                               errorMessage.includes('connection') || 
+                               errorMessage.includes('network') ||
+                               errorMessage.includes('ECONNRESET');
+      
+      if (!isConnectionError || attempt === maxRetries - 1) {
+        break; // Don't retry for non-connection errors or if we're on the last attempt
+      }
     }
-    
-    // Execute query with filters and sort
-    const providers = await db.select().from(aiProviders)
-      .where(filters)
-      .orderBy(aiProviders.priority);
-    
-    return providers;
-  } catch (error) {
-    console.error('Error loading AI providers from database:', error);
-    return [];
   }
+  
+  console.error('All attempts to load AI providers failed, returning empty array');
+  return [];
 }
 
 /**
@@ -52,38 +83,72 @@ async function loadProvidersFromDatabase(tenantId: number, teamId?: number | nul
  * Used during startup and when providers are updated
  */
 export async function reloadProvidersFromDatabase(tenantId?: number): Promise<void> {
-  try {
-    // If a specific tenantId is provided, only reload that tenant's providers
-    if (tenantId) {
-      const providers = await loadProvidersFromDatabase(tenantId);
-      aiProvidersCache.set(tenantId, providers);
+  // Implement retry mechanism for loading database info
+  const maxRetries = 3;
+  let lastError = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Add exponential backoff for retries
+      if (attempt > 0) {
+        const backoffMs = Math.pow(2, attempt) * 500; // 500ms, 1s, 2s
+        console.log(`Retrying reloadProvidersFromDatabase (attempt ${attempt+1}/${maxRetries}) after ${backoffMs}ms backoff...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+      }
       
-      // Update the provider factory with the loaded providers
-      AIProviderFactory.loadProvidersFromDatabase(tenantId, providers);
-      
-      console.log(`Reloaded ${providers.length} AI providers for tenant ${tenantId}`);
-    } else {
-      // Otherwise, find all unique tenantIds with providers and reload each
-      const allProviders = await db.select({ tenantId: aiProviders.tenantId })
-        .from(aiProviders)
-        .groupBy(aiProviders.tenantId);
-      
-      for (const { tenantId } of allProviders) {
+      // If a specific tenantId is provided, only reload that tenant's providers
+      if (tenantId) {
         const providers = await loadProvidersFromDatabase(tenantId);
         aiProvidersCache.set(tenantId, providers);
         
         // Update the provider factory with the loaded providers
         AIProviderFactory.loadProvidersFromDatabase(tenantId, providers);
+        
+        console.log(`Reloaded ${providers.length} AI providers for tenant ${tenantId}`);
+      } else {
+        // Otherwise, find all unique tenantIds with providers and reload each
+        const allProviders = await db.select({ tenantId: aiProviders.tenantId })
+          .from(aiProviders)
+          .groupBy(aiProviders.tenantId);
+        
+        for (const { tenantId } of allProviders) {
+          const providers = await loadProvidersFromDatabase(tenantId);
+          aiProvidersCache.set(tenantId, providers);
+          
+          // Update the provider factory with the loaded providers
+          AIProviderFactory.loadProvidersFromDatabase(tenantId, providers);
+        }
+        
+        console.log(`Reloaded AI providers for ${aiProvidersCache.size} tenants`);
       }
       
-      console.log(`Reloaded AI providers for ${aiProvidersCache.size} tenants`);
+      lastCacheUpdate = Date.now();
+      
+      // If we get here, the operation was successful
+      if (attempt > 0) {
+        console.log(`Successfully reloaded AI providers on retry ${attempt+1}`);
+      }
+      return;
+    } catch (error) {
+      lastError = error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Error reloading AI providers (attempt ${attempt+1}/${maxRetries}):`, errorMessage);
+      
+      // Only retry on connection-related errors
+      const isConnectionError = errorMessage.includes('timeout') || 
+                               errorMessage.includes('connection') || 
+                               errorMessage.includes('network') ||
+                               errorMessage.includes('ECONNRESET');
+      
+      if (!isConnectionError || attempt === maxRetries - 1) {
+        break; // Don't retry for non-connection errors or if we're on the last attempt
+      }
     }
-    
-    lastCacheUpdate = Date.now();
-  } catch (error) {
-    console.error('Error reloading AI providers:', error);
-    throw error;
   }
+  
+  // If all retries failed, report the error
+  console.error('All attempts to reload AI providers failed');
+  throw lastError || new Error('Failed to reload AI providers after multiple attempts');
 }
 
 /**

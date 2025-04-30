@@ -78,7 +78,7 @@ async function deleteTicketsForTenant(tenantId) {
     
     // Delete tickets
     const deleteTicketsResult = await pool.query(
-      `DELETE FROM tickets WHERE tenant_id = $1 RETURNING id`,
+      `DELETE FROM tickets WHERE "tenantId" = $1 RETURNING id`,
       [tenantId]
     );
     
@@ -95,18 +95,18 @@ async function createSampleTickets(tenantId, count = 5) {
     const now = new Date().toISOString();
     const categories = ['technical_issue', 'billing', 'feature_request', 'account', 'documentation'];
     const statuses = ['open', 'in_progress', 'resolved', 'closed'];
-    const priorities = ['low', 'medium', 'high', 'critical'];
+    const complexities = ['simple', 'medium', 'complex'];
     
     for (let i = 1; i <= count; i++) {
-      // Select random category, status and priority
+      // Select random category, status and complexity
       const category = categories[Math.floor(Math.random() * categories.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const priority = priorities[Math.floor(Math.random() * priorities.length)];
+      const complexity = complexities[Math.floor(Math.random() * complexities.length)];
       
       // Create ticket
       const result = await pool.query(
         `INSERT INTO tickets 
-         (tenant_id, title, description, status, priority, category, created_by, assigned_to, created_at, updated_at)
+         ("tenantId", title, description, status, category, complexity, "createdBy", "assignedTo", "createdAt", "updatedAt")
          VALUES 
          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING id`,
@@ -115,8 +115,8 @@ async function createSampleTickets(tenantId, count = 5) {
           `Sample Ticket ${i} - ${category}`,
           `This is a test ticket #${i} with ${category} category created for tenant ${tenantId}.`,
           status,
-          priority,
           category,
+          complexity,
           'system',
           'support',
           now,

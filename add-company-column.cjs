@@ -117,8 +117,8 @@ async function createSampleTickets(tenantId, count = 5) {
           status,
           category,
           complexity,
-          'system',
-          'support',
+          1, // Admin user ID as creator
+          'support', // Role-based assignment
           now,
           now
         ]

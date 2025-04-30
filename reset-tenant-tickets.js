@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { db } from './server/db.js';
-import { tickets, messages } from './shared/schema.js';
+import { db } from './server/db.ts';
+import { tickets, messages } from './shared/schema.ts';
 import { sql, eq } from 'drizzle-orm';
 
 /**
@@ -114,23 +114,23 @@ async function createSampleTickets(tenantId, count) {
   try {
     const now = new Date();
     const categories = ['technical_issue', 'billing', 'feature_request', 'account', 'documentation', 'authentication'];
-    const statuses = ['open', 'in_progress', 'resolved', 'closed'];
-    const priorities = ['low', 'medium', 'high', 'critical'];
+    const statuses = ['new', 'in_progress', 'resolved', 'closed'];
+    const complexities = ['simple', 'medium', 'complex'];
     
     for (let i = 1; i <= count; i++) {
-      // Randomly select category, status, and priority
+      // Randomly select category, status, and complexity
       const category = categories[Math.floor(Math.random() * categories.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const priority = priorities[Math.floor(Math.random() * priorities.length)];
+      const complexity = complexities[Math.floor(Math.random() * complexities.length)];
       
       const newTicket = {
         tenantId: tenantId,
         title: `Sample Ticket ${i} - ${category} (Tenant ${tenantId})`,
         description: `This is a test ticket #${i} with ${category} category created for tenant ${tenantId}.`,
         status: status,
-        priority: priority,
+        complexity: complexity,
         category: category,
-        createdBy: 'system',
+        createdBy: 1, // Admin user ID
         assignedTo: 'support',
         aiResolved: Math.random() > 0.7, // 30% chance of being AI resolved
         createdAt: now,

@@ -1,15 +1,37 @@
 import { ChatMessage } from '../../ai';
-import { AIProviderInterface } from './AIProviderInterface';
+import { AIProviderInterface, AIProviderConfig } from './AIProviderInterface';
 
 export class PerplexityProvider implements AIProviderInterface {
   name: string = 'perplexity';
   private apiKey: string;
+  private model: string = 'llama-3.1-sonar-small-128k-online';
+  private temperature: number = 0.2;
+  private maxTokens: number = 2000;
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-    
-    if (!apiKey) {
-      throw new Error('Perplexity API key is required');
+  constructor(config: AIProviderConfig | string) {
+    // Support both string API key (legacy) and config object
+    if (typeof config === 'string') {
+      this.apiKey = config;
+      
+      if (!config) {
+        throw new Error('Perplexity API key is required');
+      }
+    } else {
+      this.apiKey = config.apiKey || '';
+      
+      if (!this.apiKey) {
+        throw new Error('Perplexity API key is required');
+      }
+      
+      // Set optional configuration parameters if provided
+      if (config.model) {
+        this.model = config.model;
+      }
+      
+      if (config.settings) {
+        this.temperature = config.settings.temperature || this.temperature;
+        this.maxTokens = config.settings.maxTokens || this.maxTokens;
+      }
     }
   }
 
@@ -48,11 +70,11 @@ export class PerplexityProvider implements AIProviderInterface {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: this.model,
           messages: apiMessages,
-          temperature: 0.2,
+          temperature: this.temperature,
           top_p: 0.9,
-          max_tokens: 2000,
+          max_tokens: this.maxTokens,
           frequency_penalty: 1,
           stream: false
         })
@@ -100,14 +122,14 @@ export class PerplexityProvider implements AIProviderInterface {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: this.model,
           messages: [
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.1,
+          temperature: 0.1, // Use a lower temperature for classification
           response_format: { type: "json_object" },
           stream: false
         })
@@ -183,11 +205,11 @@ export class PerplexityProvider implements AIProviderInterface {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: this.model,
           messages: apiMessages,
-          temperature: 0.3,
+          temperature: 0.3, // Slightly higher temperature for more creative resolution responses
           top_p: 0.9,
-          max_tokens: 2000,
+          max_tokens: this.maxTokens,
           stream: false
         })
       });
@@ -242,11 +264,11 @@ export class PerplexityProvider implements AIProviderInterface {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: this.model,
           messages: apiMessages,
-          temperature: 0.1,
+          temperature: 0.1, // Lower temperature for more predictable titles
           top_p: 0.9,
-          max_tokens: 50,
+          max_tokens: 50, // Smaller token limit for titles
           stream: false
         })
       });
@@ -305,11 +327,11 @@ export class PerplexityProvider implements AIProviderInterface {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: this.model,
           messages: apiMessages,
-          temperature: 0.2,
+          temperature: 0.2, // Moderate temperature for balance between creativity and conciseness
           top_p: 0.9,
-          max_tokens: 500,
+          max_tokens: 500, // Enough tokens for a detailed summary
           stream: false
         })
       });

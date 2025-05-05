@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Bot, CircleCheck, Clock, Calendar } from "lucide-react";
+import { User, Bot, CircleCheck, Clock, Calendar, Mail } from "lucide-react";
 import { TicketStatusProgress } from "@/components/admin/TicketStatusProgress";
 
 export default function TicketDetails() {
@@ -386,6 +386,23 @@ function formatCategory(category: string) {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function SourceBadge({ source }: { source: string | undefined | null }) {
+  switch (source) {
+    case "email":
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 flex items-center">
+        <Mail className="h-3 w-3 mr-1" />
+        Email
+      </Badge>;
+    case "widget":
+      return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">Widget</Badge>;
+    case "api":
+      return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-300">API</Badge>;
+    case "chat":
+    default:
+      return <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-300">Chat</Badge>;
+  }
 }
 
 function TicketDetailsSkeleton() {

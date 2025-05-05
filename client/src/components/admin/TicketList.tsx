@@ -125,6 +125,7 @@ export default function TicketList() {
                   <TableHead>Title</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Assigned To</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -139,6 +140,7 @@ export default function TicketList() {
                         <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -160,6 +162,9 @@ export default function TicketList() {
                         <StatusBadge status={ticket.status} />
                       </TableCell>
                       <TableCell>{formatCategory(ticket.category)}</TableCell>
+                      <TableCell>
+                        <SourceBadge source={ticket.source} />
+                      </TableCell>
                       <TableCell>{ticket.assignedTo || "Unassigned"}</TableCell>
                       <TableCell>
                         {formatDistance(new Date(ticket.createdAt), new Date(), { addSuffix: true })}
@@ -218,4 +223,18 @@ function formatCategory(category: string) {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function SourceBadge({ source }: { source: string | undefined | null }) {
+  switch (source) {
+    case "email":
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">Email</Badge>;
+    case "widget":
+      return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">Widget</Badge>;
+    case "api":
+      return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-300">API</Badge>;
+    case "chat":
+    default:
+      return <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-300">Chat</Badge>;
+  }
 }

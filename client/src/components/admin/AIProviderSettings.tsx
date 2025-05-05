@@ -27,6 +27,7 @@ const providerTypes = [
   { value: "gemini", label: "Google Gemini" },
   { value: "anthropic", label: "Anthropic Claude" },
   { value: "aws-bedrock", label: "AWS Bedrock" },
+  { value: "perplexity", label: "Perplexity AI" },
   { value: "custom", label: "Custom API" }
 ];
 
@@ -52,6 +53,11 @@ const providerModels = {
     { value: "anthropic.claude-instant-v1", label: "Claude Instant" },
     { value: "meta.llama3-8b-instruct-v1:0", label: "Llama 3 8B" },
     { value: "meta.llama3-70b-instruct-v1:0", label: "Llama 3 70B" }
+  ],
+  perplexity: [
+    { value: "llama-3.1-sonar-small-128k-online", label: "Llama 3.1 Sonar Small" },
+    { value: "llama-3.1-sonar-large-128k-online", label: "Llama 3.1 Sonar Large" },
+    { value: "llama-3.1-sonar-huge-128k-online", label: "Llama 3.1 Sonar Huge" }
   ],
   custom: [
     { value: "custom", label: "Custom Model" }

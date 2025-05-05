@@ -119,6 +119,8 @@ export class AIProviderFactory {
         return new AnthropicProvider(config);
       case 'aws-bedrock':
         return new BedrockProvider(config);
+      case 'perplexity':
+        return new PerplexityProvider(config.apiKey || '');
       case 'custom':
         return new CustomProvider(config);
       default:

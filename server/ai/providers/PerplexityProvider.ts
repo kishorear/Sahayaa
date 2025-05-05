@@ -1,7 +1,8 @@
 import { ChatMessage } from '../../ai';
-import { AIProvider } from '../service';
+import { AIProviderInterface } from './AIProviderInterface';
 
-export class PerplexityProvider implements AIProvider {
+export class PerplexityProvider implements AIProviderInterface {
+  name: string = 'perplexity';
   private apiKey: string;
 
   constructor(apiKey: string) {
@@ -208,6 +209,159 @@ export class PerplexityProvider implements AIProvider {
         resolved: false,
         response: "An error occurred while attempting to automatically resolve this issue."
       };
+    }
+  }
+
+  /**
+   * Generate a concise and descriptive title for a support ticket
+   */
+  async generateTicketTitle(messages: ChatMessage[], context?: string): Promise<string> {
+    try {
+      const apiMessages = [];
+      
+      // Add system prompt
+      apiMessages.push({
+        role: 'system',
+        content: `You are responsible for creating concise, descriptive titles for customer support tickets. 
+        Create a short but informative title (maximum 10 words) that accurately summarizes the main issue.
+        ${context ? `\nAdditional context: ${context}` : ''}`
+      });
+      
+      // Add the conversation messages
+      messages.forEach(message => {
+        apiMessages.push({
+          role: message.role,
+          content: message.content
+        });
+      });
+
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-sonar-small-128k-online',
+          messages: apiMessages,
+          temperature: 0.1,
+          top_p: 0.9,
+          max_tokens: 50,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Perplexity API error:', errorData);
+        throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      const title = result.choices[0].message.content.trim();
+      
+      // Limit title length and remove any quotes that might be around it
+      return title.replace(/^["'](.*)["']$/, '$1').slice(0, 100);
+    } catch (error) {
+      console.error('Error generating ticket title with Perplexity:', error);
+      // Provide a generic fallback title
+      return "Support Request";
+    }
+  }
+
+  /**
+   * Summarize a conversation thread
+   */
+  async summarizeConversation(messages: ChatMessage[], context?: string): Promise<string> {
+    try {
+      const apiMessages = [];
+      
+      // Add system prompt
+      apiMessages.push({
+        role: 'system',
+        content: `You are tasked with summarizing customer support conversations.
+        Create a concise yet comprehensive summary that captures the main issue, key discussion points, and resolution (if any).
+        ${context ? `\nAdditional context: ${context}` : ''}`
+      });
+      
+      // Add the conversation messages
+      messages.forEach(message => {
+        apiMessages.push({
+          role: message.role,
+          content: message.content
+        });
+      });
+      
+      // Final instruction to summarize
+      apiMessages.push({
+        role: 'user',
+        content: 'Please provide a summary of this conversation that highlights the key points discussed and any resolution reached.'
+      });
+
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-sonar-small-128k-online',
+          messages: apiMessages,
+          temperature: 0.2,
+          top_p: 0.9,
+          max_tokens: 500,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Perplexity API error:', errorData);
+        throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('Error summarizing conversation with Perplexity:', error);
+      return "Unable to generate summary at this time.";
+    }
+  }
+
+  /**
+   * Check if the provider is properly configured and available
+   */
+  async isAvailable(): Promise<boolean> {
+    try {
+      // Simple test query to check if the API is responsive
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-sonar-small-128k-online',
+          messages: [
+            {
+              role: 'system',
+              content: 'Respond with "ok" if you can read this message.'
+            },
+            {
+              role: 'user',
+              content: 'System check'
+            }
+          ],
+          max_tokens: 10,
+          stream: false
+        })
+      });
+
+      // Just check if the API responds correctly
+      return response.ok;
+    } catch (error) {
+      console.error('Perplexity provider availability check failed:', error);
+      return false;
     }
   }
 }

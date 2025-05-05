@@ -120,7 +120,7 @@ export class AIProviderFactory {
       case 'aws-bedrock':
         return new BedrockProvider(config);
       case 'perplexity':
-        return new PerplexityProvider(config.apiKey || '');
+        return new PerplexityProvider(config);
       case 'custom':
         return new CustomProvider(config);
       default:

@@ -363,7 +363,7 @@ export class PerplexityProvider implements AIProviderInterface {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: this.model,
           messages: [
             {
               role: 'system',

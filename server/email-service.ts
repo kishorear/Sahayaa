@@ -440,50 +440,7 @@ export class EmailService {
   // Send an email
   public async sendEmail(to: string, subject: string, htmlContent: string): Promise<void> {
     try {
-      // Check if using OAuth2 and refresh token if needed
-      if (this.config.smtp.auth.type === 'oauth2' && this.oauthClient) {
-        // Check if token is expired or will expire soon (5 minutes buffer)
-        const expiryDate = this.config.smtp.auth.expires || 0;
-        if (Date.now() > expiryDate - 300000) { // 5 minutes before expiry
-          log('OAuth token expired or will expire soon, refreshing...', 'email');
-          const newTokens = await this.refreshOAuthTokens();
-          
-          if (newTokens) {
-            log('OAuth token refreshed successfully', 'email');
-            
-            // Update the transporter with new tokens
-            this.transporter = nodemailer.createTransport({
-              host: this.config.smtp.host,
-              port: this.config.smtp.port,
-              secure: this.config.smtp.secure,
-              auth: {
-                type: 'OAuth2',
-                user: this.config.smtp.auth.user,
-                clientId: this.config.smtp.auth.clientId,
-                clientSecret: this.config.smtp.auth.clientSecret,
-                refreshToken: this.config.smtp.auth.refreshToken,
-                accessToken: newTokens.accessToken,
-                expires: newTokens.expiryDate
-              }
-            });
-            
-            // Update IMAP client with new token if we need to reconnect
-            if (this.config.imap.auth.type === 'oauth2') {
-              const xoauth2 = this.generateXOAuth2Token(
-                this.config.imap.auth.user, 
-                newTokens.accessToken
-              );
-              // We'll create a new IMAP client next time we connect
-              this.config.imap.auth.accessToken = newTokens.accessToken;
-              this.config.imap.auth.expires = newTokens.expiryDate;
-            }
-          } else {
-            log('Failed to refresh OAuth token, trying to send email anyway', 'email');
-          }
-        }
-      }
-      
-      // Send the email
+      // Send the email with basic authentication
       await this.transporter.sendMail({
         from: `"${this.config.settings.fromName}" <${this.config.settings.fromEmail}>`,
         to,

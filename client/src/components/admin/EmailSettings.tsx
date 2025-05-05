@@ -18,29 +18,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle, Mail } from "lucide-react";
 
 // Form schema for email configuration
-// Basic auth configuration schema
+// Auth configuration schema - only basic auth supported
 const basicAuthSchema = z.object({
   type: z.literal('basic'),
   user: z.string().min(1, "Username is required"),
   pass: z.string().min(1, "Password is required"),
 });
 
-// OAuth2 auth configuration schema
-const oauth2AuthSchema = z.object({
-  type: z.literal('oauth2'),
-  user: z.string().min(1, "Username is required"),
-  clientId: z.string().min(1, "Client ID is required"),
-  clientSecret: z.string().min(1, "Client Secret is required"),
-  refreshToken: z.string().min(1, "Refresh Token is required"),
-  accessToken: z.string().optional(),
-  expires: z.number().optional(),
-});
-
-// Combined auth schema
-const authConfigSchema = z.discriminatedUnion('type', [
-  basicAuthSchema,
-  oauth2AuthSchema
-]);
+// Use basic auth schema directly since OAuth is removed
+const authConfigSchema = basicAuthSchema;
 
 // Main email configuration schema
 const emailConfigSchema = z.object({
@@ -72,48 +58,16 @@ const testEmailSchema = z.object({
   message: z.string().min(1, "Message is required"),
 });
 
-// OAuth authorization schema
-const oauthAuthorizeSchema = z.object({
-  provider: z.string().min(1, "Provider is required"),
-  clientId: z.string().min(1, "Client ID is required"),
-  clientSecret: z.string().min(1, "Client Secret is required"),
-  redirectUri: z.string().url("Invalid redirect URI"),
-  scopes: z.string().min(1, "Scopes are required"),
-});
-
-// OAuth token schema
-const oauthTokenSchema = z.object({
-  provider: z.string().min(1, "Provider is required"),
-  code: z.string().min(1, "Authorization code is required"),
-  clientId: z.string().min(1, "Client ID is required"),
-  clientSecret: z.string().min(1, "Client Secret is required"),
-  redirectUri: z.string().url("Invalid redirect URI"),
-});
-
-// OAuth configuration schema
-const oauthConfigSchema = z.object({
-  provider: z.string().min(1, "Provider is required"),
-  email: z.string().email("Invalid email address"),
-  clientId: z.string().min(1, "Client ID is required"),
-  clientSecret: z.string().min(1, "Client Secret is required"),
-  refreshToken: z.string().min(1, "Refresh Token is required"),
-});
+// No OAuth schemas needed - removed
 
 type EmailConfigValues = z.infer<typeof emailConfigSchema>;
 type TestEmailValues = z.infer<typeof testEmailSchema>;
-type OAuthAuthorizeValues = z.infer<typeof oauthAuthorizeSchema>;
-type OAuthTokenValues = z.infer<typeof oauthTokenSchema>;
-type OAuthConfigValues = z.infer<typeof oauthConfigSchema>;
 
 export default function EmailSettings() {
   const { toast } = useToast();
   
   // Status state
   const [isEmailRunning, setIsEmailRunning] = useState(false);
-  
-  // OAuth flow state
-  const [oauthStep, setOauthStep] = useState<'authorize' | 'token' | 'configure'>('authorize');
-  const [oauthAuthUrl, setOauthAuthUrl] = useState('');
   
   // Initial query for current email configuration
   const {
@@ -189,41 +143,7 @@ export default function EmailSettings() {
     },
   });
   
-  // OAuth authorization form
-  const oauthAuthorizeForm = useForm<OAuthAuthorizeValues>({
-    resolver: zodResolver(oauthAuthorizeSchema),
-    defaultValues: {
-      provider: "google",
-      clientId: "",
-      clientSecret: "",
-      redirectUri: typeof window !== "undefined" ? `${window.location.origin}/admin/email` : "",
-      scopes: "https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify",
-    },
-  });
-  
-  // OAuth token form
-  const oauthTokenForm = useForm<OAuthTokenValues>({
-    resolver: zodResolver(oauthTokenSchema),
-    defaultValues: {
-      provider: "google",
-      code: "",
-      clientId: "",
-      clientSecret: "",
-      redirectUri: typeof window !== "undefined" ? `${window.location.origin}/admin/email` : "",
-    },
-  });
-  
-  // OAuth configuration form
-  const oauthConfigForm = useForm<OAuthConfigValues>({
-    resolver: zodResolver(oauthConfigSchema),
-    defaultValues: {
-      provider: "google",
-      email: "",
-      clientId: "",
-      clientSecret: "",
-      refreshToken: "",
-    },
-  });
+  // No OAuth-related forms needed
   
   // Load configuration data into the form
   useEffect(() => {
@@ -328,23 +248,7 @@ export default function EmailSettings() {
     }
   }, [emailConfigResponse, configLoading, toast, configForm]);
   
-  // Update OAuth form when authorization step advances
-  useEffect(() => {
-    if (oauthStep === 'token') {
-      // Transfer values from authorize form to token form
-      const authorizeValues = oauthAuthorizeForm.getValues();
-      oauthTokenForm.setValue('provider', authorizeValues.provider);
-      oauthTokenForm.setValue('clientId', authorizeValues.clientId);
-      oauthTokenForm.setValue('clientSecret', authorizeValues.clientSecret);
-      oauthTokenForm.setValue('redirectUri', authorizeValues.redirectUri);
-    } else if (oauthStep === 'configure') {
-      // Transfer values from token form to configure form
-      const tokenValues = oauthTokenForm.getValues();
-      oauthConfigForm.setValue('provider', tokenValues.provider);
-      oauthConfigForm.setValue('clientId', tokenValues.clientId);
-      oauthConfigForm.setValue('clientSecret', tokenValues.clientSecret);
-    }
-  }, [oauthStep, oauthAuthorizeForm, oauthTokenForm, oauthConfigForm]);
+  // No OAuth state transfer needed
   
   // Config save mutation
   const configMutation = useMutation({
@@ -395,111 +299,7 @@ export default function EmailSettings() {
     }
   });
   
-  // OAuth authorization mutation
-  const oauthAuthorizeMutation = useMutation({
-    mutationFn: async (data: OAuthAuthorizeValues) => {
-      return apiRequest('/api/email/oauth/google/authorize', {
-        method: 'POST',
-        data,
-      });
-    },
-    onSuccess: (data) => {
-      if (data.authUrl) {
-        setOauthAuthUrl(data.authUrl);
-        setOauthStep('token');
-        // Open the authorization URL in a new tab
-        window.open(data.authUrl, '_blank');
-      } else {
-        toast({
-          title: "OAuth Error",
-          description: "Failed to get authorization URL",
-          variant: "destructive",
-        });
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "OAuth Error",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
-    }
-  });
-  
-  // OAuth token mutation
-  const oauthTokenMutation = useMutation({
-    mutationFn: async (data: OAuthTokenValues) => {
-      return apiRequest('/api/email/oauth/google/token', {
-        method: 'POST',
-        data,
-      });
-    },
-    onSuccess: (data) => {
-      if (data.refreshToken) {
-        oauthConfigForm.setValue('refreshToken', data.refreshToken);
-        if (data.email) {
-          oauthConfigForm.setValue('email', data.email);
-        }
-        setOauthStep('configure');
-        toast({
-          title: "OAuth Token Received",
-          description: "Successfully obtained OAuth tokens. Please complete the configuration.",
-        });
-      } else {
-        toast({
-          title: "OAuth Error",
-          description: "Failed to get refresh token",
-          variant: "destructive",
-        });
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "OAuth Error",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
-    }
-  });
-  
-  // OAuth configuration mutation
-  const oauthConfigMutation = useMutation({
-    mutationFn: async (data: OAuthConfigValues) => {
-      return apiRequest('/api/email/oauth/configure', {
-        method: 'POST',
-        data,
-      });
-    },
-    onSuccess: () => {
-      setOauthStep('authorize');
-      toast({
-        title: "OAuth Configuration Successful",
-        description: "Your email has been securely configured with OAuth authentication.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/email/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/email/config"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Configuration Error",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
-    }
-  });
-  
-  // Form submission handlers for OAuth flow
-  const onOAuthAuthorizeSubmit = (data: OAuthAuthorizeValues) => {
-    oauthAuthorizeMutation.mutate(data);
-  };
-  
-  const onOAuthTokenSubmit = (data: OAuthTokenValues) => {
-    oauthTokenMutation.mutate(data);
-  };
-  
-  const onOAuthConfigSubmit = (data: OAuthConfigValues) => {
-    oauthConfigMutation.mutate(data);
-  };
+  // No OAuth-related mutations or handlers needed
 
   // Form submission handlers for main configuration
   const onConfigSubmit = (data: EmailConfigValues) => {

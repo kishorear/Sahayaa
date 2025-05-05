@@ -353,7 +353,7 @@ export class EmailService {
     // Classify the ticket using AI
     const classification = await classifyTicket(subject, textContent);
 
-    // Create a new ticket
+    // Create a new ticket with source set to email
     const newTicket: InsertTicket = {
       title: subject,
       description: textContent || 'No description provided',
@@ -361,7 +361,8 @@ export class EmailService {
       category: classification.category,
       complexity: classification.complexity as any,
       assignedTo: classification.assignedTo,
-      aiNotes: classification.aiNotes
+      aiNotes: classification.aiNotes,
+      source: 'email' // Clearly mark this as an email-generated ticket
     };
 
     const ticket = await storage.createTicket(newTicket);

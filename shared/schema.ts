@@ -142,6 +142,7 @@ export const tickets = pgTable("tickets", {
   category: text("category").notNull(), // authentication, billing, feature_request, etc.
   complexity: text("complexity").default("medium"), // simple, medium, complex
   assignedTo: text("assignedTo"), // role or specific user
+  source: text("source").default("chat"), // chat, email, widget, api
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   resolvedAt: timestamp("resolvedAt"),

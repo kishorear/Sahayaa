@@ -2,6 +2,31 @@ import { Express, Request, Response } from 'express';
 import { EmailConfig, setupEmailService, getEmailService } from '../email-service';
 import { z } from 'zod';
 import { storage } from '../storage';
+import { google } from 'googleapis';
+
+// Basic auth config schema
+const basicAuthSchema = z.object({
+  type: z.literal('basic'),
+  user: z.string(),
+  pass: z.string()
+});
+
+// OAuth2 auth config schema
+const oauth2AuthSchema = z.object({
+  type: z.literal('oauth2'),
+  user: z.string(),
+  clientId: z.string(),
+  clientSecret: z.string(),
+  refreshToken: z.string(),
+  accessToken: z.string().optional(),
+  expires: z.number().optional()
+});
+
+// Combined auth schema with union type
+const authConfigSchema = z.discriminatedUnion('type', [
+  basicAuthSchema,
+  oauth2AuthSchema
+]);
 
 // Schema for email configuration
 const emailConfigSchema = z.object({
@@ -9,18 +34,15 @@ const emailConfigSchema = z.object({
     host: z.string(),
     port: z.number(),
     secure: z.boolean(),
-    auth: z.object({
-      user: z.string(),
-      pass: z.string()
-    })
+    auth: authConfigSchema
   }),
   imap: z.object({
     user: z.string(),
-    password: z.string(),
     host: z.string(),
     port: z.number(),
     tls: z.boolean(),
-    authTimeout: z.number().default(10000)
+    authTimeout: z.number().default(10000),
+    auth: authConfigSchema
   }),
   settings: z.object({
     fromName: z.string(),
@@ -30,7 +52,208 @@ const emailConfigSchema = z.object({
   })
 });
 
+// Google API OAuth scopes
+const GOOGLE_MAIL_SCOPES = [
+  'https://mail.google.com/',                 // Full access to Gmail account (read/send/modify/delete)
+  'https://www.googleapis.com/auth/gmail.send', // Send emails only
+  'https://www.googleapis.com/auth/gmail.modify', // Read, send, modify but not delete
+  'https://www.googleapis.com/auth/gmail.readonly' // Read only access
+];
+
 export function registerEmailRoutes(app: Express, requireAuth: any) {
+  
+  // Google OAuth2 authorization URL generation endpoint
+  app.post('/api/email/oauth/google/authorize', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { clientId, clientSecret, redirectUri } = req.body;
+      
+      if (!clientId || !clientSecret) {
+        return res.status(400).json({ 
+          message: 'Client ID and Client Secret are required' 
+        });
+      }
+
+      // Create an OAuth client
+      const oauth2Client = new google.auth.OAuth2(
+        clientId,
+        clientSecret,
+        redirectUri || 'https://developers.google.com/oauthplayground'
+      );
+      
+      // Generate the authorization URL
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline', // Required to get a refresh token
+        scope: GOOGLE_MAIL_SCOPES,
+        prompt: 'consent' // Force user consent screen to get new refresh token
+      });
+      
+      res.status(200).json({ 
+        authUrl,
+        message: 'Authorization URL generated successfully' 
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ 
+        message: `Error generating authorization URL: ${errorMessage}` 
+      });
+    }
+  });
+  
+  // Exchange authorization code for tokens
+  app.post('/api/email/oauth/google/token', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { clientId, clientSecret, code, redirectUri } = req.body;
+      
+      if (!clientId || !clientSecret || !code) {
+        return res.status(400).json({ 
+          message: 'Client ID, Client Secret, and Authorization Code are required' 
+        });
+      }
+      
+      // Create an OAuth client
+      const oauth2Client = new google.auth.OAuth2(
+        clientId,
+        clientSecret,
+        redirectUri || 'https://developers.google.com/oauthplayground'
+      );
+      
+      // Exchange authorization code for tokens
+      const { tokens } = await oauth2Client.getToken(code);
+      
+      // Return tokens but mask sensitive data for security
+      const tokenResponse = {
+        accessToken: tokens.access_token ? '********' : undefined,
+        refreshToken: tokens.refresh_token ? '********' : undefined, 
+        expiryDate: tokens.expiry_date,
+        hasRefreshToken: !!tokens.refresh_token,
+        message: 'Authorization successful'
+      };
+      
+      // Store the actual tokens in the session for temporary use
+      if (req.session) {
+        req.session.tempOAuth = {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          expiryDate: tokens.expiry_date
+        };
+      }
+      
+      res.status(200).json(tokenResponse);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ 
+        message: `Error exchanging authorization code for tokens: ${errorMessage}` 
+      });
+    }
+  });
+  
+  // Configure email with OAuth tokens
+  app.post('/api/email/oauth/configure', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.tempOAuth) {
+        return res.status(400).json({ 
+          message: 'OAuth tokens not found in session. Please complete the authorization process first.' 
+        });
+      }
+      
+      const { 
+        smtpHost, 
+        smtpPort, 
+        smtpSecure, 
+        imapHost, 
+        imapPort, 
+        imapTls, 
+        email, 
+        fromName,
+        ticketSubjectPrefix,
+        checkInterval
+      } = req.body;
+      
+      // Basic validation
+      if (!smtpHost || !smtpPort || !imapHost || !imapPort || !email || !fromName) {
+        return res.status(400).json({ 
+          message: 'All email configuration fields are required' 
+        });
+      }
+      
+      // Build email configuration with OAuth tokens
+      const config = {
+        smtp: {
+          host: smtpHost,
+          port: Number(smtpPort),
+          secure: smtpSecure !== undefined ? Boolean(smtpSecure) : true,
+          auth: {
+            type: 'oauth2',
+            user: email,
+            clientId: req.body.clientId,
+            clientSecret: req.body.clientSecret,
+            refreshToken: req.session.tempOAuth.refreshToken,
+            accessToken: req.session.tempOAuth.accessToken,
+            expires: req.session.tempOAuth.expiryDate
+          }
+        },
+        imap: {
+          user: email,
+          host: imapHost,
+          port: Number(imapPort),
+          tls: imapTls !== undefined ? Boolean(imapTls) : true,
+          authTimeout: 10000,
+          auth: {
+            type: 'oauth2',
+            user: email,
+            clientId: req.body.clientId,
+            clientSecret: req.body.clientSecret,
+            refreshToken: req.session.tempOAuth.refreshToken,
+            accessToken: req.session.tempOAuth.accessToken,
+            expires: req.session.tempOAuth.expiryDate
+          }
+        },
+        settings: {
+          fromName: fromName,
+          fromEmail: email,
+          ticketSubjectPrefix: ticketSubjectPrefix || '[Support]',
+          checkInterval: Number(checkInterval) || 60000
+        }
+      };
+      
+      // Setup the email service
+      const emailService = setupEmailService(config);
+      
+      // Save to tenant settings
+      try {
+        const tenantId = req.user?.tenantId || 1;
+        const tenant = await storage.getTenantById(tenantId);
+        
+        if (tenant) {
+          const updatedSettings = {
+            ...(tenant.settings || {}),
+            emailConfig: config
+          };
+          
+          await storage.updateTenant(tenantId, {
+            settings: updatedSettings
+          });
+        }
+      } catch (storageError) {
+        console.error('Error saving OAuth email config:', storageError);
+      }
+      
+      // Start email monitoring
+      emailService.startEmailMonitoring();
+      
+      // Clear temp OAuth tokens from session
+      delete req.session.tempOAuth;
+      
+      res.status(200).json({ 
+        message: 'Email configuration with OAuth saved and monitoring started' 
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ 
+        message: `Error configuring email with OAuth: ${errorMessage}` 
+      });
+    }
+  });
   // Set up email configuration
   app.post('/api/email/config', requireAuth, async (req: Request, res: Response) => {
     try {
@@ -124,12 +347,34 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       const config = emailService.getConfig();
       
       // Mask passwords/secrets for security
-      if (config.smtp?.auth?.pass) {
+      if (config.smtp?.auth?.type === 'basic' && config.smtp.auth.pass) {
         config.smtp.auth.pass = '********';
+      } else if (config.smtp?.auth?.type === 'oauth2') {
+        // Mask OAuth secrets
+        if (config.smtp.auth.clientSecret) {
+          config.smtp.auth.clientSecret = '********';
+        }
+        if (config.smtp.auth.refreshToken) {
+          config.smtp.auth.refreshToken = '********';
+        }
+        if (config.smtp.auth.accessToken) {
+          config.smtp.auth.accessToken = '********';
+        }
       }
       
-      if (config.imap?.password) {
-        config.imap.password = '********';
+      if (config.imap?.auth?.type === 'basic' && config.imap.auth.pass) {
+        config.imap.auth.pass = '********';
+      } else if (config.imap?.auth?.type === 'oauth2') {
+        // Mask OAuth secrets
+        if (config.imap.auth.clientSecret) {
+          config.imap.auth.clientSecret = '********';
+        }
+        if (config.imap.auth.refreshToken) {
+          config.imap.auth.refreshToken = '********';
+        }
+        if (config.imap.auth.accessToken) {
+          config.imap.auth.accessToken = '********';
+        }
       }
       
       return res.status(200).json(config);

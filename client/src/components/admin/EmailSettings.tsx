@@ -143,8 +143,6 @@ export default function EmailSettings() {
     },
   });
   
-  // No OAuth-related forms needed
-  
   // Load configuration data into the form
   useEffect(() => {
     if (emailConfigResponse && !configLoading) {
@@ -190,42 +188,22 @@ export default function EmailSettings() {
               host: parsedConfig.smtp.host || "",
               port: parsedConfig.smtp.port || 587,
               secure: parsedConfig.smtp.secure !== undefined ? parsedConfig.smtp.secure : true,
-              auth: parsedConfig.smtp.auth?.type === 'oauth2' ? 
-                {
-                  type: 'oauth2',
-                  user: parsedConfig.smtp.auth.user || "",
-                  clientId: parsedConfig.smtp.auth.clientId || "",
-                  clientSecret: parsedConfig.smtp.auth.clientSecret || "",
-                  refreshToken: parsedConfig.smtp.auth.refreshToken || "",
-                  accessToken: parsedConfig.smtp.auth.accessToken,
-                  expires: parsedConfig.smtp.auth.expires
-                } :
-                {
-                  type: 'basic',
-                  user: parsedConfig.smtp.auth?.user || "",
-                  pass: parsedConfig.smtp.auth?.pass || "",
-                },
+              auth: {
+                type: 'basic',
+                user: parsedConfig.smtp.auth?.user || "",
+                pass: parsedConfig.smtp.auth?.pass || "",
+              },
             },
             imap: {
               host: parsedConfig.imap.host || "",
               port: parsedConfig.imap.port || 993,
               tls: parsedConfig.imap.tls !== undefined ? parsedConfig.imap.tls : true,
               authTimeout: parsedConfig.imap.authTimeout || 10000,
-              auth: parsedConfig.imap.auth?.type === 'oauth2' ? 
-                {
-                  type: 'oauth2',
-                  user: parsedConfig.imap.auth.user || "",
-                  clientId: parsedConfig.imap.auth.clientId || "",
-                  clientSecret: parsedConfig.imap.auth.clientSecret || "",
-                  refreshToken: parsedConfig.imap.auth.refreshToken || "",
-                  accessToken: parsedConfig.imap.auth.accessToken,
-                  expires: parsedConfig.imap.auth.expires
-                } :
-                {
-                  type: 'basic',
-                  user: parsedConfig.imap.auth?.user || "",
-                  pass: parsedConfig.imap.auth?.pass || "",
-                },
+              auth: {
+                type: 'basic',
+                user: parsedConfig.imap.auth?.user || "",
+                pass: parsedConfig.imap.auth?.pass || "",
+              },
             },
             settings: {
               fromName: parsedConfig.settings.fromName || "",
@@ -247,8 +225,6 @@ export default function EmailSettings() {
       }
     }
   }, [emailConfigResponse, configLoading, toast, configForm]);
-  
-  // No OAuth state transfer needed
   
   // Config save mutation
   const configMutation = useMutation({
@@ -299,8 +275,6 @@ export default function EmailSettings() {
     }
   });
   
-  // No OAuth-related mutations or handlers needed
-
   // Form submission handlers for main configuration
   const onConfigSubmit = (data: EmailConfigValues) => {
     configMutation.mutate(data);
@@ -356,254 +330,7 @@ export default function EmailSettings() {
       </div>
       
       <div className="grid gap-6">
-        {/* Email OAuth Setup */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Email OAuth Setup</CardTitle>
-            <CardDescription>
-              Configure secure OAuth authentication for your email service.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {oauthStep === 'authorize' && (
-              <Form {...oauthAuthorizeForm}>
-                <form onSubmit={oauthAuthorizeForm.handleSubmit(onOAuthAuthorizeSubmit)} className="space-y-4">
-                  <FormField
-                    control={oauthAuthorizeForm.control}
-                    name="provider"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>OAuth Provider</FormLabel>
-                        <FormControl>
-                          <Input {...field} disabled value="google" />
-                        </FormControl>
-                        <FormDescription>Currently only Google OAuth is supported</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={oauthAuthorizeForm.control}
-                      name="clientId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client ID</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="OAuth Client ID" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={oauthAuthorizeForm.control}
-                      name="clientSecret"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client Secret</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="password" placeholder="OAuth Client Secret" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={oauthAuthorizeForm.control}
-                    name="redirectUri"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Redirect URI</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="https://your-app/admin/email" />
-                        </FormControl>
-                        <FormDescription>
-                          This must match exactly with the redirect URI registered in your OAuth application
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={oauthAuthorizeForm.control}
-                    name="scopes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Scopes</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="https://mail.google.com/" />
-                        </FormControl>
-                        <FormDescription>Space-separated OAuth scopes</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button type="submit" disabled={oauthAuthorizeMutation.isPending}>
-                    {oauthAuthorizeMutation.isPending ? "Generating Auth URL..." : "Generate Authorization URL"}
-                  </Button>
-                </form>
-              </Form>
-            )}
-            
-            {oauthStep === 'token' && (
-              <Form {...oauthTokenForm}>
-                <form onSubmit={oauthTokenForm.handleSubmit(onOAuthTokenSubmit)} className="space-y-4">
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Authorization Required</AlertTitle>
-                    <AlertDescription>
-                      Please complete the authorization in the opened browser tab, then enter the authorization code below.
-                      <div className="mt-2">
-                        <a 
-                          href={oauthAuthUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline"
-                        >
-                          Click here if the authorization page didn't open automatically
-                        </a>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <FormField
-                    control={oauthTokenForm.control}
-                    name="code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Authorization Code</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Paste the authorization code here" />
-                        </FormControl>
-                        <FormDescription>
-                          After you authorize access, you'll receive a code to paste here
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex space-x-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setOauthStep('authorize')}
-                    >
-                      Back
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={oauthTokenMutation.isPending}
-                    >
-                      {oauthTokenMutation.isPending ? "Processing..." : "Submit Authorization Code"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            )}
-            
-            {oauthStep === 'configure' && (
-              <Form {...oauthConfigForm}>
-                <form onSubmit={oauthConfigForm.handleSubmit(onOAuthConfigSubmit)} className="space-y-4">
-                  <Alert className="mb-4 bg-green-50">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <AlertTitle>OAuth Tokens Received</AlertTitle>
-                    <AlertDescription>
-                      Authorization successful! Please review and confirm the configuration below.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <FormField
-                    control={oauthConfigForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="The email address you authorized" />
-                        </FormControl>
-                        <FormDescription>
-                          This is the email account you've granted access to
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={oauthConfigForm.control}
-                      name="clientId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client ID</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="OAuth Client ID" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={oauthConfigForm.control}
-                      name="clientSecret"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client Secret</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="password" placeholder="OAuth Client Secret" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={oauthConfigForm.control}
-                    name="refreshToken"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Refresh Token</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="password" />
-                        </FormControl>
-                        <FormDescription>
-                          This token is used to automatically refresh your access.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex space-x-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setOauthStep('token')}
-                    >
-                      Back
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={oauthConfigMutation.isPending}
-                    >
-                      {oauthConfigMutation.isPending ? "Saving..." : "Complete OAuth Setup"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            )}
-          </CardContent>
-        </Card>
+        {/* OAuth Setup removed as requested */}
         
         {/* Main email configuration */}
         <Card>
@@ -668,9 +395,9 @@ export default function EmailSettings() {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
-                                <FormLabel>Use Secure Connection (SSL/TLS)</FormLabel>
+                                <FormLabel>Use Secure Connection (TLS/SSL)</FormLabel>
                                 <FormDescription>
-                                  Enable for secure SMTP connections (usually on port 465)
+                                  Enable for secured SMTP connections (usually port 465)
                                 </FormDescription>
                               </div>
                               <FormControl>
@@ -686,90 +413,47 @@ export default function EmailSettings() {
                         
                         <Separator className="my-4" />
                         
-                        <FormField
-                          control={configForm.control}
-                          name="smtp.auth.type"
-                          render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel>Authentication Type</FormLabel>
-                              <FormControl>
-                                <div className="flex flex-col space-y-2">
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id="smtp-auth-basic"
-                                      checked={field.value === 'basic'}
-                                      onCheckedChange={() => configForm.setValue('smtp.auth.type', 'basic')}
-                                    />
-                                    <label
-                                      htmlFor="smtp-auth-basic"
-                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                      Basic Authentication (Username/Password)
-                                    </label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id="smtp-auth-oauth2"
-                                      checked={field.value === 'oauth2'}
-                                      onCheckedChange={() => configForm.setValue('smtp.auth.type', 'oauth2')}
-                                    />
-                                    <label
-                                      htmlFor="smtp-auth-oauth2"
-                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                      OAuth2 Authentication (Recommended for better security)
-                                    </label>
-                                  </div>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        {configForm.watch('smtp.auth.type') === 'basic' && (
-                          <div className="space-y-4">
-                            <FormField
-                              control={configForm.control}
-                              name="smtp.auth.user"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>SMTP Username</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} placeholder="username@example.com" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={configForm.control}
-                              name="smtp.auth.pass"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>SMTP Password</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} type="password" placeholder="••••••••" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        )}
-                        
-                        {configForm.watch('smtp.auth.type') === 'oauth2' && (
-                          <div className="space-y-4">
-                            <Alert>
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertTitle>OAuth2 Authentication</AlertTitle>
-                              <AlertDescription>
-                                Please use the OAuth setup section above to configure OAuth authentication.
-                              </AlertDescription>
-                            </Alert>
-                          </div>
-                        )}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium">Authentication</h4>
+                          
+                          <FormField
+                            control={configForm.control}
+                            name="smtp.auth.user"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Username</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="your.email@example.com" />
+                                </FormControl>
+                                <FormDescription>
+                                  Usually your full email address
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={configForm.control}
+                            name="smtp.auth.pass"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="password" 
+                                    placeholder="••••••••••••"
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Use an application-specific password if 2FA is enabled
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -779,7 +463,7 @@ export default function EmailSettings() {
                       <CardHeader>
                         <CardTitle>IMAP Configuration</CardTitle>
                         <CardDescription>
-                          Configure incoming email settings to receive and process support requests.
+                          Configure incoming email settings to receive support tickets.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -813,7 +497,7 @@ export default function EmailSettings() {
                           />
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col space-y-4">
                           <FormField
                             control={configForm.control}
                             name="imap.tls"
@@ -822,7 +506,7 @@ export default function EmailSettings() {
                                 <div className="space-y-0.5">
                                   <FormLabel>Use TLS</FormLabel>
                                   <FormDescription>
-                                    Enable TLS for secure IMAP connections
+                                    Enable for secured IMAP connections (recommended)
                                   </FormDescription>
                                 </div>
                                 <FormControl>
@@ -841,12 +525,12 @@ export default function EmailSettings() {
                             name="imap.authTimeout"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Auth Timeout (ms)</FormLabel>
+                                <FormLabel>Connection Timeout (ms)</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="number" placeholder="10000" />
+                                  <Input {...field} type="number" min="1000" step="1000" />
                                 </FormControl>
                                 <FormDescription>
-                                  Authentication timeout in milliseconds
+                                  Timeout for IMAP connection attempts in milliseconds
                                 </FormDescription>
                                 <FormMessage />
                               </FormItem>
@@ -856,90 +540,47 @@ export default function EmailSettings() {
                         
                         <Separator className="my-4" />
                         
-                        <FormField
-                          control={configForm.control}
-                          name="imap.auth.type"
-                          render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel>Authentication Type</FormLabel>
-                              <FormControl>
-                                <div className="flex flex-col space-y-2">
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id="imap-auth-basic"
-                                      checked={field.value === 'basic'}
-                                      onCheckedChange={() => configForm.setValue('imap.auth.type', 'basic')}
-                                    />
-                                    <label
-                                      htmlFor="imap-auth-basic"
-                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                      Basic Authentication (Username/Password)
-                                    </label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id="imap-auth-oauth2"
-                                      checked={field.value === 'oauth2'}
-                                      onCheckedChange={() => configForm.setValue('imap.auth.type', 'oauth2')}
-                                    />
-                                    <label
-                                      htmlFor="imap-auth-oauth2"
-                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                      OAuth2 Authentication (Recommended for better security)
-                                    </label>
-                                  </div>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        {configForm.watch('imap.auth.type') === 'basic' && (
-                          <div className="space-y-4">
-                            <FormField
-                              control={configForm.control}
-                              name="imap.auth.user"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>IMAP Username</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} placeholder="username@example.com" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={configForm.control}
-                              name="imap.auth.pass"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>IMAP Password</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} type="password" placeholder="••••••••" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        )}
-                        
-                        {configForm.watch('imap.auth.type') === 'oauth2' && (
-                          <div className="space-y-4">
-                            <Alert>
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertTitle>OAuth2 Authentication</AlertTitle>
-                              <AlertDescription>
-                                Please use the OAuth setup section above to configure OAuth authentication.
-                              </AlertDescription>
-                            </Alert>
-                          </div>
-                        )}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium">Authentication</h4>
+                          
+                          <FormField
+                            control={configForm.control}
+                            name="imap.auth.user"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Username</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="your.email@example.com" />
+                                </FormControl>
+                                <FormDescription>
+                                  Usually your full email address
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={configForm.control}
+                            name="imap.auth.pass"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="password" 
+                                    placeholder="••••••••••••"
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Use an application-specific password if 2FA is enabled
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -947,9 +588,9 @@ export default function EmailSettings() {
                   <TabsContent value="settings" className="space-y-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle>General Email Settings</CardTitle>
+                        <CardTitle>Email Settings</CardTitle>
                         <CardDescription>
-                          Configure general email service settings for ticket processing.
+                          Configure general email processing settings.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -964,7 +605,7 @@ export default function EmailSettings() {
                                   <Input {...field} placeholder="Support Team" />
                                 </FormControl>
                                 <FormDescription>
-                                  Display name for outgoing emails
+                                  The display name that will be shown to recipients
                                 </FormDescription>
                                 <FormMessage />
                               </FormItem>
@@ -978,10 +619,10 @@ export default function EmailSettings() {
                               <FormItem>
                                 <FormLabel>From Email</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="support@example.com" />
+                                  <Input {...field} placeholder="support@yourcompany.com" />
                                 </FormControl>
                                 <FormDescription>
-                                  Email address for outgoing emails
+                                  The email address that will be used as the sender
                                 </FormDescription>
                                 <FormMessage />
                               </FormItem>
@@ -989,64 +630,64 @@ export default function EmailSettings() {
                           />
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={configForm.control}
-                            name="settings.ticketSubjectPrefix"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Ticket Subject Prefix</FormLabel>
-                                <FormControl>
-                                  <Input {...field} placeholder="[Ticket #]" />
-                                </FormControl>
-                                <FormDescription>
-                                  Used to identify tickets in email subjects
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={configForm.control}
-                            name="settings.checkInterval"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Check Interval (ms)</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="number" placeholder="60000" />
-                                </FormControl>
-                                <FormDescription>
-                                  How often to check for new emails (minimum 30 seconds)
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        <FormField
+                          control={configForm.control}
+                          name="settings.ticketSubjectPrefix"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Ticket Subject Prefix</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="[Ticket #]" />
+                              </FormControl>
+                              <FormDescription>
+                                This text will be used to prefix the ticket ID in email subjects
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={configForm.control}
+                          name="settings.checkInterval"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Check Interval (ms)</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="number" min="30000" step="10000" />
+                              </FormControl>
+                              <FormDescription>
+                                How often to check for new emails (in milliseconds, minimum 30 seconds)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </CardContent>
-                      <CardFooter className="flex justify-between">
-                        <Button type="button" variant="outline" onClick={() => configForm.reset()}>
-                          Reset
-                        </Button>
-                        <Button type="submit" form="email-config-form" disabled={configMutation.isPending}>
-                          {configMutation.isPending ? "Saving..." : "Save Configuration"}
-                        </Button>
-                      </CardFooter>
                     </Card>
                   </TabsContent>
+                  
+                  <div className="flex justify-end mt-4">
+                    <Button 
+                      type="submit" 
+                      form="email-config-form"
+                      disabled={configMutation.isPending}
+                    >
+                      {configMutation.isPending ? "Saving..." : "Save Configuration"}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </Tabs>
           </CardContent>
         </Card>
         
-        {/* Test Email */}
+        {/* Test email card */}
         <Card>
           <CardHeader>
             <CardTitle>Test Email</CardTitle>
             <CardDescription>
-              Send a test email to verify your configuration.
+              Send a test email to verify your configuration is working correctly.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1057,64 +698,114 @@ export default function EmailSettings() {
                   name="to"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>To Email</FormLabel>
+                      <FormLabel>Recipient Email</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="recipient@example.com" />
                       </FormControl>
+                      <FormDescription>
+                        Email address to send the test message to
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 
-                <FormField
-                  control={testEmailForm.control}
-                  name="subject"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Subject</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Test Email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 gap-4">
+                  <FormField
+                    control={testEmailForm.control}
+                    name="subject"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subject</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Test Email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={testEmailForm.control}
+                    name="message"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Message</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="This is a test email from the support system."
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
-                <FormField
-                  control={testEmailForm.control}
-                  name="message"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Message</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="This is a test email." />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button type="submit" disabled={testEmailMutation.isPending || !isEmailRunning}>
-                  {testEmailMutation.isPending 
-                    ? "Sending..." 
-                    : !isEmailRunning 
-                      ? "Email service not running" 
-                      : "Send Test Email"}
+                <Button 
+                  type="submit"
+                  disabled={testEmailMutation.isPending || configMutation.isPending || !isEmailRunning}
+                >
+                  {testEmailMutation.isPending ? "Sending..." : "Send Test Email"}
                 </Button>
+                
+                {!isEmailRunning && (
+                  <Alert className="mt-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Email Service Not Running</AlertTitle>
+                    <AlertDescription>
+                      The email service is not currently running. Save your configuration and refresh the status before sending a test email.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </form>
             </Form>
           </CardContent>
         </Card>
+        
+        {/* Email Info Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Email Integration Guide</CardTitle>
+            <CardDescription>
+              Tips for setting up your email integration correctly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Gmail Settings</h4>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>SMTP Host: smtp.gmail.com</li>
+                <li>SMTP Port: 587 (with TLS enabled)</li>
+                <li>IMAP Host: imap.gmail.com</li>
+                <li>IMAP Port: 993 (with TLS enabled)</li>
+                <li>For accounts with 2FA, use an app password instead of your regular password</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-2">Outlook/Office 365 Settings</h4>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>SMTP Host: smtp.office365.com</li>
+                <li>SMTP Port: 587 (with TLS enabled)</li>
+                <li>IMAP Host: outlook.office365.com</li>
+                <li>IMAP Port: 993 (with TLS enabled)</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-2">Notes</h4>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Make sure your email provider allows IMAP access to your account</li>
+                <li>Check your email provider's specific requirements for third-party app access</li>
+                <li>For best results, create a dedicated email account for support tickets</li>
+                <li>Consider using a dedicated email address like support@yourdomain.com</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Security Note</AlertTitle>
-        <AlertDescription>
-          Email credentials are stored securely but should be handled with care. In a production environment, 
-          it's recommended to use app-specific passwords or OAuth authentication when available.
-        </AlertDescription>
-      </Alert>
     </div>
   );
 }

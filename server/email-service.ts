@@ -6,47 +6,23 @@ import { attemptAutoResolve, classifyTicket } from './ai';
 import { InsertTicket, InsertMessage } from '@shared/schema';
 import { EventEmitter } from 'events';
 import { log } from './vite';
-import { google } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
 
 // Email processing events
 export const emailEvents = new EventEmitter();
 
-// OAuth token information
-export interface OAuthTokenInfo {
-  accessToken: string;
-  refreshToken: string;
-  expiryDate: number;
-}
-
 // Authentication config for email
-export type AuthType = 'basic' | 'oauth2';
+export type AuthType = 'basic';
 
 export interface BasicAuthConfig {
   user: string;
   pass: string;
 }
 
-export interface OAuth2AuthConfig {
-  user: string;
-  clientId: string;
-  clientSecret: string;
-  refreshToken: string;
-  accessToken?: string;
-  expires?: number;
-}
-
 export interface EmailAuthConfig {
   type: AuthType;
   // Basic auth with username/password
   user: string;
-  pass?: string;
-  // OAuth2 authentication
-  clientId?: string;
-  clientSecret?: string;
-  refreshToken?: string;
-  accessToken?: string;
-  expires?: number;
+  pass: string;
 }
 
 // Email configuration - these would come from environment variables
@@ -115,84 +91,29 @@ export class EmailService {
     return this.config;
   }
 
-  // OAuth client for token refresh operations
-  private oauthClient: OAuth2Client | null = null;
-
   constructor(config: EmailConfig) {
     this.config = config;
 
-    // Set up OAuth client if using OAuth authentication
-    if (config.smtp.auth.type === 'oauth2') {
-      this.oauthClient = new google.auth.OAuth2(
-        config.smtp.auth.clientId,
-        config.smtp.auth.clientSecret,
-        'https://developers.google.com/oauthplayground' // Default redirect URI
-      );
-      
-      // Set credentials
-      this.oauthClient.setCredentials({
-        refresh_token: config.smtp.auth.refreshToken,
-        access_token: config.smtp.auth.accessToken,
-        expiry_date: config.smtp.auth.expires || Date.now() + 3600000 // Default expiry 1 hour from now
-      });
-    }
+    // Initialize SMTP transport with basic authentication
+    this.transporter = nodemailer.createTransport({
+      host: config.smtp.host,
+      port: config.smtp.port,
+      secure: config.smtp.secure,
+      auth: {
+        user: config.smtp.auth.user,
+        pass: config.smtp.auth.pass
+      }
+    });
 
-    // Initialize SMTP transport
-    if (config.smtp.auth.type === 'oauth2') {
-      this.transporter = nodemailer.createTransport({
-        host: config.smtp.host,
-        port: config.smtp.port,
-        secure: config.smtp.secure,
-        auth: {
-          type: 'OAuth2',
-          user: config.smtp.auth.user,
-          clientId: config.smtp.auth.clientId,
-          clientSecret: config.smtp.auth.clientSecret,
-          refreshToken: config.smtp.auth.refreshToken,
-          accessToken: config.smtp.auth.accessToken,
-          expires: config.smtp.auth.expires
-        }
-      });
-    } else {
-      // Basic authentication
-      this.transporter = nodemailer.createTransport({
-        host: config.smtp.host,
-        port: config.smtp.port,
-        secure: config.smtp.secure,
-        auth: {
-          user: config.smtp.auth.user,
-          pass: config.smtp.auth.pass
-        }
-      });
-    }
-
-    // Initialize IMAP client with appropriate authentication
-    if (config.imap.auth.type === 'oauth2') {
-      // For OAuth2
-      const xoauth2 = this.generateXOAuth2Token(
-        config.imap.auth.user,
-        config.imap.auth.accessToken || ''
-      );
-      
-      this.imapClient = new IMAP({
-        user: config.imap.user,
-        xoauth2: xoauth2,
-        host: config.imap.host,
-        port: config.imap.port,
-        tls: config.imap.tls,
-        authTimeout: config.imap.authTimeout
-      });
-    } else {
-      // For basic auth
-      this.imapClient = new IMAP({
-        user: config.imap.user,
-        password: config.imap.auth.pass,
-        host: config.imap.host,
-        port: config.imap.port,
-        tls: config.imap.tls,
-        authTimeout: config.imap.authTimeout
-      });
-    }
+    // Initialize IMAP client with basic authentication
+    this.imapClient = new IMAP({
+      user: config.imap.user,
+      password: config.imap.auth.pass,
+      host: config.imap.host,
+      port: config.imap.port,
+      tls: config.imap.tls,
+      authTimeout: config.imap.authTimeout
+    });
 
     // Set up event listeners for IMAP client
     this.imapClient.on('error', (err: Error) => {
@@ -200,49 +121,7 @@ export class EmailService {
     });
   }
 
-  // Generate XOAuth2 token for IMAP authentication
-  private generateXOAuth2Token(user: string, accessToken: string): string {
-    const authData = `user=${user}\x01auth=Bearer ${accessToken}\x01\x01`;
-    return Buffer.from(authData).toString('base64');
-  }
-  
-  // Refresh OAuth tokens
-  private async refreshOAuthTokens(): Promise<OAuthTokenInfo | null> {
-    if (!this.oauthClient) {
-      log('No OAuth client available for token refresh', 'email');
-      return null;
-    }
-    
-    try {
-      const { credentials } = await this.oauthClient.refreshAccessToken();
-      
-      if (!credentials.access_token || !credentials.expiry_date) {
-        log('Failed to refresh OAuth token - missing data', 'email');
-        return null;
-      }
-      
-      // Update config with new tokens
-      if (this.config.smtp.auth.type === 'oauth2') {
-        this.config.smtp.auth.accessToken = credentials.access_token;
-        this.config.smtp.auth.expires = credentials.expiry_date;
-      }
-      
-      if (this.config.imap.auth.type === 'oauth2') {
-        this.config.imap.auth.accessToken = credentials.access_token;
-        this.config.imap.auth.expires = credentials.expiry_date;
-      }
-      
-      return {
-        accessToken: credentials.access_token,
-        refreshToken: credentials.refresh_token || this.config.smtp.auth.refreshToken,
-        expiryDate: credentials.expiry_date
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      log(`Error refreshing OAuth token: ${errorMessage}`, 'email');
-      return null;
-    }
-  }
+  // No OAuth-related methods needed
 
   // Start monitoring emails
   public startEmailMonitoring(): void {
@@ -273,42 +152,6 @@ export class EmailService {
     }
 
     this.checkingEmails = true;
-
-    // Check if using OAuth2 and refresh token if needed
-    if (this.config.imap.auth.type === 'oauth2' && this.oauthClient) {
-      // Check if token is expired or will expire soon (5 minutes buffer)
-      const expiryDate = this.config.imap.auth.expires || 0;
-      if (Date.now() > expiryDate - 300000) { // 5 minutes before expiry
-        log('OAuth token for IMAP expired or will expire soon, refreshing...', 'email');
-        const newTokens = await this.refreshOAuthTokens();
-        
-        if (newTokens) {
-          log('OAuth token for IMAP refreshed successfully', 'email');
-          
-          // Create a new IMAP client with the refreshed token
-          const xoauth2 = this.generateXOAuth2Token(
-            this.config.imap.auth.user,
-            newTokens.accessToken
-          );
-          
-          this.imapClient = new IMAP({
-            user: this.config.imap.user,
-            xoauth2: xoauth2,
-            host: this.config.imap.host,
-            port: this.config.imap.port,
-            tls: this.config.imap.tls,
-            authTimeout: this.config.imap.authTimeout
-          });
-          
-          // Set up event listeners for IMAP client
-          this.imapClient.on('error', (err: Error) => {
-            log(`IMAP Error: ${err.message}`, 'email');
-          });
-        } else {
-          log('Failed to refresh OAuth token for IMAP, trying to connect anyway', 'email');
-        }
-      }
-    }
 
     this.imapClient.once('ready', () => {
       this.imapClient.openBox('INBOX', false, (err, box) => {

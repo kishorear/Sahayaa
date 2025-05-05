@@ -300,6 +300,11 @@ export default function TicketDetails() {
               </div>
 
               <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Source</h3>
+                <SourceBadge source={ticket.source} />
+              </div>
+
+              <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Created</h3>
                 <div className="flex items-center">
                   <Calendar className="h-5 w-5 mr-2 text-gray-400" />

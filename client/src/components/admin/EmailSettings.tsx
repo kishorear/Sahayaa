@@ -107,8 +107,10 @@ export default function EmailSettings() {
   
   // Effect to update running status
   useEffect(() => {
-    if (emailStatusResponse) {
-      setIsEmailRunning(emailStatusResponse.configured || false);
+    if (emailStatusResponse && typeof emailStatusResponse === 'object') {
+      // TypeScript type guard to ensure 'configured' exists
+      setIsEmailRunning('configured' in emailStatusResponse ? 
+        !!emailStatusResponse.configured : false);
     }
   }, [emailStatusResponse]);
   
@@ -303,7 +305,7 @@ export default function EmailSettings() {
         message: data.message || "Test email sent successfully",
         details: { 
           testEmailSent: true,
-          recipient: testEmailForm.getValues().recipient 
+          to: testEmailForm.getValues().to // Using the field name from the schema
         }
       });
       setConfirmationOpen(true);

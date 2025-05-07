@@ -430,14 +430,14 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
     }
     
     try {
-      const { recipient } = req.body;
+      const { to, subject, message } = req.body;
       
-      if (!recipient) {
+      if (!to) {
         return res.status(400).json({ message: 'Recipient email is required' });
       }
       
       await emailService.sendEmail(
-        recipient,
+        to,
         'Test Email from Support System',
         '<p>This is a test email from your support system.</p><p>If you received this, your email configuration is working correctly.</p>'
       );

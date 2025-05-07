@@ -667,16 +667,16 @@ export default function EmailSettings() {
                     </Card>
                   </TabsContent>
                   
-                  <div className="flex justify-end mt-4">
-                    <Button 
-                      type="submit" 
-                      form="email-config-form"
-                      disabled={configMutation.isPending}
-                    >
-                      {configMutation.isPending ? "Saving..." : "Save Configuration"}
-                    </Button>
-                  </div>
                 </form>
+                <div className="flex justify-end mt-4">
+                  <Button 
+                    type="submit" 
+                    form="email-config-form"
+                    disabled={configMutation.isPending}
+                  >
+                    {configMutation.isPending ? "Saving..." : "Save Configuration"}
+                  </Button>
+                </div>
               </Form>
             </Tabs>
           </CardContent>

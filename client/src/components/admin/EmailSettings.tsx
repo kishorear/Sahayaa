@@ -341,15 +341,15 @@ export default function EmailSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="smtp" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="smtp">SMTP (Outgoing)</TabsTrigger>
-                <TabsTrigger value="imap">IMAP (Incoming)</TabsTrigger>
-                <TabsTrigger value="settings">General Settings</TabsTrigger>
-              </TabsList>
+            <Form {...configForm}>
+              <form onSubmit={configForm.handleSubmit(onConfigSubmit)} className="space-y-4">
+                <Tabs defaultValue="smtp" className="space-y-4">
+                  <TabsList>
+                    <TabsTrigger value="smtp">SMTP (Outgoing)</TabsTrigger>
+                    <TabsTrigger value="imap">IMAP (Incoming)</TabsTrigger>
+                    <TabsTrigger value="settings">General Settings</TabsTrigger>
+                  </TabsList>
 
-              <Form {...configForm}>
-                <form id="email-config-form" onSubmit={configForm.handleSubmit(onConfigSubmit)}>
                   <TabsContent value="smtp" className="space-y-4">
                     <Card>
                       <CardHeader>
@@ -666,19 +666,18 @@ export default function EmailSettings() {
                       </CardContent>
                     </Card>
                   </TabsContent>
-                  
-                </form>
-                <div className="flex justify-end mt-4">
+                </Tabs>
+                
+                <div className="flex justify-end mt-6">
                   <Button 
-                    type="submit" 
-                    form="email-config-form"
+                    type="submit"
                     disabled={configMutation.isPending}
                   >
                     {configMutation.isPending ? "Saving..." : "Save Configuration"}
                   </Button>
                 </div>
-              </Form>
-            </Tabs>
+              </form>
+            </Form>
           </CardContent>
         </Card>
         

@@ -16,6 +16,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle, Mail } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Form schema for email configuration
 // Auth configuration schema - only basic auth supported
@@ -68,6 +76,11 @@ export default function EmailSettings() {
   
   // Status state
   const [isEmailRunning, setIsEmailRunning] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [configDetails, setConfigDetails] = useState<{success: boolean; message: string; details?: any}>({
+    success: false,
+    message: ''
+  });
   
   // Initial query for current email configuration
   const {
@@ -229,22 +242,44 @@ export default function EmailSettings() {
   // Config save mutation
   const configMutation = useMutation({
     mutationFn: async (data: EmailConfigValues) => {
-      return apiRequest('POST', '/api/email/config', data);
+      const response = await apiRequest('POST', '/api/email/config', data);
+      const responseData = await response.json();
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Show success message
       toast({
         title: "Configuration Saved",
         description: "Email settings have been saved successfully.",
       });
+      
+      // Open the confirmation dialog with details
+      setConfigDetails({
+        success: true,
+        message: data.message || "Email configuration saved successfully",
+        details: data
+      });
+      setConfirmationOpen(true);
+      
+      // Refresh configuration data
       refetchConfig();
       refetchStatus();
     },
     onError: (error) => {
+      // Show error message
       toast({
         title: "Configuration Error",
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
+      
+      // Open confirmation dialog with error details
+      setConfigDetails({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to save email configuration",
+        details: error instanceof Error ? { message: error.message } : error
+      });
+      setConfirmationOpen(true);
     }
   });
   
@@ -799,6 +834,112 @@ export default function EmailSettings() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Configuration Confirmation Dialog */}
+      <Dialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {configDetails.success ? (
+                <div className="flex items-center text-green-500">
+                  <CheckCircle className="mr-2 h-5 w-5" />
+                  Email Configuration Saved
+                </div>
+              ) : (
+                <div className="flex items-center text-red-500">
+                  <AlertCircle className="mr-2 h-5 w-5" />
+                  Configuration Error
+                </div>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {configDetails.message}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            {configDetails.success ? (
+              <div className="space-y-4">
+                <p className="text-sm font-medium">Configuration Status:</p>
+                <div className="rounded-md bg-green-50 p-4 border border-green-200">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-green-800">
+                        Email configuration was successfully saved to the database and is active.
+                      </p>
+                      {isEmailRunning ? (
+                        <p className="mt-2 text-sm text-green-700">
+                          Email monitoring service is running. The system will now check for new emails using the provided configuration.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm text-amber-700">
+                          Email configuration saved but the service is not running yet. Try refreshing the page or restarting the service.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-sm">
+                  You can now send a test email to verify that your configuration is working correctly.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm font-medium">Error Details:</p>
+                <div className="rounded-md bg-red-50 p-4 border border-red-200">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <AlertCircle className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">
+                        Unable to save email configuration
+                      </p>
+                      <div className="mt-2 text-sm text-red-700">
+                        <p>Please check the following:</p>
+                        <ul className="list-disc pl-5 space-y-1 mt-2">
+                          <li>Ensure your SMTP and IMAP server addresses are correct</li>
+                          <li>Verify that the username and password are valid</li>
+                          <li>Confirm that the ports are correct and not blocked by firewalls</li>
+                          <li>If using Gmail, ensure "Less secure app access" is enabled or use an app password</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              variant={configDetails.success ? "default" : "secondary"}
+              onClick={() => setConfirmationOpen(false)}
+            >
+              {configDetails.success ? "Close" : "Try Again"}
+            </Button>
+            
+            {configDetails.success && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setConfirmationOpen(false);
+                  refetchConfig();
+                  refetchStatus();
+                }}
+              >
+                Refresh Status
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

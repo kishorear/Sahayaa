@@ -292,7 +292,21 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       // Start email monitoring
       emailService.startEmailMonitoring();
       
-      res.status(200).json({ message: 'Email configuration saved and monitoring started' });
+      // Send a comprehensive response with confirmation details
+      res.status(200).json({ 
+        success: true,
+        message: 'Email configuration saved and monitoring started',
+        details: {
+          configSaved: true,
+          serviceName: 'Email Integration Service',
+          serviceStatus: 'running',
+          tenantId: req.user?.tenantId || 1,
+          smtpConfigured: true,
+          imapConfigured: true,
+          monitoringActive: true,
+          timestamp: new Date().toISOString()
+        }
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -300,7 +314,30 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
           errors: error.errors 
         });
       }
-      res.status(500).json({ message: 'Error setting up email' });
+      // Create a detailed error response with helpful debugging information
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ 
+        success: false,
+        message: `Error setting up email: ${errorMessage}`,
+        details: {
+          errorType: error.constructor.name,
+          timestamp: new Date().toISOString(),
+          tenantId: req.user?.tenantId || 1,
+          configProcessed: false,
+          possibleCauses: [
+            "Connection to mail server failed",
+            "Invalid credentials provided",
+            "Server may be blocking connection",
+            "Firewall or network issues"
+          ],
+          recommendations: [
+            "Check mail server URLs and ports",
+            "Verify username and password",
+            "Ensure your mail provider allows third-party connections",
+            "For Gmail, check 'Allow less secure apps' or use app passwords"
+          ]
+        }
+      });
     }
   });
   

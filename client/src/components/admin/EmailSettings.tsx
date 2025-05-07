@@ -286,21 +286,49 @@ export default function EmailSettings() {
   // Test email mutation
   const testEmailMutation = useMutation({
     mutationFn: async (data: TestEmailValues) => {
-      return apiRequest('POST', '/api/email/test', data);
+      const response = await apiRequest('POST', '/api/email/test', data);
+      const responseData = await response.json();
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Show success toast
       toast({
         title: "Test Email Sent",
-        description: "A test email has been sent successfully.",
+        description: "A test email has been sent successfully. Check your inbox to confirm receipt.",
       });
+      
+      // Open the confirmation dialog with details
+      setConfigDetails({
+        success: true,
+        message: data.message || "Test email sent successfully",
+        details: { 
+          testEmailSent: true,
+          recipient: testEmailForm.getValues().recipient 
+        }
+      });
+      setConfirmationOpen(true);
+      
+      // Reset the form
       testEmailForm.reset();
     },
     onError: (error) => {
+      // Show error toast
       toast({
         title: "Email Error",
         description: error instanceof Error ? error.message : "Failed to send test email",
         variant: "destructive",
       });
+      
+      // Open confirmation dialog with error details
+      setConfigDetails({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to send test email",
+        details: { 
+          testEmailError: true,
+          errorDetails: error instanceof Error ? error.message : "Unknown error"
+        }
+      });
+      setConfirmationOpen(true);
     }
   });
   

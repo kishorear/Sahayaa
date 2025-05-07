@@ -95,7 +95,7 @@ export default function EmailSettings() {
   // Effect to update running status
   useEffect(() => {
     if (emailStatusResponse) {
-      setIsEmailRunning(emailStatusResponse.running || false);
+      setIsEmailRunning(emailStatusResponse.configured || false);
     }
   }, [emailStatusResponse]);
   
@@ -229,10 +229,7 @@ export default function EmailSettings() {
   // Config save mutation
   const configMutation = useMutation({
     mutationFn: async (data: EmailConfigValues) => {
-      return apiRequest('/api/email/config', {
-        method: 'POST',
-        data,
-      });
+      return apiRequest('POST', '/api/email/config', data);
     },
     onSuccess: () => {
       toast({
@@ -254,10 +251,7 @@ export default function EmailSettings() {
   // Test email mutation
   const testEmailMutation = useMutation({
     mutationFn: async (data: TestEmailValues) => {
-      return apiRequest('/api/email/test', {
-        method: 'POST',
-        data,
-      });
+      return apiRequest('POST', '/api/email/test', data);
     },
     onSuccess: () => {
       toast({

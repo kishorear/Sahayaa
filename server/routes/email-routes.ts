@@ -436,16 +436,53 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
         return res.status(400).json({ message: 'Recipient email is required' });
       }
       
+      // Use custom subject and message if provided, otherwise defaults
+      const emailSubject = subject || 'Test Email from Support System';
+      const emailContent = message || 
+        '<p>This is a test email from your support system.</p><p>If you received this, your email configuration is working correctly.</p>';
+      
       await emailService.sendEmail(
         to,
-        'Test Email from Support System',
-        '<p>This is a test email from your support system.</p><p>If you received this, your email configuration is working correctly.</p>'
+        emailSubject,
+        emailContent
       );
       
-      res.status(200).json({ message: 'Test email sent successfully' });
+      res.status(200).json({ 
+        success: true,
+        message: 'Test email sent successfully',
+        details: {
+          testEmailSent: true,
+          recipient: to,
+          subject: emailSubject,
+          timestamp: new Date().toISOString()
+        }
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      res.status(500).json({ message: `Error sending test email: ${errorMessage}` });
+      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      
+      res.status(500).json({ 
+        success: false,
+        message: `Error sending test email: ${errorMessage}`,
+        details: {
+          testEmailError: true,
+          errorType,
+          errorDetails: errorMessage,
+          possibleCauses: [
+            "Connection to mail server failed",
+            "Invalid credentials provided",
+            "Recipient email address is invalid",
+            "SMTP server rejected the message"
+          ],
+          recommendations: [
+            "Verify your email configuration settings",
+            "Check that the recipient address is valid",
+            "Ensure your mail provider allows sending from your account",
+            "Try sending to a different email address"
+          ],
+          timestamp: new Date().toISOString()
+        }
+      });
     }
   });
   

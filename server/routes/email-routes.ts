@@ -200,21 +200,35 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       }
       
       // Send a comprehensive response with confirmation details
+      let responseMessage = 'SMTP-only email configuration saved';
+      let imapStatus = 'not_configured';
+      
+      if (hasValidImapConfig) {
+        if (imapTestResult.success) {
+          responseMessage = 'Email configuration saved and monitoring started';
+          imapStatus = 'connected';
+        } else {
+          responseMessage = 'Email configuration saved with SMTP only (IMAP connection failed)';
+          imapStatus = 'connection_failed';
+        }
+      }
+      
       res.status(200).json({ 
         success: true,
-        message: hasValidImapConfig 
-          ? 'Email configuration saved and monitoring started' 
-          : 'SMTP-only email configuration saved',
+        message: responseMessage,
         details: {
           configSaved: true,
           serviceName: 'Email Integration Service',
           serviceStatus: 'running',
           tenantId: req.user?.tenantId || 1,
           smtpConfigured: true,
+          smtpStatus: 'connected',
           imapConfigured: hasValidImapConfig,
-          monitoringActive: hasValidImapConfig,
+          imapStatus,
+          imapError: imapTestResult.error,
+          monitoringActive: hasValidImapConfig && imapTestResult.success,
           supportEmailSending: true,
-          supportEmailReceiving: hasValidImapConfig,
+          supportEmailReceiving: hasValidImapConfig && imapTestResult.success,
           timestamp: new Date().toISOString()
         }
       });
@@ -348,9 +362,11 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
           timestamp: new Date().toISOString()
         }
       });
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      
+      console.error(`Test email error: ${errorMessage}`);
       
       res.status(500).json({ 
         success: false,
@@ -414,9 +430,21 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       });
       
       res.status(200).json({ message: 'Email sent successfully' });
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      res.status(500).json({ message: `Error sending email: ${errorMessage}` });
+      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      
+      console.error(`Error sending ticket email: ${errorMessage}`);
+      
+      res.status(500).json({ 
+        success: false,
+        message: `Error sending email: ${errorMessage}`,
+        error: {
+          type: errorType,
+          details: errorMessage,
+          timestamp: new Date().toISOString()
+        }
+      });
     }
   });
 }

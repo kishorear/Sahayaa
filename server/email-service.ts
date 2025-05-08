@@ -112,32 +112,58 @@ export class EmailService {
     
     // Initialize IMAP client only if authentication credentials are provided
     if (hasValidImapConfig) {
-      this.imapClient = new IMAP({
-        user: config.imap.auth.user,
-        password: config.imap.auth.pass,
-        host: config.imap.host,
-        port: config.imap.port,
-        tls: config.imap.tls,
-        authTimeout: config.imap.authTimeout
-      });
-      
-      // Set up event listeners for IMAP client
-      this.imapClient.on('error', (err: Error) => {
-        log(`IMAP Error: ${err.message}`, 'email');
-      });
+      try {
+        this.imapClient = new IMAP({
+          user: config.imap.auth.user,
+          password: config.imap.auth.pass,
+          host: config.imap.host,
+          port: config.imap.port,
+          tls: config.imap.tls,
+          authTimeout: config.imap.authTimeout,
+          // Add timeout to prevent hanging connections
+          connTimeout: 10000,
+          // Add debug option for troubleshooting
+          debug: (info) => log(`IMAP Debug: ${info}`, 'email')
+        });
+        
+        // Set up event listeners for IMAP client
+        this.imapClient.on('error', (err: Error) => {
+          log(`IMAP Error: ${err.message}`, 'email');
+          emailEvents.emit('imap-error', { error: err.message });
+        });
+        
+        this.imapClient.on('end', () => {
+          log('IMAP connection ended', 'email');
+        });
+        
+        log('IMAP client configured successfully', 'email');
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        log(`Error initializing IMAP client: ${errorMessage}`, 'email');
+        
+        // Create a dummy IMAP client since the real one failed to initialize
+        this.createDummyImapClient();
+      }
     } else {
       log('IMAP configuration not provided - Email receiving functionality will be disabled', 'email');
-      
-      // Create a dummy IMAP client - it won't be used but prevents null errors
-      this.imapClient = new IMAP({
-        user: 'dummy',
-        password: 'dummy',
-        host: 'localhost',
-        port: 143,
-        tls: false,
-        authTimeout: 1000
-      });
+      this.createDummyImapClient();
     }
+  }
+  
+  /**
+   * Creates a dummy IMAP client that won't be used but prevents null errors
+   * This allows the service to operate in SMTP-only mode
+   */
+  private createDummyImapClient(): void {
+    // Create a dummy IMAP client - it won't be used but prevents null errors
+    this.imapClient = new IMAP({
+      user: 'dummy',
+      password: 'dummy',
+      host: 'localhost',
+      port: 143,
+      tls: false,
+      authTimeout: 1000
+    });
   }
 
   // No OAuth-related methods needed
@@ -146,13 +172,27 @@ export class EmailService {
   public startEmailMonitoring(): void {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+
+    // Skip setting up email monitoring if IMAP is not configured
+    const hasValidImapConfig = 
+      this.config.imap && 
+      this.config.imap.auth && 
+      this.config.imap.auth.user && 
+      this.config.imap.auth.pass;
+    
+    if (!hasValidImapConfig) {
+      log('Email monitoring not started - SMTP-only mode active (IMAP not configured)', 'email');
+      return;
     }
 
     this.checkInterval = setInterval(() => {
       this.checkEmails();
     }, this.config.settings.checkInterval);
 
-    log('Email monitoring started', 'email');
+    log('Email monitoring started - checking for new emails every ' + 
+      (this.config.settings.checkInterval / 1000) + ' seconds', 'email');
   }
 
   // Stop monitoring emails
@@ -179,78 +219,140 @@ export class EmailService {
     }
     
     if (this.checkingEmails) {
+      log('Email check already in progress, skipping', 'email');
       return; // Already checking
     }
 
     this.checkingEmails = true;
-
-    this.imapClient.once('ready', () => {
-      this.imapClient.openBox('INBOX', false, (err, box) => {
-        if (err) {
-          log(`Error opening inbox: ${err.message}`, 'email');
+    let connectionTimeout: NodeJS.Timeout | null = null;
+    
+    try {
+      // Add a safety timeout to prevent hanging if IMAP connection fails silently
+      const safetyPromise = new Promise<void>((_resolve, reject) => {
+        connectionTimeout = setTimeout(() => {
+          reject(new Error('IMAP connection timeout - safety mechanism'));
           this.checkingEmails = false;
-          this.imapClient.end();
-          return;
-        }
-
-        // Search for unread emails
-        this.imapClient.search(['UNSEEN'], (err, results) => {
-          if (err) {
-            log(`Error searching emails: ${err.message}`, 'email');
-            this.checkingEmails = false;
-            this.imapClient.end();
-            return;
+          
+          if (this.imapClient && this.imapClient.state !== 'disconnected') {
+            try {
+              this.imapClient.end();
+            } catch (endError) {
+              // Ignore errors during forced disconnect
+            }
           }
+        }, 30000); // 30 second safety timeout
+      });
+      
+      // Create a promise for the actual IMAP operations
+      const checkEmailsPromise = new Promise<void>((resolve, reject) => {
+        // Set up event handlers
+        this.imapClient.once('ready', () => {
+          log('IMAP connection ready, opening inbox', 'email');
+          
+          this.imapClient.openBox('INBOX', false, (err, box) => {
+            if (err) {
+              log(`Error opening inbox: ${err.message}`, 'email');
+              reject(err);
+              return;
+            }
 
-          if (results.length === 0) {
-            this.checkingEmails = false;
-            this.imapClient.end();
-            return;
-          }
+            // Search for unread emails
+            this.imapClient.search(['UNSEEN'], (err, results) => {
+              if (err) {
+                log(`Error searching emails: ${err.message}`, 'email');
+                reject(err);
+                return;
+              }
 
-          const fetch = this.imapClient.fetch(results, { bodies: [''], markSeen: true });
+              log(`Found ${results.length} unread emails`, 'email');
+              
+              if (results.length === 0) {
+                resolve();
+                return;
+              }
 
-          fetch.on('message', (msg) => {
-            msg.on('body', (stream) => {
-              simpleParser(stream, async (err, parsed) => {
-                if (err) {
-                  log(`Error parsing email: ${err.message}`, 'email');
-                  return;
-                }
+              const fetch = this.imapClient.fetch(results, { bodies: [''], markSeen: true });
+              
+              fetch.on('message', (msg) => {
+                msg.on('body', (stream) => {
+                  simpleParser(stream, async (err, parsed) => {
+                    if (err) {
+                      log(`Error parsing email: ${err.message}`, 'email');
+                      return;
+                    }
 
-                try {
-                  // Process the email to create a ticket
-                  await this.processEmail(parsed);
-                } catch (error) {
-                  log(`Error processing email: ${error.message}`, 'email');
-                }
+                    try {
+                      // Process the email to create a ticket
+                      await this.processEmail(parsed);
+                    } catch (error) {
+                      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                      log(`Error processing email: ${errorMessage}`, 'email');
+                    }
+                  });
+                });
+              });
+
+              fetch.once('error', (err) => {
+                log(`Fetch error: ${err.message}`, 'email');
+                // Don't reject here, let the process continue for other emails
+              });
+
+              fetch.once('end', () => {
+                log('Email fetch completed', 'email');
+                resolve();
               });
             });
           });
-
-          fetch.once('error', (err) => {
-            log(`Fetch error: ${err.message}`, 'email');
-            this.checkingEmails = false;
-          });
-
-          fetch.once('end', () => {
-            this.imapClient.end();
-            this.checkingEmails = false;
-          });
         });
+
+        this.imapClient.once('error', (err) => {
+          log(`IMAP connection error: ${err.message}`, 'email');
+          reject(err);
+        });
+
+        this.imapClient.once('end', () => {
+          log('IMAP connection ended', 'email');
+          resolve();
+        });
+
+        // Start the connection
+        log('Connecting to IMAP server...', 'email');
+        this.imapClient.connect();
       });
-    });
-
-    this.imapClient.once('error', (err) => {
-      log(`IMAP connection error: ${err.message}`, 'email');
+      
+      // Race between the actual operation and the safety timeout
+      await Promise.race([checkEmailsPromise, safetyPromise]);
+      
+      // Clear the safety timeout if we got here
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+        connectionTimeout = null;
+      }
+      
+      log('Email check completed successfully', 'email');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      log(`Error checking emails: ${errorMessage}`, 'email');
+      
+      // Emit error event so the system can be aware of issues
+      emailEvents.emit('email-check-error', { error: errorMessage });
+    } finally {
+      // Clean up
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+      }
+      
+      // Make sure the connection is properly closed
+      if (this.imapClient && this.imapClient.state !== 'disconnected') {
+        try {
+          this.imapClient.end();
+        } catch (endError) {
+          // Ignore errors during disconnection
+        }
+      }
+      
       this.checkingEmails = false;
-    });
-
-    this.imapClient.once('end', () => {
-      this.checkingEmails = false;
-    });
-
-    this.imapClient.connect();
+    }
   }
 
   // Process an email to create a ticket
@@ -432,7 +534,44 @@ export class EmailService {
 let emailService: EmailService | null = null;
 
 export function setupEmailService(config: EmailConfig): EmailService {
+  // Validate SMTP configuration
+  if (!config.smtp || !config.smtp.auth || !config.smtp.auth.user || !config.smtp.auth.pass) {
+    throw new Error('SMTP configuration is incomplete');
+  }
+  
+  // Set default values for IMAP if not provided to prevent runtime errors
+  const hasValidImapConfig = 
+    config.imap && 
+    config.imap.auth && 
+    config.imap.auth.user && 
+    config.imap.auth.pass;
+  
+  // Log SMTP/IMAP configuration mode
+  if (hasValidImapConfig) {
+    log('Setting up email service with both SMTP and IMAP', 'email');
+  } else {
+    log('Setting up email service in SMTP-only mode (no IMAP credentials provided)', 'email');
+    
+    // Ensure empty IMAP config has defaults to prevent null reference errors
+    if (!config.imap) {
+      config.imap = {
+        host: 'localhost',
+        port: 143,
+        tls: false,
+        authTimeout: 10000,
+        auth: {
+          type: 'basic',
+          user: '',
+          pass: ''
+        }
+      };
+    }
+  }
+  
+  // Create the email service
   emailService = new EmailService(config);
+  
+  log('Email service initialized successfully', 'email');
   return emailService;
 }
 

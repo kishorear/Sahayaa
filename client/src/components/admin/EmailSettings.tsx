@@ -890,31 +890,108 @@ export default function EmailSettings() {
           <div className="grid gap-4 py-4">
             {configDetails.success ? (
               <div className="space-y-4">
-                <p className="text-sm font-medium">Configuration Status:</p>
-                <div className="rounded-md bg-green-50 p-4 border border-green-200">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-green-800">
-                        Email configuration was successfully saved to the database and is active.
-                      </p>
-                      {isEmailRunning ? (
-                        <p className="mt-2 text-sm text-green-700">
-                          Email monitoring service is running. The system will now check for new emails using the provided configuration.
+                <p className="text-sm font-medium">Connection Status:</p>
+                <div className="space-y-3">
+                  {/* SMTP Status */}
+                  <div className={`rounded-md p-4 border ${
+                    configDetails.details?.smtpStatus === 'connected' 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        {configDetails.details?.smtpStatus === 'connected' ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <AlertCircle className="h-5 w-5 text-red-500" />
+                        )}
+                      </div>
+                      <div className="ml-3">
+                        <p className={`text-sm font-medium ${
+                          configDetails.details?.smtpStatus === 'connected' 
+                            ? 'text-green-800' 
+                            : 'text-red-800'
+                        }`}>
+                          SMTP Server Connection: {' '}
+                          <span className="font-bold">
+                            {configDetails.details?.smtpStatus === 'connected' 
+                              ? 'Connected Successfully' 
+                              : 'Connection Failed'}
+                          </span>
                         </p>
-                      ) : (
-                        <p className="mt-2 text-sm text-amber-700">
-                          Email configuration saved but the service is not running yet. Try refreshing the page or restarting the service.
-                        </p>
-                      )}
+                        {configDetails.details?.smtpStatus === 'connected' ? (
+                          <p className="mt-2 text-sm text-green-700">
+                            Your outgoing email server is correctly configured. You can send emails through the system.
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-sm text-red-700">
+                            {configDetails.details?.error || 'Unable to connect to SMTP server. Please check your credentials and try again.'}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  
+                  {/* IMAP Status - Only show if user provided IMAP credentials */}
+                  {configDetails.details?.imapConfigured && (
+                    <div className={`rounded-md p-4 border ${
+                      configDetails.details?.imapStatus === 'connected' 
+                        ? 'bg-green-50 border-green-200' 
+                        : configDetails.details?.imapStatus === 'not_configured' 
+                          ? 'bg-gray-50 border-gray-200'
+                          : 'bg-amber-50 border-amber-200'
+                    }`}>
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          {configDetails.details?.imapStatus === 'connected' ? (
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                          ) : configDetails.details?.imapStatus === 'not_configured' ? (
+                            <Info className="h-5 w-5 text-gray-500" />
+                          ) : (
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                          )}
+                        </div>
+                        <div className="ml-3">
+                          <p className={`text-sm font-medium ${
+                            configDetails.details?.imapStatus === 'connected' 
+                              ? 'text-green-800' 
+                              : configDetails.details?.imapStatus === 'not_configured'
+                                ? 'text-gray-800'
+                                : 'text-amber-800'
+                          }`}>
+                            IMAP Server Connection: {' '}
+                            <span className="font-bold">
+                              {configDetails.details?.imapStatus === 'connected' 
+                                ? 'Connected Successfully' 
+                                : configDetails.details?.imapStatus === 'not_configured'
+                                  ? 'Not Configured'
+                                  : 'Connection Failed'}
+                            </span>
+                          </p>
+                          {configDetails.details?.imapStatus === 'connected' ? (
+                            <p className="mt-2 text-sm text-green-700">
+                              Your incoming email server is correctly configured. The system will check for new support emails.
+                            </p>
+                          ) : configDetails.details?.imapStatus === 'not_configured' ? (
+                            <p className="mt-2 text-sm text-gray-700">
+                              IMAP not configured. System will operate in SMTP-only mode (can send emails but not receive).
+                            </p>
+                          ) : (
+                            <p className="mt-2 text-sm text-amber-700">
+                              {configDetails.details?.imapError || 'Unable to connect to IMAP server. Email receiving will be disabled.'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
+                <p className="text-sm font-medium mt-4">Next Steps:</p>
                 <p className="text-sm">
-                  You can now send a test email to verify that your configuration is working correctly.
+                  {configDetails.details?.smtpStatus === 'connected' 
+                    ? 'You can now send a test email to verify that your configuration is working correctly.'
+                    : 'Please review your SMTP settings and try again.'}
                 </p>
               </div>
             ) : (

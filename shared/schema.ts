@@ -9,7 +9,7 @@ export const AiProviderTypeEnum = z.enum([
   'anthropic',
   'aws-bedrock',
   'bedrock', // Including legacy 'bedrock' type which maps to 'aws-bedrock' in the code
-  'perplexity',
+  // 'perplexity' removed
   'custom'
 ]);
 

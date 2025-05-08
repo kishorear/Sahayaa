@@ -437,7 +437,7 @@ router.get('/api/status', async (req: Request, res: Response) => {
       gemini: true,
       anthropic: true,
       'aws-bedrock': true,
-      perplexity: true,
+      // perplexity removed
       custom: true
     };
 

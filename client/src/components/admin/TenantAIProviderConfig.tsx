@@ -55,11 +55,7 @@ const providerModels = {
     { value: "gpt-4", label: "GPT-4 (Azure)" },
     { value: "gpt-35-turbo", label: "GPT-3.5 Turbo (Azure)" }
   ],
-  perplexity: [
-    { value: "llama-3.1-sonar-small-128k-online", label: "Llama 3.1 Sonar Small" },
-    { value: "llama-3.1-sonar-large-128k-online", label: "Llama 3.1 Sonar Large" },
-    { value: "llama-3.1-sonar-huge-128k-online", label: "Llama 3.1 Sonar Huge" }
-  ]
+  // Perplexity AI models have been removed
 };
 
 // Define schema for AI provider configuration
@@ -333,7 +329,7 @@ export default function TenantAIProviderConfig({ tenantId }: TenantAIProviderCon
                           <SelectItem value="google">Google Gemini</SelectItem>
                           <SelectItem value="aws">AWS Bedrock</SelectItem>
                           <SelectItem value="azure">Azure OpenAI</SelectItem>
-                          <SelectItem value="perplexity">Perplexity AI</SelectItem>
+                          {/* Perplexity AI option removed */}
                         </SelectContent>
                       </Select>
                       <FormMessage />

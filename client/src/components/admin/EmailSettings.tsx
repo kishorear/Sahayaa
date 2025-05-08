@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, Mail } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle, Info, Mail } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -250,6 +250,10 @@ export default function EmailSettings() {
       return responseData;
     },
     onSuccess: (data) => {
+      // Update connection status based on response
+      const smtpStatus = data.smtpStatus || 'idle';
+      setConnectionStatus(smtpStatus === 'connected' ? 'connected' : 'failed');
+      
       // Show success message
       toast({
         title: "Configuration Saved",
@@ -260,7 +264,10 @@ export default function EmailSettings() {
       setConfigDetails({
         success: true,
         message: data.message || "Email configuration saved successfully",
-        details: data
+        details: {
+          ...data,
+          smtpStatus: smtpStatus
+        }
       });
       setConfirmationOpen(true);
       
@@ -269,6 +276,9 @@ export default function EmailSettings() {
       refetchStatus();
     },
     onError: (error) => {
+      // Update connection status
+      setConnectionStatus('failed');
+      
       // Show error message
       toast({
         title: "Configuration Error",
@@ -280,7 +290,11 @@ export default function EmailSettings() {
       setConfigDetails({
         success: false,
         message: error instanceof Error ? error.message : "Failed to save email configuration",
-        details: error instanceof Error ? { message: error.message } : error
+        details: {
+          smtpStatus: 'failed',
+          message: error instanceof Error ? error.message : "Unknown error",
+          error: error instanceof Error ? error.message : error
+        }
       });
       setConfirmationOpen(true);
     }
@@ -337,6 +351,14 @@ export default function EmailSettings() {
   
   // Form submission handlers for main configuration
   const onConfigSubmit = (data: EmailConfigValues) => {
+    // Set connecting state
+    setConnectionStatus('connecting');
+    
+    toast({
+      title: "Testing Connection",
+      description: "Verifying SMTP connection...",
+    });
+    
     configMutation.mutate(data);
   };
   
@@ -896,15 +918,19 @@ export default function EmailSettings() {
                   {/* SMTP Status */}
                   <div className={`rounded-md p-4 border ${
                     configDetails.details?.smtpStatus === 'connected' 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-red-50 border-red-200'
+                      ? 'bg-green-50 border-green-200'
+                      : configDetails.details?.smtpStatus === 'connecting'
+                        ? 'bg-yellow-50 border-yellow-200' 
+                        : 'bg-red-50 border-red-200'
                   }`}>
                     <div className="flex">
                       <div className="flex-shrink-0">
                         {configDetails.details?.smtpStatus === 'connected' ? (
                           <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : configDetails.details?.smtpStatus === 'connecting' ? (
+                          <Info className="h-5 w-5 text-yellow-500" />
                         ) : (
-                          <AlertCircle className="h-5 w-5 text-red-500" />
+                          <AlertTriangle className="h-5 w-5 text-red-500" />
                         )}
                       </div>
                       <div className="ml-3">

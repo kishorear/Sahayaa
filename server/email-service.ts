@@ -110,10 +110,14 @@ export class EmailService {
       config.imap.auth.user && 
       config.imap.auth.pass;
     
+    // Initialize imapClient with a dummy value to satisfy TypeScript
+    this.imapClient = this.createDummyImapClient();
+    
     // Initialize IMAP client only if authentication credentials are provided
     if (hasValidImapConfig) {
       try {
-        this.imapClient = new IMAP({
+        // Create a real IMAP client for email receiving
+        const imapConfig: IMAP.Config = {
           user: config.imap.auth.user,
           password: config.imap.auth.pass,
           host: config.imap.host,
@@ -121,10 +125,10 @@ export class EmailService {
           tls: config.imap.tls,
           authTimeout: config.imap.authTimeout,
           // Add timeout to prevent hanging connections
-          connTimeout: 10000,
-          // Add debug option for troubleshooting
-          debug: (info) => log(`IMAP Debug: ${info}`, 'email')
-        });
+          connTimeout: 10000
+        };
+        
+        this.imapClient = new IMAP(imapConfig);
         
         // Set up event listeners for IMAP client
         this.imapClient.on('error', (err: Error) => {
@@ -142,28 +146,32 @@ export class EmailService {
         log(`Error initializing IMAP client: ${errorMessage}`, 'email');
         
         // Create a dummy IMAP client since the real one failed to initialize
-        this.createDummyImapClient();
+        // This is already done above, so no need to call createDummyImapClient again
       }
     } else {
       log('IMAP configuration not provided - Email receiving functionality will be disabled', 'email');
-      this.createDummyImapClient();
+      // The dummy client is already created, so no need to call createDummyImapClient again
     }
   }
   
   /**
    * Creates a dummy IMAP client that won't be used but prevents null errors
    * This allows the service to operate in SMTP-only mode
+   * @returns IMAP client instance that won't be used for actual connections
    */
-  private createDummyImapClient(): void {
+  private createDummyImapClient(): IMAP {
     // Create a dummy IMAP client - it won't be used but prevents null errors
-    this.imapClient = new IMAP({
+    const dummyConfig: IMAP.Config = {
       user: 'dummy',
       password: 'dummy',
       host: 'localhost',
       port: 143,
       tls: false,
       authTimeout: 1000
-    });
+    };
+    
+    log('Creating dummy IMAP client for SMTP-only mode', 'email');
+    return new IMAP(dummyConfig);
   }
 
   // No OAuth-related methods needed

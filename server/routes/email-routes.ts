@@ -268,20 +268,86 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
     }
   });
   
-  // Get email configuration status - public endpoint for use in the contact page
+  // Get email configuration status - public endpoint for use in the contact page and diagnostic tools
   app.get('/api/email/status', async (req: Request, res: Response) => {
-    const emailService = getEmailService();
-    
-    if (!emailService) {
-      return res.status(200).json({ configured: false });
+    try {
+      const emailService = getEmailService();
+      
+      // Check if email service is configured
+      if (!emailService) {
+        // Try to get configuration from database
+        const tenantId = req.user?.tenantId || 1;
+        const tenant = await storage.getTenantById(tenantId);
+        
+        if (tenant?.settings && typeof tenant.settings === 'object' && 'emailConfig' in tenant.settings) {
+          // Found in database but not loaded in memory
+          return res.status(200).json({ 
+            configured: true,
+            active: false,
+            mode: 'saved_but_inactive',
+            message: 'Email configuration exists but service is not running',
+            details: {
+              reason: 'Service not initialized',
+              configSource: 'database',
+              timestamp: new Date().toISOString()
+            }
+          });
+        }
+        
+        // No configuration found at all
+        return res.status(200).json({ 
+          configured: false,
+          active: false,
+          mode: 'not_configured',
+          message: 'Email support is not configured',
+          details: {
+            configRequired: true,
+            configureLink: '/admin/email-settings',
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+      
+      // Email service is configured and running
+      const config = emailService.getConfig();
+      
+      // Check if IMAP is configured (receiving capability)
+      const hasImapConfig = 
+        config.imap && 
+        config.imap.auth && 
+        config.imap.auth.user && 
+        config.imap.auth.pass;
+        
+      // Don't include sensitive information, just the configuration status
+      return res.status(200).json({ 
+        configured: true,
+        active: true,
+        mode: hasImapConfig ? 'full' : 'smtp_only',
+        message: hasImapConfig 
+          ? 'Email system fully configured (send and receive)' 
+          : 'Email system configured for sending only (SMTP)',
+        supportEmail: config.settings.fromEmail,
+        details: {
+          fromName: config.settings.fromName,
+          canSendEmails: true,
+          canReceiveEmails: hasImapConfig,
+          ticketSubjectPrefix: config.settings.ticketSubjectPrefix,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Error getting email status: ${errorMessage}`);
+      
+      return res.status(500).json({
+        configured: false,
+        active: false,
+        mode: 'error',
+        message: 'Error retrieving email configuration status',
+        error: errorMessage,
+        timestamp: new Date().toISOString()
+      });
     }
-    
-    // Don't include sensitive information, just the configuration status
-    return res.status(200).json({ 
-      configured: true,
-      // Include the support email address for displaying on the contact page
-      supportEmail: emailService.getConfig().settings.fromEmail 
-    });
   });
   
   // Get full email configuration - admin only

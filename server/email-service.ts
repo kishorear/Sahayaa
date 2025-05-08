@@ -2,7 +2,6 @@ import nodemailer from 'nodemailer';
 import * as IMAP from 'imap';
 import { simpleParser } from 'mailparser';
 import { storage } from './storage';
-import { attemptAutoResolve, classifyTicket } from './ai';
 import { InsertTicket, InsertMessage } from '@shared/schema';
 import { EventEmitter } from 'events';
 import { log } from './vite';
@@ -18,9 +17,9 @@ export interface BasicAuthConfig {
   pass: string;
 }
 
+// Email auth config is simplified to basic auth only
 export interface EmailAuthConfig {
   type: AuthType;
-  // Basic auth with username/password
   user: string;
   pass: string;
 }
@@ -303,54 +302,16 @@ export class EmailService {
       });
     }
 
-    // Process the reply with AI to see if we can auto-respond
-    const existingMessages = await storage.getMessagesByTicketId(ticketId);
-    const chatHistory = existingMessages.map(m => ({
-      role: m.sender === 'ai' ? 'assistant' : 'user',
-      content: m.content
-    }));
-
-    // Try to auto-resolve based on the latest message
-    const { resolved, response } = await attemptAutoResolve(
-      ticket.title, 
-      textContent, 
-      chatHistory
+    // Send notification email with receipt confirmation
+    await this.sendEmail(
+      fromEmail,
+      `${this.config.settings.ticketSubjectPrefix}#${ticketId}: Reply Received - ${ticket.title}`,
+      `<div>
+        <p>Thank you for your reply to support ticket #${ticketId}.</p>
+        <p>Our support team has been notified and will review your message as soon as possible.</p>
+        <p>Ticket Title: ${ticket.title}</p>
+      </div>`
     );
-
-    // Create an AI response message
-    const aiMessage: InsertMessage = {
-      ticketId: ticketId,
-      sender: 'ai',
-      content: response,
-      metadata: {
-        autoResolved: resolved
-      }
-    };
-
-    await storage.createMessage(aiMessage);
-
-    // Update ticket if resolved
-    if (resolved) {
-      await storage.updateTicket(ticketId, { 
-        status: 'resolved', 
-        aiResolved: true,
-        resolvedAt: new Date()
-      });
-      
-      // Send resolved email
-      await this.sendEmail(
-        fromEmail,
-        `${this.config.settings.ticketSubjectPrefix}#${ticketId}: Resolved - ${ticket.title}`,
-        EMAIL_TEMPLATES.ticketResolved(response)
-      );
-    } else {
-      // Send response email
-      await this.sendEmail(
-        fromEmail,
-        `${this.config.settings.ticketSubjectPrefix}#${ticketId}: Update - ${ticket.title}`,
-        EMAIL_TEMPLATES.ticketResponse(response)
-      );
-    }
 
     // Emit event for the system to know a new message was added
     emailEvents.emit('ticketUpdated', ticketId);
@@ -364,18 +325,14 @@ export class EmailService {
     textContent: string, 
     htmlContent: string
   ): Promise<void> {
-    // Classify the ticket using AI
-    const classification = await classifyTicket(subject, textContent);
-
-    // Create a new ticket with source set to email
+    // Create a new ticket with source set to email and basic categorization
     const newTicket: InsertTicket = {
       title: subject,
       description: textContent || 'No description provided',
       status: 'new',
-      category: classification.category,
-      complexity: classification.complexity as any,
-      assignedTo: classification.assignedTo,
-      aiNotes: classification.aiNotes,
+      category: 'email',
+      complexity: 'medium' as any, // Default complexity for manual processing
+      assignedTo: '', // Will need to be assigned manually by support staff
       source: 'email' // Clearly mark this as an email-generated ticket
     };
 
@@ -395,43 +352,12 @@ export class EmailService {
 
     await storage.createMessage(message);
 
-    // Try to auto-resolve
-    const { resolved, response } = await attemptAutoResolve(subject, textContent);
-
-    // Create AI response message
-    const aiMessage: InsertMessage = {
-      ticketId: ticket.id,
-      sender: 'ai',
-      content: response,
-      metadata: {
-        autoResolved: resolved
-      }
-    };
-
-    await storage.createMessage(aiMessage);
-
-    // Update ticket if resolved
-    if (resolved) {
-      await storage.updateTicket(ticket.id, { 
-        status: 'resolved', 
-        aiResolved: true,
-        resolvedAt: new Date()
-      });
-      
-      // Send resolved email
-      await this.sendEmail(
-        fromEmail,
-        `${this.config.settings.ticketSubjectPrefix}#${ticket.id}: Resolved - ${subject}`,
-        EMAIL_TEMPLATES.ticketResolved(response)
-      );
-    } else {
-      // Send ticket created confirmation
-      await this.sendEmail(
-        fromEmail,
-        `${this.config.settings.ticketSubjectPrefix}#${ticket.id}: Created - ${subject}`,
-        EMAIL_TEMPLATES.ticketCreated(ticket.id, subject)
-      );
-    }
+    // Send ticket created confirmation
+    await this.sendEmail(
+      fromEmail,
+      `${this.config.settings.ticketSubjectPrefix}#${ticket.id}: Created - ${subject}`,
+      EMAIL_TEMPLATES.ticketCreated(ticket.id, subject)
+    );
 
     // Emit event for the system to know a new ticket was created
     emailEvents.emit('ticketCreated', ticket.id);

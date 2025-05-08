@@ -1,7 +1,6 @@
 import { Express, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
-import { generateChatResponse, generateTicketTitle, ChatMessage } from '../ai';
 import { getEmailService } from '../email-service';
 
 // Schema for email support requests
@@ -12,7 +11,7 @@ const emailSupportSchema = z.object({
 });
 
 export function registerEmailSupportRoutes(app: Express) {
-  // Handle email support requests with AI response
+  // Handle email support requests without AI response
   app.post('/api/email-support', async (req: Request, res: Response) => {
     try {
       // Validate the request
@@ -22,46 +21,14 @@ export function registerEmailSupportRoutes(app: Express) {
       // Get tenantId from the session or use default
       const tenantId = req.user?.tenantId || 1;
       
-      // Generate AI response using the same functionality as the chatbot
-      // Create an initial system prompt that's specifically for email support
-      const systemPrompt = 
-        `You are an email support agent who provides first hand solutions to the problems that you receive.
-        Engage with a professional, helpful tone and provide clear, actionable solutions.
-        Be concise but thorough in your response.
-        If you don't know something, be honest about it.
-        Format your response appropriately for an email reply with proper greeting and sign-off.`;
-      
-      // Convert the user message to chat format for the AI
-      const chatHistory: ChatMessage[] = [
-        {
-          role: 'system',
-          content: systemPrompt
-        } as ChatMessage,
-        {
-          role: 'user',
-          content: message
-        } as ChatMessage
-      ];
-      
-      // Generate the AI response
-      // Create a simple "ticket" object for context (this is just for the AI function)
-      const ticketContext = {
-        id: 0, // Placeholder ID
-        title: subject,
-        description: message,
-        category: 'email_support',
-        tenantId
-      };
-      
-      const aiResponse = await generateChatResponse(
-        ticketContext,
-        chatHistory,
-        ""  // No additional message since it's already in chatHistory
-      );
+      // Simple auto-response text - no AI, just standard message
+      const responseText = 
+        "Thank you for contacting our support team. Your message has been received and we will review it shortly. " +
+        "A support ticket has been created and a team member will get back to you as soon as possible.";
       
       // Format the full email response
       const fullEmailResponse = 
-        `Dear Customer,\n\n${aiResponse}\n\nBest regards,\nThe Support Team`;
+        `Dear Customer,\n\n${responseText}\n\nBest regards,\nThe Support Team`;
         
       // Get the email service
       const emailService = getEmailService();
@@ -72,7 +39,7 @@ export function registerEmailSupportRoutes(app: Express) {
       // If email service is configured, send the emails
       if (emailService) {
         try {
-          // Send the response email to the customer
+          // Send the auto-response email to the customer
           await emailService.sendEmail(
             email,
             `Re: ${subject}`,
@@ -89,9 +56,6 @@ export function registerEmailSupportRoutes(app: Express) {
             <p><strong>Subject:</strong> ${subject}</p>
             <p><strong>Message:</strong></p>
             <p>${message}</p>
-            <hr />
-            <p><strong>AI Response:</strong></p>
-            <p>${aiResponse.replace(/\n/g, '<br/>')}</p>
           `;
           
           // Send notification to the support team
@@ -110,37 +74,17 @@ export function registerEmailSupportRoutes(app: Express) {
         console.warn('Email service not configured. Processing support request without sending emails.');
       }
       
-      // Log this as a support interaction
+      // Log this as a support interaction by creating a ticket
       try {
-        // Generate an AI-based title for better ticket categorization
-        const chatHistory: ChatMessage[] = [
-          {
-            role: 'user',
-            content: message
-          } as ChatMessage,
-          {
-            role: 'assistant',
-            content: aiResponse
-          } as ChatMessage
-        ];
-        
-        // Use AI to generate a better title based on the conversation
-        let aiGeneratedTitle;
-        try {
-          aiGeneratedTitle = await generateTicketTitle(chatHistory, tenantId);
-          console.log('Generated AI title for email support ticket:', aiGeneratedTitle);
-        } catch (titleError) {
-          console.error('Error generating AI title for email support ticket:', titleError);
-          aiGeneratedTitle = subject; // Fallback to the user's subject
-        }
-        
         // Create a ticket in the system for tracking
         const ticket = await storage.createTicket({
-          title: aiGeneratedTitle,
+          title: subject,
           description: message,
-          status: 'resolved',
+          status: 'new', // No longer automatically resolved - needs human review
           category: 'email_support',
+          complexity: 'medium', // Default complexity
           tenantId,
+          source: 'email',
           clientMetadata: { email, createdBy: 'email_support_system' }
         });
         
@@ -151,11 +95,11 @@ export function registerEmailSupportRoutes(app: Express) {
           content: message,
         });
         
-        // Add the AI response
+        // Add the auto-response message
         await storage.createMessage({
           ticketId: ticket.id,
-          sender: 'ai',
-          content: aiResponse,
+          sender: 'system',
+          content: responseText,
         });
       } catch (error) {
         console.error('Error logging email support interaction:', error);
@@ -166,7 +110,7 @@ export function registerEmailSupportRoutes(app: Express) {
         message: emailsSent 
           ? 'Support request processed successfully' 
           : 'Support request processed successfully, but email delivery is not configured',
-        aiResponse: aiResponse,
+        autoResponse: responseText,
         emailSent: emailsSent,
         emailConfigured: !!emailService
       });

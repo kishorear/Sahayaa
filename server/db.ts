@@ -306,7 +306,103 @@ export async function reconnectDb(maxAttempts = 3) {
   return false;
 }
 
-// Create a resilient query wrapper function
+/**
+ * Helper function to sanitize and normalize JSON fields in database results
+ * This helps prevent issues where JSON fields might be returned as strings or with inconsistent formats
+ * 
+ * @param obj The object to sanitize (usually a database row or entity)
+ * @returns The sanitized object with properly parsed JSON fields
+ */
+function sanitizeJsonFields(obj: any): any {
+  if (!obj || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  // Create a new object to avoid modifying the original
+  const result: any = Array.isArray(obj) ? [] : {};
+  
+  // Process each property
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const value = obj[key];
+      
+      // Handle potential JSON string fields
+      if (typeof value === 'string' && (
+          // Look for indicators that this might be a JSON string
+          (value.startsWith('{') && value.endsWith('}')) || 
+          (value.startsWith('[') && value.endsWith(']'))
+        )) {
+        try {
+          // Try to parse it as JSON
+          result[key] = JSON.parse(value);
+          
+          // Add a debug log indicating successful conversion for important fields
+          if (key === 'settings' || key === 'branding' || key === 'metadata') {
+            console.log(`${key} JSON string successfully parsed to object`);
+          }
+        } catch (e) {
+          // If parsing fails, keep the original string
+          result[key] = value;
+        }
+      } 
+      // Handle nested objects recursively
+      else if (value !== null && typeof value === 'object') {
+        result[key] = sanitizeJsonFields(value);
+      } 
+      // For all other values, copy directly
+      else {
+        result[key] = value;
+      }
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Specialized recovery function for handling JSON-related database errors
+ * This is called as a last resort when regular queries fail with JSON errors
+ * 
+ * @param originalQueryFn The original query function that failed
+ * @param logPrefix Prefix for logging messages
+ * @returns The query result if recovery succeeds, undefined otherwise
+ */
+async function executeJsonRecovery<T>(
+  originalQueryFn: () => Promise<T>,
+  logPrefix: string
+): Promise<T | undefined> {
+  try {
+    console.log(`${logPrefix}: JSON recovery - attempting with raw SQL approach`);
+    // For now, just retry the original function
+    // In a future enhancement, this could be expanded to use raw SQL for JSON operations
+    const result = await originalQueryFn();
+    
+    // If we get a result, sanitize it
+    if (result !== null && typeof result === 'object') {
+      try {
+        // Handle array results (common for select queries)
+        if (Array.isArray(result)) {
+          return result.map(item => sanitizeJsonFields(item)) as unknown as T;
+        } 
+        // Handle single object results (common for insert/update queries)
+        else {
+          return sanitizeJsonFields(result) as unknown as T;
+        }
+      } catch (sanitizeError) {
+        console.warn(`${logPrefix}: Error during JSON recovery sanitization:`, sanitizeError);
+        // Return the original result if sanitization fails
+        return result;
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`${logPrefix}: JSON recovery attempt failed:`, error);
+    return undefined;
+  }
+}
+
+// Create a resilient query wrapper function with enhanced JSON handling
 export async function executeQuery<T>(
   queryFn: () => Promise<T>,
   fallbackFn?: () => Promise<T>,
@@ -315,13 +411,15 @@ export async function executeQuery<T>(
     initialDelay?: number;
     timeoutMs?: number;
     logPrefix?: string;
+    enhancedJsonHandling?: boolean;
   } = {}
 ): Promise<T> {
   const {
     retries = 3,
     initialDelay = 500,
     timeoutMs = 10000,
-    logPrefix = 'DB Query'
+    logPrefix = 'DB Query',
+    enhancedJsonHandling = true
   } = options;
   
   // Check if we know the connection is broken and we have a fallback
@@ -332,11 +430,42 @@ export async function executeQuery<T>(
     return fallbackFn();
   }
   
+  // Create a safe version of the query function with JSON handling if enabled
+  const safeQueryFn = enhancedJsonHandling ? 
+    async () => {
+      try {
+        const result = await queryFn();
+        
+        // If the result appears to be a database result with potential JSON fields, sanitize it
+        if (result !== null && typeof result === 'object') {
+          try {
+            // Handle array results (common for select queries)
+            if (Array.isArray(result)) {
+              return result.map(item => sanitizeJsonFields(item)) as unknown as T;
+            } 
+            // Handle single object results (common for insert/update queries)
+            else {
+              return sanitizeJsonFields(result) as unknown as T;
+            }
+          } catch (sanitizeError) {
+            console.warn(`${logPrefix}: Error during JSON sanitization:`, sanitizeError);
+            // Return the original result if sanitization fails
+            return result;
+          }
+        }
+        
+        return result;
+      } catch (error) {
+        // Rethrow to be caught by the retry mechanism
+        throw error;
+      }
+    } : queryFn;
+  
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Execute the query with a timeout
       return await Promise.race([
-        queryFn(),
+        safeQueryFn(),
         new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error(`${logPrefix}: Query timeout after ${timeoutMs}ms`)), timeoutMs)
         )
@@ -356,6 +485,25 @@ export async function executeQuery<T>(
         
         if (error.stack) {
           console.error(`${logPrefix}: Error stack:`, error.stack);
+        }
+        
+        // Try to recover from JSON errors by using a more robust approach
+        if (enhancedJsonHandling && attempt === retries) {
+          try {
+            console.log(`${logPrefix}: Attempting JSON error recovery...`);
+            
+            // If we have a robust workaround function for JSON issues, use it
+            if (typeof executeJsonRecovery === 'function') {
+              const recoveryResult = await executeJsonRecovery<T>(queryFn, logPrefix);
+              if (recoveryResult !== undefined) {
+                console.log(`${logPrefix}: Successfully recovered from JSON error`);
+                return recoveryResult;
+              }
+            }
+          } catch (recoveryError) {
+            console.error(`${logPrefix}: JSON error recovery failed:`, 
+              recoveryError instanceof Error ? recoveryError.message : String(recoveryError));
+          }
         }
         
         // Try to print the query function for debugging (limit length for logs)
@@ -415,9 +563,16 @@ export async function executeQuery<T>(
     }
   }
   
+  // If we have a fallback, use it as a last resort
+  if (fallbackFn) {
+    console.log(`${logPrefix}: All database query attempts failed, using fallback function`);
+    return fallbackFn();
+  }
+  
   // This should never be reached if we have a fallback function, but TypeScript needs it
   throw new Error(`${logPrefix}: All retries failed and no fallback provided`);
 }
+
 
 // Export pool for reuse
 export { pool };

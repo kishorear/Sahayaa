@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, AlertTriangle, CheckCircle, Info, Mail } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle, Info, Loader, Mail } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -426,6 +426,18 @@ export default function EmailSettings() {
   const onConfigSubmit = (data: EmailConfigValues) => {
     // Set connecting state
     setConnectionStatus('connecting');
+    setConnectionTimer(0); // Reset timer when starting a new connection attempt
+    
+    // Open the dialog immediately to show connecting state
+    setConfigDetails({
+      success: true,
+      message: "Verifying email server connection...",
+      details: {
+        smtpStatus: 'connecting',
+        step: 'smtp_verification'
+      }
+    });
+    setConfirmationOpen(true);
     
     toast({
       title: "Testing Connection",
@@ -998,7 +1010,7 @@ export default function EmailSettings() {
                     configDetails.details?.smtpStatus === 'connected' 
                       ? 'bg-green-50 border-green-200'
                       : configDetails.details?.smtpStatus === 'connecting'
-                        ? 'bg-yellow-50 border-yellow-200' 
+                        ? 'bg-yellow-50 border-yellow-200 animate-pulse' 
                         : 'bg-red-50 border-red-200'
                   }`}>
                     <div className="flex">
@@ -1006,7 +1018,7 @@ export default function EmailSettings() {
                         {configDetails.details?.smtpStatus === 'connected' ? (
                           <CheckCircle className="h-5 w-5 text-green-500" />
                         ) : configDetails.details?.smtpStatus === 'connecting' ? (
-                          <Info className="h-5 w-5 text-yellow-500" />
+                          <Loader className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <AlertTriangle className="h-5 w-5 text-red-500" />
                         )}

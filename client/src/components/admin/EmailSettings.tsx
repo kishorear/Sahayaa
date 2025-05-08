@@ -428,8 +428,18 @@ export default function EmailSettings() {
   });
   
   // Form submission handlers for main configuration
-  const onConfigSubmit = (data: EmailConfigValues) => {
+  const onConfigSubmit = async (data: EmailConfigValues) => {
     console.log("Form submitted with data:", data);
+    
+    // Ensure the SMTP configuration is valid before proceeding
+    if (!data.smtp.host || !data.smtp.auth.user || !data.smtp.auth.pass) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required SMTP fields",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Set connecting state
     setConnectionStatus('connecting');
@@ -451,14 +461,48 @@ export default function EmailSettings() {
       description: "Verifying SMTP connection...",
     });
     
+    // Ensure there are valid values for all configuration
+    // Make sure the IMAP fields have defaults if they weren't provided
+    const processedData = {
+      ...data,
+      imap: {
+        ...data.imap,
+        host: data.imap.host || "",
+        port: data.imap.port || 993,
+        tls: data.imap.tls !== undefined ? data.imap.tls : true,
+        authTimeout: data.imap.authTimeout || 10000,
+        auth: {
+          type: 'basic' as const,  // Type assertion for the literal
+          user: data.imap.auth?.user || "",
+          pass: data.imap.auth?.pass || "",
+        }
+      },
+      settings: {
+        ...data.settings,
+        ticketSubjectPrefix: data.settings.ticketSubjectPrefix || "[Ticket #]",
+        checkInterval: data.settings.checkInterval || 60000,
+      }
+    };
+    
     try {
-      configMutation.mutate(data);
+      configMutation.mutate(processedData);
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
         title: "Error",
         description: "Failed to save configuration. See console for details.",
         variant: "destructive",
+      });
+      
+      // Update status in case of error
+      setConnectionStatus('failed');
+      setConfigDetails({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to save configuration",
+        details: {
+          smtpStatus: 'failed',
+          error: error instanceof Error ? error.message : String(error)
+        }
       });
     }
   };
@@ -851,36 +895,7 @@ export default function EmailSettings() {
                   </TabsContent>
                 </Tabs>
                 
-                <div className="flex justify-end gap-4 mt-6">
-                  <Button 
-                    type="button"
-                    onClick={() => {
-                      // Manual submission for debugging 
-                      console.log("Manual form submission");
-                      const values = configForm.getValues();
-                      console.log("Current form values:", values);
-                      
-                      // Check form validation
-                      configForm.trigger().then(isValid => {
-                        console.log("Form validation status:", isValid);
-                        
-                        if (isValid) {
-                          console.log("Form is valid, submitting manually");
-                          onConfigSubmit(values);
-                        } else {
-                          console.log("Form validation errors:", configForm.formState.errors);
-                          toast({
-                            title: "Validation Error",
-                            description: "Please check all fields for errors",
-                            variant: "destructive"
-                          });
-                        }
-                      });
-                    }}
-                    variant="outline"
-                  >
-                    Debug Submit
-                  </Button>
+                <div className="flex justify-end mt-6">
                   <Button 
                     type="submit"
                     disabled={configMutation.isPending}

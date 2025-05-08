@@ -3,7 +3,7 @@
  */
 export interface AIProviderInterface {
   /**
-   * Provider name (openai, gemini, anthropic, aws-bedrock, bedrock, perplexity, custom)
+   * Provider name (openai, gemini, anthropic, aws-bedrock, bedrock, custom)
    */
   name: string;
   

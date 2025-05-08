@@ -61,6 +61,17 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       // Log the configuration being saved (without passwords)
       console.log(`Saving email config with SMTP user: ${config.smtp.auth.user}, IMAP user: ${config.imap.auth.user || 'not provided'}`);
       
+      // Let the client know we're testing connection first
+      res.status(202).json({
+        success: true,
+        message: 'Verifying SMTP connection...',
+        details: {
+          smtpStatus: 'connecting',
+          step: 'smtp_verification',
+          timestamp: new Date().toISOString()
+        }
+      });
+      
       // Verify SMTP connection before saving configuration
       try {
         // Create a temporary nodemailer transport to test connection

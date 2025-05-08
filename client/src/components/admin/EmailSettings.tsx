@@ -83,6 +83,34 @@ export default function EmailSettings() {
   });
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connecting' | 'connected' | 'failed'>('idle');
   
+  // State for timer to show elapsed time during connection
+  const [connectionTimer, setConnectionTimer] = useState<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Start/stop connection timer
+  useEffect(() => {
+    if (connectionStatus === 'connecting') {
+      // Start timer
+      setConnectionTimer(0);
+      timerRef.current = setInterval(() => {
+        setConnectionTimer(prev => prev + 1);
+      }, 1000);
+    } else {
+      // Clear timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    
+    // Cleanup
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [connectionStatus]);
+  
   // Initial query for current email configuration
   const {
     data: emailConfigResponse,
@@ -245,9 +273,53 @@ export default function EmailSettings() {
   // Config save mutation
   const configMutation = useMutation({
     mutationFn: async (data: EmailConfigValues) => {
-      const response = await apiRequest('POST', '/api/email/config', data);
-      const responseData = await response.json();
-      return responseData;
+      try {
+        const response = await apiRequest('POST', '/api/email/config', data);
+        
+        // Handle 202 status specifically for connecting state
+        if (response.status === 202) {
+          const connectingData = await response.json();
+          
+          // If we get a connecting response, we update the state but keep mutation pending
+          if (connectingData?.details?.smtpStatus === 'connecting') {
+            // Update UI to show connecting state, but don't resolve the promise yet
+            setConnectionStatus('connecting');
+            setConfigDetails({
+              success: true,
+              message: connectingData.message || "Testing email connection...",
+              details: {
+                ...connectingData.details,
+                smtpStatus: 'connecting'
+              }
+            });
+            
+            // We need to make another request to get the final result after the initial connecting state
+            const finalResponse = await apiRequest('GET', '/api/email/status');
+            const finalResponseData = await finalResponse.json();
+            
+            // Wait a bit to allow the server to complete its connection testing
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Combine the connecting data with the final status
+            return {
+              ...connectingData,
+              ...finalResponseData,
+              details: {
+                ...connectingData.details,
+                ...finalResponseData.details,
+                smtpStatus: finalResponseData.configured ? 'connected' : 'failed'
+              }
+            };
+          }
+        }
+        
+        // Normal processing for other status codes
+        const responseData = await response.json();
+        return responseData;
+      } catch (error) {
+        console.error("Email config error:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       // Update connection status based on response
@@ -754,8 +826,13 @@ export default function EmailSettings() {
                   <Button 
                     type="submit"
                     disabled={configMutation.isPending}
+                    className={connectionStatus === 'connecting' ? 'animate-pulse' : ''}
                   >
-                    {configMutation.isPending ? "Saving..." : "Save Configuration"}
+                    {configMutation.isPending 
+                      ? connectionStatus === 'connecting' 
+                        ? "Testing Connection..." 
+                        : "Saving..." 
+                      : "Save Configuration"}
                   </Button>
                 </div>
               </form>
@@ -936,19 +1013,27 @@ export default function EmailSettings() {
                       <div className="ml-3">
                         <p className={`text-sm font-medium ${
                           configDetails.details?.smtpStatus === 'connected' 
-                            ? 'text-green-800' 
-                            : 'text-red-800'
+                            ? 'text-green-800'
+                            : configDetails.details?.smtpStatus === 'connecting'
+                              ? 'text-yellow-800' 
+                              : 'text-red-800'
                         }`}>
                           SMTP Server Connection: {' '}
                           <span className="font-bold">
                             {configDetails.details?.smtpStatus === 'connected' 
-                              ? 'Connected Successfully' 
-                              : 'Connection Failed'}
+                              ? 'Connected Successfully'
+                              : configDetails.details?.smtpStatus === 'connecting'
+                                ? 'Testing Connection...'
+                                : 'Connection Failed'}
                           </span>
                         </p>
                         {configDetails.details?.smtpStatus === 'connected' ? (
                           <p className="mt-2 text-sm text-green-700">
                             Your outgoing email server is correctly configured. You can send emails through the system.
+                          </p>
+                        ) : configDetails.details?.smtpStatus === 'connecting' ? (
+                          <p className="mt-2 text-sm text-yellow-700">
+                            Attempting to connect to your SMTP server. This may take a moment...
                           </p>
                         ) : (
                           <p className="mt-2 text-sm text-red-700">
@@ -1018,7 +1103,9 @@ export default function EmailSettings() {
                 <p className="text-sm">
                   {configDetails.details?.smtpStatus === 'connected' 
                     ? 'You can now send a test email to verify that your configuration is working correctly.'
-                    : 'Please review your SMTP settings and try again.'}
+                    : configDetails.details?.smtpStatus === 'connecting'
+                      ? 'Please wait while we verify your connection...'
+                      : 'Please review your SMTP settings and try again.'}
                 </p>
               </div>
             ) : (

@@ -103,20 +103,41 @@ export class EmailService {
       }
     });
 
-    // Initialize IMAP client with basic authentication
-    this.imapClient = new IMAP({
-      user: config.imap.auth.user,
-      password: config.imap.auth.pass,
-      host: config.imap.host,
-      port: config.imap.port,
-      tls: config.imap.tls,
-      authTimeout: config.imap.authTimeout
-    });
-
-    // Set up event listeners for IMAP client
-    this.imapClient.on('error', (err: Error) => {
-      log(`IMAP Error: ${err.message}`, 'email');
-    });
+    // Check if IMAP credentials are provided
+    const hasValidImapConfig = 
+      config.imap && 
+      config.imap.auth && 
+      config.imap.auth.user && 
+      config.imap.auth.pass;
+    
+    // Initialize IMAP client only if authentication credentials are provided
+    if (hasValidImapConfig) {
+      this.imapClient = new IMAP({
+        user: config.imap.auth.user,
+        password: config.imap.auth.pass,
+        host: config.imap.host,
+        port: config.imap.port,
+        tls: config.imap.tls,
+        authTimeout: config.imap.authTimeout
+      });
+      
+      // Set up event listeners for IMAP client
+      this.imapClient.on('error', (err: Error) => {
+        log(`IMAP Error: ${err.message}`, 'email');
+      });
+    } else {
+      log('IMAP configuration not provided - Email receiving functionality will be disabled', 'email');
+      
+      // Create a dummy IMAP client - it won't be used but prevents null errors
+      this.imapClient = new IMAP({
+        user: 'dummy',
+        password: 'dummy',
+        host: 'localhost',
+        port: 143,
+        tls: false,
+        authTimeout: 1000
+      });
+    }
   }
 
   // No OAuth-related methods needed
@@ -145,6 +166,18 @@ export class EmailService {
 
   // Check for new emails
   private async checkEmails(): Promise<void> {
+    // Skip email checking if IMAP is not configured properly
+    const hasValidImapConfig = 
+      this.config.imap && 
+      this.config.imap.auth && 
+      this.config.imap.auth.user && 
+      this.config.imap.auth.pass;
+    
+    if (!hasValidImapConfig) {
+      log('Skipping email check - IMAP not configured', 'email');
+      return;
+    }
+    
     if (this.checkingEmails) {
       return; // Already checking
     }

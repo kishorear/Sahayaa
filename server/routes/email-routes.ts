@@ -40,17 +40,20 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       // Validate configuration
       const config = emailConfigSchema.parse(req.body);
       
-      // Verify that all authentication credentials are provided
-      if (!config.smtp.auth.user || !config.smtp.auth.pass || 
-          !config.imap.auth.user || !config.imap.auth.pass) {
+      // Verify that SMTP authentication credentials are provided
+      if (!config.smtp.auth.user || !config.smtp.auth.pass) {
         return res.status(400).json({
           success: false,
-          message: 'Authentication credentials are incomplete',
+          message: 'SMTP authentication credentials are incomplete',
           details: {
-            smtpAuthComplete: !!config.smtp.auth.user && !!config.smtp.auth.pass,
-            imapAuthComplete: !!config.imap.auth.user && !!config.imap.auth.pass
+            smtpAuthComplete: !!config.smtp.auth.user && !!config.smtp.auth.pass
           }
         });
+      }
+      
+      // Log if IMAP is not being configured
+      if (!config.imap.auth.user || !config.imap.auth.pass) {
+        console.log('Note: IMAP credentials not provided - SMTP-only configuration');
       }
 
       // Log the configuration being saved (without passwords)
@@ -88,18 +91,29 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       // Start email monitoring
       emailService.startEmailMonitoring();
       
+      // Check if IMAP was configured
+      const hasValidImapConfig = 
+        config.imap && 
+        config.imap.auth && 
+        config.imap.auth.user && 
+        config.imap.auth.pass;
+      
       // Send a comprehensive response with confirmation details
       res.status(200).json({ 
         success: true,
-        message: 'Email configuration saved and monitoring started',
+        message: hasValidImapConfig 
+          ? 'Email configuration saved and monitoring started' 
+          : 'SMTP-only email configuration saved',
         details: {
           configSaved: true,
           serviceName: 'Email Integration Service',
           serviceStatus: 'running',
           tenantId: req.user?.tenantId || 1,
           smtpConfigured: true,
-          imapConfigured: true,
-          monitoringActive: true,
+          imapConfigured: hasValidImapConfig,
+          monitoringActive: hasValidImapConfig,
+          supportEmailSending: true,
+          supportEmailReceiving: hasValidImapConfig,
           timestamp: new Date().toISOString()
         }
       });

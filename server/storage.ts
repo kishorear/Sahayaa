@@ -2416,32 +2416,114 @@ export class DatabaseStorage implements IStorage {
       return this.tenantCache.get(id);
     }
     
-    // Use resilient query with cache update
+    // Use resilient query with cache update and proper JSON handling
     return executeQuery<Tenant | undefined>(
       async () => {
         try {
-          const results = await db.select().from(tenants).where(eq(tenants.id, id));
-          const tenant = results[0];
+          console.log(`[DEBUG] getTenantById(${id}): Executing database query`);
+          // Use raw SQL to ensure we get the data in a consistent format
+          const result = await db.execute(
+            sql`SELECT * FROM tenants WHERE id = ${id}`
+          );
           
-          if (tenant) {
-            // Update all relevant caches
-            this.tenantCache.set(id, tenant);
-            if (tenant.apiKey) this.tenantByApiKeyCache.set(tenant.apiKey, tenant);
-            if (tenant.subdomain) this.tenantBySubdomainCache.set(tenant.subdomain, tenant);
+          if (result.rows.length === 0) {
+            console.log(`[DEBUG] getTenantById(${id}): No tenant found`);
+            return undefined;
           }
+          
+          // Get the tenant data from the result
+          const tenantData = result.rows[0];
+          
+          // Process settings and branding to ensure they're proper objects
+          let settings = tenantData.settings;
+          let branding = tenantData.branding;
+          
+          // Handle settings field
+          try {
+            // Handle JSON string or JSON object format
+            if (typeof settings === 'string') {
+              console.log(`[DEBUG] getTenantById(${id}): Parsing settings from string`);
+              settings = JSON.parse(settings);
+            } else if (settings === null || settings === undefined) {
+              console.log(`[DEBUG] getTenantById(${id}): No settings found, using empty object`);
+              settings = {};
+            }
+            // If it's already an object, keep it as is
+          } catch (settingsError) {
+            console.error(`[ERROR] getTenantById(${id}): Error parsing settings:`, settingsError);
+            // Use empty object as fallback for settings
+            settings = {};
+          }
+          
+          // Handle branding field
+          try {
+            // Handle JSON string or JSON object format
+            if (typeof branding === 'string') {
+              console.log(`[DEBUG] getTenantById(${id}): Parsing branding from string`);
+              branding = JSON.parse(branding);
+            } else if (branding === null || branding === undefined) {
+              console.log(`[DEBUG] getTenantById(${id}): No branding found, using default`);
+              branding = {
+                primaryColor: "#4F46E5",
+                logo: null,
+                companyName: "",
+                emailTemplate: "default"
+              };
+            }
+            // If it's already an object, keep it as is
+          } catch (brandingError) {
+            console.error(`[ERROR] getTenantById(${id}): Error parsing branding:`, brandingError);
+            // Use default branding as fallback
+            branding = {
+              primaryColor: "#4F46E5",
+              logo: null,
+              companyName: "",
+              emailTemplate: "default"
+            };
+          }
+          
+          // Create a standardized tenant object
+          const tenant: Tenant = {
+            id: tenantData.id,
+            name: tenantData.name,
+            subdomain: tenantData.subdomain,
+            apiKey: tenantData.apiKey || tenantData.apikey,
+            settings: settings,
+            branding: branding,
+            active: tenantData.active === undefined ? true : !!tenantData.active,
+            createdAt: tenantData.createdAt || tenantData.createdat,
+            updatedAt: tenantData.updatedAt || tenantData.updatedat
+          };
+          
+          // Log the tenant data for debugging
+          console.log(`[DEBUG] getTenantById(${id}): Tenant found:`, {
+            id: tenant.id,
+            name: tenant.name,
+            hasSettings: tenant.settings !== undefined && tenant.settings !== null,
+            settingsType: tenant.settings ? typeof tenant.settings : 'null/undefined',
+            settingsKeys: tenant.settings && typeof tenant.settings === 'object' ? 
+              Object.keys(tenant.settings) : [],
+            hasBranding: tenant.branding !== undefined && tenant.branding !== null,
+            brandingType: tenant.branding ? typeof tenant.branding : 'null/undefined'
+          });
+          
+          // Update all relevant caches
+          this.tenantCache.set(id, tenant);
+          if (tenant.apiKey) this.tenantByApiKeyCache.set(tenant.apiKey, tenant);
+          if (tenant.subdomain) this.tenantBySubdomainCache.set(tenant.subdomain, tenant);
           
           return tenant;
         } catch (error) {
-          console.error(`Error fetching tenant with ID ${id}:`, error);
+          console.error(`[ERROR] getTenantById(${id}): Database error:`, error);
           throw error;
         }
       },
       // No fallback for tenant operations
       undefined,
       {
-        retries: 2,
+        retries: 3, // Increased retries
         initialDelay: 100,
-        timeoutMs: 3000,
+        timeoutMs: 5000, // Increased timeout
         logPrefix: `getTenantById(${id})`
       }
     );
@@ -2454,32 +2536,108 @@ export class DatabaseStorage implements IStorage {
       return this.tenantByApiKeyCache.get(apiKey);
     }
     
-    // Use resilient query with cache update
+    // Use resilient query with cache update and proper JSON handling
     return executeQuery<Tenant | undefined>(
       async () => {
         try {
-          const results = await db.select().from(tenants).where(eq(tenants.apiKey, apiKey));
-          const tenant = results[0];
+          console.log(`[DEBUG] getTenantByApiKey: Executing database query`);
+          // Use raw SQL for consistent results
+          const result = await db.execute(
+            sql`SELECT * FROM tenants WHERE "apiKey" = ${apiKey}`
+          );
           
-          if (tenant) {
-            // Update all relevant caches
-            this.tenantCache.set(tenant.id, tenant);
-            this.tenantByApiKeyCache.set(apiKey, tenant);
-            if (tenant.subdomain) this.tenantBySubdomainCache.set(tenant.subdomain, tenant);
+          if (result.rows.length === 0) {
+            console.log(`[DEBUG] getTenantByApiKey: No tenant found for API key`);
+            return undefined;
           }
+          
+          // Get the tenant data from the result
+          const tenantData = result.rows[0];
+          
+          // Process settings and branding to ensure they're proper objects
+          let settings = tenantData.settings;
+          let branding = tenantData.branding;
+          
+          // Handle settings field
+          try {
+            // Handle JSON string or JSON object format
+            if (typeof settings === 'string') {
+              console.log(`[DEBUG] getTenantByApiKey: Parsing settings from string`);
+              settings = JSON.parse(settings);
+            } else if (settings === null || settings === undefined) {
+              console.log(`[DEBUG] getTenantByApiKey: No settings found, using empty object`);
+              settings = {};
+            }
+            // If it's already an object, keep it as is
+          } catch (settingsError) {
+            console.error(`[ERROR] getTenantByApiKey: Error parsing settings:`, settingsError);
+            // Use empty object as fallback for settings
+            settings = {};
+          }
+          
+          // Handle branding field
+          try {
+            // Handle JSON string or JSON object format
+            if (typeof branding === 'string') {
+              console.log(`[DEBUG] getTenantByApiKey: Parsing branding from string`);
+              branding = JSON.parse(branding);
+            } else if (branding === null || branding === undefined) {
+              console.log(`[DEBUG] getTenantByApiKey: No branding found, using default`);
+              branding = {
+                primaryColor: "#4F46E5",
+                logo: null,
+                companyName: "",
+                emailTemplate: "default"
+              };
+            }
+            // If it's already an object, keep it as is
+          } catch (brandingError) {
+            console.error(`[ERROR] getTenantByApiKey: Error parsing branding:`, brandingError);
+            // Use default branding as fallback
+            branding = {
+              primaryColor: "#4F46E5",
+              logo: null,
+              companyName: "",
+              emailTemplate: "default"
+            };
+          }
+          
+          // Create a standardized tenant object
+          const tenant: Tenant = {
+            id: tenantData.id,
+            name: tenantData.name,
+            subdomain: tenantData.subdomain,
+            apiKey: tenantData.apiKey || tenantData.apikey,
+            settings: settings,
+            branding: branding,
+            active: tenantData.active === undefined ? true : !!tenantData.active,
+            createdAt: tenantData.createdAt || tenantData.createdat,
+            updatedAt: tenantData.updatedAt || tenantData.updatedat
+          };
+          
+          console.log(`[DEBUG] getTenantByApiKey: Tenant found:`, {
+            id: tenant.id,
+            name: tenant.name,
+            hasSettings: tenant.settings !== undefined && tenant.settings !== null
+          });
+          
+          // Update all relevant caches
+          this.tenantCache.set(tenant.id, tenant);
+          this.tenantByApiKeyCache.set(apiKey, tenant);
+          if (tenant.subdomain) this.tenantBySubdomainCache.set(tenant.subdomain, tenant);
           
           return tenant;
         } catch (error) {
-          console.error(`Error fetching tenant by API key ${apiKey}:`, error);
+          console.error(`[ERROR] getTenantByApiKey: Database error:`, error);
           throw error;
         }
       },
       // No fallback for tenant operations
       undefined,
       {
-        retries: 2,
+        retries: 3,
         initialDelay: 100,
-        timeoutMs: 3000,
+        timeoutMs: 5000,
         logPrefix: `getTenantByApiKey(${apiKey})`
       }
     );
@@ -2492,58 +2650,375 @@ export class DatabaseStorage implements IStorage {
       return this.tenantBySubdomainCache.get(subdomain);
     }
     
-    // Use resilient query with cache update
+    // Use resilient query with cache update and proper JSON handling
     return executeQuery<Tenant | undefined>(
       async () => {
         try {
-          const results = await db.select().from(tenants).where(eq(tenants.subdomain, subdomain));
-          const tenant = results[0];
+          console.log(`[DEBUG] getTenantBySubdomain: Executing database query`);
+          // Use raw SQL for consistent results
+          const result = await db.execute(
+            sql`SELECT * FROM tenants WHERE subdomain = ${subdomain}`
+          );
           
-          if (tenant) {
-            // Update all relevant caches
-            this.tenantCache.set(tenant.id, tenant);
-            if (tenant.apiKey) this.tenantByApiKeyCache.set(tenant.apiKey, tenant);
-            this.tenantBySubdomainCache.set(subdomain, tenant);
+          if (result.rows.length === 0) {
+            console.log(`[DEBUG] getTenantBySubdomain: No tenant found for subdomain`);
+            return undefined;
           }
+          
+          // Get the tenant data from the result
+          const tenantData = result.rows[0];
+          
+          // Process settings and branding to ensure they're proper objects
+          let settings = tenantData.settings;
+          let branding = tenantData.branding;
+          
+          // Handle settings field
+          try {
+            // Handle JSON string or JSON object format
+            if (typeof settings === 'string') {
+              console.log(`[DEBUG] getTenantBySubdomain: Parsing settings from string`);
+              settings = JSON.parse(settings);
+            } else if (settings === null || settings === undefined) {
+              console.log(`[DEBUG] getTenantBySubdomain: No settings found, using empty object`);
+              settings = {};
+            }
+            // If it's already an object, keep it as is
+          } catch (settingsError) {
+            console.error(`[ERROR] getTenantBySubdomain: Error parsing settings:`, settingsError);
+            // Use empty object as fallback for settings
+            settings = {};
+          }
+          
+          // Handle branding field
+          try {
+            // Handle JSON string or JSON object format
+            if (typeof branding === 'string') {
+              console.log(`[DEBUG] getTenantBySubdomain: Parsing branding from string`);
+              branding = JSON.parse(branding);
+            } else if (branding === null || branding === undefined) {
+              console.log(`[DEBUG] getTenantBySubdomain: No branding found, using default`);
+              branding = {
+                primaryColor: "#4F46E5",
+                logo: null,
+                companyName: "",
+                emailTemplate: "default"
+              };
+            }
+            // If it's already an object, keep it as is
+          } catch (brandingError) {
+            console.error(`[ERROR] getTenantBySubdomain: Error parsing branding:`, brandingError);
+            // Use default branding as fallback
+            branding = {
+              primaryColor: "#4F46E5",
+              logo: null,
+              companyName: "",
+              emailTemplate: "default"
+            };
+          }
+          
+          // Create a standardized tenant object
+          const tenant: Tenant = {
+            id: tenantData.id,
+            name: tenantData.name,
+            subdomain: tenantData.subdomain,
+            apiKey: tenantData.apiKey || tenantData.apikey,
+            settings: settings,
+            branding: branding,
+            active: tenantData.active === undefined ? true : !!tenantData.active,
+            createdAt: tenantData.createdAt || tenantData.createdat,
+            updatedAt: tenantData.updatedAt || tenantData.updatedat
+          };
+          
+          console.log(`[DEBUG] getTenantBySubdomain: Tenant found:`, {
+            id: tenant.id,
+            name: tenant.name,
+            hasSettings: tenant.settings !== undefined && tenant.settings !== null
+          });
+          
+          // Update all relevant caches
+          this.tenantCache.set(tenant.id, tenant);
+          if (tenant.apiKey) this.tenantByApiKeyCache.set(tenant.apiKey, tenant);
+          this.tenantBySubdomainCache.set(subdomain, tenant);
           
           return tenant;
         } catch (error) {
-          console.error(`Error fetching tenant by subdomain ${subdomain}:`, error);
+          console.error(`[ERROR] getTenantBySubdomain: Database error:`, error);
           throw error;
         }
       },
       // No fallback for tenant operations
       undefined,
       {
-        retries: 2,
+        retries: 3,
         initialDelay: 100,
-        timeoutMs: 3000,
+        timeoutMs: 5000,
         logPrefix: `getTenantBySubdomain(${subdomain})`
       }
     );
   }
 
   async getAllTenants(): Promise<Tenant[]> {
-    return await db.select().from(tenants).orderBy(asc(tenants.name));
+    try {
+      console.log('[DEBUG] getAllTenants: Executing database query');
+      
+      // Use raw SQL for better control
+      const result = await db.execute(
+        sql`SELECT * FROM tenants ORDER BY name ASC`
+      );
+      
+      if (!result.rows || result.rows.length === 0) {
+        console.log('[DEBUG] getAllTenants: No tenants found');
+        return [];
+      }
+      
+      // Process each tenant to ensure proper JSON handling
+      const tenants: Tenant[] = result.rows.map(tenantData => {
+        // Process settings and branding to ensure they're proper objects
+        let settings = tenantData.settings;
+        let branding = tenantData.branding;
+        
+        // Handle settings field
+        try {
+          // Handle JSON string or JSON object format
+          if (typeof settings === 'string') {
+            settings = JSON.parse(settings);
+          } else if (settings === null || settings === undefined) {
+            settings = {};
+          }
+          // If it's already an object, keep it as is
+        } catch (settingsError) {
+          console.error(`[ERROR] getAllTenants: Error parsing settings for tenant ${tenantData.id}:`, settingsError);
+          // Use empty object as fallback for settings
+          settings = {};
+        }
+        
+        // Handle branding field
+        try {
+          // Handle JSON string or JSON object format
+          if (typeof branding === 'string') {
+            branding = JSON.parse(branding);
+          } else if (branding === null || branding === undefined) {
+            branding = {
+              primaryColor: "#4F46E5",
+              logo: null,
+              companyName: "",
+              emailTemplate: "default"
+            };
+          }
+          // If it's already an object, keep it as is
+        } catch (brandingError) {
+          console.error(`[ERROR] getAllTenants: Error parsing branding for tenant ${tenantData.id}:`, brandingError);
+          // Use default branding as fallback
+          branding = {
+            primaryColor: "#4F46E5",
+            logo: null,
+            companyName: "",
+            emailTemplate: "default"
+          };
+        }
+        
+        // Create a standardized tenant object
+        const tenant: Tenant = {
+          id: tenantData.id,
+          name: tenantData.name,
+          subdomain: tenantData.subdomain,
+          apiKey: tenantData.apiKey || tenantData.apikey,
+          settings: settings,
+          branding: branding,
+          active: tenantData.active === undefined ? true : !!tenantData.active,
+          createdAt: tenantData.createdAt || tenantData.createdat,
+          updatedAt: tenantData.updatedAt || tenantData.updatedat
+        };
+        
+        // Update caches
+        this.tenantCache.set(tenant.id, tenant);
+        if (tenant.apiKey) this.tenantByApiKeyCache.set(tenant.apiKey, tenant);
+        if (tenant.subdomain) this.tenantBySubdomainCache.set(tenant.subdomain, tenant);
+        
+        return tenant;
+      });
+      
+      console.log(`[DEBUG] getAllTenants: Found ${tenants.length} tenants`);
+      return tenants;
+    } catch (error) {
+      console.error('[ERROR] getAllTenants: Database error:', error);
+      // Return empty array on error rather than throwing
+      return [];
+    }
   }
 
   async createTenant(insertTenant: InsertTenant): Promise<Tenant> {
-    const [tenant] = await db.insert(tenants).values(insertTenant).returning();
-    return tenant;
+    try {
+      console.log('[DEBUG] createTenant: Processing tenant data before insertion');
+      
+      // Pre-process the settings to ensure proper JSON handling
+      let processedTenant = { ...insertTenant };
+      
+      // Special handling for settings object to prevent JSON serialization issues
+      if (insertTenant.settings !== undefined) {
+        if (typeof insertTenant.settings === 'string') {
+          try {
+            // If it's a string, parse it to make sure it's valid JSON
+            console.log(`[DEBUG] createTenant: Parsing settings from string`);
+            const parsed = JSON.parse(insertTenant.settings);
+            processedTenant.settings = parsed;
+          } catch (parseError) {
+            console.error(`[ERROR] createTenant: Failed to parse settings string:`, parseError);
+            // Use empty object as fallback for settings
+            processedTenant.settings = {};
+          }
+        } else if (typeof insertTenant.settings === 'object' && insertTenant.settings !== null) {
+          // For objects, ensure they're stringifiable
+          try {
+            // Test serialization/deserialization to catch circular references
+            console.log(`[DEBUG] createTenant: Validating settings object can be serialized`);
+            JSON.parse(JSON.stringify(insertTenant.settings));
+            // Keep the object as is if serialization test passes
+          } catch (stringifyError) {
+            console.error(`[ERROR] createTenant: Failed to stringify settings object:`, stringifyError);
+            // Use empty object as fallback
+            processedTenant.settings = {};
+          }
+        }
+      } else {
+        // Ensure settings is initialized to an empty object if not provided
+        processedTenant.settings = {};
+      }
+      
+      // Special handling for branding object
+      if (insertTenant.branding !== undefined) {
+        if (typeof insertTenant.branding === 'string') {
+          try {
+            // If it's a string, parse it to make sure it's valid JSON
+            console.log(`[DEBUG] createTenant: Parsing branding from string`);
+            const parsed = JSON.parse(insertTenant.branding);
+            processedTenant.branding = parsed;
+          } catch (parseError) {
+            console.error(`[ERROR] createTenant: Failed to parse branding string:`, parseError);
+            // Use default branding as fallback
+            processedTenant.branding = {
+              primaryColor: "#4F46E5",
+              logo: null,
+              companyName: "",
+              emailTemplate: "default"
+            };
+          }
+        } else if (typeof insertTenant.branding === 'object' && insertTenant.branding !== null) {
+          // For objects, ensure they're stringifiable
+          try {
+            // Test serialization/deserialization to catch circular references
+            console.log(`[DEBUG] createTenant: Validating branding object can be serialized`);
+            JSON.parse(JSON.stringify(insertTenant.branding));
+            // Keep the object as is if serialization test passes
+          } catch (stringifyError) {
+            console.error(`[ERROR] createTenant: Failed to stringify branding object:`, stringifyError);
+            // Use default branding as fallback
+            processedTenant.branding = {
+              primaryColor: "#4F46E5",
+              logo: null,
+              companyName: "",
+              emailTemplate: "default"
+            };
+          }
+        }
+      } else {
+        // Ensure branding is initialized with defaults if not provided
+        processedTenant.branding = {
+          primaryColor: "#4F46E5",
+          logo: null,
+          companyName: "",
+          emailTemplate: "default"
+        };
+      }
+      
+      console.log('[DEBUG] createTenant: Executing database insert');
+      const [tenant] = await db.insert(tenants).values(processedTenant).returning();
+      
+      console.log(`[DEBUG] createTenant: Created tenant with ID ${tenant.id}`);
+      
+      // Update caches
+      this.tenantCache.set(tenant.id, tenant);
+      if (tenant.apiKey) this.tenantByApiKeyCache.set(tenant.apiKey, tenant);
+      if (tenant.subdomain) this.tenantBySubdomainCache.set(tenant.subdomain, tenant);
+      
+      return tenant;
+    } catch (error) {
+      console.error('[ERROR] createTenant: Failed to create tenant:', error);
+      throw error;
+    }
   }
 
   async updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant> {
-    const [updated] = await db
-      .update(tenants)
-      .set({...updates, updatedAt: new Date()})
-      .where(eq(tenants.id, id))
-      .returning();
-    
-    if (!updated) {
-      throw new Error(`Tenant with ID ${id} not found`);
+    try {
+      console.log(`[DEBUG] updateTenant(${id}) called with updates:`, {
+        hasSettings: updates.settings !== undefined,
+        settingsType: updates.settings ? typeof updates.settings : 'undefined',
+        updateKeys: Object.keys(updates)
+      });
+      
+      // Pre-process the settings to ensure proper JSON handling
+      let processedUpdates = { ...updates };
+      
+      // Special handling for settings object to prevent JSON serialization issues
+      if (updates.settings !== undefined) {
+        if (typeof updates.settings === 'string') {
+          try {
+            // If it's a string, parse it to make sure it's valid JSON
+            console.log(`[DEBUG] Parsing settings from string in updateTenant`);
+            const parsed = JSON.parse(updates.settings);
+            processedUpdates.settings = parsed;
+          } catch (parseError) {
+            console.error(`[ERROR] Failed to parse settings string in updateTenant:`, parseError);
+            throw new Error(`Invalid JSON in settings: ${parseError.message}`);
+          }
+        } else if (typeof updates.settings === 'object' && updates.settings !== null) {
+          // For objects, ensure they're stringifiable
+          try {
+            // Test serialization/deserialization to catch circular references
+            console.log(`[DEBUG] Validating settings object can be serialized`);
+            JSON.parse(JSON.stringify(updates.settings));
+            // Keep the object as is if serialization test passes
+          } catch (stringifyError) {
+            console.error(`[ERROR] Failed to stringify settings object:`, stringifyError);
+            throw new Error(`Cannot serialize settings object: ${stringifyError.message}`);
+          }
+        }
+      }
+      
+      // Clear tenant from cache to ensure fresh data
+      this.tenantCache.delete(id);
+      
+      // Execute the update with a timeout
+      const result = await executeQuery<[Tenant]>(
+        async () => {
+          const [updated] = await db
+            .update(tenants)
+            .set({...processedUpdates, updatedAt: new Date()})
+            .where(eq(tenants.id, id))
+            .returning();
+          
+          return [updated];
+        },
+        undefined,
+        {
+          retries: 3,
+          initialDelay: 100,
+          timeoutMs: 5000,
+          logPrefix: `updateTenant(${id})`
+        }
+      );
+      
+      const updated = result[0];
+      if (!updated) {
+        throw new Error(`Tenant with ID ${id} not found`);
+      }
+      
+      console.log(`[DEBUG] Tenant ${id} successfully updated`);
+      return updated;
+    } catch (error) {
+      console.error(`[ERROR] Failed to update tenant ${id}:`, error);
+      throw error;
     }
-    
-    return updated;
   }
   
   // Team operations with caching

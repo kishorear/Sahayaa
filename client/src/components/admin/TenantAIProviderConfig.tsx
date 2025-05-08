@@ -29,6 +29,39 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, PlusCircle, Edit, Save, X } from "lucide-react";
 
+// Define provider model options
+const providerModels = {
+  openai: [
+    { value: "gpt-4o", label: "GPT-4o" },
+    { value: "gpt-4", label: "GPT-4" },
+    { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" }
+  ],
+  anthropic: [
+    { value: "claude-3-opus-20240229", label: "Claude 3 Opus" },
+    { value: "claude-3-sonnet-20240229", label: "Claude 3 Sonnet" },
+    { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku" }
+  ],
+  google: [
+    { value: "gemini-pro", label: "Gemini Pro" },
+    { value: "gemini-ultra", label: "Gemini Ultra" }
+  ],
+  aws: [
+    { value: "anthropic.claude-3-sonnet-20240229-v1:0", label: "Claude 3 Sonnet (Bedrock)" },
+    { value: "anthropic.claude-3-haiku-20240307-v1:0", label: "Claude 3 Haiku (Bedrock)" },
+    { value: "meta.llama3-8b-instruct-v1:0", label: "Llama 3 8B (Bedrock)" },
+    { value: "meta.llama3-70b-instruct-v1:0", label: "Llama 3 70B (Bedrock)" }
+  ],
+  azure: [
+    { value: "gpt-4", label: "GPT-4 (Azure)" },
+    { value: "gpt-35-turbo", label: "GPT-3.5 Turbo (Azure)" }
+  ],
+  perplexity: [
+    { value: "llama-3.1-sonar-small-128k-online", label: "Llama 3.1 Sonar Small" },
+    { value: "llama-3.1-sonar-large-128k-online", label: "Llama 3.1 Sonar Large" },
+    { value: "llama-3.1-sonar-huge-128k-online", label: "Llama 3.1 Sonar Huge" }
+  ]
+};
+
 // Define schema for AI provider configuration
 const aiProviderSchema = z.object({
   name: z.string().min(1, "Provider name is required"),
@@ -54,6 +87,7 @@ interface TenantAIProviderConfigProps {
 export default function TenantAIProviderConfig({ tenantId }: TenantAIProviderConfigProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingProviderId, setEditingProviderId] = useState<number | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<string>("openai");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -92,6 +126,9 @@ export default function TenantAIProviderConfig({ tenantId }: TenantAIProviderCon
     if (editingProviderId && providers) {
       const provider = providers.find(p => p.id === editingProviderId);
       if (provider) {
+        // Update the selected provider type for the dropdown
+        setSelectedProvider(provider.provider);
+        
         Object.entries(provider).forEach(([key, value]) => {
           if (key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
             // @ts-ignore - dynamic form field setting
@@ -273,7 +310,18 @@ export default function TenantAIProviderConfig({ tenantId }: TenantAIProviderCon
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Provider Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setSelectedProvider(value);
+                          
+                          // Set default model for the selected provider
+                          if (providerModels[value] && providerModels[value].length > 0) {
+                            form.setValue('model', providerModels[value][0].value);
+                          }
+                        }} 
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select provider" />
@@ -285,6 +333,7 @@ export default function TenantAIProviderConfig({ tenantId }: TenantAIProviderCon
                           <SelectItem value="google">Google Gemini</SelectItem>
                           <SelectItem value="aws">AWS Bedrock</SelectItem>
                           <SelectItem value="azure">Azure OpenAI</SelectItem>
+                          <SelectItem value="perplexity">Perplexity AI</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -298,8 +347,26 @@ export default function TenantAIProviderConfig({ tenantId }: TenantAIProviderCon
                     <FormItem>
                       <FormLabel>Model</FormLabel>
                       <FormControl>
-                        <Input placeholder="gpt-4" {...field} />
+                        {providerModels[selectedProvider] ? (
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select model" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {providerModels[selectedProvider].map((model) => (
+                                <SelectItem key={model.value} value={model.value}>
+                                  {model.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input placeholder="Enter model name" {...field} />
+                        )}
                       </FormControl>
+                      <FormDescription>
+                        Select the AI model to use for this provider
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

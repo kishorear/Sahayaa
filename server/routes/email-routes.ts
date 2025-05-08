@@ -2,6 +2,8 @@ import { Express, Request, Response } from 'express';
 import { EmailConfig, setupEmailService, getEmailService } from '../email-service';
 import { z } from 'zod';
 import { storage } from '../storage';
+import nodemailer from 'nodemailer';
+import IMAP from 'imap';
 
 // Basic auth config schema
 const basicAuthSchema = z.object({
@@ -57,9 +59,57 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       }
 
       // Log the configuration being saved (without passwords)
-      console.log(`Saving email config with SMTP user: ${config.smtp.auth.user}, IMAP user: ${config.imap.auth.user}`);
+      console.log(`Saving email config with SMTP user: ${config.smtp.auth.user}, IMAP user: ${config.imap.auth.user || 'not provided'}`);
       
-      // Test connection
+      // Verify SMTP connection before saving configuration
+      try {
+        // Create a temporary nodemailer transport to test connection
+        const testTransport = nodemailer.createTransport({
+          host: config.smtp.host,
+          port: config.smtp.port,
+          secure: config.smtp.secure,
+          auth: {
+            user: config.smtp.auth.user,
+            pass: config.smtp.auth.pass
+          }
+        });
+        
+        // Verify SMTP connection
+        await testTransport.verify();
+        console.log('SMTP connection test successful');
+      } catch (smtpError: unknown) {
+        // SMTP connection failed
+        const errorMessage = smtpError instanceof Error ? smtpError.message : 'Unknown SMTP error';
+        console.error(`SMTP connection test failed: ${errorMessage}`);
+        
+        const errorType = smtpError instanceof Error 
+          ? smtpError.constructor.name 
+          : 'UnknownError';
+        
+        return res.status(400).json({
+          success: false,
+          message: 'SMTP connection test failed',
+          error: errorMessage,
+          details: {
+            smtpTest: 'failed',
+            errorType,
+            possibleCauses: [
+              "Invalid SMTP server address or port",
+              "Incorrect credentials",
+              "Server rejects connection",
+              "Firewall blocking connection"
+            ],
+            recommendations: [
+              "Verify SMTP server address and port",
+              "Check username and password",
+              "Try a different port (25, 465, 587)",
+              "Ensure your mail provider allows SMTP access"
+            ]
+          }
+        });
+      }
+      
+      // Setup email service with the validated config
       const emailService = setupEmailService(config);
       
       // Save configuration to tenant settings
@@ -98,6 +148,57 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
         config.imap.auth.user && 
         config.imap.auth.pass;
       
+      // Test IMAP connection if credentials were provided
+      let imapTestResult: {success: boolean, error: string | null} = { success: false, error: null };
+      if (hasValidImapConfig) {
+        try {
+          // Create a test IMAP client
+          const testImapClient = new IMAP({
+            user: config.imap.auth.user,
+            password: config.imap.auth.pass,
+            host: config.imap.host,
+            port: config.imap.port,
+            tls: config.imap.tls,
+            authTimeout: config.imap.authTimeout,
+            // Set a short connection timeout for testing
+            connTimeout: 5000
+          });
+          
+          // Create a promise that resolves/rejects based on IMAP connection
+          const imapConnectionTest = new Promise<void>((resolve, reject) => {
+            testImapClient.once('ready', () => {
+              console.log('IMAP connection test successful');
+              testImapClient.end();
+              resolve();
+            });
+            
+            testImapClient.once('error', (err: Error) => {
+              console.error(`IMAP connection test failed: ${err.message}`);
+              reject(err);
+            });
+            
+            // Connect to IMAP server
+            testImapClient.connect();
+          });
+          
+          // Wait for the connection test with a timeout
+          await Promise.race([
+            imapConnectionTest,
+            new Promise<void>((_, reject) => setTimeout(() => 
+              reject(new Error('IMAP connection timeout')), 10000))
+          ]);
+          
+          imapTestResult.success = true;
+        } catch (imapError: unknown) {
+          const errorMessage = imapError instanceof Error ? imapError.message : 'Unknown IMAP error';
+          console.error(`IMAP connection failed: ${errorMessage}`);
+          imapTestResult.error = errorMessage;
+          
+          // We continue with SMTP-only mode even if IMAP fails
+          console.log('Continuing with SMTP-only mode due to IMAP connection failure');
+        }
+      }
+      
       // Send a comprehensive response with confirmation details
       res.status(200).json({ 
         success: true,
@@ -117,7 +218,7 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
           timestamp: new Date().toISOString()
         }
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: 'Invalid email configuration', 
@@ -126,11 +227,13 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       }
       // Create a detailed error response with helpful debugging information
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      
       res.status(500).json({ 
         success: false,
         message: `Error setting up email: ${errorMessage}`,
         details: {
-          errorType: error.constructor.name,
+          errorType,
           timestamp: new Date().toISOString(),
           tenantId: req.user?.tenantId || 1,
           configProcessed: false,
@@ -203,7 +306,7 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       }
       
       return res.status(200).json(config);
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       res.status(500).json({ message: `Error retrieving email configuration: ${errorMessage}` });
     }

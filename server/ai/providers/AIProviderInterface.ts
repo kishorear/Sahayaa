@@ -96,7 +96,7 @@ export interface AIProviderConfig {
   /**
    * Provider type
    */
-  type: 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'bedrock' | 'perplexity' | 'custom';
+  type: 'openai' | 'gemini' | 'anthropic' | 'aws-bedrock' | 'bedrock' | 'custom';
   
   /**
    * API key for the service

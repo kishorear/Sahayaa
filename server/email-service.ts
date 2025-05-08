@@ -120,7 +120,9 @@ export class EmailService {
     
     // For Gmail, use service shorthand which auto-configures everything
     if (isGmail) {
-      console.log('Using Gmail-specific SMTP service configuration');
+      console.log('[DEBUG] Using Gmail-specific SMTP service configuration');
+      
+      // Special handling for Gmail
       transportConfig = {
         service: 'gmail', // Nodemailer will auto-configure the correct settings
         auth: {
@@ -131,6 +133,11 @@ export class EmailService {
           rejectUnauthorized: false
         }
       };
+      
+      // Log diagnostic information
+      console.log(`[DEBUG] Gmail configuration - User: ${config.smtp.auth.user}`);
+      console.log('[DEBUG] Gmail password length:', config.smtp.auth.pass ? config.smtp.auth.pass.length : 'null/undefined');
+      console.log('[DEBUG] Note: Gmail requires app passwords if 2FA is enabled (https://myaccount.google.com/apppasswords)');
     }
     
     // Special handling for port 587 (STARTTLS) for non-Gmail providers

@@ -35,7 +35,6 @@ export interface EmailConfig {
   };
   // IMAP settings for receiving emails
   imap: {
-    user: string;
     host: string;
     port: number;
     tls: boolean;
@@ -106,7 +105,7 @@ export class EmailService {
 
     // Initialize IMAP client with basic authentication
     this.imapClient = new IMAP({
-      user: config.imap.user,
+      user: config.imap.auth.user,
       password: config.imap.auth.pass,
       host: config.imap.host,
       port: config.imap.port,

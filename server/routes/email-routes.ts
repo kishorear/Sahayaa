@@ -19,7 +19,6 @@ const emailConfigSchema = z.object({
     auth: basicAuthSchema
   }),
   imap: z.object({
-    user: z.string(),
     host: z.string(),
     port: z.number(),
     tls: z.boolean(),
@@ -40,6 +39,22 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
     try {
       // Validate configuration
       const config = emailConfigSchema.parse(req.body);
+      
+      // Verify that all authentication credentials are provided
+      if (!config.smtp.auth.user || !config.smtp.auth.pass || 
+          !config.imap.auth.user || !config.imap.auth.pass) {
+        return res.status(400).json({
+          success: false,
+          message: 'Authentication credentials are incomplete',
+          details: {
+            smtpAuthComplete: !!config.smtp.auth.user && !!config.smtp.auth.pass,
+            imapAuthComplete: !!config.imap.auth.user && !!config.imap.auth.pass
+          }
+        });
+      }
+
+      // Log the configuration being saved (without passwords)
+      console.log(`Saving email config with SMTP user: ${config.smtp.auth.user}, IMAP user: ${config.imap.auth.user}`);
       
       // Test connection
       const emailService = setupEmailService(config);

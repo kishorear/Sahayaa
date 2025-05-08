@@ -81,6 +81,7 @@ export default function EmailSettings() {
     success: false,
     message: ''
   });
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connecting' | 'connected' | 'failed'>('idle');
   
   // Initial query for current email configuration
   const {

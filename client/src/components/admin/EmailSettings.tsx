@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -284,6 +284,7 @@ export default function EmailSettings() {
           if (connectingData?.details?.smtpStatus === 'connecting') {
             // Update UI to show connecting state, but don't resolve the promise yet
             setConnectionStatus('connecting');
+            setConnectionTimer(0); // Reset timer
             setConfigDetails({
               success: true,
               message: connectingData.message || "Testing email connection...",
@@ -830,7 +831,7 @@ export default function EmailSettings() {
                   >
                     {configMutation.isPending 
                       ? connectionStatus === 'connecting' 
-                        ? "Testing Connection..." 
+                        ? `Testing Connection... ${connectionTimer > 0 ? `(${connectionTimer}s)` : ''}` 
                         : "Saving..." 
                       : "Save Configuration"}
                   </Button>
@@ -1023,7 +1024,7 @@ export default function EmailSettings() {
                             {configDetails.details?.smtpStatus === 'connected' 
                               ? 'Connected Successfully'
                               : configDetails.details?.smtpStatus === 'connecting'
-                                ? 'Testing Connection...'
+                                ? `Testing Connection... ${connectionTimer > 0 ? `(${connectionTimer}s)` : ''}`
                                 : 'Connection Failed'}
                           </span>
                         </p>

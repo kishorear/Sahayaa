@@ -93,13 +93,18 @@ export class EmailService {
     this.config = config;
 
     // Initialize SMTP transport with basic authentication
-    // Force proper secure setting based on port
+    // Determine settings based on port and provider
     const isPort465 = config.smtp.port === 465;
-    config.smtp.secure = isPort465; // true for 465, false for other ports
+    const isPort587 = config.smtp.port === 587;
+    const isGmail = config.smtp.host.includes('gmail.com');
     
-    console.log(`Setting up SMTP transport for ${config.smtp.host}:${config.smtp.port} (secure: ${config.smtp.secure})`);
+    // Set secure flag based on port (in general, 465 uses SSL and needs secure: true)
+    config.smtp.secure = isPort465; 
     
-    this.transporter = nodemailer.createTransport({
+    console.log(`Setting up SMTP transport for ${config.smtp.host}:${config.smtp.port} (secure: ${config.smtp.secure}, isGmail: ${isGmail})`);
+    
+    // Default transport config
+    let transportConfig: any = {
       host: config.smtp.host,
       port: config.smtp.port,
       secure: config.smtp.secure,
@@ -111,7 +116,32 @@ export class EmailService {
         // Don't fail on invalid certs
         rejectUnauthorized: false
       }
-    });
+    };
+    
+    // For Gmail, use service shorthand which auto-configures everything
+    if (isGmail) {
+      console.log('Using Gmail-specific SMTP service configuration');
+      transportConfig = {
+        service: 'gmail', // Nodemailer will auto-configure the correct settings
+        auth: {
+          user: config.smtp.auth.user,
+          pass: config.smtp.auth.pass // This should be an app password if 2FA is enabled
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      };
+    }
+    
+    // Special handling for port 587 (STARTTLS) for non-Gmail providers
+    if (isPort587 && !isGmail) {
+      console.log('Using port 587 special configuration for non-Gmail provider');
+      transportConfig.secure = false;
+      transportConfig.requireTLS = true;
+    }
+    
+    // Create the transporter with our configuration
+    this.transporter = nodemailer.createTransport(transportConfig);
 
     // Check if IMAP credentials are provided
     const hasValidImapConfig = 

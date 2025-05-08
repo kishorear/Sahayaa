@@ -82,6 +82,7 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
         // For Gmail, port 587 needs secure:false with STARTTLS
         const isPort587 = config.smtp.port === 587;
         const isPort465 = config.smtp.port === 465;
+        const isGmail = config.smtp.host.includes('gmail.com');
         
         // Force proper secure setting based on port
         const secureOption = isPort465;
@@ -89,10 +90,10 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
         // Update config to match the correct settings
         config.smtp.secure = secureOption;
         
-        console.log(`Testing SMTP connection for ${config.smtp.host}:${config.smtp.port} (secure: ${secureOption})`);
+        console.log(`[DEBUG] Testing SMTP connection for ${config.smtp.host}:${config.smtp.port} (secure: ${secureOption}, isGmail: ${isGmail})`);
         
-        // Create a temporary nodemailer transport to test connection with proper TLS settings
-        const testTransport = nodemailer.createTransport({
+        // Create transport options differently for Gmail vs other providers
+        let transportOptions: any = {
           host: config.smtp.host,
           port: config.smtp.port,
           secure: secureOption, // true for 465, false for other ports
@@ -104,11 +105,58 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
             // Don't fail on invalid certs
             rejectUnauthorized: false,
           }
-        });
+        };
+        
+        // For Gmail, try service shorthand which auto-configures ports
+        if (isGmail) {
+          console.log('[DEBUG] Using Gmail-specific SMTP configuration');
+          // For Gmail, we can use the service shorthand instead
+          transportOptions = {
+            service: 'gmail',
+            auth: {
+              user: config.smtp.auth.user,
+              pass: config.smtp.auth.pass, // This should be an app password if 2FA is enabled
+            },
+            tls: {
+              rejectUnauthorized: false,
+            }
+          };
+          console.log('[DEBUG] Gmail SMTP transport configured with service shorthand');
+        }
+        
+        // Make sure we're using the correct host:port info in the config for future reference
+        if (isGmail) {
+          if (isPort587) {
+            console.log('[DEBUG] For Gmail using port 587 (usually needs secure: false + STARTTLS)');
+          } else if (isPort465) {
+            console.log('[DEBUG] For Gmail using port 465 (usually needs secure: true + SSL/TLS)');
+          } else {
+            console.log(`[DEBUG] For Gmail using non-standard port: ${config.smtp.port}`);
+          }
+        }
+        
+        // Special handling for port 587 (STARTTLS)
+        if (isPort587 && !isGmail) {
+          console.log('[DEBUG] Using port 587 special configuration with STARTTLS');
+          transportOptions.secure = false;
+          transportOptions.requireTLS = true;
+        }
+        
+        console.log(`[DEBUG] Creating SMTP transport with options:`, JSON.stringify({
+          ...transportOptions,
+          auth: {
+            ...transportOptions.auth,
+            pass: '********' // Mask password in logs
+          }
+        }, null, 2));
+        
+        // Create a temporary nodemailer transport to test connection with proper TLS settings
+        const testTransport = nodemailer.createTransport(transportOptions);
         
         // Verify SMTP connection
+        console.log('[DEBUG] About to verify SMTP connection...');
         await testTransport.verify();
-        console.log('SMTP connection test successful');
+        console.log('[DEBUG] SMTP connection test successful!');
       } catch (smtpError: unknown) {
         // SMTP connection failed
         const errorMessage = smtpError instanceof Error ? smtpError.message : 'Unknown SMTP error';
@@ -140,13 +188,17 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
               "Incorrect credentials",
               "Server rejects connection",
               "SSL/TLS configuration issue",
-              "Firewall blocking connection"
+              "Firewall blocking connection",
+              "Gmail 2FA requires app passwords",
+              "Gmail less secure apps setting"
             ],
             recommendations: [
               "Verify SMTP server address and port",
               "Check username and password",
               "For Gmail: Try port 587 with secure:false",
-              "For Gmail: Use an app password if you have 2FA enabled",
+              "For Gmail: Use an app password if you have 2FA enabled (https://myaccount.google.com/apppasswords)",
+              "For Gmail: Make sure 'Allow less secure apps' is enabled",
+              "Use Gmail app passwords: https://support.google.com/accounts/answer/185833",
               "Ensure your mail provider allows SMTP access"
             ]
           }
@@ -160,25 +212,42 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       // In a real implementation, we would securely store credentials
       try {
         const tenantId = req.user?.tenantId || 1;
+        console.log(`[DEBUG] Getting tenant for ID ${tenantId} to save email configuration`);
+        
         const tenant = await storage.getTenantById(tenantId);
         
         if (tenant) {
+          console.log(`[DEBUG] Tenant found, current settings:`, 
+            tenant.settings ? Object.keys(tenant.settings) : 'null/undefined settings');
+          
           // Update tenant settings with email configuration
           const updatedSettings = {
             ...(tenant.settings || {}),
             emailConfig: config
           };
           
-          await storage.updateTenant(tenantId, {
+          console.log(`[DEBUG] About to update tenant with new email configuration, keys:`, 
+            Object.keys(updatedSettings));
+          
+          // Create a sanitized version of the config for logging (remove passwords)
+          const sanitizedConfig = JSON.parse(JSON.stringify(config));
+          if (sanitizedConfig.smtp?.auth?.pass) sanitizedConfig.smtp.auth.pass = '********';
+          if (sanitizedConfig.imap?.auth?.pass) sanitizedConfig.imap.auth.pass = '********';
+          
+          console.log(`[DEBUG] Email config being saved:`, JSON.stringify(sanitizedConfig, null, 2));
+          
+          const updatedTenant = await storage.updateTenant(tenantId, {
             settings: updatedSettings
           });
           
-          console.log(`Email configuration saved for tenant ${tenantId}`);
+          console.log(`[DEBUG] Tenant updated successfully, updated settings keys:`, 
+            updatedTenant.settings ? Object.keys(updatedTenant.settings) : 'null settings after update');
+          console.log(`[DEBUG] Email configuration saved for tenant ${tenantId}`);
         } else {
-          console.error(`Tenant ${tenantId} not found`);
+          console.error(`[ERROR] Tenant ${tenantId} not found, cannot save email configuration`);
         }
       } catch (storageError) {
-        console.error('Error saving email configuration to database:', storageError);
+        console.error('[ERROR] Error saving email configuration to database:', storageError);
         // We'll continue even if storage fails, as the in-memory service is still set up
       }
       
@@ -312,15 +381,19 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
             configProcessed: false,
             possibleCauses: [
               "Connection to mail server failed",
-              "Invalid credentials provided",
+              "Invalid credentials provided", 
               "Server may be blocking connection",
-              "Firewall or network issues"
+              "Firewall or network issues",
+              "Gmail 2FA requires app passwords",
+              "SSL/TLS configuration issues"
             ],
             recommendations: [
               "Check mail server URLs and ports",
               "Verify username and password",
-              "Ensure your mail provider allows third-party connections",
-              "For Gmail, check 'Allow less secure apps' or use app passwords"
+              "For Gmail: Use an app password if you have 2FA enabled (https://myaccount.google.com/apppasswords)",
+              "For Gmail: Try service:'gmail' instead of host/port configuration",
+              "For Gmail: Make sure 'Allow less secure apps' is enabled",
+              "Ensure your mail provider allows third-party connections"
             ]
           }
         });

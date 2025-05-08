@@ -345,6 +345,30 @@ export async function executeQuery<T>(
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`${logPrefix}: Attempt ${attempt}/${retries} failed: ${errorMessage}`);
       
+      // Special handling for JSON column errors
+      if (error instanceof Error && 
+          (errorMessage.includes('JSON') || 
+           errorMessage.includes('json') || 
+           errorMessage.includes('circular') ||
+           errorMessage.includes('stringify') ||
+           errorMessage.includes('unexpected token'))) {
+        console.error(`${logPrefix}: JSON handling error detected:`, errorMessage);
+        
+        if (error.stack) {
+          console.error(`${logPrefix}: Error stack:`, error.stack);
+        }
+        
+        // Try to print the query function for debugging (limit length for logs)
+        try {
+          if (typeof queryFn.toString === 'function') {
+            const fnString = queryFn.toString();
+            console.log(`${logPrefix}: Query function:`, fnString.substring(0, 300) + (fnString.length > 300 ? '...' : ''));
+          }
+        } catch (debugError) {
+          // Ignore errors in debug logging
+        }
+      }
+      
       // Check if this is a fatal/connection error versus a query error
       const isConnectionError = 
         error instanceof Error && (

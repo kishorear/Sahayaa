@@ -217,17 +217,49 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
         const tenant = await storage.getTenantById(tenantId);
         
         if (tenant) {
-          console.log(`[DEBUG] Tenant found, current settings:`, 
-            tenant.settings ? Object.keys(tenant.settings) : 'null/undefined settings');
+          console.log(`[DEBUG] Tenant found:`, {
+            id: tenant.id,
+            name: tenant.name,
+            hasSettings: tenant.settings !== undefined && tenant.settings !== null,
+            settingsType: tenant.settings ? typeof tenant.settings : 'null/undefined',
+            settingsIsObject: tenant.settings && typeof tenant.settings === 'object',
+            settingsKeys: tenant.settings && typeof tenant.settings === 'object' ? Object.keys(tenant.settings) : []
+          });
+          
+          // Make sure settings exists and is an object
+          let existingSettings = {};
+          try {
+            // Handle case where settings is stored as a JSON string
+            if (tenant.settings) {
+              if (typeof tenant.settings === 'string') {
+                existingSettings = JSON.parse(tenant.settings);
+                console.log('[DEBUG] Parsed settings from string');
+              } else if (typeof tenant.settings === 'object') {
+                existingSettings = tenant.settings;
+                console.log('[DEBUG] Using settings as object');
+              } else {
+                console.log('[DEBUG] Unexpected settings type, creating empty object');
+              }
+            } else {
+              console.log('[DEBUG] No existing settings, creating empty object');
+            }
+          } catch (parseError) {
+            console.error('[ERROR] Error parsing existing settings:', parseError);
+            console.log('[DEBUG] Using empty settings object due to parse error');
+          }
           
           // Update tenant settings with email configuration
           const updatedSettings = {
-            ...(tenant.settings || {}),
+            ...existingSettings,
             emailConfig: config
           };
           
-          console.log(`[DEBUG] About to update tenant with new email configuration, keys:`, 
-            Object.keys(updatedSettings));
+          console.log(`[DEBUG] Prepared updated settings:`, {
+            updatedType: typeof updatedSettings,
+            updatedKeys: Object.keys(updatedSettings), 
+            hasEmailConfig: 'emailConfig' in updatedSettings,
+            emailConfigType: typeof updatedSettings.emailConfig
+          });
           
           // Create a sanitized version of the config for logging (remove passwords)
           const sanitizedConfig = JSON.parse(JSON.stringify(config));
@@ -236,18 +268,43 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
           
           console.log(`[DEBUG] Email config being saved:`, JSON.stringify(sanitizedConfig, null, 2));
           
-          const updatedTenant = await storage.updateTenant(tenantId, {
-            settings: updatedSettings
-          });
-          
-          console.log(`[DEBUG] Tenant updated successfully, updated settings keys:`, 
-            updatedTenant.settings ? Object.keys(updatedTenant.settings) : 'null settings after update');
-          console.log(`[DEBUG] Email configuration saved for tenant ${tenantId}`);
+          try {
+            console.log('[DEBUG] Calling updateTenant with settings object');
+            
+            const updatedTenant = await storage.updateTenant(tenantId, {
+              settings: updatedSettings
+            });
+            
+            console.log(`[DEBUG] Tenant update function returned successfully`);
+            console.log(`[DEBUG] Updated tenant:`, {
+              id: updatedTenant.id,
+              name: updatedTenant.name,
+              hasSettings: updatedTenant.settings !== undefined && updatedTenant.settings !== null,
+              settingsType: updatedTenant.settings ? typeof updatedTenant.settings : 'null/undefined',
+              settingsIsObject: updatedTenant.settings && typeof updatedTenant.settings === 'object',
+              settingsKeys: updatedTenant.settings && typeof updatedTenant.settings === 'object' ? 
+                Object.keys(updatedTenant.settings) : []
+            });
+            
+            // Verify the update was successful
+            const verifyTenant = await storage.getTenantById(tenantId);
+            console.log('[DEBUG] Verification tenant after update:', {
+              hasSettings: verifyTenant?.settings !== undefined && verifyTenant?.settings !== null,
+              settingsType: verifyTenant?.settings ? typeof verifyTenant.settings : 'null/undefined',
+              hasEmailConfig: verifyTenant?.settings && 
+                typeof verifyTenant.settings === 'object' && 
+                'emailConfig' in verifyTenant.settings
+            });
+            
+          } catch (updateError) {
+            console.error('[ERROR] Error during updateTenant call:', updateError);
+            console.log('[DEBUG] Update tenant operation failed, but continuing with in-memory service');
+          }
         } else {
           console.error(`[ERROR] Tenant ${tenantId} not found, cannot save email configuration`);
         }
       } catch (storageError) {
-        console.error('[ERROR] Error saving email configuration to database:', storageError);
+        console.error('[ERROR] Error in tenant settings update process:', storageError);
         // We'll continue even if storage fails, as the in-memory service is still set up
       }
       

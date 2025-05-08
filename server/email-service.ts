@@ -93,6 +93,12 @@ export class EmailService {
     this.config = config;
 
     // Initialize SMTP transport with basic authentication
+    // Force proper secure setting based on port
+    const isPort465 = config.smtp.port === 465;
+    config.smtp.secure = isPort465; // true for 465, false for other ports
+    
+    console.log(`Setting up SMTP transport for ${config.smtp.host}:${config.smtp.port} (secure: ${config.smtp.secure})`);
+    
     this.transporter = nodemailer.createTransport({
       host: config.smtp.host,
       port: config.smtp.port,
@@ -100,6 +106,10 @@ export class EmailService {
       auth: {
         user: config.smtp.auth.user,
         pass: config.smtp.auth.pass
+      },
+      tls: {
+        // Don't fail on invalid certs
+        rejectUnauthorized: false
       }
     });
 

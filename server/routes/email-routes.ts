@@ -38,12 +38,16 @@ const emailConfigSchema = z.object({
 export function registerEmailRoutes(app: Express, requireAuth: any) {
   // Set up email configuration
   app.post('/api/email/config', requireAuth, async (req: Request, res: Response) => {
+    // Flag to track if we've already sent a response
+    let responseSent = false;
+    
     try {
       // Validate configuration
       const config = emailConfigSchema.parse(req.body);
       
       // Verify that SMTP authentication credentials are provided
       if (!config.smtp.auth.user || !config.smtp.auth.pass) {
+        responseSent = true;
         return res.status(400).json({
           success: false,
           message: 'SMTP authentication credentials are incomplete',
@@ -62,6 +66,7 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       console.log(`Saving email config with SMTP user: ${config.smtp.auth.user}, IMAP user: ${config.imap.auth.user || 'not provided'}`);
       
       // Let the client know we're testing connection first
+      responseSent = true;
       res.status(202).json({
         success: true,
         message: 'Verifying SMTP connection...',
@@ -74,14 +79,30 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
       
       // Verify SMTP connection before saving configuration
       try {
-        // Create a temporary nodemailer transport to test connection
+        // For Gmail, port 587 needs secure:false with STARTTLS
+        const isPort587 = config.smtp.port === 587;
+        const isPort465 = config.smtp.port === 465;
+        
+        // Force proper secure setting based on port
+        const secureOption = isPort465;
+        
+        // Update config to match the correct settings
+        config.smtp.secure = secureOption;
+        
+        console.log(`Testing SMTP connection for ${config.smtp.host}:${config.smtp.port} (secure: ${secureOption})`);
+        
+        // Create a temporary nodemailer transport to test connection with proper TLS settings
         const testTransport = nodemailer.createTransport({
           host: config.smtp.host,
           port: config.smtp.port,
-          secure: config.smtp.secure,
+          secure: secureOption, // true for 465, false for other ports
           auth: {
             user: config.smtp.auth.user,
             pass: config.smtp.auth.pass
+          },
+          tls: {
+            // Don't fail on invalid certs
+            rejectUnauthorized: false,
           }
         });
         
@@ -97,6 +118,16 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
           ? smtpError.constructor.name 
           : 'UnknownError';
         
+        // If we already sent the initial connecting response, we shouldn't send another response
+        // Instead, the client will poll the /api/email/status endpoint to get the final status
+        // So we'll just continue and let the process finish without email service setup
+        if (responseSent) {
+          console.log('Response already sent (202), not sending SMTP error response');
+          // Break out of the function since we can't complete the setup
+          return;
+        }
+        
+        responseSent = true;
         return res.status(400).json({
           success: false,
           message: 'SMTP connection test failed',
@@ -108,12 +139,14 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
               "Invalid SMTP server address or port",
               "Incorrect credentials",
               "Server rejects connection",
+              "SSL/TLS configuration issue",
               "Firewall blocking connection"
             ],
             recommendations: [
               "Verify SMTP server address and port",
               "Check username and password",
-              "Try a different port (25, 465, 587)",
+              "For Gmail: Try port 587 with secure:false",
+              "For Gmail: Use an app password if you have 2FA enabled",
               "Ensure your mail provider allows SMTP access"
             ]
           }
@@ -224,58 +257,76 @@ export function registerEmailRoutes(app: Express, requireAuth: any) {
         }
       }
       
-      res.status(200).json({ 
-        success: true,
-        message: responseMessage,
-        details: {
-          configSaved: true,
-          serviceName: 'Email Integration Service',
-          serviceStatus: 'running',
-          tenantId: req.user?.tenantId || 1,
-          smtpConfigured: true,
-          smtpStatus: 'connected',
-          imapConfigured: hasValidImapConfig,
-          imapStatus,
-          imapError: imapTestResult.error,
-          monitoringActive: hasValidImapConfig && imapTestResult.success,
-          supportEmailSending: true,
-          supportEmailReceiving: hasValidImapConfig && imapTestResult.success,
-          timestamp: new Date().toISOString()
-        }
-      });
+      // Check if we've already sent an intermediate response (the 202)
+      if (!responseSent) {
+        // If we haven't sent any response yet (the 202 connecting response), 
+        // we can go ahead and send the final success response
+        res.status(200).json({ 
+          success: true,
+          message: responseMessage,
+          details: {
+            configSaved: true,
+            serviceName: 'Email Integration Service',
+            serviceStatus: 'running',
+            tenantId: req.user?.tenantId || 1,
+            smtpConfigured: true,
+            smtpStatus: 'connected',
+            imapConfigured: hasValidImapConfig,
+            imapStatus,
+            imapError: imapTestResult.error,
+            monitoringActive: hasValidImapConfig && imapTestResult.success,
+            supportEmailSending: true,
+            supportEmailReceiving: hasValidImapConfig && imapTestResult.success,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        // We've already sent the 202 response, so we can't send another.
+        // The client will poll the email status endpoint to get the updated configuration.
+        console.log('Response already sent (202), skipping final success response');
+      }
     } catch (error: unknown) {
+      // If Zod validation failed, this happens immediately before any response is sent
       if (error instanceof z.ZodError) {
+        responseSent = true;
         return res.status(400).json({ 
           message: 'Invalid email configuration', 
           errors: error.errors 
         });
       }
+      
       // Create a detailed error response with helpful debugging information
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
       
-      res.status(500).json({ 
-        success: false,
-        message: `Error setting up email: ${errorMessage}`,
-        details: {
-          errorType,
-          timestamp: new Date().toISOString(),
-          tenantId: req.user?.tenantId || 1,
-          configProcessed: false,
-          possibleCauses: [
-            "Connection to mail server failed",
-            "Invalid credentials provided",
-            "Server may be blocking connection",
-            "Firewall or network issues"
-          ],
-          recommendations: [
-            "Check mail server URLs and ports",
-            "Verify username and password",
-            "Ensure your mail provider allows third-party connections",
-            "For Gmail, check 'Allow less secure apps' or use app passwords"
-          ]
-        }
-      });
+      // Only send an error response if we haven't sent one already
+      if (!responseSent) {
+        responseSent = true;
+        res.status(500).json({ 
+          success: false,
+          message: `Error setting up email: ${errorMessage}`,
+          details: {
+            errorType,
+            timestamp: new Date().toISOString(),
+            tenantId: req.user?.tenantId || 1,
+            configProcessed: false,
+            possibleCauses: [
+              "Connection to mail server failed",
+              "Invalid credentials provided",
+              "Server may be blocking connection",
+              "Firewall or network issues"
+            ],
+            recommendations: [
+              "Check mail server URLs and ports",
+              "Verify username and password",
+              "Ensure your mail provider allows third-party connections",
+              "For Gmail, check 'Allow less secure apps' or use app passwords"
+            ]
+          }
+        });
+      } else {
+        console.log(`Error occurred but response already sent: ${errorMessage}`);
+      }
     }
   });
   

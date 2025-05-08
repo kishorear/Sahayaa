@@ -45,17 +45,22 @@ const emailConfigSchema = z.object({
     auth: authConfigSchema,
   }),
   imap: z.object({
-    host: z.string().min(1, "IMAP host is required"),
-    port: z.coerce.number().int().min(1, "Port must be a positive number"),
+    // Make IMAP fields optional to support SMTP-only configuration
+    host: z.string().default(""),
+    port: z.coerce.number().int().min(1, "Port must be a positive number").default(993),
     tls: z.boolean().default(true),
     authTimeout: z.coerce.number().int().min(1000).default(10000),
-    auth: authConfigSchema,
+    auth: z.object({
+      type: z.literal('basic'),
+      user: z.string().default(""),
+      pass: z.string().default(""),
+    }),
   }),
   settings: z.object({
     fromName: z.string().min(1, "From name is required"),
     fromEmail: z.string().email("Invalid email address"),
-    ticketSubjectPrefix: z.string(),
-    checkInterval: z.coerce.number().int().min(30000, "Check interval must be at least 30 seconds"),
+    ticketSubjectPrefix: z.string().default("[Ticket #]"),
+    checkInterval: z.coerce.number().int().min(30000, "Check interval must be at least 30 seconds").default(60000),
   }),
 });
 
@@ -424,6 +429,8 @@ export default function EmailSettings() {
   
   // Form submission handlers for main configuration
   const onConfigSubmit = (data: EmailConfigValues) => {
+    console.log("Form submitted with data:", data);
+    
     // Set connecting state
     setConnectionStatus('connecting');
     setConnectionTimer(0); // Reset timer when starting a new connection attempt
@@ -444,7 +451,16 @@ export default function EmailSettings() {
       description: "Verifying SMTP connection...",
     });
     
-    configMutation.mutate(data);
+    try {
+      configMutation.mutate(data);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save configuration. See console for details.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Test email submission handler
@@ -835,7 +851,36 @@ export default function EmailSettings() {
                   </TabsContent>
                 </Tabs>
                 
-                <div className="flex justify-end mt-6">
+                <div className="flex justify-end gap-4 mt-6">
+                  <Button 
+                    type="button"
+                    onClick={() => {
+                      // Manual submission for debugging 
+                      console.log("Manual form submission");
+                      const values = configForm.getValues();
+                      console.log("Current form values:", values);
+                      
+                      // Check form validation
+                      configForm.trigger().then(isValid => {
+                        console.log("Form validation status:", isValid);
+                        
+                        if (isValid) {
+                          console.log("Form is valid, submitting manually");
+                          onConfigSubmit(values);
+                        } else {
+                          console.log("Form validation errors:", configForm.formState.errors);
+                          toast({
+                            title: "Validation Error",
+                            description: "Please check all fields for errors",
+                            variant: "destructive"
+                          });
+                        }
+                      });
+                    }}
+                    variant="outline"
+                  >
+                    Debug Submit
+                  </Button>
                   <Button 
                     type="submit"
                     disabled={configMutation.isPending}

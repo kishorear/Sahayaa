@@ -6,6 +6,7 @@ import { InsertTicket, InsertMessage } from '@shared/schema';
 import { EventEmitter } from 'events';
 import { log } from './vite';
 import { generateChatResponse } from './ai';
+import { AIProviderFactory } from './ai/providers';
 
 // Email processing events
 export const emailEvents = new EventEmitter();
@@ -623,6 +624,179 @@ export class EmailService {
     emailEvents.emit('ticketUpdated', ticketId);
   }
 
+  /**
+   * Detect errors in message content using AI
+   * 
+   * @param content The message content to analyze for errors
+   * @param tenantId Optional tenant ID for AI provider context
+   * @returns An object containing error detection results
+   */
+  private async detectErrorsInContent(
+    content: string,
+    subject: string,
+    tenantId?: number
+  ): Promise<{ 
+    hasError: boolean; 
+    errorTitle: string; 
+    errorDescription: string;
+    errorCategory: string;
+    errorSeverity: 'low' | 'medium' | 'high';
+  }> {
+    try {
+      if (!content || content.trim().length === 0) {
+        return { 
+          hasError: false, 
+          errorTitle: '',
+          errorDescription: '',
+          errorCategory: '',
+          errorSeverity: 'low'
+        };
+      }
+      
+      // Call AI provider to analyze content for errors
+      const provider = AIProviderFactory.getProviderForOperation(tenantId || 1, 'chat');
+      
+      if (!provider) {
+        log(`No AI provider available for error detection`, 'email');
+        return { 
+          hasError: false, 
+          errorTitle: '',
+          errorDescription: '',
+          errorCategory: '',
+          errorSeverity: 'low'
+        };
+      }
+      
+      const systemPrompt = `
+        You are an error detection system that analyzes customer support emails.
+        Determine if the email describes an error, issue, or problem that needs technical attention.
+        If an error is detected, provide a concise error title, detailed description, category, and severity level.
+        Format your response as JSON with the following fields:
+        - hasError: boolean indicating if an error is detected
+        - errorTitle: a concise title for the error (only if hasError is true)
+        - errorDescription: detailed explanation of the error (only if hasError is true)
+        - errorCategory: one of [software_bug, configuration_issue, user_error, hardware_problem, security_incident, performance_issue, other] (only if hasError is true)
+        - errorSeverity: one of [low, medium, high] (only if hasError is true)
+      `;
+      
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Subject: ${subject}\n\nEmail Content: ${content}` }
+      ];
+      
+      // Call AI provider with appropriate parameters
+      const response = await provider.generateChatResponse(messages, '', '');
+      
+      // Parse response as JSON
+      try {
+        const result = JSON.parse(response);
+        
+        // Validate result structure and return
+        return {
+          hasError: !!result.hasError,
+          errorTitle: result.hasError ? (result.errorTitle || 'Unspecified Error') : '',
+          errorDescription: result.hasError ? (result.errorDescription || 'No description provided') : '',
+          errorCategory: result.hasError ? (result.errorCategory || 'other') : '',
+          errorSeverity: result.hasError ? 
+            (result.errorSeverity === 'low' || result.errorSeverity === 'medium' || result.errorSeverity === 'high' 
+              ? result.errorSeverity 
+              : 'medium') 
+            : 'low'
+        };
+      } catch (parseError) {
+        log(`Error parsing AI response for error detection: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`, 'email');
+        return { 
+          hasError: false, 
+          errorTitle: '',
+          errorDescription: '',
+          errorCategory: '',
+          errorSeverity: 'low'
+        };
+      }
+    } catch (error) {
+      log(`Error detecting errors in content: ${error instanceof Error ? error.message : 'Unknown error'}`, 'email');
+      return { 
+        hasError: false, 
+        errorTitle: '',
+        errorDescription: '',
+        errorCategory: '',
+        errorSeverity: 'low'
+      };
+    }
+  }
+
+  /**
+   * Create an error ticket based on detected error in email
+   * 
+   * @param errorInfo Information about the detected error
+   * @param originalTicketId ID of the original ticket that contains the error
+   * @param fromEmail Email of the sender for notifications
+   * @returns The created error ticket ID or null if creation failed
+   */
+  private async createErrorTicket(
+    errorInfo: { 
+      errorTitle: string; 
+      errorDescription: string;
+      errorCategory: string;
+      errorSeverity: 'low' | 'medium' | 'high';
+    },
+    originalTicketId: number,
+    fromEmail: string,
+    fromName: string
+  ): Promise<number | null> {
+    try {
+      // Determine complexity based on severity
+      let complexity: 'simple' | 'medium' | 'complex';
+      switch (errorInfo.errorSeverity) {
+        case 'low':
+          complexity = 'simple';
+          break;
+        case 'high':
+          complexity = 'complex';
+          break;
+        default:
+          complexity = 'medium';
+      }
+      
+      // Create a new ticket for the error
+      const errorTicket: InsertTicket = {
+        title: `[ERROR] ${errorInfo.errorTitle}`,
+        description: `${errorInfo.errorDescription}\n\nThis error was automatically detected in ticket #${originalTicketId}.`,
+        status: 'new',
+        category: errorInfo.errorCategory || 'technical_issue',
+        complexity: complexity as any,
+        assignedTo: '', // Will need assignment by support team
+        source: 'auto_detected'
+        // Note: priority is handled in classification process, not directly set here
+      };
+      
+      const ticket = await storage.createTicket(errorTicket);
+      
+      // Create initial message to document error detection
+      const message: InsertMessage = {
+        ticketId: ticket.id,
+        sender: 'system',
+        content: `This ticket was automatically created after detecting an error in ticket #${originalTicketId}.\n\nError category: ${errorInfo.errorCategory}\nSeverity: ${errorInfo.errorSeverity}\n\nOriginal description: ${errorInfo.errorDescription}`,
+        metadata: {
+          fromEmail,
+          fromName,
+          autoDetected: true,
+          originalTicketId,
+          errorSeverity: errorInfo.errorSeverity
+        }
+      };
+      
+      await storage.createMessage(message);
+      
+      log(`Created error ticket #${ticket.id} from detecting error in ticket #${originalTicketId}`, 'email');
+      
+      return ticket.id;
+    } catch (error) {
+      log(`Failed to create error ticket: ${error instanceof Error ? error.message : 'Unknown error'}`, 'email');
+      return null;
+    }
+  }
+
   // Create a new ticket from an email
   private async createTicketFromEmail(
     fromEmail: string, 
@@ -668,6 +842,35 @@ export class EmailService {
     // Try to generate an AI response only if enabled in settings
     if (this.config.settings.enableAiResponses !== false) { // Default to true if undefined
       try {
+        // First, detect if there are errors in the email content
+        const errorDetection = await this.detectErrorsInContent(textContent, subject, ticket.tenantId);
+        
+        // If an error is detected, create a separate error ticket
+        if (errorDetection.hasError) {
+          const errorTicketId = await this.createErrorTicket(
+            errorDetection,
+            ticket.id,
+            fromEmail,
+            fromName
+          );
+          
+          if (errorTicketId) {
+            log(`Error detected in email. Created error ticket #${errorTicketId} linked to original ticket #${ticket.id}`, 'email');
+            
+            // Update the original ticket with a reference to the error ticket
+            await storage.createMessage({
+              ticketId: ticket.id,
+              sender: 'system',
+              content: `An error has been detected in this email and a separate ticket #${errorTicketId} has been created to track and resolve it.`,
+              metadata: {
+                errorTicketId,
+                autoDetected: true
+              }
+            });
+          }
+        }
+        
+        // Proceed with generating AI response for the original ticket
         const aiResponseSent = await this.generateAndSendAIResponse(ticket.id);
         if (aiResponseSent) {
           log(`AI response successfully generated and sent for new ticket #${ticket.id}`, 'email');
@@ -675,8 +878,8 @@ export class EmailService {
           log(`AI response generation skipped for new ticket #${ticket.id}`, 'email');
         }
       } catch (aiError) {
-        // Don't fail if AI response generation fails
-        log(`Error generating AI response for new ticket #${ticket.id}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
+        // Don't fail if AI processing fails
+        log(`Error in AI processing for new ticket #${ticket.id}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
       }
     } else {
       log(`AI responses are disabled in configuration - skipping for new ticket #${ticket.id}`, 'email');

@@ -225,6 +225,7 @@ export default function EmailSettings() {
             fromEmail?: string;
             ticketSubjectPrefix?: string;
             checkInterval?: number;
+            enableAiResponses?: boolean;
           };
           message?: string;
           config?: null;
@@ -261,6 +262,8 @@ export default function EmailSettings() {
               fromEmail: parsedConfig.settings.fromEmail || "",
               ticketSubjectPrefix: parsedConfig.settings.ticketSubjectPrefix || "[Ticket #]",
               checkInterval: parsedConfig.settings.checkInterval || 60000,
+              enableAiResponses: parsedConfig.settings.enableAiResponses !== undefined ? 
+                parsedConfig.settings.enableAiResponses : true,
             },
           };
           
@@ -483,6 +486,7 @@ export default function EmailSettings() {
         ...data.settings,
         ticketSubjectPrefix: data.settings.ticketSubjectPrefix || "[Ticket #]",
         checkInterval: data.settings.checkInterval || 60000,
+        enableAiResponses: data.settings.enableAiResponses !== undefined ? data.settings.enableAiResponses : true,
       }
     };
     
@@ -888,6 +892,30 @@ export default function EmailSettings() {
                               <FormDescription>
                                 How often to check for new emails (in milliseconds, minimum 30 seconds)
                               </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <Separator className="my-4" />
+                        
+                        <FormField
+                          control={configForm.control}
+                          name="settings.enableAiResponses"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>Enable AI-Generated Email Responses</FormLabel>
+                                <FormDescription>
+                                  When enabled, the system will automatically generate AI responses to incoming email tickets
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}

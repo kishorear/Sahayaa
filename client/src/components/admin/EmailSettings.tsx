@@ -981,15 +981,7 @@ export default function EmailSettings() {
                   {testEmailMutation.isPending ? "Sending..." : "Send Test Email"}
                 </Button>
                 
-                {!isEmailRunning && (
-                  <Alert className="mt-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Email Service Not Running</AlertTitle>
-                    <AlertDescription>
-                      The email service is not currently running. Save your configuration and refresh the status before sending a test email.
-                    </AlertDescription>
-                  </Alert>
-                )}
+
               </form>
             </Form>
           </CardContent>

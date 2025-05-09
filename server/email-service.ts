@@ -602,17 +602,21 @@ export class EmailService {
       </div>`
     );
 
-    // Try to generate an AI response to the user's reply
-    try {
-      const aiResponseSent = await this.generateAndSendAIResponse(ticketId);
-      if (aiResponseSent) {
-        log(`AI response successfully generated and sent for ticket reply #${ticketId}`, 'email');
-      } else {
-        log(`AI response generation skipped for ticket reply #${ticketId}`, 'email');
+    // Try to generate an AI response to the user's reply only if enabled in settings
+    if (this.config.settings.enableAiResponses !== false) { // Default to true if undefined
+      try {
+        const aiResponseSent = await this.generateAndSendAIResponse(ticketId);
+        if (aiResponseSent) {
+          log(`AI response successfully generated and sent for ticket reply #${ticketId}`, 'email');
+        } else {
+          log(`AI response generation skipped for ticket reply #${ticketId}`, 'email');
+        }
+      } catch (aiError) {
+        // Don't fail if AI response generation fails
+        log(`Error generating AI response for ticket reply #${ticketId}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
       }
-    } catch (aiError) {
-      // Don't fail if AI response generation fails
-      log(`Error generating AI response for ticket reply #${ticketId}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
+    } else {
+      log(`AI responses are disabled in configuration - skipping for ticket reply #${ticketId}`, 'email');
     }
 
     // Emit event for the system to know a new message was added
@@ -661,17 +665,21 @@ export class EmailService {
       EMAIL_TEMPLATES.ticketCreated(ticket.id, subject)
     );
 
-    // Try to generate an AI response
-    try {
-      const aiResponseSent = await this.generateAndSendAIResponse(ticket.id);
-      if (aiResponseSent) {
-        log(`AI response successfully generated and sent for new ticket #${ticket.id}`, 'email');
-      } else {
-        log(`AI response generation skipped for new ticket #${ticket.id}`, 'email');
+    // Try to generate an AI response only if enabled in settings
+    if (this.config.settings.enableAiResponses !== false) { // Default to true if undefined
+      try {
+        const aiResponseSent = await this.generateAndSendAIResponse(ticket.id);
+        if (aiResponseSent) {
+          log(`AI response successfully generated and sent for new ticket #${ticket.id}`, 'email');
+        } else {
+          log(`AI response generation skipped for new ticket #${ticket.id}`, 'email');
+        }
+      } catch (aiError) {
+        // Don't fail if AI response generation fails
+        log(`Error generating AI response for new ticket #${ticket.id}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
       }
-    } catch (aiError) {
-      // Don't fail if AI response generation fails
-      log(`Error generating AI response for new ticket #${ticket.id}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
+    } else {
+      log(`AI responses are disabled in configuration - skipping for new ticket #${ticket.id}`, 'email');
     }
 
     // Emit event for the system to know a new ticket was created

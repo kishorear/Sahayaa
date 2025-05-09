@@ -32,7 +32,7 @@ const emailConfigSchema = z.object({
     fromEmail: z.string().email(),
     ticketSubjectPrefix: z.string().default('[Support]'),
     checkInterval: z.number().default(60000), // 1 minute
-    enableAiResponses: z.boolean().default(true) // Enable AI responses by default
+    enableAiResponses: z.boolean().default(true).describe('When enabled, the system will automatically generate AI responses to incoming email tickets')
   })
 });
 

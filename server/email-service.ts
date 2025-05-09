@@ -473,25 +473,28 @@ export class EmailService {
       }));
       
       // Get the user's email who created the ticket
-      const lastUserMessage = messages.filter(msg => msg.sender === 'user').pop();
-      if (!lastUserMessage || !lastUserMessage.metadata || !lastUserMessage.metadata.fromEmail) {
+      const lastUserMessageObj = messages.filter(msg => msg.sender === 'user').pop();
+      if (!lastUserMessageObj || !lastUserMessageObj.metadata || !lastUserMessageObj.metadata.fromEmail) {
         log(`Could not determine user email for ticket #${ticketId}`, 'email');
         return false;
       }
       
-      const userEmail = lastUserMessage.metadata.fromEmail;
+      const userEmail = lastUserMessageObj.metadata.fromEmail;
       
-      // Generate AI response
+      // Get the user's most recent message content
+      const lastUserMessageText = lastUserMessageObj.content || '';
+      
+      // Generate AI response using the correct parameter order
       const aiResponse = await generateChatResponse(
-        chatMessages,
         {
           id: ticketId,
           title: ticket.title,
-          status: ticket.status,
           description: ticket.description,
           category: ticket.category,
           tenantId: ticket.tenantId
-        }
+        },
+        chatMessages,
+        lastUserMessageText
       );
       
       if (!aiResponse) {
@@ -598,6 +601,19 @@ export class EmailService {
       </div>`
     );
 
+    // Try to generate an AI response to the user's reply
+    try {
+      const aiResponseSent = await this.generateAndSendAIResponse(ticketId);
+      if (aiResponseSent) {
+        log(`AI response successfully generated and sent for ticket reply #${ticketId}`, 'email');
+      } else {
+        log(`AI response generation skipped for ticket reply #${ticketId}`, 'email');
+      }
+    } catch (aiError) {
+      // Don't fail if AI response generation fails
+      log(`Error generating AI response for ticket reply #${ticketId}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
+    }
+
     // Emit event for the system to know a new message was added
     emailEvents.emit('ticketUpdated', ticketId);
   }
@@ -643,6 +659,19 @@ export class EmailService {
       `${this.config.settings.ticketSubjectPrefix}#${ticket.id}: Created - ${subject}`,
       EMAIL_TEMPLATES.ticketCreated(ticket.id, subject)
     );
+
+    // Try to generate an AI response
+    try {
+      const aiResponseSent = await this.generateAndSendAIResponse(ticket.id);
+      if (aiResponseSent) {
+        log(`AI response successfully generated and sent for new ticket #${ticket.id}`, 'email');
+      } else {
+        log(`AI response generation skipped for new ticket #${ticket.id}`, 'email');
+      }
+    } catch (aiError) {
+      // Don't fail if AI response generation fails
+      log(`Error generating AI response for new ticket #${ticket.id}: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`, 'email');
+    }
 
     // Emit event for the system to know a new ticket was created
     emailEvents.emit('ticketCreated', ticket.id);

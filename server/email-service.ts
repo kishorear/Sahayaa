@@ -5,6 +5,7 @@ import { storage } from './storage';
 import { InsertTicket, InsertMessage } from '@shared/schema';
 import { EventEmitter } from 'events';
 import { log } from './vite';
+import { generateChatResponse } from './ai';
 
 // Email processing events
 export const emailEvents = new EventEmitter();
@@ -437,6 +438,101 @@ export class EmailService {
       }
     } catch (error) {
       log(`Error processing email from ${fromEmail}: ${error.message}`, 'email');
+    }
+  }
+  
+  /**
+   * Generate an AI response for an email-based ticket
+   * This uses the configured AI provider for the tenant to generate a helpful response
+   * 
+   * @param ticketId The ID of the ticket to generate a response for
+   * @returns True if an AI response was successfully generated and sent
+   */
+  private async generateAndSendAIResponse(ticketId: number): Promise<boolean> {
+    try {
+      log(`Attempting to generate AI response for ticket #${ticketId}`, 'email');
+      
+      // Get the ticket details including tenant
+      const ticket = await storage.getTicketById(ticketId);
+      if (!ticket) {
+        log(`Ticket #${ticketId} not found for AI response generation`, 'email');
+        return false;
+      }
+      
+      // Get the messages in this ticket
+      const messages = await storage.getMessagesByTicketId(ticketId);
+      if (!messages || messages.length === 0) {
+        log(`No messages found in ticket #${ticketId} for AI response`, 'email');
+        return false;
+      }
+      
+      // Convert the messages to ChatMessage format for the AI
+      const chatMessages = messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+        content: msg.content
+      }));
+      
+      // Get the user's email who created the ticket
+      const lastUserMessage = messages.filter(msg => msg.sender === 'user').pop();
+      if (!lastUserMessage || !lastUserMessage.metadata || !lastUserMessage.metadata.fromEmail) {
+        log(`Could not determine user email for ticket #${ticketId}`, 'email');
+        return false;
+      }
+      
+      const userEmail = lastUserMessage.metadata.fromEmail;
+      
+      // Generate AI response
+      const aiResponse = await generateChatResponse(
+        chatMessages,
+        {
+          id: ticketId,
+          title: ticket.title,
+          status: ticket.status,
+          description: ticket.description,
+          category: ticket.category,
+          tenantId: ticket.tenantId
+        }
+      );
+      
+      if (!aiResponse) {
+        log(`Failed to generate AI response for ticket #${ticketId}`, 'email');
+        return false;
+      }
+      
+      log(`AI response generated for ticket #${ticketId}`, 'email');
+      
+      // Create a new message in the ticket with the AI response
+      const aiMessage = await storage.createMessage({
+        ticketId,
+        sender: 'assistant',
+        content: aiResponse,
+        metadata: {
+          generatedBy: 'ai',
+          system: true
+        }
+      });
+      
+      // Send email with the AI response
+      const emailSubject = `${this.config.settings.ticketSubjectPrefix}#${ticketId}: Re: ${ticket.title}`;
+      const emailHtml = `
+        <div>
+          <p>Thank you for contacting our support team. Here's an automated response to your inquiry:</p>
+          <div style="padding: 15px; border-left: 4px solid #0066cc; background-color: #f9f9f9; margin: 15px 0;">
+            ${aiResponse.replace(/\n/g, '<br>')}
+          </div>
+          <p>This is an automated response. If you need further assistance, please reply to this email.</p>
+          <p>Ticket #${ticketId} remains open in our system and our support team will review it.</p>
+        </div>
+      `;
+      
+      await this.sendEmail(userEmail, emailSubject, emailHtml);
+      log(`AI response email sent to ${userEmail} for ticket #${ticketId}`, 'email');
+      
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      log(`Error generating AI response for ticket #${ticketId}: ${errorMessage}`, 'email');
+      return false;
     }
   }
 

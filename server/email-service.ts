@@ -48,6 +48,7 @@ export interface EmailConfig {
     fromEmail: string;
     ticketSubjectPrefix: string;
     checkInterval: number; // in milliseconds
+    enableAiResponses?: boolean; // Toggle for AI-generated responses to emails
   };
 }
 

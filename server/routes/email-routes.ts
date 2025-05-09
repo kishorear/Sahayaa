@@ -31,7 +31,8 @@ const emailConfigSchema = z.object({
     fromName: z.string(),
     fromEmail: z.string().email(),
     ticketSubjectPrefix: z.string().default('[Support]'),
-    checkInterval: z.number().default(60000) // 1 minute
+    checkInterval: z.number().default(60000), // 1 minute
+    enableAiResponses: z.boolean().default(true) // Enable AI responses by default
   })
 });
 

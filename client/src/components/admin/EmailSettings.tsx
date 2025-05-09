@@ -61,6 +61,7 @@ const emailConfigSchema = z.object({
     fromEmail: z.string().email("Invalid email address"),
     ticketSubjectPrefix: z.string().default("[Ticket #]"),
     checkInterval: z.coerce.number().int().min(30000, "Check interval must be at least 30 seconds").default(60000),
+    enableAiResponses: z.boolean().default(true),
   }),
 });
 
@@ -178,6 +179,7 @@ export default function EmailSettings() {
         fromEmail: "",
         ticketSubjectPrefix: "[Ticket #]",
         checkInterval: 60000,
+        enableAiResponses: true,
       },
     },
   });

@@ -31,18 +31,47 @@
   let widgetButton = null;
   let styleElement = null;
   
-  // State management
+  // State management with localStorage persistence
+  const loadState = () => {
+    try {
+      const savedState = localStorage.getItem('supportAiWidgetState');
+      if (savedState) {
+        return JSON.parse(savedState);
+      }
+    } catch (err) {
+      console.debug('Error loading widget state:', err);
+    }
+    return null;
+  };
+
+  const savedState = loadState();
+  
   const state = {
     initialized: false,
-    chatOpen: false,
+    chatOpen: savedState?.chatOpen || false,
     hostPage: {
       url: window.location.href,
       title: document.title,
       domain: window.location.hostname
     },
-    sessionId: generateSessionId(),
+    sessionId: savedState?.sessionId || generateSessionId(),
+    messages: savedState?.messages || [],
     metrics: {
-      interactionsCount: 0
+      interactionsCount: savedState?.metrics?.interactionsCount || 0
+    }
+  };
+  
+  // Function to persist state to localStorage
+  const saveState = () => {
+    try {
+      localStorage.setItem('supportAiWidgetState', JSON.stringify({
+        chatOpen: state.chatOpen,
+        sessionId: state.sessionId,
+        messages: state.messages,
+        metrics: state.metrics
+      }));
+    } catch (err) {
+      console.debug('Error saving widget state:', err);
     }
   };
 
@@ -59,11 +88,48 @@
     
     state.initialized = true;
     
-    if (config.autoOpen) {
+    // Restore chat state (messages) from localStorage
+    restoreChatHistory();
+    
+    // Open chat window if it was open in previous session
+    if (state.chatOpen) {
+      openChat();
+    } else if (config.autoOpen) {
       setTimeout(openChat, 1000);
     }
     
+    // Update the state with current page info
+    state.hostPage = {
+      url: window.location.href,
+      title: document.title,
+      domain: window.location.hostname
+    };
+    saveState();
+    
     reportWidgetEvent('widget_initialized');
+  }
+  
+  /**
+   * Restore chat history from saved messages in state
+   */
+  function restoreChatHistory() {
+    if (state.messages && state.messages.length > 0) {
+      const messagesContainer = chatWindow.querySelector('.messages-container');
+      
+      // Clear any default greeting message
+      messagesContainer.innerHTML = '';
+      
+      // Add all saved messages to the chat
+      state.messages.forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', message.sender);
+        messageElement.textContent = message.text;
+        messagesContainer.appendChild(messageElement);
+      });
+      
+      // Scroll to bottom
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
   }
 
   /**
@@ -349,6 +415,57 @@
     
     // Handle window resize
     window.addEventListener('resize', handleResize);
+    
+    // Track page navigation events for SPA (Single Page Applications)
+    trackPageChanges();
+  }
+  
+  /**
+   * Track page navigation changes to update widget state
+   * Works across different navigation types (SPA, regular page loads)
+   */
+  function trackPageChanges() {
+    // Method 1: Watch for URL changes (for SPAs)
+    let lastUrl = window.location.href;
+    
+    // Use MutationObserver to detect URL changes
+    const observer = new MutationObserver(() => {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        updatePageContext();
+      }
+    });
+    
+    observer.observe(document, { subtree: true, childList: true });
+    
+    // Method 2: Handle popstate events (browser back/forward)
+    window.addEventListener('popstate', updatePageContext);
+    
+    // Method 3: Handle beforeunload to save state before navigating away
+    window.addEventListener('beforeunload', () => {
+      saveState();
+    });
+  }
+  
+  /**
+   * Update the page context when navigation occurs
+   */
+  function updatePageContext() {
+    // Update the state with current page info
+    state.hostPage = {
+      url: window.location.href,
+      title: document.title,
+      domain: window.location.hostname
+    };
+    
+    // Save state to ensure persistence
+    saveState();
+    
+    // Report navigation to analytics
+    reportWidgetEvent('page_navigation', { 
+      url: state.hostPage.url,
+      title: state.hostPage.title
+    });
   }
 
   /**
@@ -368,6 +485,7 @@
   function openChat() {
     chatWindow.classList.add('open');
     state.chatOpen = true;
+    saveState();
     reportWidgetEvent('chat_opened');
   }
 
@@ -377,6 +495,7 @@
   function closeChat() {
     chatWindow.classList.remove('open');
     state.chatOpen = false;
+    saveState();
     reportWidgetEvent('chat_closed');
   }
 
@@ -426,6 +545,12 @@
     messageElement.textContent = text;
     
     messagesContainer.appendChild(messageElement);
+    
+    // Save message to state
+    state.messages.push({ sender, text, timestamp: new Date().toISOString() });
+    
+    // Save state to localStorage
+    saveState();
     
     // Scroll to bottom
     messagesContainer.scrollTop = messagesContainer.scrollHeight;

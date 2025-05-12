@@ -1650,6 +1650,54 @@ export class MemStorage implements IStorage {
       });
   }
   
+  async recordWidgetInteraction(interaction: import("../shared/types/widget").WidgetInteraction): Promise<void> {
+    try {
+      // Find the widget analytics entry for this tenant
+      const analytics = Array.from(this.widgetAnalyticsData.values())
+        .find(a => a.tenantId === interaction.tenantId);
+      
+      if (analytics) {
+        // Update analytics counters
+        if (interaction.messageType === 'user') {
+          analytics.messagesReceived = (analytics.messagesReceived || 0) + 1;
+        } else {
+          analytics.messagesSent = (analytics.messagesSent || 0) + 1;
+        }
+        
+        analytics.interactions = (analytics.interactions || 0) + 1;
+        analytics.lastActivity = new Date();
+        
+        // Update metadata
+        const metadata = analytics.metadata as Record<string, any> || {};
+        
+        // Store interaction data in metadata
+        if (!metadata.interactions) {
+          metadata.interactions = [];
+        }
+        
+        // Limit the number of stored interactions to avoid excessive data
+        if (metadata.interactions.length >= 100) {
+          metadata.interactions.shift(); // Remove oldest interaction
+        }
+        
+        // Add this interaction to the list
+        metadata.interactions.push({
+          type: interaction.messageType,
+          timestamp: interaction.timestamp,
+          url: interaction.url || 'unknown',
+          metadata: interaction.metadata || {}
+        });
+        
+        analytics.metadata = metadata;
+        
+        // Update the analytics in the map
+        this.widgetAnalyticsData.set(analytics.id, analytics);
+      }
+    } catch (error) {
+      console.error('Error recording widget interaction:', error);
+    }
+  }
+  
   async createWidgetAnalytics(insertAnalytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
     const id = this.widgetAnalyticsIdCounter++;
     const now = new Date();

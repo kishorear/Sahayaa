@@ -369,9 +369,20 @@ export default function Dashboard() {
                       Add this script to your website's HTML:
                     </p>
                     <div className="bg-gray-900 text-gray-100 p-3 rounded text-xs font-mono overflow-x-auto">
-                      {`<script src="https://supportai.com/widget.js?tenant=${user?.tenantId}"></script>`}
+                      {`<script src="${window.location.origin}/downloads/widget/universal-support-script.js?tenant=${user?.tenantId}"></script>`}
                     </div>
-                    <Button variant="link" className="text-xs p-0 h-6 mt-2">
+                    <Button 
+                      variant="link" 
+                      className="text-xs p-0 h-6 mt-2"
+                      onClick={() => {
+                        const code = `<script src="${window.location.origin}/downloads/widget/universal-support-script.js?tenant=${user?.tenantId}"></script>`;
+                        navigator.clipboard.writeText(code);
+                        toast({
+                          title: "Copied to clipboard",
+                          description: "Widget code has been copied to your clipboard"
+                        });
+                      }}
+                    >
                       Copy Code
                     </Button>
                   </div>

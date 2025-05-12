@@ -78,6 +78,7 @@ export function registerWidgetChatRoutes(app: Express): void {
       const response = await generateChatResponse(
         messages,
         enhancedContext,
+        undefined, // assistant role (default)
         tenantId
       );
       

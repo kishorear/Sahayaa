@@ -4417,6 +4417,89 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async recordWidgetInteraction(interaction: import("../shared/types/widget").WidgetInteraction): Promise<void> {
+    try {
+      // Find the widget analytics entry for this tenant
+      const results = await db.execute(
+        `SELECT * FROM widget_analytics WHERE tenant_id = $1 LIMIT 1`,
+        [interaction.tenantId]
+      );
+      
+      if (!results || !Array.isArray(results.rows) || results.rows.length === 0) {
+        console.warn(`No widget analytics found for tenant ${interaction.tenantId}`);
+        return;
+      }
+      
+      const analytics = results.rows[0];
+      
+      // Parse metadata if it's a string
+      let metadata: Record<string, any> = {};
+      if (analytics.metadata) {
+        if (typeof analytics.metadata === 'string') {
+          try {
+            metadata = JSON.parse(analytics.metadata);
+          } catch (e) {
+            console.warn('Failed to parse metadata JSON:', e);
+          }
+        } else {
+          metadata = analytics.metadata;
+        }
+      }
+      
+      // Store interaction data in metadata
+      if (!metadata.interactions) {
+        metadata.interactions = [];
+      }
+      
+      // Limit the number of stored interactions to avoid excessive data
+      if (metadata.interactions.length >= 100) {
+        metadata.interactions.shift(); // Remove oldest interaction
+      }
+      
+      // Add this interaction to the list
+      metadata.interactions.push({
+        type: interaction.messageType,
+        timestamp: interaction.timestamp,
+        url: interaction.url || 'unknown',
+        metadata: interaction.metadata || {}
+      });
+      
+      // Update counters and metadata
+      let messagesReceived = analytics.messages_received || 0;
+      let messagesSent = analytics.messages_sent || 0;
+      let interactions = analytics.interactions || 0;
+      
+      if (interaction.messageType === 'user') {
+        messagesReceived += 1;
+      } else {
+        messagesSent += 1;
+      }
+      
+      interactions += 1;
+      
+      // Update the database
+      await db.execute(
+        `UPDATE widget_analytics 
+         SET messages_received = $1, 
+             messages_sent = $2, 
+             interactions = $3, 
+             last_activity = $4, 
+             metadata = $5
+         WHERE tenant_id = $6`,
+        [
+          messagesReceived,
+          messagesSent,
+          interactions,
+          new Date(),
+          JSON.stringify(metadata),
+          interaction.tenantId
+        ]
+      );
+    } catch (error) {
+      console.error('Error recording widget interaction:', error);
+    }
+  }
+  
   async createWidgetAnalytics(insertAnalytics: InsertWidgetAnalytics): Promise<WidgetAnalytics> {
     const analyticsToInsert = {
       ...insertAnalytics,
@@ -5275,6 +5358,15 @@ class StorageWrapper implements IStorage {
       console.error(`Error in getAllWidgetAnalytics():`, error);
       // Return empty array instead of throwing to avoid breaking the API consumer
       return [];
+    }
+  }
+  
+  async recordWidgetInteraction(interaction: import("../shared/types/widget").WidgetInteraction): Promise<void> {
+    try {
+      await this.storageImpl.recordWidgetInteraction(interaction);
+    } catch (error) {
+      console.error(`Error in recordWidgetInteraction():`, error);
+      // Don't throw error for non-critical analytics operations
     }
   }
   

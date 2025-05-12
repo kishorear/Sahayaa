@@ -61,11 +61,24 @@ export function registerWidgetChatRoutes(app: Express): void {
         enhancedContext += pageContextStr;
       }
       
-      // Generate response using AI
-      const response = await generateChatResponse(
-        messages,
-        enhancedContext,
+      // Create a mock ticket context for widget chat
+      const widgetTicketContext = {
+        id: 0, // Widget chats don't have a ticket ID
+        title: 'Widget Chat',
+        description: message,
+        category: 'support',
         tenantId
+      };
+
+      // Generate response using AI with appropriate parameters
+      const messageText = messages.length > 0 && messages[0].role === 'user' 
+        ? messages[0].content 
+        : message;
+        
+      const response = await generateChatResponse(
+        widgetTicketContext,
+        [], // Empty message history for widget chats
+        messageText
       );
       
       // Log interaction for analytics if reporting is enabled

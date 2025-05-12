@@ -144,18 +144,22 @@ Add the following script tag to your website's HTML, right before the closing \`
 \`\`\`
 
 ### Option 2: Grammarly-Style Universal Integration
-For a more seamless, Grammarly-like experience that adds support across all text input fields:
+For a truly seamless, Grammarly-like experience that intelligently integrates support across your entire website:
 
 \`\`\`html
 <!-- Support AI Universal Integration -->
 <script src="supportai-universal.js" async></script>
 \`\`\`
 
-The universal integration provides these additional features:
-- Automatically detects and monitors text fields
-- Provides context-sensitive help based on user's current activity
-- Uses Shadow DOM for style isolation
-- Works across all pages without interfering with your site's functionality
+The universal integration works just like Grammarly with these powerful features:
+- **Zero-configuration installation** - works instantly across your entire site
+- **Intelligent text field monitoring** - detects questions and problems in real-time
+- **Context-aware support suggestions** - analyzes content to provide relevant help
+- **Adaptive behavior** - adjusts assistance based on user frustration signals
+- **Non-intrusive design** - uses Shadow DOM for complete style isolation
+- **Cross-page awareness** - maintains context as users navigate your site
+- **Sentiment analysis** - detects when users are struggling and offers timely help
+- **Automatic form detection** - works with any form without manual configuration
 
 For a live demonstration of these features, check out the included universal-sample.html file.
 

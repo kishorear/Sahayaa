@@ -702,14 +702,145 @@
    */
   function handleFieldBlur(event) {
     const field = event.target;
+    const fieldData = state.monitoredFields.get(field);
     
     // Remove inline support button if any
     removeInlineSupportButton();
     
     // Check if field content should trigger suggestions
     if (field.value.length > config.suggestionsThreshold) {
-      // Would analyze field content and context to determine if
-      // we should offer contextual support suggestions
+      analyzeFieldContent(field, field.value, fieldData);
+    }
+  }
+  
+  /**
+   * Analyze field content for potential support needs
+   */
+  function analyzeFieldContent(field, content, fieldData) {
+    // Detect potential issues in the content
+    const helpKeywords = ['help', 'issue', 'problem', 'error', 'not working', 'failed', 'stuck', 'confused', 'trouble'];
+    const questionPatterns = [/how (do|can|to) .+\?/i, /why (is|does|won't) .+\?/i, /what (is|are|does) .+\?/i];
+    const frustrationIndicators = ['!', '!!!', '???', 'wtf', 'omg', 'urgent', 'asap'];
+    
+    // Analyze for help keywords
+    const hasHelpKeyword = helpKeywords.some(keyword => content.toLowerCase().includes(keyword));
+    
+    // Analyze for question patterns
+    const hasQuestionPattern = questionPatterns.some(pattern => pattern.test(content));
+    
+    // Analyze for frustration indicators
+    const hasFrustrationIndicator = frustrationIndicators.some(indicator => 
+      content.toLowerCase().includes(indicator.toLowerCase()));
+    
+    // Analyze for long text which might indicate complex issues
+    const isLongDescription = content.length > 100;
+    
+    // Decide whether to show suggestion based on analysis
+    if (hasHelpKeyword || hasQuestionPattern || hasFrustrationIndicator || isLongDescription) {
+      // Show suggestion near the field
+      showTextSuggestion(field, determineHelpfulSuggestion(content, fieldData));
+    }
+  }
+  
+  /**
+   * Determine a helpful suggestion based on content analysis
+   */
+  function determineHelpfulSuggestion(content, fieldData) {
+    const lowerContent = content.toLowerCase();
+    
+    // Create context-aware suggestion
+    if (fieldData && fieldData.fieldName) {
+      const fieldName = fieldData.fieldName.toLowerCase();
+      
+      // Check for specific field contexts
+      if (fieldName.includes('email') && lowerContent.includes('problem')) {
+        return "It looks like you're having trouble with email. Would you like assistance?";
+      }
+      
+      if (fieldName.includes('payment') || lowerContent.includes('payment')) {
+        return "Need help with payment issues? Our support team can assist you.";
+      }
+      
+      if (fieldName.includes('login') || lowerContent.includes('login') || lowerContent.includes('password')) {
+        return "Having trouble logging in? Click here for immediate help.";
+      }
+    }
+    
+    // General suggestions based on content
+    if (lowerContent.includes('error') || lowerContent.includes('not working')) {
+      return "I noticed you're experiencing an error. Would you like help troubleshooting?";
+    }
+    
+    if (lowerContent.includes('how to') || lowerContent.includes('how do i')) {
+      return "Need guidance on how to do something? Our support team can help.";
+    }
+    
+    // Default suggestion
+    return "Would you like assistance with your question?";
+  }
+  
+  /**
+   * Show a suggestion bubble near the text field
+   */
+  function showTextSuggestion(field, suggestionText) {
+    // Remove any existing suggestions first
+    removeTextSuggestion();
+    
+    // Create suggestion element
+    const suggestion = document.createElement('div');
+    suggestion.className = 'support-text-suggestion';
+    suggestion.textContent = suggestionText;
+    suggestion.setAttribute('role', 'button');
+    suggestion.setAttribute('tabindex', '0');
+    
+    // Position suggestion near field
+    const fieldRect = field.getBoundingClientRect();
+    suggestion.style.position = 'absolute';
+    suggestion.style.top = `${fieldRect.bottom + 5}px`;
+    suggestion.style.left = `${fieldRect.left}px`;
+    
+    // Add to shadow DOM
+    shadowRoot.appendChild(suggestion);
+    
+    // Add click event
+    suggestion.addEventListener('click', () => {
+      removeTextSuggestion();
+      openChatWithContext(`I need help with: "${field.value}"`);
+    });
+    
+    // Auto-remove after delay if not clicked
+    setTimeout(() => {
+      if (shadowRoot.contains(suggestion)) {
+        suggestion.style.opacity = '0';
+        setTimeout(() => removeTextSuggestion(), 500);
+      }
+    }, 8000);
+  }
+  
+  /**
+   * Remove any shown text suggestions
+   */
+  function removeTextSuggestion() {
+    const suggestion = shadowRoot.querySelector('.support-text-suggestion');
+    if (suggestion) {
+      suggestion.remove();
+    }
+  }
+  
+  /**
+   * Open chat window with a pre-filled context message
+   */
+  function openChatWithContext(contextMessage) {
+    // Open the chat window
+    openChat();
+    
+    // Fill the input field with the context message
+    const inputField = shadowRoot.querySelector('.support-chat-input input');
+    if (inputField) {
+      inputField.value = contextMessage;
+      
+      // Optional: automatically send the message
+      setTimeout(() => sendMessage(), 500);
     }
   }
   
@@ -727,6 +858,44 @@
       // Update active field in context
       if (state.contextData.activeField) {
         state.contextData.activeField.value = field.value;
+      }
+      
+      // Check for real-time help triggers
+      const currentValue = field.value;
+      
+      // If the field contains a question mark, check if it's a complex question
+      if (currentValue.includes('?')) {
+        const questionWords = ['how', 'why', 'what', 'when', 'where', 'which', 'who', 'can', 'could'];
+        const words = currentValue.toLowerCase().split(/\s+/);
+        
+        // If it starts with a question word and is longer than 5 words, offer help
+        if (questionWords.includes(words[0]) && words.length > 5) {
+          // Show inline support button with a slight delay
+          setTimeout(() => showInlineSupportButton(field), 500);
+        }
+      }
+      
+      // Check for error-related keywords that might indicate user frustration
+      const errorKeywords = ['error', 'failed', 'wrong', 'not working', 'help', 'stuck'];
+      if (errorKeywords.some(keyword => currentValue.toLowerCase().includes(keyword))) {
+        // Show support suggestion
+        if (currentValue.length > 15) { // Ensure it's not just a short mention
+          analyzeFieldContent(field, currentValue, fieldData);
+        }
+      }
+      
+      // Real-time detection of long, complex text entry that might need help
+      if (currentValue.length > 80 && !state.pendingSuggestions.includes(field)) {
+        state.pendingSuggestions.push(field);
+        setTimeout(() => {
+          // Remove from pending list
+          state.pendingSuggestions = state.pendingSuggestions.filter(f => f !== field);
+          
+          // If user is still typing, don't interrupt
+          if (document.activeElement === field) {
+            showInlineSupportButton(field);
+          }
+        }, 3000);
       }
     }
   }

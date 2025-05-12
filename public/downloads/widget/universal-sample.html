@@ -77,6 +77,60 @@
             margin: 20px 0;
             overflow-x: auto;
         }
+        .example-instructions {
+            background-color: #e9f3ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .example-instructions h3 {
+            color: #82AEEB;
+            margin-top: 0;
+        }
+        .example-instructions ol {
+            padding-left: 20px;
+        }
+        .example-instructions li {
+            margin-bottom: 10px;
+        }
+        .context-awareness-demo {
+            background-color: #f3f3f3;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 25px;
+            border-left: 4px solid #82AEEB;
+        }
+        .context-awareness-demo h3 {
+            color: #82AEEB;
+            margin-top: 0;
+        }
+        .implementation-features {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .implementation-features li {
+            margin-bottom: 12px;
+            padding-left: 30px;
+            position: relative;
+        }
+        .implementation-features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #82AEEB;
+            font-weight: bold;
+        }
+        .code-block.advanced {
+            background-color: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            margin-top: 25px;
+        }
+        .code-block.advanced h4 {
+            margin-top: 0;
+            color: #6c757d;
+        }
         @media (max-width: 768px) {
             .feature-card {
                 flex: 1 1 100%;
@@ -91,8 +145,19 @@
     </header>
 
     <section class="demo-section">
-        <h2>Try It Out</h2>
-        <p>This page demonstrates how the <span class="highlight">Support AI Universal Integration</span> works. Fill out the form below and notice how the support widget intelligently responds to your actions:</p>
+        <h2>Try It Out: Grammarly-like Support Integration</h2>
+        <p>This page demonstrates how the <span class="highlight">Support AI Universal Integration</span> works like Grammarly, intelligently monitoring your actions and offering help when needed.</p>
+        
+        <div class="example-instructions">
+            <h3>🔍 Experience These Features</h3>
+            <ol>
+                <li>Type <strong>"How do I reset my password for this account?"</strong> in any field to see a question detection</li>
+                <li>Enter <strong>"I'm having an error with my payment"</strong> to see error keyword detection</li>
+                <li>Type a long description (80+ characters) to trigger the length-based assistance</li>
+                <li>Include <strong>"help"</strong> or <strong>"stuck"</strong> with more text to see contextual suggestions</li>
+                <li>Start writing in the "Share your problem" field and see how the widget offers help based on context</li>
+            </ol>
+        </div>
         
         <form id="demo-form">
             <div class="form-group">
@@ -106,8 +171,23 @@
             </div>
             
             <div class="form-group">
-                <label for="help">What do you need help with?</label>
-                <textarea id="help" name="help" placeholder="Describe your issue or question here"></textarea>
+                <label for="payment">Payment Information</label>
+                <input type="text" id="payment" name="payment" placeholder="Try typing 'payment error' here">
+            </div>
+            
+            <div class="form-group">
+                <label for="login">Login Details</label>
+                <input type="text" id="login" name="login" placeholder="Try asking 'How do I reset my password?'">
+            </div>
+            
+            <div class="form-group">
+                <label for="help">Share your problem</label>
+                <textarea id="help" name="help" placeholder="Type a detailed description of any issue you're having to see our intelligent support feature in action"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="question">Ask a Question</label>
+                <textarea id="question" name="question" placeholder="Try typing a long question that ends with a question mark?"></textarea>
             </div>
             
             <div class="form-group">
@@ -121,6 +201,12 @@
                 </select>
             </div>
         </form>
+        
+        <div class="context-awareness-demo">
+            <h3>✨ Context-Aware Support</h3>
+            <p>Unlike traditional chat widgets, our solution analyzes text input in real-time and understands the context of user actions. This enables us to provide precisely targeted assistance exactly when it's needed.</p>
+            <p>Try typing in the fields above to see how the support widget responds differently based on the content and context!</p>
+        </div>
     </section>
 
     <section>
@@ -161,8 +247,8 @@
     </section>
 
     <section class="demo-section">
-        <h2>Implementation</h2>
-        <p>Adding the universal integration to your website is incredibly simple:</p>
+        <h2>Implementation: Just Like Grammarly</h2>
+        <p>Adding the universal integration to your website is incredibly simple - just like Grammarly, users only need to add a single script tag:</p>
         
         <div class="code-block">
             <code>
@@ -171,7 +257,33 @@
             </code>
         </div>
         
-        <p>That's it! No configuration needed. The widget automatically uses the settings provided during download.</p>
+        <p>That's it! No configuration needed. The widget automatically uses the settings provided during download and:</p>
+        
+        <ul class="implementation-features">
+            <li><strong>Works across your entire website</strong> - monitors all pages automatically</li>
+            <li><strong>Self-initializes with zero configuration</strong> - no need for additional setup code</li>
+            <li><strong>Creates an isolated environment</strong> using Shadow DOM to avoid conflicts</li>
+            <li><strong>Adapts to different forms and text fields</strong> across your website</li>
+            <li><strong>Understands user intent from text patterns</strong> to provide timely support</li>
+            <li><strong>Uses advanced context collection</strong> to provide meaningful assistance</li>
+        </ul>
+        
+        <div class="code-block advanced">
+            <h4>Advanced Configuration (Optional)</h4>
+            <code>
+                &lt;script&gt;<br>
+                // Optional configuration customizations<br>
+                window.supportAiConfig = {<br>
+                &nbsp;&nbsp;autoIntegrate: true, // Enable Grammarly-like functionality<br>
+                &nbsp;&nbsp;textFieldMonitoring: true, // Monitor text fields for context<br>
+                &nbsp;&nbsp;suggestionsThreshold: 3, // Min characters before suggestions<br>
+                &nbsp;&nbsp;sensitivityLevel: "medium", // How proactive the widget is<br>
+                &nbsp;&nbsp;allowedDomains: ["*"] // Domains where widget can operate<br>
+                };<br>
+                &lt;/script&gt;<br>
+                &lt;script src="supportai-universal.js" async&gt;&lt;/script&gt;
+            </code>
+        </div>
     </section>
 
     <!-- Support AI Universal Integration -->

@@ -460,7 +460,7 @@
    * Uses a fallback response when the API is unavailable
    */
   function useFallbackResponse() {
-    addMessageToChat('assistant', 'I apologize, but I'm having trouble connecting to our support system right now. Please try again in a moment or contact support directly.');
+    addMessageToChat('assistant', "I apologize, but I am having trouble connecting to our support system right now. Please try again in a moment or contact support directly.");
   }
 
   /**

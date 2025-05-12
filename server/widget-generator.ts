@@ -291,8 +291,8 @@ function generateWidgetCSS(primaryColor: string): string {
 }
 
 .support-widget-icon {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
 }
 
 .support-chat-window {

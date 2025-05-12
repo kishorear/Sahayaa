@@ -103,22 +103,42 @@
       this.button.className = 'support-widget-button';
       this.button.style.backgroundColor = config.primaryColor;
       
-      // Add chat icon
+      // Add support icon (exclamation mark in circle with 6px stroke)
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      icon.setAttribute('viewBox', '0 0 24 24');
-      icon.setAttribute('width', '24');
-      icon.setAttribute('height', '24');
+      icon.setAttribute('viewBox', '0 0 26 26');
+      icon.setAttribute('width', '26');
+      icon.setAttribute('height', '26');
       icon.setAttribute('fill', 'none');
       icon.setAttribute('stroke', 'currentColor');
-      icon.setAttribute('stroke-width', '2');
+      icon.setAttribute('stroke-width', '6');
       icon.setAttribute('stroke-linecap', 'round');
       icon.setAttribute('stroke-linejoin', 'round');
       icon.className = 'support-widget-icon';
       
-      const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path1.setAttribute('d', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z');
+      // Circle with thin stroke rather than filled
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', '13');
+      circle.setAttribute('cy', '13');
+      circle.setAttribute('r', '10');
+      circle.setAttribute('stroke', 'white');
+      circle.setAttribute('stroke-width', '6');
+      circle.setAttribute('fill', 'none');
       
+      // Top line of exclamation mark
+      const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path1.setAttribute('d', 'M13 9.5V13');
+      path1.setAttribute('stroke', 'white');
+      path1.setAttribute('stroke-width', '6');
+      
+      // Bottom dot of exclamation mark
+      const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path2.setAttribute('d', 'M13 16.5H13.01');
+      path2.setAttribute('stroke', 'white');
+      path2.setAttribute('stroke-width', '6');
+      
+      icon.appendChild(circle);
       icon.appendChild(path1);
+      icon.appendChild(path2);
       this.button.appendChild(icon);
       
       this.container.appendChild(this.button);

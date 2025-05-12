@@ -13,12 +13,7 @@ const widgetChatRequestSchema = z.object({
   message: z.string(),
   context: z.object({
     url: z.string().optional(),
-    title: z.string().optional(),
-    activeField: z.object({
-      type: z.string().optional(),
-      name: z.string().optional(),
-      value: z.string().optional()
-    }).optional()
+    title: z.string().optional()
   }).optional(),
   sessionId: z.string().optional(),
   url: z.string().optional()
@@ -63,14 +58,6 @@ export function registerWidgetChatRoutes(app: Express): void {
           Page title: ${context.title || 'Unknown'}
         `;
         
-        if (context.activeField) {
-          enhancedContext += `
-            User is interacting with a ${context.activeField.type || 'form field'} 
-            named "${context.activeField.name || 'Unknown'}"
-            Current content: "${context.activeField.value || ''}"
-          `;
-        }
-        
         enhancedContext += pageContextStr;
       }
       
@@ -78,7 +65,6 @@ export function registerWidgetChatRoutes(app: Express): void {
       const response = await generateChatResponse(
         messages,
         enhancedContext,
-        undefined, // assistant role (default)
         tenantId
       );
       
@@ -93,9 +79,8 @@ export function registerWidgetChatRoutes(app: Express): void {
             timestamp: new Date(),
             url: req.body.url || null,
             metadata: {
-              hasContext: !!context,
               responseLength: response.length,
-              aiUsed: true,
+              aiUsed: true
             }
           });
         }

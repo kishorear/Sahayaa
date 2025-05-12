@@ -514,6 +514,16 @@
     // Clear input field
     inputField.value = '';
     
+    // Update page context in case it changed
+    state.hostPage = {
+      url: window.location.href,
+      title: document.title,
+      domain: window.location.hostname
+    };
+    
+    // Persist state before sending to backend
+    saveState();
+    
     // Send to backend
     sendToSupportBackend({
       tenantId: config.tenantId,

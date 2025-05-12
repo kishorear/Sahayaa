@@ -118,6 +118,7 @@ export interface IStorage {
   getWidgetAnalyticsByApiKey(apiKey: string): Promise<WidgetAnalytics | undefined>;
   getWidgetAnalyticsByAdminId(adminId: number, tenantId?: number): Promise<WidgetAnalytics[]>;
   getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]>;
+  recordWidgetInteraction(interaction: import("../shared/types/widget").WidgetInteraction): Promise<void>;
   createWidgetAnalytics(analytics: InsertWidgetAnalytics): Promise<WidgetAnalytics>;
   updateWidgetAnalytics(id: number, updates: Partial<WidgetAnalytics>): Promise<WidgetAnalytics>;
   

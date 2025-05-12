@@ -347,6 +347,34 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         z-index: 10000;
       }
+      
+      .support-suggested-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 10px 0 15px 0;
+        width: 100%;
+      }
+      
+      .support-action-button {
+        background-color: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: 16px;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+      }
+      
+      .support-action-button:hover {
+        background-color: ${config.primaryColor};
+        color: white;
+        border-color: ${config.primaryColor};
+      }
     `;
   }
   
@@ -552,54 +580,116 @@
    * Send message to Support AI backend
    */
   async function sendToSupportBackend(data) {
+    // Show typing indicator
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'support-message support-message-assistant';
+    typingIndicator.textContent = '...';
+    shadowRoot.querySelector('.support-chat-messages').appendChild(typingIndicator);
+    
     try {
-      // Simulate response for now
-      setTimeout(() => {
-        // Here we'd normally use fetch to send to backend
-        // For now we just simulate a response
-        const responses = [
-          "I'll look into that for you right away.",
-          "Thank you for your question. Here's what I found...",
-          "I understand your concern. Let me help you with that.",
-          "Based on the page you're viewing, I suggest...",
-          "I've analyzed your question and have a solution."
-        ];
-        
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        addMessageToChat('assistant', randomResponse);
-        
-        // If analytics enabled
-        if (config.reportData) {
-          reportWidgetEvent('message_received');
-        }
-      }, 1000);
+      // In production mode, use the actual API endpoint
+      const apiUrl = window.location.origin + '/api/widget/chat';
       
-      // In a real implementation, we would call the API:
-      /*
-      const response = await fetch(`https://api.supportai.com/chat`, {
+      // Make the API call
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`
+          'Authorization': `Bearer ${config.apiKey || ''}`
         },
         body: JSON.stringify({
           tenantId: config.tenantId,
           message: data.message,
-          context: data.context
+          context: data.context,
+          sessionId: state.sessionId,
+          url: window.location.href
         })
       });
       
-      if (!response.ok) {
-        throw new Error('API request failed');
+      // Process the response
+      if (response.ok) {
+        const result = await response.json();
+        addMessageToChat('assistant', result.message || result.response || result.content);
+        
+        // If there are any suggested actions, handle them
+        if (result.actions && Array.isArray(result.actions) && result.actions.length > 0) {
+          displaySuggestedActions(result.actions);
+        }
+      } else {
+        console.error('Support API error:', response.status, response.statusText);
+        
+        // Fallback to local response
+        useFallbackResponse();
+      }
+    } catch (error) {
+      console.error('Error sending to Support backend:', error);
+      
+      // Use fallback response when API is unavailable
+      useFallbackResponse();
+    } finally {
+      // Remove typing indicator regardless of outcome
+      if (typingIndicator.parentNode) {
+        typingIndicator.parentNode.removeChild(typingIndicator);
       }
       
-      const responseData = await response.json();
-      addMessageToChat('assistant', responseData.message);
-      */
-    } catch (error) {
-      console.error('Error sending message to Support AI:', error);
-      addMessageToChat('assistant', "I'm sorry, I'm having trouble connecting. Please try again later.");
+      // Report event if analytics enabled
+      if (config.reportData) {
+        reportWidgetEvent('message_received');
+      }
     }
+  }
+  
+  /**
+   * Uses a fallback response when the API is unavailable
+   */
+  function useFallbackResponse() {
+    const fallbackResponses = [
+      "I'll look into that for you right away.",
+      "Thank you for your question. Here's what I found...",
+      "I understand your concern. Let me help you with that.",
+      "Based on the page you're viewing, I suggest...",
+      "I've analyzed your question and have a solution."
+    ];
+    
+    const fallbackResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+    addMessageToChat('assistant', fallbackResponse);
+  }
+  
+  /**
+   * Display suggested actions from the API response
+   */
+  function displaySuggestedActions(actions) {
+    // Create container for action buttons
+    const actionsContainer = document.createElement('div');
+    actionsContainer.className = 'support-suggested-actions';
+    
+    // Create buttons for each action
+    actions.forEach(action => {
+      const actionButton = document.createElement('button');
+      actionButton.className = 'support-action-button';
+      actionButton.textContent = action.label || action.text || 'Action';
+      actionButton.onclick = () => {
+        // Handle the action click
+        if (action.type === 'url' && action.url) {
+          window.open(action.url, '_blank');
+        } else if (action.type === 'message' && action.message) {
+          openChatWithContext(action.message);
+        } else if (action.type === 'function' && action.function) {
+          // Custom function handler would go here
+          console.log('Function action:', action.function);
+        }
+        
+        // Remove the actions after one is clicked
+        if (actionsContainer.parentNode) {
+          actionsContainer.parentNode.removeChild(actionsContainer);
+        }
+      };
+      
+      actionsContainer.appendChild(actionButton);
+    });
+    
+    // Add to chat
+    shadowRoot.querySelector('.support-chat-messages').appendChild(actionsContainer);
   }
   
   /**

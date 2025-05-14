@@ -46,6 +46,13 @@
 
   const savedState = loadState();
   
+  // Drag state variables
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let initialLeft = 0;
+  let initialTop = 0;
+  
   const state = {
     initialized: false,
     chatOpen: savedState?.chatOpen || false,
@@ -56,6 +63,7 @@
     },
     sessionId: savedState?.sessionId || generateSessionId(),
     messages: savedState?.messages || [],
+    position: savedState?.position || { bottom: '20px', right: '20px' },
     metrics: {
       interactionsCount: savedState?.metrics?.interactionsCount || 0
     }
@@ -68,6 +76,7 @@
         chatOpen: state.chatOpen,
         sessionId: state.sessionId,
         messages: state.messages,
+        position: state.position,
         metrics: state.metrics
       }));
     } catch (err) {
@@ -88,6 +97,9 @@
     
     state.initialized = true;
     
+    // Apply saved position if it exists
+    applyWidgetPosition();
+    
     // Restore chat state (messages) from localStorage
     restoreChatHistory();
     
@@ -107,6 +119,21 @@
     saveState();
     
     reportWidgetEvent('widget_initialized');
+  }
+  
+  /**
+   * Apply the widget position from saved state
+   */
+  function applyWidgetPosition() {
+    if (state.position) {
+      Object.keys(state.position).forEach(prop => {
+        widgetButton.style[prop] = state.position[prop];
+      });
+    } else {
+      // Default position if none saved
+      widgetButton.style.bottom = '20px';
+      widgetButton.style.right = '20px';
+    }
   }
   
   /**
@@ -172,24 +199,29 @@
       
       .widget-button {
         position: fixed;
-        bottom: 20px;
-        ${positionSide}: 20px;
         width: 60px;
         height: 60px;
         border-radius: 50%;
         background-color: var(--primary-color);
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-        cursor: pointer;
+        cursor: move; /* Change cursor to indicate draggable */
         z-index: 2147483647;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        transition: box-shadow 0.3s ease;
+        touch-action: none; /* Prevent scrolling on touch devices while dragging */
+        user-select: none; /* Prevent text selection during drag */
       }
       
       .widget-button:hover {
-        transform: scale(1.05);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      }
+      
+      /* Styling for when button is being dragged */
+      .widget-button.dragging {
+        opacity: 0.8;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
       }
       
       .widget-button .icon {
@@ -394,8 +426,27 @@
    * Set up event listeners for widget functionality
    */
   function setupEventListeners() {
-    // Toggle chat on button click
-    widgetButton.addEventListener('click', toggleChat);
+    // Setup drag functionality for widget button
+    widgetButton.addEventListener('mousedown', startDragging);
+    widgetButton.addEventListener('touchstart', startDragging, { passive: false });
+    
+    // We add these to document to ensure drag continues even if cursor moves fast
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('touchmove', drag, { passive: false });
+    document.addEventListener('mouseup', stopDragging);
+    document.addEventListener('touchend', stopDragging);
+    
+    // Add click handler with special handling to avoid triggering click after drag
+    let lastDragEnd = 0;
+    widgetButton.addEventListener('click', (e) => {
+      // Prevent click firing immediately after drag ends
+      if (Date.now() - lastDragEnd < 200) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      toggleChat();
+    });
     
     // Close button
     const closeBtn = chatWindow.querySelector('.close-btn');
@@ -418,6 +469,15 @@
     
     // Track page navigation events for SPA (Single Page Applications)
     trackPageChanges();
+    
+    // Helper function to store timestamp when drag ends
+    function logDragEnd() {
+      lastDragEnd = Date.now();
+    }
+    
+    // Store timestamp on drag end
+    document.addEventListener('mouseup', logDragEnd);
+    document.addEventListener('touchend', logDragEnd);
   }
   
   /**

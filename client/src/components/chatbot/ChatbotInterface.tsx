@@ -48,13 +48,159 @@ export default function ChatbotInterface() {
   const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
   // Track created tickets with their issues to prevent duplicates
   const [createdTickets, setCreatedTickets] = useState<{id: number, issue: string}[]>([]);
+  
+  // Draggable position state
+  const [position, setPosition] = useState(() => {
+    // Try to load saved position from localStorage
+    const savedPosition = localStorage.getItem('chatbotPosition');
+    if (savedPosition) {
+      try {
+        return JSON.parse(savedPosition);
+      } catch (err) {
+        console.error('Error parsing saved position:', err);
+      }
+    }
+    // Default position (bottom right)
+    return { right: '24px', bottom: '24px', left: 'auto', top: 'auto' };
+  });
+  
+  // Dragging state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  
+  // Ref for the chat button
+  const chatButtonRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Initialize with welcome message
+  // Drag start handler
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    if ('touches' in e) {
+      // For touch events, we need to prevent the default behavior to avoid scrolling
+      e.preventDefault();
+    }
+    
+    if (chatButtonRef.current) {
+      setIsDragging(true);
+      
+      let clientX: number, clientY: number;
+      
+      // Handle both mouse and touch events
+      if ('touches' in e) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      
+      // Calculate the offset from the pointer to the element's corner
+      const rect = chatButtonRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      });
+    }
+  };
+  
+  // Drag move handler
+  const handleDrag = (e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+    
+    let clientX: number, clientY: number;
+    
+    // Handle both mouse and touch events
+    if ('touches' in e) {
+      e.preventDefault(); // Prevent scrolling during touch drag
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    // Calculate the new position
+    const newLeft = clientX - dragOffset.x;
+    const newTop = clientY - dragOffset.y;
+    
+    // Update position using CSS values
+    const newPosition = {
+      left: `${newLeft}px`,
+      top: `${newTop}px`,
+      right: 'auto',
+      bottom: 'auto'
+    };
+    
+    setPosition(newPosition);
+  };
+  
+  // Drag end handler
+  const handleDragEnd = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      
+      // Save position to localStorage for persistence
+      localStorage.setItem('chatbotPosition', JSON.stringify(position));
+    }
+  };
+  
+  // Add event listeners for dragging
   useEffect(() => {
-    if (messages.length === 0) {
+    const handleMouseMove = (e: MouseEvent) => handleDrag(e);
+    const handleTouchMove = (e: TouchEvent) => handleDrag(e);
+    
+    const handleMouseUp = () => handleDragEnd();
+    const handleTouchEnd = () => handleDragEnd();
+    
+    // Add global event listeners to track movement even when cursor moves quickly
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+    
+    // Cleanup event listeners
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, dragOffset, position]);
+  
+  // Load chat state and position on initial mount
+  useEffect(() => {
+    // Load chat state from localStorage
+    const savedChatState = localStorage.getItem('chatbotState');
+    if (savedChatState) {
+      try {
+        const state = JSON.parse(savedChatState);
+        // Only restore if we have valid state
+        if (state.messages && Array.isArray(state.messages)) {
+          // Convert ISO timestamps back to Date objects
+          const messagesWithDates = state.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(messagesWithDates);
+          setIsChatOpen(state.isOpen || false);
+        }
+      } catch (err) {
+        console.error('Error parsing saved chat state:', err);
+        // Set default welcome message if saved state is corrupted
+        setMessages([
+          {
+            id: "welcome",
+            content: "Hello! I'm your AI support assistant. How can I help you today?",
+            sender: "ai",
+            timestamp: new Date(),
+          },
+        ]);
+      }
+    } else {
+      // Set initial welcome message if no saved state
       setMessages([
         {
           id: "welcome",
@@ -64,7 +210,20 @@ export default function ChatbotInterface() {
         },
       ]);
     }
-  }, [messages]);
+  }, []);
+  
+  // Save chat state when it changes
+  useEffect(() => {
+    // Don't save on initial render
+    if (messages.length === 0) return;
+    
+    // Save to localStorage
+    const chatState = {
+      messages,
+      isOpen: isChatOpen
+    };
+    localStorage.setItem('chatbotState', JSON.stringify(chatState));
+  }, [messages, isChatOpen]);
 
   // Auto scroll to bottom on new messages
   useEffect(() => {
@@ -909,16 +1068,34 @@ export default function ChatbotInterface() {
         </div>
       )}
       
-      <div className="fixed bottom-6 right-6 flex flex-col z-40">
+      <div 
+        ref={chatButtonRef}
+        className="fixed flex flex-col z-40"
+        style={{ 
+          ...position,
+          cursor: isDragging ? 'grabbing' : 'grab',
+          transition: isDragging ? 'none' : 'box-shadow 0.2s ease'
+        }}
+      >
         {/* Chat bubble (when closed) */}
         {!isChatOpen && (
-          <Button
-            onClick={toggleChat}
-            className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            size="icon"
+          <div
+            className={`relative ${isDragging ? 'shadow-2xl' : 'hover:shadow-lg'}`}
+            onMouseDown={handleDragStart}
+            onTouchStart={handleDragStart}
           >
-            <MessageSquare className="w-8 h-8 text-white" />
-          </Button>
+            <Button
+              onClick={toggleChat}
+              className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              size="icon"
+              // Add pointer-events-none to prevent button from interfering with dragging
+              style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
+            >
+              <MessageSquare className="w-8 h-8 text-white" />
+            </Button>
+            {/* Handle for dragging (small visual indicator) */}
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-gray-200 rounded-full border border-gray-300 opacity-70" title="Drag to move chat"></div>
+          </div>
         )}
 
         {/* Chat window */}

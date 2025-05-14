@@ -699,6 +699,118 @@
       chatWindow.style.height = '500px';
     }
   }
+  
+  /**
+   * Start dragging the chat button
+   * @param {MouseEvent|TouchEvent} e - The mouse or touch event
+   */
+  function startDragging(e) {
+    // Prevent default only for touch events to avoid scrolling
+    if (e.type === 'touchstart') {
+      e.preventDefault();
+    }
+    
+    isDragging = true;
+    widgetButton.classList.add('dragging');
+    
+    // Get current button position
+    const rect = widgetButton.getBoundingClientRect();
+    
+    // Store position relative to window
+    initialLeft = rect.left;
+    initialTop = rect.top;
+    
+    // Get starting cursor/touch position
+    if (e.type === 'touchstart') {
+      dragStartX = e.touches[0].clientX;
+      dragStartY = e.touches[0].clientY;
+    } else {
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+    }
+  }
+  
+  /**
+   * Handle dragging motion
+   * @param {MouseEvent|TouchEvent} e - The mouse or touch event
+   */
+  function drag(e) {
+    if (!isDragging) return;
+    
+    // Prevent default actions like scrolling for touch events
+    if (e.type === 'touchmove') {
+      e.preventDefault();
+    }
+    
+    // Calculate how far we've moved
+    let clientX, clientY;
+    if (e.type === 'touchmove') {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    const deltaX = clientX - dragStartX;
+    const deltaY = clientY - dragStartY;
+    
+    // Calculate new position
+    let newLeft = initialLeft + deltaX;
+    let newTop = initialTop + deltaY;
+    
+    // Get window dimensions
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const buttonWidth = widgetButton.offsetWidth;
+    const buttonHeight = widgetButton.offsetHeight;
+    
+    // Keep button within window boundaries
+    if (newLeft < 0) newLeft = 0;
+    if (newTop < 0) newTop = 0;
+    if (newLeft > windowWidth - buttonWidth) newLeft = windowWidth - buttonWidth;
+    if (newTop > windowHeight - buttonHeight) newTop = windowHeight - buttonHeight;
+    
+    // Apply new position
+    widgetButton.style.left = newLeft + 'px';
+    widgetButton.style.top = newTop + 'px';
+    
+    // Reset bottom/right positioning as we're using top/left now
+    widgetButton.style.bottom = 'auto';
+    widgetButton.style.right = 'auto';
+  }
+  
+  /**
+   * Stop dragging and save the final position
+   */
+  function stopDragging() {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    widgetButton.classList.remove('dragging');
+    
+    // Save the new position
+    const rect = widgetButton.getBoundingClientRect();
+    
+    // Store the position in the state
+    state.position = {
+      left: rect.left + 'px',
+      top: rect.top + 'px',
+      bottom: 'auto',
+      right: 'auto'
+    };
+    
+    // Save to localStorage
+    saveState();
+    
+    // Report the position change
+    reportWidgetEvent('widget_moved', { 
+      position: {
+        left: rect.left,
+        top: rect.top
+      }
+    });
+  }
 
   /**
    * Report widget events to the backend for analytics

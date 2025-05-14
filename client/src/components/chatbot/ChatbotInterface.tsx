@@ -49,17 +49,9 @@ export default function ChatbotInterface() {
   // Track created tickets with their issues to prevent duplicates
   const [createdTickets, setCreatedTickets] = useState<{id: number, issue: string}[]>([]);
   
-  // Draggable position state - persistent across page refreshes and navigations
+  // Draggable position state - always reset to default on page refresh 
+  // but maintain position during page navigation
   const [position, setPosition] = useState(() => {
-    // Try to load saved position from localStorage
-    const savedPosition = localStorage.getItem('chatbotPosition');
-    if (savedPosition) {
-      try {
-        return JSON.parse(savedPosition);
-      } catch (err) {
-        console.error('Error parsing saved position:', err);
-      }
-    }
     // Default position (bottom right)
     return { right: '24px', bottom: '24px', left: 'auto', top: 'auto' };
   });
@@ -139,9 +131,7 @@ export default function ChatbotInterface() {
   const handleDragEnd = () => {
     if (isDragging) {
       setIsDragging(false);
-      
-      // Save position to localStorage for persistence across pages and refreshes
-      localStorage.setItem('chatbotPosition', JSON.stringify(position));
+      // No longer saving position to localStorage - will reset on refresh
     }
   };
   
@@ -172,8 +162,8 @@ export default function ChatbotInterface() {
   
   // Load chat state on initial mount
   useEffect(() => {
-    // Load chat state from localStorage (persists across page refreshes and navigation)
-    const savedChatState = localStorage.getItem('chatbotState');
+    // Load chat state from sessionStorage (clears on refresh, persists during navigation)
+    const savedChatState = sessionStorage.getItem('chatbotState');
     if (savedChatState) {
       try {
         const state = JSON.parse(savedChatState);
@@ -217,12 +207,12 @@ export default function ChatbotInterface() {
     // Don't save on initial render
     if (messages.length === 0) return;
     
-    // Save to localStorage (maintains state during navigation and on refresh)
+    // Save to sessionStorage (maintains state during navigation but clears on refresh)
     const chatState = {
       messages,
       isOpen: isChatOpen
     };
-    localStorage.setItem('chatbotState', JSON.stringify(chatState));
+    sessionStorage.setItem('chatbotState', JSON.stringify(chatState));
   }, [messages, isChatOpen]);
 
   // Auto scroll to bottom on new messages

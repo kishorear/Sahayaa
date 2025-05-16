@@ -9,13 +9,7 @@ import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
 import { MessageSquare, X, Video, Image, Camera, Upload, Paperclip, RefreshCcw } from "lucide-react";
 import { InsertTicket, InsertAttachment } from "@shared/schema";
-import { useChatbot } from "@/contexts/ChatbotContext";
-type Message = {
-  id: string;
-  content: string;
-  sender: "user" | "ai";
-  timestamp: Date;
-};
+import { useChatbot, ChatMessage } from "@/contexts/ChatbotContext";
 
 // Check if a ticket already exists for a given issue
 const isDuplicateTicket = (title: string, createdTickets: { id: number, issue: string }[]): boolean => {
@@ -37,7 +31,7 @@ const isDuplicateTicket = (title: string, createdTickets: { id: number, issue: s
 };
 
 export default function ChatbotInterface() {
-  // Get shared state from context
+  // Get shared state from context - this persists across page navigation
   const { 
     isChatOpen, setIsChatOpen,
     messages, setMessages,
@@ -45,6 +39,7 @@ export default function ChatbotInterface() {
     isDragging, setIsDragging
   } = useChatbot();
   
+  // Local component state - resets on navigation
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -52,18 +47,18 @@ export default function ChatbotInterface() {
   const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
   const [suggestedTicketData, setSuggestedTicketData] = useState<InsertTicket | null>(null);
   const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
-  // Track created tickets with their issues to prevent duplicates
   const [createdTickets, setCreatedTickets] = useState<{id: number, issue: string}[]>([]);
   
   // Local state for drag handling
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
-  // Ref for the chat button
+  // Refs
   const chatButtonRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const { toast } = useToast();
-
+  
   // Drag start handler
   const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if ('touches' in e) {
@@ -158,66 +153,11 @@ export default function ChatbotInterface() {
     };
   }, [isDragging, dragOffset, position]);
   
-  // Load chat state on initial mount
-  useEffect(() => {
-    // Load chat state from sessionStorage (clears on refresh, persists during navigation)
-    const savedChatState = sessionStorage.getItem('chatbotState');
-    if (savedChatState) {
-      try {
-        const state = JSON.parse(savedChatState);
-        // Only restore if we have valid state
-        if (state.messages && Array.isArray(state.messages)) {
-          // Convert ISO timestamps back to Date objects
-          const messagesWithDates = state.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }));
-          setMessages(messagesWithDates);
-          setIsChatOpen(state.isOpen || false);
-        }
-      } catch (err) {
-        console.error('Error parsing saved chat state:', err);
-        // Set default welcome message if saved state is corrupted
-        setMessages([
-          {
-            id: "welcome",
-            content: "Hello! I'm your AI support assistant. How can I help you today?",
-            sender: "ai",
-            timestamp: new Date(),
-          },
-        ]);
-      }
-    } else {
-      // Set initial welcome message if no saved state
-      setMessages([
-        {
-          id: "welcome",
-          content: "Hello! I'm your AI support assistant. How can I help you today?",
-          sender: "ai",
-          timestamp: new Date(),
-        },
-      ]);
-    }
-  }, []);
-  
-  // Save chat state when it changes
-  useEffect(() => {
-    // Don't save on initial render
-    if (messages.length === 0) return;
-    
-    // Save to sessionStorage (maintains state during navigation but clears on refresh)
-    const chatState = {
-      messages,
-      isOpen: isChatOpen
-    };
-    sessionStorage.setItem('chatbotState', JSON.stringify(chatState));
-  }, [messages, isChatOpen]);
-
   // Auto scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
+  
   // Create a mutation for generating AI summaries for tickets
   const summaryMutation = useMutation({
     mutationFn: async (chatHistory: { role: string, content: string }[]) => {
@@ -242,553 +182,271 @@ export default function ChatbotInterface() {
   });
   
   const chatbotMutation = useMutation({
-    mutationFn: async (payload: { message: string, messageHistory: Message[] }) => {
+    mutationFn: async (payload: { message: string, messageHistory: ChatMessage[] }) => {
       return await apiRequest("POST", "/api/chatbot", payload);
     },
     onSuccess: async (response) => {
       const data = await response.json();
       
-      // Add AI response to messages
-      setMessages((prev) => [
+      setIsTyping(false);
+      
+      // Add AI response to chat
+      setMessages(prev => [
         ...prev,
         {
           id: `ai-${Date.now()}`,
-          content: data.message,
+          content: data.response.content,
           sender: "ai",
           timestamp: new Date(),
         },
       ]);
       
-      setIsTyping(false);
-      
-      // Handle actions returned by the API
-      if (data.action) {
-        switch (data.action.type) {
-          case "suggest_ticket":
-            // Check if this would be a duplicate ticket
-            if (data.action.data && data.action.data.title && isDuplicateTicket(data.action.data.title, createdTickets)) {
-              setMessages(prev => [
-                ...prev,
-                {
-                  id: `ai-duplicate-${Date.now()}`,
-                  content: "I notice you already have an open ticket for a similar issue. I'll continue to help you with your problem, but we don't need to create another ticket for the same issue.",
-                  sender: "ai",
-                  timestamp: new Date(),
-                }
-              ]);
-              break;
-            }
-            
-            // Ask the user if they want to proceed with ticket creation
-            setMessages(prev => [
-              ...prev,
-              {
-                id: `ai-confirm-${Date.now()}`,
-                content: "Would you like me to create a support ticket for this issue? Please reply with 'yes' or 'no'. If yes, you'll be able to add screenshots or recordings after the ticket is created.",
-                sender: "ai",
-                timestamp: new Date(),
-              }
-            ]);
-            
-            // Create enhanced ticket data with temporary title
-            // We'll update it with AI-generated title when user confirms
-            const enhancedTicketData = {
-              ...data.action.data,
-              title: data.action.data.title || "Support Request"
-            };
-            
-            // Store ticket data in a ref or state
-            setSuggestedTicketData(enhancedTicketData as InsertTicket);
-            setAwaitingTicketConfirmation(true);
-            break;
-            
-          case "create_ticket":
-            // Legacy direct ticket creation
-            const ticketData = data.action.data as InsertTicket;
-            
-            // Check if this would be a duplicate ticket
-            if (ticketData && ticketData.title && isDuplicateTicket(ticketData.title, createdTickets)) {
-              setMessages(prev => [
-                ...prev,
-                {
-                  id: `ai-duplicate-${Date.now()}`,
-                  content: "I notice you already have an open ticket for a similar issue. I'll continue to help you with your problem, but we don't need to create another ticket for the same issue.",
-                  sender: "ai",
-                  timestamp: new Date(),
-                }
-              ]);
-              break;
-            }
-            
-            // Use AI to generate a better title
-            const conversationHistory = prepareChatHistory(messages);
-            setIsTyping(true);
-            
-            titleMutation.mutate(conversationHistory, {
-              onSuccess: (titleData) => {
-                // Update the ticket with AI-generated title
-                ticketData.title = titleData.title || ticketData.title;
-                createTicketMutation.mutate(ticketData);
-                setIsTyping(false);
-              },
-              onError: (error) => {
-                console.error("Failed to generate title for direct creation:", error);
-                // Fallback to local title extraction
-                const fallbackTitle = extractIssueTitle(messages);
-                ticketData.title = fallbackTitle || ticketData.title;
-                createTicketMutation.mutate(ticketData);
-                setIsTyping(false);
-              }
-            });
-            break;
-            
-          case "resolve_ticket":
-            toast({
-              title: "Issue Resolved",
-              description: "Your issue has been successfully resolved!",
-            });
-            break;
-        }
+      // Check if we should suggest creating a ticket
+      if (
+        data.response.suggestTicket && 
+        !currentTicketId && 
+        !awaitingTicketConfirmation &&
+        messages.length >= 3
+      ) {
+        const messageHistory = messages.map(msg => ({
+          role: msg.sender === "user" ? "user" : "assistant",
+          content: msg.content,
+        }));
+        
+        // Get a summary of the conversation for the ticket description
+        const summaryResult = await summaryMutation.mutateAsync(messageHistory);
+        // Get a title for the ticket
+        const titleResult = await titleMutation.mutateAsync(messageHistory);
+        
+        // Prepare ticket data
+        const ticketData: InsertTicket = {
+          title: titleResult.title,
+          description: summaryResult.summary,
+          status: "open",
+          priority: "medium",
+          category: data.response.category || "General",
+          assignedTo: null,
+          createdBy: null,
+          tenantId: null,
+          complexity: data.response.complexity || "medium",
+          source: "chat"
+        };
+        
+        // Set suggested ticket data and add a message asking for confirmation
+        setSuggestedTicketData(ticketData);
+        setAwaitingTicketConfirmation(true);
+        
+        // Check if this looks like a duplicate of an existing ticket
+        const isDuplicate = isDuplicateTicket(titleResult.title, createdTickets);
+        
+        // Add AI message with ticket suggestion
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `ai-ticket-${Date.now()}`,
+            content: isDuplicate 
+              ? "I notice this issue may be similar to a ticket you've already created. Would you still like to create a new support ticket for this conversation?" 
+              : "I'd like to create a support ticket for this conversation to make sure your issue gets resolved. Is that okay?",
+            sender: "ai",
+            timestamp: new Date(),
+          },
+        ]);
       }
     },
     onError: (error) => {
       setIsTyping(false);
-      setMessages((prev) => [
+      console.error("Error getting chatbot response:", error);
+      
+      setMessages(prev => [
         ...prev,
         {
           id: `ai-error-${Date.now()}`,
-          content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+          content: "I'm sorry, I encountered an error while processing your message. Please try again later.",
           sender: "ai",
           timestamp: new Date(),
         },
       ]);
+      
       toast({
         title: "Error",
-        description: `Failed to get response: ${error.message}`,
+        description: "Failed to get AI response. Please try again later.",
         variant: "destructive",
       });
     },
   });
-
+  
+  // Mutation for creating tickets
   const createTicketMutation = useMutation({
     mutationFn: async (ticketData: InsertTicket) => {
-      // Make sure we pass the tenant ID to ensure proper third-party integrations
-      // This is especially important when deployed as a widget on a client site
-      // We don't need to pass a flag anymore - tickets are ALWAYS created in third-party systems
       return await apiRequest("POST", "/api/tickets", ticketData);
     },
     onSuccess: async (response) => {
-      const ticket = await response.json();
-      setCurrentTicketId(ticket.id);
+      const data = await response.json();
       
-      // Add this ticket to our list of created tickets
-      setCreatedTickets(prev => [...prev, {
-        id: ticket.id,
-        issue: ticket.title.toLowerCase() // Store the title in lowercase for case-insensitive comparison
-      }]);
+      // Add the created ticket to our list to prevent duplicates
+      setCreatedTickets(prev => [
+        ...prev, 
+        { id: data.id, issue: suggestedTicketData?.title?.toLowerCase() || "" }
+      ]);
       
-      // Check if the ticket was created in third-party systems
-      const externalSystems = ticket.externalIntegrations 
-        ? Object.keys(ticket.externalIntegrations).join(', ') 
-        : '';
+      // Set the current ticket ID
+      setCurrentTicketId(data.id);
+      setAwaitingTicketConfirmation(false);
+      setSuggestedTicketData(null);
       
-      const externalText = externalSystems 
-        ? ` It has also been created in ${externalSystems}.` 
-        : '';
-      
-      toast({
-        title: "Ticket Created",
-        description: `Support ticket #${ticket.id} has been created.${externalText} Our team will follow up shortly.`,
-      });
-      
-      // Add a message about successful ticket creation with attachment reminder and asking if they need more help
+      // Add a message about the created ticket
       setMessages(prev => [
         ...prev,
         {
           id: `ai-ticket-created-${Date.now()}`,
-          content: `Support ticket #${ticket.id} has been created successfully.${externalText} You can add images or a screen recording now if that would help explain your issue better. Is there anything else I can assist you with today?`,
-          sender: "ai",
-          timestamp: new Date(),
-        }
-      ]);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to create ticket: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  const createAttachmentMutation = useMutation({
-    mutationFn: async ({ ticketId, attachmentData }: { ticketId: number, attachmentData: InsertAttachment }) => {
-      return await apiRequest("POST", `/api/tickets/${ticketId}/attachments`, attachmentData);
-    },
-    onSuccess: async (_response, variables) => {
-      const attachmentType = variables.attachmentData.type;
-      let title, description, message;
-      
-      switch (attachmentType) {
-        case 'image':
-          title = "Image Attached";
-          description = "Your image has been attached to the ticket successfully.";
-          message = "Thanks for sharing the image. This will help our team better understand and resolve your issue.";
-          break;
-        case 'screenshot':
-          title = "Screenshot Attached";
-          description = "Your screenshot has been attached to the ticket successfully.";
-          message = "Thanks for sharing the screenshot. This will help our team better understand and resolve your issue.";
-          break;
-        case 'screen_recording':
-        default:
-          title = "Recording Attached";
-          description = "Your screen recording has been attached to the ticket successfully.";
-          message = "Thanks for sharing your screen recording. This will help our team better understand and resolve your issue.";
-          break;
-      }
-      
-      toast({
-        title,
-        description,
-      });
-      
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `ai-attachment-${Date.now()}`,
-          content: message,
-          sender: "ai",
-          timestamp: new Date(),
-        }
-      ]);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to attach file: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const toggleChat = () => {
-    setIsChatOpen(!isChatOpen);
-    if (!isChatOpen) {
-      setShowRecorder(false); // Close recorder when opening chat
-    }
-  };
-
-  // Processing messages before sending them to the AI for ticket creation
-  const prepareChatHistory = (messages: Message[]) => {
-    // Filter out UI-specific messages to get just the conversation
-    return messages.filter(msg => 
-      !msg.id.includes('confirm') && 
-      !msg.id.includes('clarify') && 
-      !msg.id.includes('creating') &&
-      !msg.id.includes('cancel')
-    ).map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'assistant',
-      content: msg.content
-    }));
-  };
-  
-  // Extract a proper title from the conversation that describes the issue
-  const extractIssueTitle = (messages: Message[]): string => {
-    // Filter out UI-specific messages
-    const conversationMessages = messages.filter(msg => 
-      !msg.id.includes('confirm') && 
-      !msg.id.includes('clarify') && 
-      !msg.id.includes('creating') &&
-      !msg.id.includes('cancel')
-    );
-    
-    // Combine all messages to analyze the conversation
-    const fullConversation = conversationMessages
-      .map(msg => msg.content)
-      .join(" ");
-    
-    // Common issue keywords to look for
-    const errorKeywords = [
-      "error", "issue", "problem", "bug", "crash", "fail", "not working",
-      "broken", "stuck", "down", "unavailable", "timeout", "cannot access"
-    ];
-    
-    // Look for error codes (like HTTP status codes)
-    const errorCodeMatch = fullConversation.match(/(\b[45]\d{2}\b|error code)/i);
-    
-    // Look for specific error keywords
-    let foundKeyword = "";
-    for (const keyword of errorKeywords) {
-      if (fullConversation.toLowerCase().includes(keyword)) {
-        foundKeyword = keyword;
-        break;
-      }
-    }
-    
-    // Construct a descriptive title
-    if (errorCodeMatch) {
-      // If we found an error code like 500, 404, etc.
-      return `${errorCodeMatch[0]} Error - ${foundKeyword ? foundKeyword.charAt(0).toUpperCase() + foundKeyword.slice(1) : "Server"} Issue`;
-    } else if (foundKeyword) {
-      // If we found a keyword but no error code
-      return `${foundKeyword.charAt(0).toUpperCase() + foundKeyword.slice(1)} Issue`;
-    }
-    
-    // Try to find a good user message with the issue
-    const userMessages = conversationMessages.filter(msg => msg.sender === 'user');
-    for (const msg of userMessages) {
-      // Skip very short messages like "hi" or "hello"
-      if (msg.content.length > 5 && !["hi", "hello", "hey"].includes(msg.content.toLowerCase())) {
-        const content = msg.content;
-        const maxLength = 60;
-        
-        // Try to find sentence boundaries for a more natural title
-        const firstSentence = content.split(/[.!?]/)[0];
-        if (firstSentence && firstSentence.length + 1 < maxLength) {
-          return firstSentence;
-        }
-        
-        // Truncate if too long
-        return content.length > maxLength
-          ? content.substring(0, maxLength) + "..."
-          : content;
-      }
-    }
-    
-    return "Support Request"; // Fallback title
-  };
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!inputMessage.trim()) return;
-    
-    const message = inputMessage.toLowerCase().trim();
-    
-  
-  
-  // Handle ticket confirmation if we're awaiting it
-  if (suggestedTicketData) {
-    // Add user message to chat
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `user-${Date.now()}`,
-        content: inputMessage,
-        sender: "user",
-        timestamp: new Date(),
-      },
-    ]);
-    
-    // Check if user has confirmed creating a ticket
-    if (message === 'yes' || message.includes('yes') || message.includes('create ticket') || message.includes('submit ticket')) {
-      // Generate a ticket with AI-summarized description
-      setIsTyping(true);
-      
-      // Add a message that we're generating the ticket
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-creating-${Date.now()}`,
-          content: "I'm creating a support ticket for you now with a detailed summary of our conversation...",
+          content: `Great! I've created support ticket #${data.id}. A support agent will review this conversation and follow up with you soon.`,
           sender: "ai",
           timestamp: new Date(),
         },
       ]);
       
-      // Prepare the conversation history in the right format for AI
-      const conversationHistory = prepareChatHistory(messages);
+      toast({
+        title: "Ticket Created",
+        description: `Support ticket #${data.id} has been created.`,
+      });
+    },
+    onError: (error) => {
+      console.error("Error creating ticket:", error);
       
-      // Generate the AI summary and title for the ticket
-      console.log("Preparing to generate AI content with conversation history:", conversationHistory);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `ai-ticket-error-${Date.now()}`,
+          content: "I'm sorry, I encountered an error while creating your ticket. Please try again later.",
+          sender: "ai",
+          timestamp: new Date(),
+        },
+      ]);
       
-      // First, generate a better title using AI
-      titleMutation.mutate(conversationHistory, {
-          onSuccess: (titleData) => {
-            console.log("AI title generated successfully:", titleData);
-            
-            // Now generate a summary with the AI-generated title
-            summaryMutation.mutate(conversationHistory, {
-              onSuccess: (summaryData) => {
-                console.log("AI summary generated successfully:", summaryData);
-                
-                // Use both AI-generated title and summary
-                const enhancedTicketData = {
-                  ...suggestedTicketData,
-                  title: titleData.title || suggestedTicketData.title,
-                  description: summaryData.summary || "Support ticket created via chat interface."
-                };
-                
-                console.log("Creating ticket with AI-enhanced data:", enhancedTicketData);
-                
-                // Create the ticket with the enhanced data
-                createTicketMutation.mutate(enhancedTicketData);
-                setIsTyping(false);
-              },
-              onError: (error) => {
-                console.error("Failed to generate summary:", error);
-                
-                // Still create the ticket with the AI title but fallback description
-                const enhancedTicketData = {
-                  ...suggestedTicketData,
-                  title: titleData.title || suggestedTicketData.title,
-                  description: `Support ticket from chat interface.`
-                };
-                
-                createTicketMutation.mutate(enhancedTicketData);
-                setIsTyping(false);
-              }
-            });
-          },
-          onError: (error) => {
-            console.error("Failed to generate title:", error);
-            
-            // Fall back to generating just the summary
-            summaryMutation.mutate(conversationHistory, {
-              onSuccess: (summaryData) => {
-                // Use AI summary but fallback title
-                const enhancedTicketData = {
-                  ...suggestedTicketData,
-                  description: summaryData.summary || "Support ticket created via chat interface."
-                };
-                
-                createTicketMutation.mutate(enhancedTicketData);
-                setIsTyping(false);
-              },
-              onError: (error) => {
-                console.error("Failed to generate summary after title failure:", error);
-                
-                // Complete fallback if both AI calls fail
-                const enhancedTicketData = {
-                  ...suggestedTicketData,
-                  description: `Support ticket from chat interface.\n\nIssue: ${extractIssueTitle(messages)}`
-                };
-                
-                createTicketMutation.mutate(enhancedTicketData);
-                setIsTyping(false);
-              }
-            });
-          }
-        });
-        
-        // Reset confirmation state
-        setSuggestedTicketData(null);
+      setAwaitingTicketConfirmation(false);
+      
+      toast({
+        title: "Error",
+        description: "Failed to create ticket. Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const message = inputMessage.trim();
+    if (!message || chatbotMutation.isPending) return;
+    
+    // Clear input
+    setInputMessage("");
+    
+    // Add user message to chat
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      content: message,
+      sender: "user" as const,
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    
+    // If we're awaiting confirmation for ticket creation
+    if (awaitingTicketConfirmation) {
+      const lowerMessage = message.toLowerCase();
+      const isPositiveResponse = 
+        lowerMessage.includes("yes") || 
+        lowerMessage.includes("ok") || 
+        lowerMessage.includes("sure") ||
+        lowerMessage.includes("create") ||
+        lowerMessage.includes("ticket");
+      
+      const isNegativeResponse =
+        lowerMessage.includes("no") ||
+        lowerMessage.includes("don't") ||
+        lowerMessage.includes("dont") ||
+        lowerMessage.includes("not") ||
+        lowerMessage.includes("cancel");
+      
+      if (isPositiveResponse && suggestedTicketData) {
+        // User confirmed ticket creation
+        createTicketMutation.mutate(suggestedTicketData);
+      } else if (isNegativeResponse) {
+        // User declined ticket creation
         setAwaitingTicketConfirmation(false);
-      } else if (message === 'no' || message.includes('no') || message.includes("don't create") || message.includes('do not create')) {
-        // User declined, reset the suggested ticket data
         setSuggestedTicketData(null);
-        setAwaitingTicketConfirmation(false);
         
-        // Add AI acknowledgment
-        setMessages((prev) => [
+        // Add AI response acknowledging decision
+        setMessages(prev => [
           ...prev,
           {
-            id: `ai-cancel-${Date.now()}`,
-            content: "I understand. I won't create a ticket. Is there anything else I can help you with?",
+            id: `ai-ticket-declined-${Date.now()}`,
+            content: "No problem. I won't create a ticket for this. Let me know if you need anything else!",
             sender: "ai",
             timestamp: new Date(),
           },
         ]);
       } else {
-        // The user's response was unclear, ask again
-        setMessages((prev) => [
+        // Unclear response, ask again
+        setMessages(prev => [
           ...prev,
           {
-            id: `ai-clarify-${Date.now()}`,
-            content: "I'm not sure if you want me to create a support ticket. Please reply with 'yes' or 'no'.",
+            id: `ai-ticket-unclear-${Date.now()}`,
+            content: "I'm not sure if you want me to create a ticket. Please reply with 'Yes' to create a ticket or 'No' to continue the conversation without creating a ticket.",
             sender: "ai",
             timestamp: new Date(),
           },
         ]);
       }
       
-      // Clear input
-      setInputMessage("");
       return;
     }
     
-    // Check if message contains keywords for screen recording
-    const recordingKeywords = ['record', 'screen', 'show', 'yes', 'share'];
-    
-    if (currentTicketId && recordingKeywords.some(keyword => message.includes(keyword))) {
-      // If user wants to record the screen and we have a ticket
-      setShowRecorder(true);
-      setInputMessage("");
-      
-      // Add user message to chat first
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `user-${Date.now()}`,
-          content: inputMessage,
+    // If we already have a ticket for this conversation, update it with the new message
+    if (currentTicketId) {
+      try {
+        await apiRequest("POST", `/api/tickets/${currentTicketId}/messages`, {
+          content: message,
           sender: "user",
-          timestamp: new Date(),
-        },
-      ]);
-      
-      return;
-    }
-    
-    // Check if user indicates they don't need more help after ticket creation
-    if (createdTickets.length > 0) {
-      const noMoreHelpKeywords = [
-        'no', 'that\'s all', 'that is all', 'nothing else', 'i\'m good', 'im good', 
-        'that\'s it', 'that is it', 'no thanks', 'nothing more', 'i\'m done', 'im done'
-      ];
-      
-      const isEndingChat = noMoreHelpKeywords.some(keyword => 
-        message.includes(keyword) || message === keyword
-      );
-      
-      if (isEndingChat) {
-        // Add user message and end chat message
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `user-${Date.now()}`,
-            content: inputMessage,
-            sender: "user",
-            timestamp: new Date(),
-          },
-          {
-            id: `ai-end-chat-${Date.now()}`,
-            content: "Thank you for using our support chat. I'm ending this session now. Feel free to return anytime you need further assistance!",
-            sender: "ai",
-            timestamp: new Date(),
-          }
-        ]);
-        
-        // Clear input
-        setInputMessage("");
-        
-        // Reset chat after a short delay so user can read the message
-        setTimeout(() => {
-          // Reset the chat state for a new session
-          setMessages([
-            {
-              id: "ai-welcome",
-              content: "Hello! I'm your AI support assistant. How can I help you today?",
-              sender: "ai",
-              timestamp: new Date(),
-            },
-          ]);
-          setCurrentTicketId(null);
-          setCreatedTickets([]);
-          setSuggestedTicketData(null);
-          setAwaitingTicketConfirmation(false);
-        }, 5000);
-        
-        return;
+        });
+      } catch (error) {
+        console.error("Error adding message to ticket:", error);
       }
     }
     
-    // Regular message flow - add user message to chat
-    setMessages((prev) => [
+    // Show typing indicator
+    setIsTyping(true);
+    
+    // Prepare message history for AI
+    const history = messages.map(msg => ({
+      role: msg.sender === "user" ? "user" : "assistant",
+      content: msg.content,
+    }));
+    
+    // Add the new user message
+    history.push({
+      role: "user",
+      content: message,
+    });
+    
+    // Get AI response
+    chatbotMutation.mutate({ 
+      message,
+      messageHistory: messages
+    });
+  };
+  
+  // Function to handle screen recordings
+  const handleRecording = (url: string, type: string, blob: Blob) => {
+    setShowRecorder(false);
+    
+    // Create a new user message with the recording
+    setMessages(prev => [
       ...prev,
       {
         id: `user-${Date.now()}`,
-        content: inputMessage,
+        content: "I've shared a screen recording.",
         sender: "user",
         timestamp: new Date(),
       },
@@ -797,262 +455,138 @@ export default function ChatbotInterface() {
     // Show typing indicator
     setIsTyping(true);
     
-    // Send to API with message history
-    // Filter out the AI confirmation messages to keep only the conversation
-    const messageHistory = messages.filter(msg => 
-      !msg.id.includes('confirm') && 
-      !msg.id.includes('clarify') && 
-      !msg.id.includes('creating') &&
-      !msg.id.includes('cancel')
-    );
-    
-    chatbotMutation.mutate({
-      message: inputMessage,
-      messageHistory: messageHistory
-    });
-    
-    // Clear input
-    setInputMessage("");
-  };
-  
-  const handleRecordingComplete = (blob: Blob) => {
-    if (!currentTicketId) {
-      toast({
-        title: "Error",
-        description: "No active ticket to attach recording to.",
-        variant: "destructive",
-      });
-      setShowRecorder(false);
-      return;
-    }
-    
-    // Convert blob to base64
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = function() {
-      const base64data = reader.result?.toString().split(',')[1];
+    // If we have a current ticket, upload the recording as an attachment
+    if (currentTicketId) {
+      const formData = new FormData();
+      formData.append("file", blob, `screen-recording-${Date.now()}.${type === "video/webm" ? "webm" : "mp4"}`);
+      formData.append("type", type);
+      formData.append("ticketId", currentTicketId.toString());
       
-      if (!base64data) {
-        toast({
-          title: "Error",
-          description: "Failed to process recording.",
-          variant: "destructive",
+      apiRequest("POST", "/api/tickets/attachments", formData, true)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Attachment uploaded:", data);
+        })
+        .catch(error => {
+          console.error("Error uploading attachment:", error);
+          toast({
+            title: "Upload Error",
+            description: "Failed to upload screen recording. Please try again.",
+            variant: "destructive",
+          });
         });
-        return;
-      }
-      
-      // Create attachment data
-      const attachmentData: InsertAttachment = {
-        ticketId: currentTicketId,
-        type: "screen_recording",
-        filename: `screen-recording-${Date.now()}.webm`,
-        contentType: "video/webm",
-        data: base64data,
-      };
-      
-      // Send to server
-      createAttachmentMutation.mutate({ 
-        ticketId: currentTicketId,
-        attachmentData
-      });
-    };
-    
-    // Hide the recorder
-    setShowRecorder(false);
-    
-    // Add a message about the recording
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `user-recording-${Date.now()}`,
-        content: "I've shared a screen recording to help explain my issue.",
-        sender: "user",
-        timestamp: new Date(),
-      },
-    ]);
-  };
-  
-  const handleCancelRecording = () => {
-    setShowRecorder(false);
-    
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `user-cancel-recording-${Date.now()}`,
-        content: "I've decided not to share a screen recording at this time.",
-        sender: "user",
-        timestamp: new Date(),
-      },
-    ]);
-  };
-  
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0) {
-      return;
     }
     
-    const file = event.target.files[0];
-    
-    // Validate file type
-    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validImageTypes.includes(file.type)) {
-      toast({
-        title: "Invalid File Type",
-        description: "Please upload a valid image file (JPEG, PNG, GIF, WebP).",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Process file
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onloadend = function() {
-      const base64data = reader.result?.toString().split(',')[1];
-      
-      if (!base64data) {
-        toast({
-          title: "Error",
-          description: "Failed to process image.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Add a message about the image
-      setMessages((prev) => [
+    // Add AI response
+    setTimeout(() => {
+      setIsTyping(false);
+      setMessages(prev => [
         ...prev,
         {
-          id: `user-image-${Date.now()}`,
-          content: "I've shared an image to help explain my issue.",
-          sender: "user",
+          id: `ai-${Date.now()}`,
+          content: "Thanks for sharing your screen recording. This will help us understand your issue better. How else can I assist you today?",
+          sender: "ai",
           timestamp: new Date(),
         },
       ]);
+    }, 1500);
+  };
+  
+  // Function to handle file uploads
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check file type and size
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload an image file (PNG, JPG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Create a new user message with the image
+    setMessages(prev => [
+      ...prev,
+      {
+        id: `user-${Date.now()}`,
+        content: `I've shared an image: ${file.name}`,
+        sender: "user",
+        timestamp: new Date(),
+      },
+    ]);
+    
+    // Show typing indicator
+    setIsTyping(true);
+    
+    // If we have a current ticket, upload the image as an attachment
+    if (currentTicketId) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", file.type);
+      formData.append("ticketId", currentTicketId.toString());
       
-      if (currentTicketId) {
-        // If we have a ticket ID, attach the image to it
-        const attachmentData: InsertAttachment = {
-          ticketId: currentTicketId,
-          type: "image",
-          filename: file.name || `image-${Date.now()}.${file.type.split('/')[1]}`,
-          contentType: file.type,
-          data: base64data,
-        };
-        
-        createAttachmentMutation.mutate({ 
-          ticketId: currentTicketId,
-          attachmentData 
+      apiRequest("POST", "/api/tickets/attachments", formData, true)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Attachment uploaded:", data);
+        })
+        .catch(error => {
+          console.error("Error uploading attachment:", error);
+          toast({
+            title: "Upload Error",
+            description: "Failed to upload image. Please try again.",
+            variant: "destructive",
+          });
         });
-      } else {
-        // If no ticket yet, store the image temporarily
-        // When a ticket is created, we can attach it then
-        toast({
-          title: "Image Received",
-          description: "Your image has been received. It will be attached to your support ticket when created.",
-        });
-        
-        // In a real implementation, we would store this image and attach it when the ticket is created
-      }
-    };
+    }
+    
+    // Add AI response
+    setTimeout(() => {
+      setIsTyping(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `ai-${Date.now()}`,
+          content: "I've received your image. This will help us better understand your situation. Is there anything else you'd like to tell me about this issue?",
+          sender: "ai",
+          timestamp: new Date(),
+        },
+      ]);
+    }, 1500);
     
     // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    
-    // Close the upload options
-    setShowImageUploadOptions(false);
+    e.target.value = "";
   };
   
-  const captureScreenshot = async () => {
-    try {
-      // Just use simple display media capture without additional options
-      const stream = await navigator.mediaDevices.getDisplayMedia();
-      
-      // Create a video element to capture a frame
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      
-      // Wait for the video to be loaded enough to capture a frame
-      await new Promise(resolve => {
-        video.onloadedmetadata = () => {
-          video.play();
-          resolve(null);
-        };
-      });
-      
-      // Capture the frame to a canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Stop all tracks
-      stream.getTracks().forEach(track => track.stop());
-      
-      // Convert to base64
-      const base64data = canvas.toDataURL('image/png').split(',')[1];
-      
-      // Add a message about the screenshot
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `user-screenshot-${Date.now()}`,
-          content: "I've shared a screenshot to help explain my issue.",
-          sender: "user",
-          timestamp: new Date(),
-        },
-      ]);
-      
-      if (currentTicketId) {
-        // If we have a ticket ID, attach the screenshot to it
-        const attachmentData: InsertAttachment = {
-          ticketId: currentTicketId,
-          type: "screenshot",
-          filename: `screenshot-${Date.now()}.png`,
-          contentType: "image/png",
-          data: base64data,
-        };
-        
-        createAttachmentMutation.mutate({ 
-          ticketId: currentTicketId,
-          attachmentData 
-        });
-      } else {
-        // If no ticket yet, store the screenshot temporarily
-        toast({
-          title: "Screenshot Received",
-          description: "Your screenshot has been received. It will be attached to your support ticket when created.",
-        });
-        
-        // In a real implementation, we would store this screenshot and attach it when the ticket is created
-      }
-    } catch (error) {
-      console.error('Error capturing screenshot:', error);
-      toast({
-        title: "Screenshot Failed",
-        description: "Failed to capture screenshot. Please try again or use another method.",
-        variant: "destructive",
-      });
-    }
-    
-    // Close the upload options
-    setShowImageUploadOptions(false);
+  // Function to capture screenshot
+  const captureScreenshot = () => {
+    toast({
+      title: "Screenshot",
+      description: "Please use your device's screenshot function to capture your screen, then upload it.",
+    });
   };
-
+  
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen);
+  };
+  
   return (
     <>
-      {/* Screen recorder modal */}
       {showRecorder && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl w-full">
-            <ScreenRecorder 
-              onRecordingComplete={handleRecordingComplete}
-              onCancel={handleCancelRecording}
-            />
-          </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <ScreenRecorder onClose={() => setShowRecorder(false)} onRecordingComplete={handleRecording} />
         </div>
       )}
       

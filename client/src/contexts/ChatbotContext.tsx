@@ -1,20 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// Define message type
-type Message = {
+// Define message type for use throughout the app
+export type ChatMessage = {
   id: string;
   content: string;
   sender: "user" | "ai";
   timestamp: Date;
 };
 
+// Define the shape of our context
 type ChatbotContextType = {
   isChatOpen: boolean;
   setIsChatOpen: (isOpen: boolean) => void;
-  messages: Message[];
-  setMessages: (messages: Message[]) => void;
+  messages: ChatMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   position: { top: string; left: string; right: string; bottom: string };
-  setPosition: (position: { top: string; left: string; right: string; bottom: string }) => void;
+  setPosition: React.Dispatch<React.SetStateAction<{ top: string; left: string; right: string; bottom: string }>>;
   isDragging: boolean;
   setIsDragging: (isDragging: boolean) => void;
 };
@@ -43,7 +44,7 @@ export const ChatbotProvider: React.FC<ChatbotProviderProps> = ({ children }) =>
   const [isChatOpen, setIsChatOpen] = useState(false);
   
   // Chat messages
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   
   // Position state - default to bottom right
   const [position, setPosition] = useState({ 

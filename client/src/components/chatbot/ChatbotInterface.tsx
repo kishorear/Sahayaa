@@ -10,6 +10,7 @@ import ScreenRecorder from "./ScreenRecorder";
 import { MessageSquare, X, Video, Image, Camera, Upload, Paperclip, RefreshCcw } from "lucide-react";
 import { InsertTicket, InsertAttachment } from "@shared/schema";
 
+// Define message type
 type Message = {
   id: string;
   content: string;
@@ -37,31 +38,19 @@ const isDuplicateTicket = (title: string, createdTickets: { id: number, issue: s
 };
 
 export default function ChatbotInterface() {
+  // Component state
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
-  const [showImageUploadOptions, setShowImageUploadOptions] = useState(false);
-  const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
+  const [showImageUploadOptions, setShowImageUploadOptions] = useState<boolean>(false);
+  const [currentTicketId, setCurrentTicketId] = useState<number | undefined>(undefined);
   const [suggestedTicketData, setSuggestedTicketData] = useState<InsertTicket | null>(null);
   const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
-  // Track created tickets with their issues to prevent duplicates
   const [createdTickets, setCreatedTickets] = useState<{id: number, issue: string}[]>([]);
   
-  // Draggable position state - always reset to default on page refresh 
-  // but maintain position during navigation
-  const [position, setPosition] = useState(() => {
-    // Default position (bottom right)
-    return { right: '24px', bottom: '24px', left: 'auto', top: 'auto' };
-  });
-  
-  // Dragging state
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  
   // Refs
-  const chatButtonRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -78,142 +67,8 @@ export default function ChatbotInterface() {
         },
       ]);
     }
-  }, [messages]);
-  
-  // Load chat state from sessionStorage - helps with page navigation
-  useEffect(() => {
-    const savedChatState = sessionStorage.getItem('chatbotState');
-    if (savedChatState) {
-      try {
-        const state = JSON.parse(savedChatState);
-        if (state.messages && Array.isArray(state.messages)) {
-          // Convert ISO timestamps back to Date objects
-          const messagesWithDates = state.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }));
-          setMessages(messagesWithDates);
-          setIsChatOpen(state.isOpen || false);
-          
-          // If we have a position stored, use it
-          if (state.position) {
-            setPosition(state.position);
-          }
-        }
-      } catch (err) {
-        console.error('Error parsing saved chat state:', err);
-      }
-    }
   }, []);
   
-  // Save chat state to sessionStorage when it changes
-  useEffect(() => {
-    // Don't save empty state
-    if (messages.length === 0) return;
-    
-    // Save to sessionStorage for navigation persistence
-    const chatState = {
-      messages,
-      isOpen: isChatOpen,
-      position
-    };
-    sessionStorage.setItem('chatbotState', JSON.stringify(chatState));
-  }, [messages, isChatOpen, position]);
-
-  // Drag start handler
-  const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-    if ('touches' in e) {
-      // For touch events, we need to prevent the default behavior to avoid scrolling
-      e.preventDefault();
-    }
-    
-    if (chatButtonRef.current) {
-      setIsDragging(true);
-      
-      let clientX: number, clientY: number;
-      
-      // Handle both mouse and touch events
-      if ('touches' in e) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-      
-      // Calculate the offset from the pointer to the element's corner
-      const rect = chatButtonRef.current.getBoundingClientRect();
-      setDragOffset({
-        x: clientX - rect.left,
-        y: clientY - rect.top
-      });
-    }
-  };
-  
-  // Drag move handler
-  const handleDrag = (e: MouseEvent | TouchEvent) => {
-    if (!isDragging) return;
-    
-    let clientX: number, clientY: number;
-    
-    // Handle both mouse and touch events
-    if ('touches' in e) {
-      e.preventDefault(); // Prevent scrolling during touch drag
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-    
-    // Calculate the new position
-    const newLeft = clientX - dragOffset.x;
-    const newTop = clientY - dragOffset.y;
-    
-    // Update position using CSS values
-    const newPosition = {
-      left: `${newLeft}px`,
-      top: `${newTop}px`,
-      right: 'auto',
-      bottom: 'auto'
-    };
-    
-    setPosition(newPosition);
-  };
-  
-  // Drag end handler
-  const handleDragEnd = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      // No longer saving position to localStorage - will reset on refresh
-    }
-  };
-  
-  // Add event listeners for dragging
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => handleDrag(e);
-    const handleTouchMove = (e: TouchEvent) => handleDrag(e);
-    
-    const handleMouseUp = () => handleDragEnd();
-    const handleTouchEnd = () => handleDragEnd();
-    
-    // Add global event listeners to track movement even when cursor moves quickly
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
-      document.addEventListener('mouseup', handleMouseUp);
-      document.addEventListener('touchend', handleTouchEnd);
-    }
-    
-    // Cleanup event listeners
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [isDragging, dragOffset, position]);
-
   // Auto scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -286,9 +141,9 @@ export default function ChatbotInterface() {
           status: "open",
           priority: "medium",
           category: data.response.category || "General",
-          assignedTo: null,
-          createdBy: null,
-          tenantId: null,
+          assignedTo: undefined,
+          createdBy: undefined,
+          tenantId: undefined,
           complexity: data.response.complexity || "medium",
           source: "chat"
         };
@@ -499,7 +354,7 @@ export default function ChatbotInterface() {
   };
   
   // Function to handle screen recordings
-  const handleRecording = (url: string, type: string, blob: Blob) => {
+  const handleRecording = (blob: Blob) => {
     setShowRecorder(false);
     
     // Create a new user message with the recording
@@ -519,8 +374,8 @@ export default function ChatbotInterface() {
     // If we have a current ticket, upload the recording as an attachment
     if (currentTicketId) {
       const formData = new FormData();
-      formData.append("file", blob, `screen-recording-${Date.now()}.${type === "video/webm" ? "webm" : "mp4"}`);
-      formData.append("type", type);
+      formData.append("file", blob, `screen-recording-${Date.now()}.webm`);
+      formData.append("type", "video/webm");
       formData.append("ticketId", currentTicketId.toString());
       
       apiRequest("POST", "/api/tickets/attachments", formData, true)
@@ -639,48 +494,29 @@ export default function ChatbotInterface() {
     });
   };
   
+  // Simple toggle function
   const toggleChat = () => {
-    console.log("Toggle chat clicked. Current state:", isChatOpen);
     setIsChatOpen(!isChatOpen);
-    console.log("New chat state set to:", !isChatOpen);
   };
   
   return (
     <>
       {showRecorder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <ScreenRecorder onClose={() => setShowRecorder(false)} onRecordingComplete={handleRecording} />
+          <ScreenRecorder onCancel={() => setShowRecorder(false)} onRecordingComplete={handleRecording} />
         </div>
       )}
       
-      <div 
-        ref={chatButtonRef}
-        className="fixed flex flex-col z-40"
-        style={{ 
-          ...position,
-          cursor: isDragging ? 'grabbing' : 'grab',
-          transition: isDragging ? 'none' : 'box-shadow 0.2s ease'
-        }}
-      >
-        {/* Chat bubble (when closed) */}
+      <div className="fixed right-6 bottom-6 flex flex-col z-40">
+        {/* Chat bubble */}
         {!isChatOpen && (
-          <div
-            className={`relative ${isDragging ? 'shadow-2xl' : 'hover:shadow-lg'}`}
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
+          <Button
+            onClick={toggleChat}
+            className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            size="icon"
           >
-            <Button
-              onClick={toggleChat}
-              className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              size="icon"
-              // Add pointer-events-none to prevent button from interfering with dragging
-              style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
-            >
-              <MessageSquare className="w-8 h-8 text-white" />
-            </Button>
-            {/* Handle for dragging (small visual indicator) */}
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-gray-200 rounded-full border border-gray-300 opacity-70" title="Drag to move chat"></div>
-          </div>
+            <MessageSquare className="w-8 h-8 text-white" />
+          </Button>
         )}
 
         {/* Chat window */}
@@ -707,7 +543,7 @@ export default function ChatbotInterface() {
                         timestamp: new Date(),
                       },
                     ]);
-                    setCurrentTicketId(null);
+                    setCurrentTicketId(undefined);
                     setCreatedTickets([]);
                     setSuggestedTicketData(null);
                     setAwaitingTicketConfirmation(false);
@@ -786,7 +622,7 @@ export default function ChatbotInterface() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowImageUploadOptions(!showImageUploadOptions)}
+                  onClick={() => setShowImageUploadOptions(prev => !prev)}
                   className="text-gray-500 hover:text-primary px-1"
                   title="Attach Files"
                 >

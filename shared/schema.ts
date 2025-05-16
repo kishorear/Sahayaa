@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, uniqueIndex, varchar, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // AI provider types
 export const AiProviderTypeEnum = z.enum([
@@ -19,6 +20,13 @@ export const DocumentStatusEnum = z.enum([
   'published',
   'archived'
 ]);
+
+// API key permissions enum
+export const ApiKeyPermissionEnum = z.object({
+  read: z.boolean().default(true),
+  write: z.boolean().default(true),
+  webhook: z.boolean().default(false)
+});
 
 // Tenant table for multi-tenant support
 export const tenants = pgTable("tenants", {

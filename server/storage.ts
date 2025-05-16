@@ -167,6 +167,7 @@ export class MemStorage implements IStorage {
   private aiProviders: Map<number, AiProvider>;
   private supportDocuments: Map<number, SupportDocument>;
   private documentUsageData: Map<number, DocumentUsage>;
+  private widgetApiKeysData: Map<number, WidgetApiKey>;
   private tenantIdCounter: number;
   private teamIdCounter: number;
   private userIdCounter: number;
@@ -178,6 +179,7 @@ export class MemStorage implements IStorage {
   private aiProviderIdCounter: number;
   private supportDocumentIdCounter: number;
   private documentUsageIdCounter: number;
+  private widgetApiKeyIdCounter: number;
   
   // Add caches for critical data in production
   private userCache: Map<string, User> = new Map();
@@ -202,6 +204,7 @@ export class MemStorage implements IStorage {
     this.aiProviders = new Map();
     this.supportDocuments = new Map();
     this.documentUsageData = new Map();
+    this.widgetApiKeysData = new Map();
     this.tenantIdCounter = 1;
     this.teamIdCounter = 1;
     this.userIdCounter = 1;
@@ -4552,6 +4555,93 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  // Widget API Key operations
+  async getApiKeyById(id: number): Promise<WidgetApiKey | undefined> {
+    const results = await db
+      .select()
+      .from(widgetApiKeys)
+      .where(and(
+        eq(widgetApiKeys.id, id),
+        eq(widgetApiKeys.isRevoked, false)
+      ));
+    return results[0];
+  }
+  
+  async getApiKeyByValue(key: string): Promise<WidgetApiKey | undefined> {
+    const results = await db
+      .select()
+      .from(widgetApiKeys)
+      .where(and(
+        eq(widgetApiKeys.key, key),
+        eq(widgetApiKeys.isRevoked, false)
+      ));
+    return results[0];
+  }
+  
+  async getApiKeysByTenant(tenantId: number): Promise<WidgetApiKey[]> {
+    return await db
+      .select()
+      .from(widgetApiKeys)
+      .where(and(
+        eq(widgetApiKeys.tenantId, tenantId),
+        eq(widgetApiKeys.isRevoked, false)
+      ))
+      .orderBy(desc(widgetApiKeys.createdAt));
+  }
+  
+  async createApiKey(apiKey: Omit<WidgetApiKey, 'id'>): Promise<WidgetApiKey> {
+    const [result] = await db
+      .insert(widgetApiKeys)
+      .values(apiKey)
+      .returning();
+    return result;
+  }
+  
+  async updateApiKey(id: number, updates: Partial<WidgetApiKey>): Promise<WidgetApiKey> {
+    const [updated] = await db
+      .update(widgetApiKeys)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(widgetApiKeys.id, id))
+      .returning();
+      
+    if (!updated) {
+      throw new Error(`Widget API key with ID ${id} not found`);
+    }
+    
+    return updated;
+  }
+  
+  async updateApiKeyUsage(id: number): Promise<void> {
+    await db
+      .update(widgetApiKeys)
+      .set({
+        lastUsed: new Date(),
+        useCount: sql`${widgetApiKeys.useCount} + 1`
+      })
+      .where(eq(widgetApiKeys.id, id));
+  }
+  
+  async deleteApiKey(id: number): Promise<boolean> {
+    try {
+      const [result] = await db
+        .update(widgetApiKeys)
+        .set({ 
+          isRevoked: true,
+          updatedAt: new Date()
+        })
+        .where(eq(widgetApiKeys.id, id))
+        .returning({ id: widgetApiKeys.id });
+        
+      return !!result;
+    } catch (error) {
+      console.error(`Error while revoking API key ${id}:`, error);
+      return false;
+    }
+  }
+
   // Support document operations
   async getAllSupportDocuments(tenantId?: number): Promise<SupportDocument[]> {
     try {
@@ -5516,6 +5606,70 @@ class StorageWrapper implements IStorage {
     } catch (error) {
       console.error(`Error in incrementDocumentViewCount(${id}):`, error);
       throw error;
+    }
+  }
+  
+  // Widget API Key operations
+  async getApiKeyById(id: number): Promise<WidgetApiKey | undefined> {
+    try {
+      return await this.storageImpl.getApiKeyById(id);
+    } catch (error) {
+      console.error(`Error in getApiKeyById(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  async getApiKeyByValue(key: string): Promise<WidgetApiKey | undefined> {
+    try {
+      return await this.storageImpl.getApiKeyByValue(key);
+    } catch (error) {
+      console.error(`Error in getApiKeyByValue():`, error);
+      throw error;
+    }
+  }
+  
+  async getApiKeysByTenant(tenantId: number): Promise<WidgetApiKey[]> {
+    try {
+      return await this.storageImpl.getApiKeysByTenant(tenantId);
+    } catch (error) {
+      console.error(`Error in getApiKeysByTenant(${tenantId}):`, error);
+      return [];
+    }
+  }
+  
+  async createApiKey(apiKey: Omit<WidgetApiKey, 'id'>): Promise<WidgetApiKey> {
+    try {
+      return await this.storageImpl.createApiKey(apiKey);
+    } catch (error) {
+      console.error(`Error in createApiKey():`, error);
+      throw error;
+    }
+  }
+  
+  async updateApiKey(id: number, updates: Partial<WidgetApiKey>): Promise<WidgetApiKey> {
+    try {
+      return await this.storageImpl.updateApiKey(id, updates);
+    } catch (error) {
+      console.error(`Error in updateApiKey(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  async updateApiKeyUsage(id: number): Promise<void> {
+    try {
+      return await this.storageImpl.updateApiKeyUsage(id);
+    } catch (error) {
+      console.error(`Error in updateApiKeyUsage(${id}):`, error);
+      // Don't throw for analytics operations
+    }
+  }
+  
+  async deleteApiKey(id: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteApiKey(id);
+    } catch (error) {
+      console.error(`Error in deleteApiKey(${id}):`, error);
+      return false;
     }
   }
 }

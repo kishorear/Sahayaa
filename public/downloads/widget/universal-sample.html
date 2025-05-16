@@ -247,8 +247,8 @@
     </section>
 
     <section class="demo-section">
-        <h2>Implementation: Just Like Grammarly</h2>
-        <p>Adding the universal integration to your website is incredibly simple - just like Grammarly, users only need to add a single script tag:</p>
+        <h2>Implementation: Simple Integration</h2>
+        <p>Adding the universal integration to your website is incredibly simple - users only need to add a single script tag:</p>
         
         <div class="code-block">
             <code>
@@ -260,12 +260,12 @@
         <p>That's it! No configuration needed. The widget automatically uses the settings provided during download and:</p>
         
         <ul class="implementation-features">
-            <li><strong>Works across your entire website</strong> - monitors all pages automatically</li>
+            <li><strong>Works across your entire website</strong> - persists across all pages automatically</li>
             <li><strong>Self-initializes with zero configuration</strong> - no need for additional setup code</li>
             <li><strong>Creates an isolated environment</strong> using Shadow DOM to avoid conflicts</li>
-            <li><strong>Adapts to different forms and text fields</strong> across your website</li>
-            <li><strong>Understands user intent from text patterns</strong> to provide timely support</li>
-            <li><strong>Uses advanced context collection</strong> to provide meaningful assistance</li>
+            <li><strong>Maintains conversation history</strong> through page navigation</li>
+            <li><strong>Delivers a seamless chat experience</strong> for better user satisfaction</li>
+            <li><strong>Uses session storage</strong> to keep conversation state during the visit</li>
         </ul>
         
         <div class="code-block advanced">
@@ -274,10 +274,10 @@
                 &lt;script&gt;<br>
                 // Optional configuration customizations<br>
                 window.supportAiConfig = {<br>
-                &nbsp;&nbsp;autoIntegrate: true, // Enable Grammarly-like functionality<br>
-                &nbsp;&nbsp;textFieldMonitoring: true, // Monitor text fields for context<br>
-                &nbsp;&nbsp;suggestionsThreshold: 3, // Min characters before suggestions<br>
-                &nbsp;&nbsp;sensitivityLevel: "medium", // How proactive the widget is<br>
+                &nbsp;&nbsp;autoOpen: false, // Don't auto-open the widget on page load<br>
+                &nbsp;&nbsp;persistState: true, // Persist chat state across page navigation<br>
+                &nbsp;&nbsp;colorTheme: "light", // Widget theme (light/dark)<br>
+                &nbsp;&nbsp;position: "right", // Widget position (right/left)<br>
                 &nbsp;&nbsp;allowedDomains: ["*"] // Domains where widget can operate<br>
                 };<br>
                 &lt;/script&gt;<br>

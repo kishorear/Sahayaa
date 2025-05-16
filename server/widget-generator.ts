@@ -143,23 +143,21 @@ Add the following script tag to your website's HTML, right before the closing \`
 <script src="supportai-widget.js" async></script>
 \`\`\`
 
-### Option 2: Grammarly-Style Universal Integration
-For a truly seamless, Grammarly-like experience that intelligently integrates support across your entire website:
+### Option 2: Universal Integration
+For a seamless support experience that persists across your entire website:
 
 \`\`\`html
 <!-- Support AI Universal Integration -->
 <script src="supportai-universal.js" async></script>
 \`\`\`
 
-The universal integration works just like Grammarly with these powerful features:
+The universal integration offers these powerful features:
 - **Zero-configuration installation** - works instantly across your entire site
-- **Intelligent text field monitoring** - detects questions and problems in real-time
-- **Context-aware support suggestions** - analyzes content to provide relevant help
-- **Adaptive behavior** - adjusts assistance based on user frustration signals
 - **Non-intrusive design** - uses Shadow DOM for complete style isolation
 - **Cross-page awareness** - maintains context as users navigate your site
-- **Sentiment analysis** - detects when users are struggling and offers timely help
-- **Automatic form detection** - works with any form without manual configuration
+- **Persistent chat state** - keeps conversations active during browsing
+- **Lightweight implementation** - minimal impact on page performance
+- **Responsive design** - works great on all devices and screen sizes
 
 For a live demonstration of these features, check out the included universal-sample.html file.
 
@@ -254,7 +252,7 @@ echo To use the standard widget in your application, add these lines to your HTM
 echo ^<script src="%APPDATA%\\SupportAI\\supportai-config.js"^>^</script^>
 echo ^<script src="%APPDATA%\\SupportAI\\supportai-widget.js"^>^</script^>
 echo.
-echo For the Grammarly-style universal integration, use:
+echo For the universal integration that persists across pages, use:
 echo ^<script src="%APPDATA%\\SupportAI\\supportai-universal.js"^>^</script^>
 echo.
 echo Press any key to exit...

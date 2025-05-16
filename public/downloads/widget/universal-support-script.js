@@ -708,11 +708,17 @@
     widgetButton.style.top = 'auto';
     
     // Update state
-    state.position = {
-      bottom: '20px',
-      [positionSide]: '20px'
-      right: 'auto'
-    };
+    if (positionSide === 'left') {
+      state.position = {
+        bottom: '20px',
+        left: '20px'
+      };
+    } else {
+      state.position = {
+        bottom: '20px',
+        right: '20px'
+      };
+    }
     
     // Save to localStorage
     saveState();

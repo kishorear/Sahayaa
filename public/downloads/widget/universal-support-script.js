@@ -31,10 +31,10 @@
   let widgetButton = null;
   let styleElement = null;
   
-  // State management with localStorage persistence
+  // State management with sessionStorage persistence
   const loadState = () => {
     try {
-      const savedState = localStorage.getItem('supportAiWidgetState');
+      const savedState = sessionStorage.getItem('supportAiWidgetState');
       if (savedState) {
         return JSON.parse(savedState);
       }
@@ -69,10 +69,10 @@
     }
   };
   
-  // Function to persist state to localStorage
+  // Function to persist state to sessionStorage
   const saveState = () => {
     try {
-      localStorage.setItem('supportAiWidgetState', JSON.stringify({
+      sessionStorage.setItem('supportAiWidgetState', JSON.stringify({
         chatOpen: state.chatOpen,
         sessionId: state.sessionId,
         messages: state.messages,
@@ -204,30 +204,24 @@
         border-radius: 50%;
         background-color: var(--primary-color);
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-        cursor: move; /* Change cursor to indicate draggable */
+        cursor: pointer; /* Change cursor to indicate clickable */
         z-index: 2147483647;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: box-shadow 0.3s ease;
-        touch-action: none; /* Prevent scrolling on touch devices while dragging */
-        user-select: none; /* Prevent text selection during drag */
+        transition: box-shadow 0.3s ease, transform 0.2s ease;
+        user-select: none; /* Prevent text selection */
       }
       
       .widget-button:hover {
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-      }
-      
-      /* Styling for when button is being dragged */
-      .widget-button.dragging {
-        opacity: 0.8;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        transform: scale(1.05);
       }
       
       .widget-button .icon {
-        width: 32px;
-        height: 32px;
-        fill: white;
+        width: 34px;
+        height: 34px;
+        fill: none;
         stroke: white;
         stroke-width: 6px;
       }
@@ -426,25 +420,11 @@
    * Set up event listeners for widget functionality
    */
   function setupEventListeners() {
-    // Setup drag functionality for widget button
-    widgetButton.addEventListener('mousedown', startDragging);
-    widgetButton.addEventListener('touchstart', startDragging, { passive: false });
+    // Skip drag functionality to simplify the widget implementation
+    // This will make the widget stay in its fixed position and only handle chat functions
     
-    // We add these to document to ensure drag continues even if cursor moves fast
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('touchmove', drag, { passive: false });
-    document.addEventListener('mouseup', stopDragging);
-    document.addEventListener('touchend', stopDragging);
-    
-    // Add click handler with special handling to avoid triggering click after drag
-    let lastDragEnd = 0;
+    // Add click handler for opening/closing the chat
     widgetButton.addEventListener('click', (e) => {
-      // Prevent click firing immediately after drag ends
-      if (Date.now() - lastDragEnd < 200) {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      }
       toggleChat();
     });
     
@@ -469,15 +449,6 @@
     
     // Track page navigation events for SPA (Single Page Applications)
     trackPageChanges();
-    
-    // Helper function to store timestamp when drag ends
-    function logDragEnd() {
-      lastDragEnd = Date.now();
-    }
-    
-    // Store timestamp on drag end
-    document.addEventListener('mouseup', logDragEnd);
-    document.addEventListener('touchend', logDragEnd);
   }
   
   /**
@@ -701,102 +672,45 @@
   }
   
   /**
-   * Start dragging the chat button
-   * @param {MouseEvent|TouchEvent} e - The mouse or touch event
+   * Chat widget position handling
+   * We're using a fixed position for the chat widget to improve reliability
+   * The draggable functionality has been removed to simplify the experience
+   * and ensure consistent behavior across page navigations
    */
-  function startDragging(e) {
-    // Prevent default only for touch events to avoid scrolling
-    if (e.type === 'touchstart') {
-      e.preventDefault();
-    }
+  function handleResize() {
+    // Keep widget in the original position
+    applyWidgetPosition();
     
-    isDragging = true;
-    widgetButton.classList.add('dragging');
-    
-    // Get current button position
-    const rect = widgetButton.getBoundingClientRect();
-    
-    // Store position relative to window
-    initialLeft = rect.left;
-    initialTop = rect.top;
-    
-    // Get starting cursor/touch position
-    if (e.type === 'touchstart') {
-      dragStartX = e.touches[0].clientX;
-      dragStartY = e.touches[0].clientY;
-    } else {
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-    }
-  }
-  
-  /**
-   * Handle dragging motion
-   * @param {MouseEvent|TouchEvent} e - The mouse or touch event
-   */
-  function drag(e) {
-    if (!isDragging) return;
-    
-    // Prevent default actions like scrolling for touch events
-    if (e.type === 'touchmove') {
-      e.preventDefault();
-    }
-    
-    // Calculate how far we've moved
-    let clientX, clientY;
-    if (e.type === 'touchmove') {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-    
-    const deltaX = clientX - dragStartX;
-    const deltaY = clientY - dragStartY;
-    
-    // Calculate new position
-    let newLeft = initialLeft + deltaX;
-    let newTop = initialTop + deltaY;
-    
-    // Get window dimensions
+    // Adjust chat window size if needed
     const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    const buttonWidth = widgetButton.offsetWidth;
-    const buttonHeight = widgetButton.offsetHeight;
-    
-    // Keep button within window boundaries
-    if (newLeft < 0) newLeft = 0;
-    if (newTop < 0) newTop = 0;
-    if (newLeft > windowWidth - buttonWidth) newLeft = windowWidth - buttonWidth;
-    if (newTop > windowHeight - buttonHeight) newTop = windowHeight - buttonHeight;
-    
-    // Apply new position
-    widgetButton.style.left = newLeft + 'px';
-    widgetButton.style.top = newTop + 'px';
-    
-    // Reset bottom/right positioning as we're using top/left now
-    widgetButton.style.bottom = 'auto';
-    widgetButton.style.right = 'auto';
+    if (windowWidth < 480) {
+      chatWindow.style.width = (windowWidth - 40) + 'px';
+      chatWindow.style.height = (window.innerHeight - 160) + 'px';
+    } else {
+      chatWindow.style.width = '360px';
+      chatWindow.style.height = '500px';
+    }
   }
   
-  /**
-   * Stop dragging and save the final position
-   */
-  function stopDragging() {
-    if (!isDragging) return;
+  function applyWidgetPosition() {
+    // Use the position from config or the default
+    const positionSide = config.position === 'left' ? 'left' : 'right';
     
-    isDragging = false;
-    widgetButton.classList.remove('dragging');
+    if (positionSide === 'left') {
+      widgetButton.style.left = '20px';
+      widgetButton.style.right = 'auto';
+    } else {
+      widgetButton.style.right = '20px';
+      widgetButton.style.left = 'auto';
+    }
     
-    // Save the new position
-    const rect = widgetButton.getBoundingClientRect();
+    widgetButton.style.bottom = '20px';
+    widgetButton.style.top = 'auto';
     
-    // Store the position in the state
+    // Update state
     state.position = {
-      left: rect.left + 'px',
-      top: rect.top + 'px',
-      bottom: 'auto',
+      bottom: '20px',
+      [positionSide]: '20px'
       right: 'auto'
     };
     

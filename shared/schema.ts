@@ -311,6 +311,32 @@ export const insertWidgetAnalyticsSchema = createInsertSchema(widgetAnalytics)
 export type WidgetAnalytics = typeof widgetAnalytics.$inferSelect;
 export type InsertWidgetAnalytics = z.infer<typeof insertWidgetAnalyticsSchema>;
 
+// Widget API Keys for secure access to the widget API
+export const widgetApiKeys = pgTable("widget_api_keys", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  tenantId: integer("tenantId").notNull(),
+  createdBy: integer("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastUsed: timestamp("lastUsed"),
+  expiresAt: timestamp("expiresAt"),
+  domains: json("domains").$type<string[]>().default([]),
+  useCount: integer("useCount").default(0).notNull(),
+  description: text("description"),
+  permissions: json("permissions").$type<z.infer<typeof ApiKeyPermissionEnum>>().default({
+    read: true,
+    write: true,
+    webhook: false
+  }).notNull(),
+  isRevoked: boolean("isRevoked").default(false).notNull()
+});
+
+export const insertWidgetApiKeySchema = createInsertSchema(widgetApiKeys)
+  .omit({ id: true, createdAt: true, useCount: true, lastUsed: true, isRevoked: true });
+
+export type WidgetApiKey = typeof widgetApiKeys.$inferSelect;
+export type InsertWidgetApiKey = z.infer<typeof insertWidgetApiKeySchema>;
+
 // AI provider configurations
 export const aiProviders = pgTable("ai_providers", {
   id: serial("id").primaryKey(),

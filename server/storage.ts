@@ -7,6 +7,7 @@ import {
   tenants,
   identityProviders,
   widgetAnalytics,
+  widgetApiKeys,
   aiProviders,
   supportDocuments,
   documentUsage,
@@ -27,6 +28,8 @@ import {
   type InsertIdentityProvider,
   type WidgetAnalytics,
   type InsertWidgetAnalytics,
+  type WidgetApiKey,
+  type InsertWidgetApiKey,
   type AiProvider,
   type InsertAiProvider,
   type SupportDocument,
@@ -54,6 +57,15 @@ export interface IStorage {
   getAllTenants(): Promise<Tenant[]>;
   createTenant(tenant: InsertTenant): Promise<Tenant>;
   updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant>;
+  
+  // Widget API Key operations
+  getApiKeyById(id: number): Promise<WidgetApiKey | undefined>;
+  getApiKeyByValue(key: string): Promise<WidgetApiKey | undefined>;
+  getApiKeysByTenant(tenantId: number): Promise<WidgetApiKey[]>;
+  createApiKey(apiKey: Omit<WidgetApiKey, 'id'>): Promise<WidgetApiKey>;
+  updateApiKey(id: number, updates: Partial<WidgetApiKey>): Promise<WidgetApiKey>;
+  updateApiKeyUsage(id: number): Promise<void>;
+  deleteApiKey(id: number): Promise<boolean>;
   
   // Team operations
   getTeamById(id: number, tenantId?: number): Promise<Team | undefined>;

@@ -9,7 +9,7 @@ import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
 import { MessageSquare, X, Video, Image, Camera, Upload, Paperclip, RefreshCcw } from "lucide-react";
 import { InsertTicket, InsertAttachment } from "@shared/schema";
-
+import { useChatbot } from "@/contexts/ChatbotContext";
 type Message = {
   id: string;
   content: string;
@@ -37,8 +37,14 @@ const isDuplicateTicket = (title: string, createdTickets: { id: number, issue: s
 };
 
 export default function ChatbotInterface() {
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Get shared state from context
+  const { 
+    isChatOpen, setIsChatOpen,
+    messages, setMessages,
+    position, setPosition,
+    isDragging, setIsDragging
+  } = useChatbot();
+  
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -49,15 +55,7 @@ export default function ChatbotInterface() {
   // Track created tickets with their issues to prevent duplicates
   const [createdTickets, setCreatedTickets] = useState<{id: number, issue: string}[]>([]);
   
-  // Draggable position state - always reset to default on page refresh 
-  // but maintain position during page navigation
-  const [position, setPosition] = useState(() => {
-    // Default position (bottom right)
-    return { right: '24px', bottom: '24px', left: 'auto', top: 'auto' };
-  });
-  
-  // Dragging state
-  const [isDragging, setIsDragging] = useState(false);
+  // Local state for drag handling
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Ref for the chat button

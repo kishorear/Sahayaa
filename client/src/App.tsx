@@ -29,6 +29,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CreatorProtectedRoute } from "@/lib/creator-protected-route"; // Creator route protection
 import RegistrationPage from "@/pages/admin/RegistrationPage"; // Registration page
+import { ChatbotProvider } from "@/contexts/ChatbotContext"; // Import our new ChatbotProvider
 
 function Router() {
   return (
@@ -73,9 +74,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <ProtectedChatbot />
-        <Toaster />
+        <ChatbotProvider>
+          <Router />
+          <ProtectedChatbot />
+          <Toaster />
+        </ChatbotProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

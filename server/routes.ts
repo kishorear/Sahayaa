@@ -36,8 +36,6 @@ import { registerDocumentRoutes } from "./routes/document-routes";
 import { registerDownloadRoutes } from "./routes/download-routes";
 // Import the widget download routes registration function
 import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
-// Import widget API key routes for managing API keys
-import { registerWidgetApiKeyRoutes } from "./routes/widget-api-keys-routes";
 // Import creator routes for multi-tenant management
 import creatorRoutes from "./routes/creator-routes";
 // Import AI provider availability routes
@@ -153,9 +151,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register widget download routes
   registerWidgetDownloadRoutes(app);
-  
-  // Register widget API key routes
-  registerWidgetApiKeyRoutes(app);
   
   // Register widget analytics routes
   registerWidgetAnalyticsRoutes(app, requireAuth);

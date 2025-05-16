@@ -10,9 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import WidgetAnalyticsComponent from "@/components/admin/WidgetAnalytics";
-import WidgetApiKeys from "@/components/admin/WidgetApiKeys";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, ClipboardCopy, Download, Code, BarChart, Key } from "lucide-react";
+import { ArrowRight, ClipboardCopy, Download, Code, BarChart } from "lucide-react";
 
 export default function ChatWidgetPage() {
   const { user } = useAuth();
@@ -30,7 +29,7 @@ export default function ChatWidgetPage() {
 <script>
   window.supportAiConfig = {
     tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
-    apiKey: "YOUR_WIDGET_API_KEY", // Generate an API key from the "Widget API Keys" section below
+    apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
     primaryColor: "${primaryColor}",
     position: "${widgetPosition}",
     greetingMessage: "${greetingMessage}",
@@ -63,7 +62,7 @@ function App() {
       
       <SupportAIChat
         tenantId="${user?.tenantId || 'YOUR_TENANT_ID'}"
-        apiKey="YOUR_WIDGET_API_KEY" // Generate an API key from the "Widget API Keys" section below
+        apiKey="${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}"
         primaryColor="${primaryColor}"
         position="${widgetPosition}"
         greetingMessage="${greetingMessage}"
@@ -274,7 +273,7 @@ function App() {
 // Initialize the widget
 initSupportAI({
   tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
-  apiKey: "YOUR_WIDGET_API_KEY", // Generate an API key from the "Widget API Keys" section below
+  apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
   primaryColor: "${primaryColor}",
   position: "${widgetPosition}",
   greetingMessage: "${greetingMessage}",
@@ -426,11 +425,6 @@ initSupportAI({
           </CardContent>
         </Card>
 
-        {/* Widget API Keys */}
-        <div className="mt-8 mb-8">
-          <WidgetApiKeys />
-        </div>
-        
         {/* Widget Analytics */}
         <Card className="mt-8">
           <CardHeader>

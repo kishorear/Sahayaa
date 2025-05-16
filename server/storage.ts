@@ -216,6 +216,7 @@ export class MemStorage implements IStorage {
     this.aiProviderIdCounter = 1;
     this.supportDocumentIdCounter = 1;
     this.documentUsageIdCounter = 1;
+    this.widgetApiKeyIdCounter = 1;
     
     // Initialize sample documents in the constructor
     this.initSampleSupportDocuments();
@@ -1958,6 +1959,70 @@ export class MemStorage implements IStorage {
       context: 'view',
       metadata: null
     });
+  }
+  
+  // Widget API Key methods
+  async getApiKeyById(id: number): Promise<WidgetApiKey | undefined> {
+    return this.widgetApiKeysData.get(id);
+  }
+
+  async getApiKeyByValue(key: string): Promise<WidgetApiKey | undefined> {
+    for (const apiKey of this.widgetApiKeysData.values()) {
+      if (apiKey.key === key) {
+        return apiKey;
+      }
+    }
+    return undefined;
+  }
+
+  async getApiKeysByTenant(tenantId: number): Promise<WidgetApiKey[]> {
+    const results: WidgetApiKey[] = [];
+    for (const apiKey of this.widgetApiKeysData.values()) {
+      if (apiKey.tenantId === tenantId) {
+        results.push(apiKey);
+      }
+    }
+    return results;
+  }
+
+  async createApiKey(apiKey: Omit<WidgetApiKey, 'id'>): Promise<WidgetApiKey> {
+    const id = this.widgetApiKeyIdCounter++;
+    const now = new Date();
+    const newApiKey: WidgetApiKey = {
+      id,
+      createdAt: now,
+      ...apiKey,
+      isRevoked: false,
+    };
+    this.widgetApiKeysData.set(id, newApiKey);
+    return newApiKey;
+  }
+
+  async updateApiKey(id: number, updates: Partial<WidgetApiKey>): Promise<WidgetApiKey> {
+    const existingApiKey = await this.getApiKeyById(id);
+    if (!existingApiKey) {
+      throw new Error(`API key with ID ${id} not found`);
+    }
+    
+    const updatedApiKey = { ...existingApiKey, ...updates };
+    this.widgetApiKeysData.set(id, updatedApiKey);
+    return updatedApiKey;
+  }
+
+  async updateApiKeyUsage(id: number): Promise<void> {
+    const apiKey = await this.getApiKeyById(id);
+    if (apiKey) {
+      const updatedApiKey = {
+        ...apiKey,
+        lastUsed: new Date(),
+        useCount: (apiKey.useCount || 0) + 1
+      };
+      this.widgetApiKeysData.set(id, updatedApiKey);
+    }
+  }
+
+  async deleteApiKey(id: number): Promise<boolean> {
+    return this.widgetApiKeysData.delete(id);
   }
   
   // Document usage operations

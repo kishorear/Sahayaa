@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Widget Test - Page 3</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .header {
+            background-color: #00b894;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .container {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .nav a {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #00b894;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .info {
+            border-left: 4px solid #00b894;
+            padding-left: 15px;
+            margin: 20px 0;
+        }
+        .success-message {
+            background-color: #e0f7e0;
+            border: 1px solid #00b894;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .success-message h3 {
+            color: #00b894;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Widget Test - Page 3</h1>
+        <p>Testing the universal embeddable chat widget</p>
+    </div>
+
+    <div class="container">
+        <h2>Navigation Test</h2>
+        <p>Use these links to navigate between pages and test chat persistence:</p>
+        
+        <div class="nav">
+            <a href="test-universal-widget.html">Page 1</a>
+            <a href="test-universal-widget-page2.html">Page 2</a>
+            <a href="test-universal-widget-page3.html">Page 3</a>
+        </div>
+        
+        <div class="success-message">
+            <h3>✓ Testing Complete</h3>
+            <p>If you've reached this page and your chat widget is still working with the conversation intact, the persistence is working correctly!</p>
+            <p>Try clicking the chat button to close it, then reopening it to verify the messages are still saved.</p>
+        </div>
+        
+        <div class="info">
+            <h3>Key Improvements:</h3>
+            <ul>
+                <li><strong>Performance:</strong> Removed complex dragging functionality for better reliability</li>
+                <li><strong>State Management:</strong> Using sessionStorage for more predictable behavior</li>
+                <li><strong>Navigation Awareness:</strong> Widget detects page changes through multiple methods</li>
+                <li><strong>Design:</strong> Logo updated with thin circle stroke and increased dimensions</li>
+                <li><strong>Simplified Interface:</strong> Removed unnecessary features for better core performance</li>
+            </ul>
+        </div>
+        
+        <p>This is page 3 of the test. The chat widget should have maintained its state all the way from page 1 through page 2 to here.</p>
+    </div>
+    
+    <!-- The widget script only needs to be included once on every page -->
+    <script src="/downloads/widget/universal-support-script.js"></script>
+</body>
+</html>

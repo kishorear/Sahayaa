@@ -131,7 +131,9 @@ export function registerWidgetApiKeyRoutes(app: Express): void {
         description: description || `Widget API key created by ${userId}`,
         permissions: permissions,
         lastUsed: null,
-        useCount: 0
+        useCount: 0,
+        createdAt: new Date(),
+        isRevoked: false
       };
       
       await storage.createApiKey(apiKeyData);
@@ -311,6 +313,10 @@ export function registerWidgetApiKeyRoutes(app: Express): void {
       
       // Return the tenant information
       const tenant = await storage.getTenantById(storedKey.tenantId);
+      
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant not found' });
+      }
       
       res.status(200).json({
         valid: true,

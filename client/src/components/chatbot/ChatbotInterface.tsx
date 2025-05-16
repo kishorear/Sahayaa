@@ -9,7 +9,13 @@ import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
 import { MessageSquare, X, Video, Image, Camera, Upload, Paperclip, RefreshCcw } from "lucide-react";
 import { InsertTicket, InsertAttachment } from "@shared/schema";
-import { useChatbot, ChatMessage } from "@/contexts/ChatbotContext";
+
+type Message = {
+  id: string;
+  content: string;
+  sender: "user" | "ai";
+  timestamp: Date;
+};
 
 // Check if a ticket already exists for a given issue
 const isDuplicateTicket = (title: string, createdTickets: { id: number, issue: string }[]): boolean => {
@@ -31,15 +37,8 @@ const isDuplicateTicket = (title: string, createdTickets: { id: number, issue: s
 };
 
 export default function ChatbotInterface() {
-  // Get shared state from context - this persists across page navigation
-  const { 
-    isChatOpen, setIsChatOpen,
-    messages, setMessages,
-    position, setPosition,
-    isDragging, setIsDragging
-  } = useChatbot();
-  
-  // Local component state - resets on navigation
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -47,18 +46,80 @@ export default function ChatbotInterface() {
   const [currentTicketId, setCurrentTicketId] = useState<number | null>(null);
   const [suggestedTicketData, setSuggestedTicketData] = useState<InsertTicket | null>(null);
   const [awaitingTicketConfirmation, setAwaitingTicketConfirmation] = useState(false);
+  // Track created tickets with their issues to prevent duplicates
   const [createdTickets, setCreatedTickets] = useState<{id: number, issue: string}[]>([]);
   
-  // Local state for drag handling
+  // Draggable position state - always reset to default on page refresh 
+  // but maintain position during navigation
+  const [position, setPosition] = useState(() => {
+    // Default position (bottom right)
+    return { right: '24px', bottom: '24px', left: 'auto', top: 'auto' };
+  });
+  
+  // Dragging state
+  const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Refs
   const chatButtonRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
   const { toast } = useToast();
   
+  // Initialize with welcome message
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        {
+          id: "welcome",
+          content: "Hello! I'm your AI support assistant. How can I help you today?",
+          sender: "ai",
+          timestamp: new Date(),
+        },
+      ]);
+    }
+  }, [messages]);
+  
+  // Load chat state from sessionStorage - helps with page navigation
+  useEffect(() => {
+    const savedChatState = sessionStorage.getItem('chatbotState');
+    if (savedChatState) {
+      try {
+        const state = JSON.parse(savedChatState);
+        if (state.messages && Array.isArray(state.messages)) {
+          // Convert ISO timestamps back to Date objects
+          const messagesWithDates = state.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(messagesWithDates);
+          setIsChatOpen(state.isOpen || false);
+          
+          // If we have a position stored, use it
+          if (state.position) {
+            setPosition(state.position);
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing saved chat state:', err);
+      }
+    }
+  }, []);
+  
+  // Save chat state to sessionStorage when it changes
+  useEffect(() => {
+    // Don't save empty state
+    if (messages.length === 0) return;
+    
+    // Save to sessionStorage for navigation persistence
+    const chatState = {
+      messages,
+      isOpen: isChatOpen,
+      position
+    };
+    sessionStorage.setItem('chatbotState', JSON.stringify(chatState));
+  }, [messages, isChatOpen, position]);
+
   // Drag start handler
   const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if ('touches' in e) {
@@ -152,7 +213,7 @@ export default function ChatbotInterface() {
       document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging, dragOffset, position]);
-  
+
   // Auto scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -182,7 +243,7 @@ export default function ChatbotInterface() {
   });
   
   const chatbotMutation = useMutation({
-    mutationFn: async (payload: { message: string, messageHistory: ChatMessage[] }) => {
+    mutationFn: async (payload: { message: string, messageHistory: Message[] }) => {
       return await apiRequest("POST", "/api/chatbot", payload);
     },
     onSuccess: async (response) => {
@@ -579,7 +640,9 @@ export default function ChatbotInterface() {
   };
   
   const toggleChat = () => {
+    console.log("Toggle chat clicked. Current state:", isChatOpen);
     setIsChatOpen(!isChatOpen);
+    console.log("New chat state set to:", !isChatOpen);
   };
   
   return (

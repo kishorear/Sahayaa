@@ -21,6 +21,7 @@ import ChatWidgetPage from "@/pages/admin/ChatWidgetPage"; // New Chat Widget Pa
 import AISettingsPage from "@/pages/admin/AISettingsPage"; // AI Provider Settings Page
 import DocumentsPage from "@/pages/admin/DocumentsPage"; // Knowledge base documents management
 import MCPTestPage from "@/pages/MCP-Test-Page"; // MCP Testing Page
+import WidgetTestPage from "@/pages/WidgetTestPage"; // Widget Testing Page
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
 import CreatorLoginPage from "@/pages/creator/CreatorLoginPage"; // Creator login page
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/contact" component={ContactUsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/mcp-test" component={MCPTestPage} />
+      <Route path="/widget-test" component={WidgetTestPage} />
       
       {/* Creator Routes */}
       <Route path="/creator/login" component={CreatorLoginPage} />

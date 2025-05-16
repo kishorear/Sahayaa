@@ -18,9 +18,40 @@ type Message = {
 };
 
 export default function ChatbotInterface() {
-  // Basic state
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Basic state with sessionStorage persistence
+  const [isChatOpen, setIsChatOpen] = useState(() => {
+    // Try to load chat open state from sessionStorage
+    const savedState = sessionStorage.getItem('chatState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        return state.isOpen || false;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  });
+  
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Try to load messages from sessionStorage
+    const savedMessages = sessionStorage.getItem('chatMessages');
+    if (savedMessages) {
+      try {
+        const parsedMessages = JSON.parse(savedMessages);
+        // Convert string timestamps back to Date objects
+        return parsedMessages.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+      } catch (e) {
+        console.error("Error parsing saved messages:", e);
+        return [];
+      }
+    }
+    return [];
+  });
+  
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -31,7 +62,7 @@ export default function ChatbotInterface() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  // Initialize with welcome message
+  // Initialize with welcome message if no messages exist
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([
@@ -44,6 +75,17 @@ export default function ChatbotInterface() {
       ]);
     }
   }, []);
+  
+  // Save chat state to sessionStorage whenever it changes
+  useEffect(() => {
+    // Save chat open state
+    sessionStorage.setItem('chatState', JSON.stringify({ isOpen: isChatOpen }));
+    
+    // Save messages only if we have any
+    if (messages.length > 0) {
+      sessionStorage.setItem('chatMessages', JSON.stringify(messages));
+    }
+  }, [isChatOpen, messages]);
   
   // Auto scroll to bottom on new messages
   useEffect(() => {

@@ -105,6 +105,23 @@ function App() {
       case "API documentation":
         window.location.href = '/downloads/widget/api-documentation.md';
         break;
+      case "auth widget package":
+        // Construct URL with query parameters for authenticated widget package
+        const authQueryParams = new URLSearchParams({
+          tenantId: String(user?.tenantId || 1),
+          userId: String(user?.id || 1),
+          primaryColor: primaryColor.replace('#', ''),
+          position: widgetPosition,
+          greetingMessage: encodeURIComponent(greetingMessage),
+          autoOpen: String(autoOpen),
+          branding: String(includeBranding),
+          reportData: 'true',
+          authWidget: 'true' // Flag to indicate this is the authenticated widget
+        });
+        
+        // Use the dynamic widget download API
+        window.location.href = `/api/widgets/download?${authQueryParams.toString()}`;
+        break;
       case "full widget package":
       case "widget package":
         // Construct URL with query parameters for customized widget package
@@ -132,6 +149,28 @@ function App() {
     }
   };
 
+  // Generate authenticated widget code
+  const getAuthEmbedCode = () => {
+    return `<!-- Support AI Authenticated Chat Widget -->
+<script>
+  window.supportAiConfig = {
+    tenantId: ${user?.tenantId || 'YOUR_TENANT_ID'},
+    apiKey: "${user?.id || 'YOUR_API_KEY'}_${user?.tenantId || 'TENANT'}_${new Date().getTime()}",
+    primaryColor: "${primaryColor}",
+    position: "${widgetPosition}",
+    apiEndpoint: "https://${window.location.hostname}/api",
+    authEndpoint: "https://${window.location.hostname}/api/auth",
+    requireAuth: true,
+    greetingMessage: "${greetingMessage}",
+    autoOpen: ${autoOpen},
+    branding: ${includeBranding},
+    reportData: true,
+    adminId: ${user?.id || 'YOUR_ADMIN_ID'}
+  };
+</script>
+<script src="supportai-auth-widget.js" async></script>`;
+  };
+
   return (
     <AdminLayout>
       <div className="container mx-auto p-6">
@@ -142,10 +181,16 @@ function App() {
               Customize and embed the Support AI chat widget in your application
             </p>
           </div>
-          <Button onClick={() => handleDownload("widget package")}>
-            <Download className="mr-2 h-4 w-4" />
-            Download Package
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => handleDownload("widget package")} variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Basic Widget
+            </Button>
+            <Button onClick={() => handleDownload("auth widget package")}>
+              <Download className="mr-2 h-4 w-4" />
+              Auth Widget
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -235,14 +280,15 @@ function App() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="code">HTML Embed</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="code">Basic Embed</TabsTrigger>
+                  <TabsTrigger value="auth">Auth Embed</TabsTrigger>
                   <TabsTrigger value="npm">NPM Package</TabsTrigger>
                   <TabsTrigger value="react">React Component</TabsTrigger>
                 </TabsList>
                 <TabsContent value="code" className="p-4 border rounded-md mt-4 bg-gray-50 dark:bg-gray-900">
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium">HTML Script Tag</h3>
+                    <h3 className="text-sm font-medium">Basic HTML Embed</h3>
                     <Button variant="ghost" size="sm" onClick={() => copyToClipboard(getEmbedCode())}>
                       <ClipboardCopy className="h-4 w-4 mr-1" />
                       Copy
@@ -254,6 +300,31 @@ function App() {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
                     Add this code to your website's HTML, preferably right before the closing <code>&lt;/body&gt;</code> tag.
                   </p>
+                </TabsContent>
+                
+                <TabsContent value="auth" className="p-4 border rounded-md mt-4 bg-gray-50 dark:bg-gray-900">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-medium">Authenticated HTML Embed</h3>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(getAuthEmbedCode())}>
+                      <ClipboardCopy className="h-4 w-4 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-sm overflow-x-auto">
+                    {getAuthEmbedCode()}
+                  </pre>
+                  <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-md mt-4">
+                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Enhanced Widget with Authentication</h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      This version of the widget includes user authentication and connects to your configured AI provider. Users will need to log in before chatting.
+                    </p>
+                    <div className="flex mt-3">
+                      <Button variant="outline" size="sm" onClick={() => handleDownload("auth widget package")}>
+                        <Download className="h-4 w-4 mr-1" />
+                        Download Auth Widget Package
+                      </Button>
+                    </div>
+                  </div>
                 </TabsContent>
                 <TabsContent value="npm" className="p-4 border rounded-md mt-4 bg-gray-50 dark:bg-gray-900">
                   <div className="flex justify-between items-center mb-2">

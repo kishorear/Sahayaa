@@ -40,6 +40,8 @@ import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
 import { registerWidgetApiKeyRoutes } from "./routes/widget-api-keys-routes";
 // Import widget authentication routes for client integration
 import { registerWidgetAuthRoutes } from "./routes/widget-auth-routes";
+// Import widget chat authentication routes
+import { registerWidgetChatAuthRoutes } from "./routes/widget-chat-auth-routes";
 // Import creator routes for multi-tenant management
 import creatorRoutes from "./routes/creator-routes";
 // Import AI provider availability routes
@@ -161,6 +163,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register widget authentication routes for client website integration
   registerWidgetAuthRoutes(app);
+  
+  // Register widget chat authentication routes for client website integration
+  registerWidgetChatAuthRoutes(app);
   
   // Register widget analytics routes
   registerWidgetAnalyticsRoutes(app, requireAuth);

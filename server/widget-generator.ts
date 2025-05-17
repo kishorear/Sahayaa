@@ -92,11 +92,68 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   // Read the universal sample HTML
   const universalSampleHtml = fs.readFileSync(path.join(baseDir, 'universal-sample.html'), 'utf8');
   
+  // Read the auth script template (widget with authentication)
+  const authScript = fs.readFileSync(path.join(baseDir, 'auth-support-script.js'), 'utf8');
+  
+  // Read the widget login module
+  const loginScript = fs.readFileSync(path.join(baseDir, 'support-widget-login.js'), 'utf8');
+  
+  // Read the auth sample implementation
+  const authSampleHtml = fs.readFileSync(path.join(baseDir, 'auth-sample-implementation.html'), 'utf8');
+  
+  // Read the auth integration guide
+  const authGuide = fs.readFileSync(path.join(baseDir, 'auth-integration-guide.md'), 'utf8');
+  
+  // Customize the auth script with the provided configuration
+  const apiEndpoint = `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'your-domain.com'}/api`;
+  const authEndpoint = `${apiEndpoint}/auth`;
+  
+  const customizedAuthScript = authScript
+    .replace('__TENANT_ID__', config.tenantId.toString())
+    .replace('__API_KEY__', config.apiKey)
+    .replace('__PRIMARY_COLOR__', config.primaryColor)
+    .replace('__POSITION__', config.position)
+    .replace('__GREETING_MESSAGE__', config.greetingMessage)
+    .replace('__AUTO_OPEN__', config.autoOpen.toString())
+    .replace('__BRANDING__', config.branding.toString())
+    .replace('__REPORT_DATA__', config.reportData.toString())
+    .replace('__ADMIN_ID__', config.adminId.toString())
+    .replace('__API_ENDPOINT__', apiEndpoint)
+    .replace('__AUTH_ENDPOINT__', authEndpoint);
+  
+  // Customize the login script
+  const customizedLoginScript = loginScript
+    .replace('__TENANT_ID__', config.tenantId.toString())
+    .replace('__API_KEY__', config.apiKey)
+    .replace('__PRIMARY_COLOR__', config.primaryColor)
+    .replace('__API_ENDPOINT__', apiEndpoint)
+    .replace('__AUTH_ENDPOINT__', authEndpoint);
+  
+  // Customize the auth sample implementation
+  const customizedAuthSample = authSampleHtml
+    .replace('__TENANT_ID__', config.tenantId.toString())
+    .replace('__API_KEY__', config.apiKey)
+    .replace('__API_ENDPOINT__', apiEndpoint)
+    .replace('__AUTH_ENDPOINT__', authEndpoint)
+    .replace('__ADMIN_ID__', config.adminId.toString());
+  
+  // Customize the auth integration guide
+  const customizedAuthGuide = authGuide
+    .replace('__TENANT_ID__', config.tenantId.toString())
+    .replace('__API_KEY__', config.apiKey)
+    .replace('__PRIMARY_COLOR__', config.primaryColor)
+    .replace('__API_ENDPOINT__', apiEndpoint)
+    .replace('__AUTH_ENDPOINT__', authEndpoint);
+  
   // Add the customized files to the archive
   archive.append(customizedWidgetJs, { name: 'supportai-widget.js' });
   archive.append(customizedUniversalScript, { name: 'supportai-universal.js' });
+  archive.append(customizedAuthScript, { name: 'supportai-auth-widget.js' });
+  archive.append(customizedLoginScript, { name: 'supportai-widget-login.js' });
   archive.append(customizedSampleHtml, { name: 'sample-implementation.html' });
   archive.append(universalSampleHtml, { name: 'universal-sample.html' });
+  archive.append(customizedAuthSample, { name: 'auth-sample-implementation.html' });
+  archive.append(customizedAuthGuide, { name: 'auth-integration-guide.md' });
   archive.append(readmeContent, { name: 'README.md' });
 
   // Create a Windows batch file for installation
@@ -161,7 +218,36 @@ The universal integration offers these powerful features:
 
 For a live demonstration of these features, check out the included universal-sample.html file.
 
-### Option 3: Using NPM
+### Option 3: Authenticated Widget Integration (Recommended)
+For a secure experience with user authentication and personalized AI support:
+
+\`\`\`html
+<!-- Support AI Authenticated Widget -->
+<script>
+  window.supportAiConfig = {
+    tenantId: ${config.tenantId},
+    apiKey: "${config.apiKey}",
+    primaryColor: "${config.primaryColor}",
+    position: "${config.position}",
+    apiEndpoint: "https://your-domain.com/api",
+    authEndpoint: "https://your-domain.com/api/auth",
+    requireAuth: true,
+    greetingMessage: "Hello! Please log in to get assistance."
+  };
+</script>
+<script src="supportai-auth-widget.js" async></script>
+\`\`\`
+
+The authenticated widget includes these advanced features:
+- **User Authentication** - Secure login/registration system built-in
+- **AI Provider Integration** - Connects to your tenant's configured AI provider
+- **Personalized Support** - Tailored assistance based on user profiles
+- **Cross-page Session Persistence** - Maintains login state during browsing
+- **Secure API Communication** - Authenticated requests with JWT tokens
+
+For a complete integration guide with authentication, see the included auth-integration-guide.md file.
+
+### Option 4: Using NPM
 Install the widget package using npm:
 
 \`\`\`bash
@@ -187,9 +273,6 @@ SupportAIChat.init({
 });
 \`\`\`
 
-### Option 4: For Windows Applications
-For Windows applications, you can use the included \`install-widget.bat\` script to add the widget to your application. Double-click the batch file and follow the on-screen instructions.
-
 ## Configuration Options
 
 | Option | Description |
@@ -197,14 +280,30 @@ For Windows applications, you can use the included \`install-widget.bat\` script
 | tenantId | Your Support AI tenant ID |
 | apiKey | Your API key for authentication |
 | primaryColor | The primary color of the widget |
-| position | Widget position (right, left, center) |
+| position | Widget position (right, left) |
 | greetingMessage | Initial message displayed in the chat |
 | autoOpen | Whether to automatically open the chat widget |
 | branding | Whether to show Support AI branding |
 | reportData | Whether to send analytics data |
+| apiEndpoint | URL of your Support AI API (for authenticated widget) |
+| authEndpoint | URL of your authentication API (for authenticated widget) |
+| requireAuth | Whether user login is required (for authenticated widget) |
+
+## Integration Types Comparison
+
+| Feature | Standard Widget | Universal Widget | Authenticated Widget |
+|---------|----------------|------------------|---------------------|
+| Basic chat functionality | ✓ | ✓ | ✓ |
+| Custom styling | ✓ | ✓ | ✓ |
+| Cross-page persistence | ✗ | ✓ | ✓ |
+| User authentication | ✗ | ✗ | ✓ |
+| AI provider connection | ✗ | ✗ | ✓ |
+| Personalized support | ✗ | ✗ | ✓ |
 
 ## Need Help?
-See the documentation.md file for more detailed documentation, or contact Support AI support for assistance.
+See the documentation.md file for more detailed documentation on basic integration.
+For authenticated integration, see auth-integration-guide.md for a comprehensive guide.
+If you need further assistance, contact Support AI support.
 `;
 }
 

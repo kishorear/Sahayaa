@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, uniqueIndex, varchar, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // AI provider types
 export const AiProviderTypeEnum = z.enum([
@@ -19,6 +20,13 @@ export const DocumentStatusEnum = z.enum([
   'published',
   'archived'
 ]);
+
+// API key permissions enum
+export const ApiKeyPermissionEnum = z.object({
+  read: z.boolean().default(true),
+  write: z.boolean().default(true),
+  webhook: z.boolean().default(false)
+});
 
 // Tenant table for multi-tenant support
 export const tenants = pgTable("tenants", {
@@ -302,6 +310,32 @@ export const insertWidgetAnalyticsSchema = createInsertSchema(widgetAnalytics)
 
 export type WidgetAnalytics = typeof widgetAnalytics.$inferSelect;
 export type InsertWidgetAnalytics = z.infer<typeof insertWidgetAnalyticsSchema>;
+
+// Widget API Keys for secure access to the widget API
+export const widgetApiKeys = pgTable("widget_api_keys", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  tenantId: integer("tenantId").notNull(),
+  createdBy: integer("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastUsed: timestamp("lastUsed"),
+  expiresAt: timestamp("expiresAt"),
+  domains: json("domains").$type<string[]>().default([]),
+  useCount: integer("useCount").default(0).notNull(),
+  description: text("description"),
+  permissions: json("permissions").$type<z.infer<typeof ApiKeyPermissionEnum>>().default({
+    read: true,
+    write: true,
+    webhook: false
+  }).notNull(),
+  isRevoked: boolean("isRevoked").default(false).notNull()
+});
+
+export const insertWidgetApiKeySchema = createInsertSchema(widgetApiKeys)
+  .omit({ id: true, createdAt: true, useCount: true, lastUsed: true, isRevoked: true });
+
+export type WidgetApiKey = typeof widgetApiKeys.$inferSelect;
+export type InsertWidgetApiKey = z.infer<typeof insertWidgetApiKeySchema>;
 
 // AI provider configurations
 export const aiProviders = pgTable("ai_providers", {

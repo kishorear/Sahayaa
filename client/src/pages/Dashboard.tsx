@@ -138,9 +138,12 @@ export default function Dashboard() {
       <Dialog open={showWidgetDialog} onOpenChange={setShowWidgetDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Configure Chat Widget</DialogTitle>
+            <DialogTitle>Configure {isAuthWidget ? 'Authentication-Enabled' : 'Standard'} Chat Widget</DialogTitle>
             <DialogDescription>
-              Customize your embedded chat widget appearance and behavior before downloading.
+              {isAuthWidget 
+                ? "Customize your authentication-enabled chat widget for client website integration. This version requires users to log in before accessing support."
+                : "Customize your embedded chat widget appearance and behavior before downloading."
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -238,15 +241,46 @@ export default function Dashboard() {
                 </Label>
               </div>
             </div>
+            
+            {/* Authentication options - only shown for auth widget */}
+            {isAuthWidget && (
+              <>
+                <div className="border-t border-gray-200 dark:border-gray-700 my-4 pt-4">
+                  <h3 className="font-medium text-lg mb-2">Authentication Settings</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    Configure how users authenticate with the chat widget when integrated on your client's website.
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="requireAuth" className="text-right">
+                    Require Login
+                  </Label>
+                  <div className="flex items-center space-x-2 col-span-3">
+                    <Switch
+                      id="requireAuth"
+                      checked={widgetConfig.requireAuth}
+                      onCheckedChange={(checked) => handleWidgetConfigChange('requireAuth', checked)}
+                    />
+                    <Label htmlFor="requireAuth" className="text-sm text-muted-foreground">
+                      Users must log in before chatting
+                    </Label>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowWidgetDialog(false)}>
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button onClick={downloadWidgetPackage}>
+            <Button 
+              onClick={downloadWidgetPackage}
+              className={isAuthWidget ? "bg-purple-600 hover:bg-purple-700" : ""}
+            >
               <Download className="mr-2 h-4 w-4" />
-              Download Widget
+              Download {isAuthWidget ? 'Auth Widget' : 'Widget'} Package
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
-import { generateAuthWidgetPackage, type WidgetConfig } from "../widget-auth-generator.js";
+import { generateAuthWidgetPackage, type WidgetConfig } from "../widget-auth-generator";
 
 /**
  * Widget download request validation schema

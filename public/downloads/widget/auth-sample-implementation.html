@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support AI Chat Widget - Authentication Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 40px;
+      background-color: #f7fafc;
+      color: #1a202c;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    h1 {
+      font-size: 28px;
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+    
+    h2 {
+      font-size: 22px;
+      color: #4a5568;
+      margin: 30px 0 15px;
+    }
+    
+    p {
+      margin-bottom: 20px;
+    }
+    
+    .code-block {
+      background-color: #f1f5f9;
+      border-radius: 4px;
+      padding: 20px;
+      font-family: monospace;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      margin-bottom: 30px;
+    }
+    
+    .feature-list {
+      list-style-type: disc;
+      padding-left: 20px;
+    }
+    
+    .feature-list li {
+      margin-bottom: 10px;
+    }
+    
+    .config-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    
+    .config-table th, .config-table td {
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+      text-align: left;
+    }
+    
+    .config-table th {
+      background-color: #f8fafc;
+      font-weight: 600;
+    }
+    
+    .config-controls {
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #f1f5f9;
+      border-radius: 4px;
+    }
+    
+    .control-group {
+      margin-bottom: 15px;
+    }
+    
+    .control-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    
+    .control-group input, .control-group select {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .control-group input[type="checkbox"] {
+      width: auto;
+    }
+    
+    .button {
+      background-color: #4F46E5;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    
+    .button:hover {
+      background-color: #4338CA;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 14px;
+      color: #718096;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Support AI Chat Widget Integration</h1>
+      <p>A complete demonstration of the Support AI Chat Widget with authentication functionality</p>
+    </header>
+    
+    <h2>What's Included</h2>
+    <p>This demo shows how to integrate the Support AI Chat Widget with user authentication into your website:</p>
+    <ul class="feature-list">
+      <li><strong>User Authentication:</strong> Require users to log in before chatting</li>
+      <li><strong>API Key Integration:</strong> Connect to your tenant's AI configuration</li>
+      <li><strong>Persistent Sessions:</strong> Remember logged-in users between page visits</li>
+      <li><strong>Customizable Settings:</strong> Adjust appearance and behavior to match your site</li>
+      <li><strong>Secure Communication:</strong> All data is transmitted securely</li>
+    </ul>
+    
+    <h2>Configuration Options</h2>
+    <table class="config-table">
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>tenantId</td>
+          <td>Your Support AI tenant ID</td>
+          <td>Required</td>
+        </tr>
+        <tr>
+          <td>apiKey</td>
+          <td>Your API key for authentication</td>
+          <td>Required</td>
+        </tr>
+        <tr>
+          <td>primaryColor</td>
+          <td>The primary color of the widget</td>
+          <td>#6366F1</td>
+        </tr>
+        <tr>
+          <td>position</td>
+          <td>Widget position (right, left, center)</td>
+          <td>right</td>
+        </tr>
+        <tr>
+          <td>greetingMessage</td>
+          <td>Initial message displayed in the chat</td>
+          <td>How can I help you today?</td>
+        </tr>
+        <tr>
+          <td>requireAuth</td>
+          <td>Whether users must log in before chatting</td>
+          <td>true</td>
+        </tr>
+        <tr>
+          <td>autoOpen</td>
+          <td>Whether to automatically open the chat widget</td>
+          <td>false</td>
+        </tr>
+        <tr>
+          <td>branding</td>
+          <td>Whether to show Support AI branding</td>
+          <td>true</td>
+        </tr>
+        <tr>
+          <td>reportData</td>
+          <td>Whether to send analytics data</td>
+          <td>true</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <h2>Integration Code</h2>
+    <p>Add the following code to your website to integrate the Support AI Chat Widget:</p>
+    <div class="code-block">
+&lt;!-- Support AI Chat Widget Configuration --&gt;
+&lt;script&gt;
+  window.supportAiConfig = {
+    tenantId: __TENANT_ID__,
+    apiKey: "__API_KEY__",
+    primaryColor: "__PRIMARY_COLOR__",
+    position: "__POSITION__",
+    greetingMessage: "__GREETING_MESSAGE__",
+    requireAuth: true,
+    autoOpen: __AUTO_OPEN__,
+    branding: __BRANDING__,
+    reportData: __REPORT_DATA__
+  };
+&lt;/script&gt;
+
+&lt;!-- Support AI Chat Widget Script --&gt;
+&lt;script src="support-widget-auth.js" async&gt;&lt;/script&gt;
+    </div>
+    
+    <h2>Try It Out</h2>
+    <p>This page includes a live demo of the Support AI Chat Widget. The widget should appear as a chat button in the bottom-right corner of the page. Click it to open the chat window.</p>
+    
+    <div class="config-controls">
+      <h3>Live Configuration</h3>
+      <p>Adjust these settings to test different configurations of the widget:</p>
+      
+      <div class="control-group">
+        <label for="primary-color">Primary Color:</label>
+        <input type="color" id="primary-color" value="#6366F1">
+      </div>
+      
+      <div class="control-group">
+        <label for="position">Position:</label>
+        <select id="position">
+          <option value="right">Right</option>
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="greeting">Greeting Message:</label>
+        <input type="text" id="greeting" value="How can I help you today?">
+      </div>
+      
+      <div class="control-group">
+        <label for="require-auth">
+          <input type="checkbox" id="require-auth" checked> Require Authentication
+        </label>
+      </div>
+      
+      <div class="control-group">
+        <label for="auto-open">
+          <input type="checkbox" id="auto-open"> Auto Open Chat
+        </label>
+      </div>
+      
+      <div class="control-group">
+        <label for="branding">
+          <input type="checkbox" id="branding" checked> Show Branding
+        </label>
+      </div>
+      
+      <button id="apply-settings" class="button">Apply Settings</button>
+      <button id="reset-settings" class="button" style="background-color: #718096;">Reset Settings</button>
+    </div>
+    
+    <h2>Authentication Testing</h2>
+    <p>For testing purposes, any email and password combination will work with this demo. In a production environment, these credentials would be validated against your user database.</p>
+    
+    <h2>Need Help?</h2>
+    <p>Refer to the included documentation files or contact Support AI support for assistance with integration.</p>
+    
+    <footer>
+      Support AI Chat Widget Demo &copy; 2025 Support AI
+    </footer>
+  </div>
+  
+  <!-- Support AI Chat Widget Configuration -->
+  <script>
+    window.supportAiConfig = {
+      tenantId: __TENANT_ID__,
+      apiKey: "__API_KEY__",
+      primaryColor: "#6366F1",
+      position: "right",
+      greetingMessage: "How can I help you today?",
+      requireAuth: true,
+      autoOpen: false,
+      branding: true,
+      reportData: true,
+      serverUrl: "https://your-support-ai-server.com" // Replace with actual server URL
+    };
+    
+    // Apply settings button handler
+    document.getElementById('apply-settings').addEventListener('click', function() {
+      const primaryColor = document.getElementById('primary-color').value;
+      const position = document.getElementById('position').value;
+      const greeting = document.getElementById('greeting').value;
+      const requireAuth = document.getElementById('require-auth').checked;
+      const autoOpen = document.getElementById('auto-open').checked;
+      const branding = document.getElementById('branding').checked;
+      
+      // Remove existing widget if present
+      const existingContainer = document.querySelector('.support-widget-container');
+      if (existingContainer) {
+        existingContainer.remove();
+      }
+      
+      // Apply new settings
+      window.supportAiConfig = {
+        ...window.supportAiConfig,
+        primaryColor: primaryColor,
+        position: position,
+        greetingMessage: greeting,
+        requireAuth: requireAuth,
+        autoOpen: autoOpen,
+        branding: branding
+      };
+      
+      // Initialize new widget
+      window.SupportAIChat.init(window.supportAiConfig);
+    });
+    
+    // Reset settings button handler
+    document.getElementById('reset-settings').addEventListener('click', function() {
+      document.getElementById('primary-color').value = "#6366F1";
+      document.getElementById('position').value = "right";
+      document.getElementById('greeting').value = "How can I help you today?";
+      document.getElementById('require-auth').checked = true;
+      document.getElementById('auto-open').checked = false;
+      document.getElementById('branding').checked = true;
+      
+      // Trigger apply button
+      document.getElementById('apply-settings').click();
+    });
+  </script>
+  
+  <!-- Support AI Chat Widget Script -->
+  <script src="support-widget-auth.js"></script>
+</body>
+</html>

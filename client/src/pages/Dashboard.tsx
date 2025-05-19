@@ -50,13 +50,15 @@ export default function Dashboard() {
   
   // State for tracking widget download dialog
   const [showWidgetDialog, setShowWidgetDialog] = useState(false);
+  const [isAuthWidget, setIsAuthWidget] = useState(false);
   const [widgetConfig, setWidgetConfig] = useState({
     primaryColor: '6366F1', // Default indigo color
     position: 'right',
     greetingMessage: 'How can I help you today?',
     autoOpen: false,
     branding: true,
-    reportData: true
+    reportData: true,
+    requireAuth: true
   });
   
   // Function to handle widget download with configuration
@@ -67,8 +69,18 @@ export default function Dashboard() {
     }));
   };
   
-  // Function to handle widget download
+  // Function to handle standard widget download
   const handleWidgetDownload = () => {
+    // Set flag for standard widget
+    setIsAuthWidget(false);
+    // Show configuration dialog
+    setShowWidgetDialog(true);
+  };
+  
+  // Function to handle authentication-enabled widget download
+  const handleAuthWidgetDownload = () => {
+    // Set flag for auth widget
+    setIsAuthWidget(true);
     // Show configuration dialog
     setShowWidgetDialog(true);
   };
@@ -80,7 +92,7 @@ export default function Dashboard() {
     
     // Show toast notification
     toast({
-      title: "Downloading widget package",
+      title: `Downloading ${isAuthWidget ? 'authentication-enabled' : 'standard'} widget package`,
       description: "Your widget package is being prepared and will download shortly.",
     });
     
@@ -96,8 +108,16 @@ export default function Dashboard() {
       reportData: widgetConfig.reportData.toString()
     });
     
-    // Download the widget package
-    window.location.href = `/api/widgets/download?${queryParams.toString()}`;
+    // Add auth parameter if it's an auth widget
+    if (isAuthWidget) {
+      queryParams.append('requireAuth', widgetConfig.requireAuth.toString());
+      
+      // Download the auth-enabled widget package
+      window.location.href = `/api/widgets/download-auth?${queryParams.toString()}`;
+    } else {
+      // Download the standard widget package
+      window.location.href = `/api/widgets/download?${queryParams.toString()}`;
+    }
   };
   
   // Fetch summary metrics
@@ -458,13 +478,26 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Get the embeddable chat widget code for your website.
               </p>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleWidgetDownload}
-              >
-                Download Now
-              </Button>
+              <div className="flex flex-col space-y-2 w-full">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleWidgetDownload}
+                >
+                  Download Standard Widget
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleAuthWidgetDownload}
+                  className="border-purple-300 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950"
+                >
+                  Download Auth Widget
+                </Button>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  For client websites with user login
+                </div>
+              </div>
             </CardContent>
           </Card>
 

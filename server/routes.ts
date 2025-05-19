@@ -155,6 +155,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register widget download routes
   registerWidgetDownloadRoutes(app);
   
+  // Register widget auth download routes for enhanced client integration
+  registerWidgetAuthDownloadRoutes(app);
+  
   // Register widget API key routes
   registerWidgetApiKeyRoutes(app);
   

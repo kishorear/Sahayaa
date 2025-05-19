@@ -107,7 +107,7 @@ export default function ChatbotInterface() {
         ...prev,
         {
           id: `ai-${Date.now()}`,
-          content: data.response.content,
+          content: data.message || "I'm sorry, I couldn't process your request.",
           sender: "ai",
           timestamp: new Date(),
         },

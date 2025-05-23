@@ -11,7 +11,7 @@ const LogoIcon: React.FC<LogoIconProps> = ({ className = "w-8 h-8" }) => {
   return (
     <svg 
       xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 64 64" 
+      viewBox="-1 -1 66 66" 
       className={className}
     >
       {/* Circle with pastel blue stroke */}

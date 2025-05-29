@@ -1,6 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { generateAuthWidgetPackage, type WidgetConfig } from "../widget-auth-generator";
+import { storage } from "../storage";
+import { randomBytes, createHmac } from "crypto";
 
 /**
  * Widget download request validation schema
@@ -16,6 +18,21 @@ const widgetAuthDownloadSchema = z.object({
   reportData: z.string().transform(val => val === 'true').default('true'),
   requireAuth: z.string().transform(val => val === 'true').default('true')
 });
+
+/**
+ * Generate a tenant-specific API key
+ */
+function generateTenantApiKey(tenantId: number): string {
+  const prefix = "wk"; // Widget Key
+  const typePrefix = "tent"; // tenant
+  const secret = randomBytes(16).toString("hex");
+  const signature = createHmac("sha256", process.env.JWT_SECRET || "default-secret")
+    .update(`${prefix}_${typePrefix}_${tenantId}_${secret}`)
+    .digest("hex")
+    .substring(0, 8);
+  
+  return `${prefix}_${typePrefix}_${tenantId}_${secret}_${signature}`;
+}
 
 /**
  * Register routes for widget download with authentication functionality
@@ -40,8 +57,38 @@ export function registerWidgetAuthDownloadRoutes(app: Express): void {
       
       const queryParams = queryResult.data;
       
-      // Generate API key for widget
-      const apiKey = `wgt_${Math.random().toString(36).substring(2, 15)}`;
+      // Get or create API key for the tenant
+      let apiKey: string;
+      
+      // Check if tenant already has an API key
+      const existingApiKeys = await storage.getApiKeysByTenant(queryParams.tenantId);
+      
+      if (existingApiKeys.length > 0) {
+        // Use the first active API key
+        apiKey = existingApiKeys[0].key;
+      } else {
+        // Generate a new API key for this tenant
+        apiKey = generateTenantApiKey(queryParams.tenantId);
+        
+        // Store the new API key in the database
+        await storage.createApiKey({
+          key: apiKey,
+          tenantId: queryParams.tenantId,
+          createdBy: queryParams.userId,
+          domains: [],
+          expiresAt: null, // Never expires
+          description: `Widget API key for tenant ${queryParams.tenantId}`,
+          permissions: {
+            read: true,
+            write: true,
+            webhook: false
+          },
+          lastUsed: null,
+          useCount: 0,
+          createdAt: new Date(),
+          isRevoked: false
+        });
+      }
       
       // Create widget configuration
       const widgetConfig: WidgetConfig = {

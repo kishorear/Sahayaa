@@ -516,13 +516,6 @@ export default function Dashboard() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={handleWidgetDownload}
-                >
-                  Download Standard Widget
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
                   onClick={handleAuthWidgetDownload}
                   className="border-purple-300 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950"
                 >

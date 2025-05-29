@@ -245,7 +245,7 @@
         
         // Add welcome message if authenticated
         if (this.isAuthenticated) {
-          this.addMessage('assistant', `Welcome back, ${this.userInfo.name || this.userInfo.email}! ${config.greetingMessage}`);
+          this.addMessage('assistant', `Welcome back, ${this.userInfo.name || this.userInfo.username}! ${config.greetingMessage}`);
         } else {
           // Add initial greeting message for non-auth mode
           this.addMessage('assistant', config.greetingMessage);
@@ -267,16 +267,16 @@
         this.handleLogin();
       };
       
-      // Email field
-      const emailLabel = document.createElement('label');
-      emailLabel.textContent = 'Email:';
-      emailLabel.className = 'support-auth-label';
+      // Username field
+      const usernameLabel = document.createElement('label');
+      usernameLabel.textContent = 'Username:';
+      usernameLabel.className = 'support-auth-label';
       
-      this.emailInput = document.createElement('input');
-      this.emailInput.type = 'email';
-      this.emailInput.placeholder = 'Enter your email';
-      this.emailInput.className = 'support-auth-input';
-      this.emailInput.required = true;
+      this.usernameInput = document.createElement('input');
+      this.usernameInput.type = 'text';
+      this.usernameInput.placeholder = 'Enter your username';
+      this.usernameInput.className = 'support-auth-input';
+      this.usernameInput.required = true;
       
       // Password field
       const passwordLabel = document.createElement('label');
@@ -302,8 +302,8 @@
       this.authError.style.display = 'none';
       
       // Assemble auth form
-      authForm.appendChild(emailLabel);
-      authForm.appendChild(this.emailInput);
+      authForm.appendChild(usernameLabel);
+      authForm.appendChild(this.usernameInput);
       authForm.appendChild(passwordLabel);
       authForm.appendChild(this.passwordInput);
       authForm.appendChild(loginButton);
@@ -337,11 +337,11 @@
      * Handle login attempt
      */
     handleLogin() {
-      const email = this.emailInput.value.trim();
+      const username = this.usernameInput.value.trim();
       const password = this.passwordInput.value.trim();
       
-      if (!email || !password) {
-        this.showAuthError('Please enter both email and password.');
+      if (!username || !password) {
+        this.showAuthError('Please enter both username and password.');
         return;
       }
       
@@ -349,7 +349,7 @@
       this.showAuthError('Signing in...', false);
       
       // In a real implementation, this would make an API call to authenticate
-      this.authenticateUser(email, password)
+      this.authenticateUser(username, password)
         .then(userData => {
           // Store user data
           this.userInfo = userData;
@@ -375,7 +375,7 @@
           
           // Report authentication event
           if (config.reportData) {
-            this.reportEvent('user_authenticated', { email });
+            this.reportEvent('user_authenticated', { username });
           }
         })
         .catch(error => {
@@ -385,11 +385,11 @@
     
     /**
      * Authenticate user with the server
-     * @param {string} email - User email
+     * @param {string} username - Username
      * @param {string} password - User password
      * @returns {Promise<Object>} - User data object
      */
-    authenticateUser(email, password) {
+    authenticateUser(username, password) {
       return new Promise((resolve, reject) => {
         // In production this would be a real API call
         // For demonstration purposes, we're simulating an API call
@@ -403,7 +403,7 @@
             'X-API-Key': config.apiKey
           },
           body: JSON.stringify({
-            email,
+            username,
             password,
             tenantId: config.tenantId
           })
@@ -417,8 +417,8 @@
         .then(data => {
           resolve({
             id: data.id || 'user-123',
-            email: email,
-            name: data.name || email.split('@')[0],
+            username: username,
+            name: data.name || username,
             token: data.token || 'dummy-token'
           });
         })
@@ -429,8 +429,8 @@
           // In production, you would remove this and handle the error properly
           resolve({
             id: 'user-123',
-            email: email,
-            name: email.split('@')[0],
+            username: username,
+            name: username,
             token: 'dummy-token'
           });
         });
@@ -696,8 +696,8 @@
           this.inputField.focus();
         }
       } else {
-        if (this.emailInput) {
-          this.emailInput.focus();
+        if (this.usernameInput) {
+          this.usernameInput.focus();
         }
       }
       
@@ -777,7 +777,7 @@
       if (this.isAuthenticated && this.userInfo) {
         requestData.user = {
           id: this.userInfo.id,
-          email: this.userInfo.email
+          username: this.userInfo.username
         };
       }
       
@@ -899,7 +899,7 @@
       if (this.isAuthenticated && this.userInfo) {
         eventData.user = {
           id: this.userInfo.id,
-          email: this.userInfo.email
+          username: this.userInfo.username
         };
       }
       

@@ -424,15 +424,7 @@
         })
         .catch(error => {
           console.error('Auth error:', error);
-          
-          // For demo purposes, always authenticate with dummy data
-          // In production, you would remove this and handle the error properly
-          resolve({
-            id: 'user-123',
-            username: username,
-            name: username,
-            token: 'dummy-token'
-          });
+          reject(new Error('Authentication failed. Please check your credentials.'));
         });
       });
     }

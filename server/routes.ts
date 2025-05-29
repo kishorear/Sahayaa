@@ -37,6 +37,7 @@ import { registerDownloadRoutes } from "./routes/download-routes";
 // Import the widget download routes registration function
 import { registerWidgetDownloadRoutes } from "./routes/widget-download-routes";
 import { registerWidgetAuthDownloadRoutes } from "./routes/widget-auth-download-routes";
+import { registerWidgetAuthenticationRoutes } from "./routes/widget-authentication-routes";
 // Import widget API key routes for managing API keys
 import { registerWidgetApiKeyRoutes } from "./routes/widget-api-keys-routes";
 // Import creator routes for multi-tenant management
@@ -157,6 +158,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register widget auth download routes for enhanced client integration
   registerWidgetAuthDownloadRoutes(app);
+  
+  // Register widget authentication routes for user verification
+  registerWidgetAuthenticationRoutes(app);
   
   // Register widget API key routes
   registerWidgetApiKeyRoutes(app);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { generateAuthWidgetPackage, type WidgetConfig } from "../widget-auth-generator";
 import { storage } from "../storage";
 import { randomBytes, createHmac } from "crypto";
+import type { InsertWidgetApiKey } from "../../shared/schema";
 
 /**
  * Widget download request validation schema
@@ -60,34 +61,21 @@ export function registerWidgetAuthDownloadRoutes(app: Express): void {
       // Get or create API key for the tenant
       let apiKey: string;
       
-      // Check if tenant already has an API key
-      const existingApiKeys = await storage.getApiKeysByTenant(queryParams.tenantId);
-      
-      if (existingApiKeys.length > 0) {
-        // Use the first active API key
-        apiKey = existingApiKeys[0].key;
-      } else {
-        // Generate a new API key for this tenant
-        apiKey = generateTenantApiKey(queryParams.tenantId);
+      try {
+        // Check if tenant already has an API key
+        const existingApiKeys = await storage.getApiKeysByTenant(queryParams.tenantId);
         
-        // Store the new API key in the database
-        await storage.createApiKey({
-          key: apiKey,
-          tenantId: queryParams.tenantId,
-          createdBy: queryParams.userId,
-          domains: [],
-          expiresAt: null, // Never expires
-          description: `Widget API key for tenant ${queryParams.tenantId}`,
-          permissions: {
-            read: true,
-            write: true,
-            webhook: false
-          },
-          lastUsed: null,
-          useCount: 0,
-          createdAt: new Date(),
-          isRevoked: false
-        });
+        if (existingApiKeys.length > 0) {
+          // Use the first active API key
+          apiKey = existingApiKeys[0].key;
+        } else {
+          // Generate a tenant-specific API key that embeds the tenant ID
+          apiKey = generateTenantApiKey(queryParams.tenantId);
+        }
+      } catch (error) {
+        console.error('Error accessing API keys, generating tenant-specific key:', error);
+        // Generate a tenant-specific API key that embeds the tenant ID
+        apiKey = generateTenantApiKey(queryParams.tenantId);
       }
       
       // Create widget configuration

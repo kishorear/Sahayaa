@@ -1,0 +1,25 @@
+# API Documentation
+
+## Rate Limiting
+API rate limits by tier:
+- Basic: 100 requests/hour
+- Pro: 1000 requests/hour  
+- Enterprise: 10000 requests/hour
+
+## Authentication
+Use Bearer tokens in Authorization header:
+```
+Authorization: Bearer your_api_key_here
+```
+
+## Common Issues
+- Rate limit exceeded (429 error)
+- Invalid API key (401 error)
+- Malformed requests (400 error)
+- Server errors (500 error)
+
+## Best Practices
+1. Implement exponential backoff
+2. Cache responses when possible
+3. Use webhooks for real-time updates
+4. Monitor rate limit headers

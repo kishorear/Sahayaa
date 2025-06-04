@@ -6,10 +6,31 @@ generate 384-dim vectors, upsert to Qdrant with payload {filename, text}
 
 import os
 import logging
+import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import openai
 from dotenv import load_dotenv
+
+# Document processing imports
+try:
+    from docx import Document
+    from openpyxl import load_workbook
+    from PyPDF2 import PdfReader
+    from pptx import Presentation
+    OFFICE_SUPPORT = True
+except ImportError as e:
+    logging.warning(f"Office document support limited: {e}")
+    OFFICE_SUPPORT = False
+
+# Vector storage imports
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Distance, VectorParams, PointStruct
+    QDRANT_AVAILABLE = True
+except ImportError:
+    QDRANT_AVAILABLE = False
+    logging.warning("Qdrant client not available - using local file storage")
 
 load_dotenv()
 logger = logging.getLogger(__name__)

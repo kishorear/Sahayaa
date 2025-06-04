@@ -7,6 +7,8 @@ generate 384-dim vectors, upsert to Qdrant with payload {filename, text}
 import os
 import logging
 import json
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import openai
@@ -33,7 +35,41 @@ except ImportError:
     logging.warning("Qdrant client not available - using local file storage")
 
 load_dotenv()
+
+# Configure structured logging
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_FORMAT = os.getenv('LOG_FORMAT', 'json')
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'service': 'qdrant_ingestion'
+        }
+        if hasattr(record, 'extra_data'):
+            log_entry.update(record.extra_data)
+        return json.dumps(log_entry)
+
 logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+if LOG_FORMAT == 'json':
+    handler.setFormatter(JSONFormatter())
+else:
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logger.addHandler(handler)
+logger.setLevel(getattr(logging, LOG_LEVEL))
+
+# Environment configuration
+QDRANT_URL = os.getenv('QDRANT_URL', 'http://localhost:6333')
+QDRANT_API_KEY = os.getenv('QDRANT_API_KEY')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+VECTOR_DIMENSION = int(os.getenv('VECTOR_DIMENSION', '384'))
+VECTOR_COLLECTION_NAME = os.getenv('VECTOR_COLLECTION_NAME', 'instruction_texts')
+MAX_VECTOR_COUNT_BEFORE_SHARD = int(os.getenv('MAX_VECTOR_COUNT_BEFORE_SHARD', '1000000'))
+QDRANT_TIMEOUT_MS = int(os.getenv('QDRANT_TIMEOUT_MS', '30000'))
 
 class QdrantIngestionService:
     """
@@ -45,8 +81,8 @@ class QdrantIngestionService:
         self.instructions_dir = Path(instructions_dir)
         self.supported_formats = {'.txt', '.pdf', '.docx', '.pptx', '.xlsx'}
         self.embedding_model = "text-embedding-3-small"
-        self.dimensions = 384
-        self.collection_name = "instruction_texts"
+        self.dimensions = VECTOR_DIMENSION
+        self.collection_name = VECTOR_COLLECTION_NAME
         
         # Initialize services
         self.openai_client = self._init_openai()
@@ -238,17 +274,29 @@ class QdrantIngestionService:
         Search for similar instructions in Qdrant.
         Returns list of {filename, text, score} dictionaries.
         """
+        search_start_time = time.time()
+        
+        logger.info("Starting instruction search", extra={'extra_data': {
+            'query_preview': query[:50],
+            'top_k': top_k,
+            'collection': self.collection_name
+        }})
+        
         try:
             # Generate embedding for query
+            embedding_start = time.time()
             query_embedding = self._generate_embedding(query)
+            embedding_time = (time.time() - embedding_start) * 1000
             
             # Search in Qdrant
+            qdrant_start = time.time()
             search_results = self.qdrant_client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 limit=top_k,
                 with_payload=True
             )
+            qdrant_time = (time.time() - qdrant_start) * 1000
             
             # Format results
             results = []
@@ -258,6 +306,16 @@ class QdrantIngestionService:
                     "text": result.payload["text"],
                     "score": float(result.score)
                 })
+            
+            total_search_time = (time.time() - search_start_time) * 1000
+            
+            logger.info("Instruction search completed", extra={'extra_data': {
+                'results_count': len(results),
+                'embedding_time_ms': embedding_time,
+                'qdrant_search_time_ms': qdrant_time,
+                'total_search_time_ms': total_search_time,
+                'top_score': results[0]['score'] if results else 0
+            }})
             
             return results
             

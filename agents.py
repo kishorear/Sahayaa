@@ -5,6 +5,9 @@ Accepts {user_message} and returns the final ticket with full resolution
 
 import os
 import logging
+import json
+import time
+from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,8 +18,47 @@ from services.agent_orchestrator import AgentOrchestrator
 from services.qdrant_ingestion_service import QdrantIngestionService
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
+
+# Configure structured logging
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_FORMAT = os.getenv('LOG_FORMAT', 'json')
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'service': 'agent_orchestrator'
+        }
+        if hasattr(record, 'extra_data'):
+            log_entry.update(record.extra_data)
+        return json.dumps(log_entry)
+
+# Setup logger
 logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+if LOG_FORMAT == 'json':
+    handler.setFormatter(JSONFormatter())
+else:
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logger.addHandler(handler)
+logger.setLevel(getattr(logging, LOG_LEVEL))
+
+# Environment configuration
+DATA_SERVICE_URL = os.getenv('DATA_SERVICE_URL', 'http://localhost:8000')
+QDRANT_URL = os.getenv('QDRANT_URL', 'http://localhost:6333')
+QDRANT_API_KEY = os.getenv('QDRANT_API_KEY')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+AGENT_SERVICE_PORT = int(os.getenv('AGENT_SERVICE_PORT', '8001'))
+MAX_VECTOR_COUNT_BEFORE_SHARD = int(os.getenv('MAX_VECTOR_COUNT_BEFORE_SHARD', '1000000'))
+
+logger.info("Agent service starting", extra={'extra_data': {
+    'data_service_url': DATA_SERVICE_URL,
+    'qdrant_url': QDRANT_URL,
+    'agent_service_port': AGENT_SERVICE_PORT
+}})
 
 # FastAPI app
 app = FastAPI(
@@ -130,12 +172,45 @@ async def process_support_request(request: AgentWorkflowRequest):
         })
         
         # Process the support request through orchestrator
-        logger.info(f"Processing support request: {request.user_message[:50]}...")
+        start_time = time.time()
+        request_id = f"req_{int(start_time * 1000)}"
+        
+        logger.info("Processing support request", extra={'extra_data': {
+            'request_id': request_id,
+            'message_preview': request.user_message[:50],
+            'tenant_id': request.tenant_id,
+            'user_id': request.user_id,
+            'team_id': request.team_id
+        }})
+        
+        # Check Qdrant collection size for monitoring
+        try:
+            if ingestion_service:
+                collection_info = await ingestion_service.get_collection_info()
+                if collection_info and collection_info.get('vectors_count', 0) > MAX_VECTOR_COUNT_BEFORE_SHARD:
+                    logger.warning("Vector collection approaching shard threshold", extra={'extra_data': {
+                        'collection_size': collection_info.get('vectors_count'),
+                        'shard_threshold': MAX_VECTOR_COUNT_BEFORE_SHARD,
+                        'recommendation': 'consider_sharding_or_upgrade'
+                    }})
+        except Exception as e:
+            logger.warning(f"Failed to check collection size: {e}")
         
         result = orchestrator.process_support_request(
             user_message=request.user_message,
             user_context=user_context
         )
+        
+        processing_time = (time.time() - start_time) * 1000
+        
+        logger.info("Support request processing completed", extra={'extra_data': {
+            'request_id': request_id,
+            'processing_time_ms': processing_time,
+            'ticket_id': result.get('ticket_id'),
+            'status': result.get('status'),
+            'category': result.get('category'),
+            'confidence_score': result.get('confidence_score')
+        }})
         
         # Extract workflow metadata
         workflow_metadata = result.get("workflow_metadata", {})

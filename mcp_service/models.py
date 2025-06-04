@@ -43,7 +43,7 @@ class Message(Base):
     ticket_id = Column(Integer, nullable=False)
     sender = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    message_metadata = Column(JSON, nullable=True)  # Renamed to avoid SQLAlchemy reserved word
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

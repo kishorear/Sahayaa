@@ -303,6 +303,17 @@ router.patch('/:id', async (req: Request, res: Response) => {
       }
     }
 
+    // If setting as primary and it's not already primary, unset any existing primary providers
+    if (result.data.isPrimary === true && !existingProvider[0].isPrimary) {
+      // For primary providers, we enforce one per tenant (regardless of team)
+      await db.update(schema.aiProviders)
+        .set({ isPrimary: false })
+        .where(and(
+          eq(schema.aiProviders.tenantId, tenantId),
+          eq(schema.aiProviders.isPrimary, true)
+        ));
+    }
+
     // Special handling for the API key - don't update if empty string
     let updateData = result.data;
     if (updateData.apiKey === '') {

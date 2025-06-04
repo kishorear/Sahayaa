@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { AIProviderInterface, AIProviderConfig } from "./AIProviderInterface";
+import agentService from "../agent-service.js";
 
 export class OpenAIProvider implements AIProviderInterface {
   name = 'openai';
@@ -24,16 +25,41 @@ export class OpenAIProvider implements AIProviderInterface {
     systemPrompt?: string
   ): Promise<string> {
     try {
-      // Build the system message with context if provided
+      // Try agent service first for chat responses
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      
+      if (lastUserMessage) {
+        console.log(`Using agent service for chat response: ${lastUserMessage.content.substring(0, 30)}...`);
+        
+        try {
+          const result = await agentService.generateChatResponse({
+            ticketContext: {
+              id: 0, // Default for chat context
+              title: "Chat Session",
+              description: lastUserMessage.content,
+              category: "general"
+            },
+            messageHistory: messages,
+            userMessage: lastUserMessage.content,
+            knowledgeContext: context
+          });
+
+          console.log(`Agent service chat response generated successfully`);
+          return result;
+
+        } catch (agentError) {
+          console.warn("Agent service unavailable for chat, falling back to direct OpenAI:", agentError);
+        }
+      }
+      
+      // Fallback to direct OpenAI call
       let systemContent = systemPrompt || 
         `You are an AI support assistant for a SaaS product. Provide helpful, concise responses.`;
       
-      // Add knowledge context if available
       if (context) {
         systemContent += `\n\n${context}`;
       }
       
-      // Prepare the messages array with context and history
       const apiMessages = [
         { role: "system" as const, content: systemContent },
         ...messages.map(m => ({
@@ -42,43 +68,20 @@ export class OpenAIProvider implements AIProviderInterface {
         }))
       ];
 
-      console.log(`Using OpenAI model: ${this.model} for chat response`);
-      console.log(`OpenAI API Request (generateChatResponse):`);
-      console.log(JSON.stringify({
-        model: this.model,
-        messages: apiMessages.map(m => ({
-          role: m.role,
-          content: m.role === 'system' ? `[System prompt: ${m.content.substring(0, 50)}...]` : m.content.substring(0, 50) + '...'
-        })),
-        temperature: 0.7,
-        max_tokens: 500
-      }, null, 2));
+      console.log(`Fallback: Using OpenAI model: ${this.model} for chat response`);
       
       const response = await this.client.chat.completions.create({
-        model: this.model, // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: this.model,
         messages: apiMessages,
         temperature: 0.7,
         max_tokens: 500,
         stream: false
       });
-
-      console.log(`OpenAI API Response (generateChatResponse):`);
-      console.log(JSON.stringify({
-        id: response.id,
-        model: response.model,
-        choices: [{
-          message: {
-            role: response.choices[0].message.role,
-            content: response.choices[0].message.content?.substring(0, 100) + '...'
-          }
-        }],
-        usage: response.usage
-      }, null, 2));
       
       return response.choices[0].message.content || "I couldn't generate a response at this time.";
+      
     } catch (error) {
-      console.error("Error calling OpenAI for chat response:", error);
-      // Return a fallback response instead of throwing an error
+      console.error("Both agent service and OpenAI chat response failed:", error);
       return "I apologize, but I'm experiencing difficulties processing your request right now. A support representative will assist you shortly.";
     }
   }
@@ -95,131 +98,94 @@ export class OpenAIProvider implements AIProviderInterface {
     aiNotes?: string;
   }> {
     try {
-      let prompt = `
-      You are an AI support ticket classifier. Based on the following ticket information, 
-      classify the ticket according to these criteria:
+      // Try agent service first
+      console.log(`Using agent service for ticket classification: ${title.substring(0, 30)}...`);
       
-      1. Category (one of: authentication, billing, feature_request, documentation, technical_issue, account, other)
-      2. Complexity (one of: simple, medium, complex)
-      3. Department to assign to (one of: support, engineering, product, billing)
-      4. Whether the ticket can be automatically resolved (true or false)
-      5. Notes for additional context (optional)
-      
-      Ticket Title: ${title}
-      Ticket Description: ${description}
-      `;
-      
-      // Add knowledge context if available to help with classification accuracy
-      if (context) {
-        prompt += `\nRelevant Knowledge Base Information:\n${context}`;
-      }
-      
-      prompt += `
-      Respond with JSON only in this format:
-      {
-        "category": "category_name",
-        "complexity": "complexity_level",
-        "assignedTo": "department_name",
-        "canAutoResolve": boolean,
-        "aiNotes": "additional context" 
-      }
-      `;
-
-      console.log(`Using OpenAI model: ${this.model} for ticket classification`);
-      console.log(`OpenAI API Request (classifyTicket):`);
-      console.log(JSON.stringify({
-        model: this.model,
-        messages: [{ role: "user", content: prompt.substring(0, 100) + '...' }],
-        response_format: { type: "json_object" }
-      }, null, 2));
-      
-      const response = await this.client.chat.completions.create({
-        model: this.model, // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
+      const result = await agentService.classifyTicket({
+        title,
+        description,
+        context
       });
-      
-      console.log(`OpenAI API Response (classifyTicket):`);
-      console.log(JSON.stringify({
-        id: response.id,
-        model: response.model,
-        choices: [{
-          message: {
-            role: response.choices[0].message.role,
-            content: response.choices[0].message.content?.substring(0, 100) + '...'
-          }
-        }],
-        usage: response.usage
-      }, null, 2));
 
-      // Parse the JSON response
-      const content = response.choices[0].message.content || "{}";
+      console.log(`Agent service classification result - Category: ${result.category}, Complexity: ${result.complexity}`);
+      return result;
+
+    } catch (agentError) {
+      console.warn("Agent service unavailable, falling back to direct OpenAI:", agentError);
       
+      // Fallback to direct OpenAI call
       try {
-        // Sometimes OpenAI might include backticks in response, try to extract JSON
+        let prompt = `
+        You are an AI support ticket classifier. Based on the following ticket information, 
+        classify the ticket according to these criteria:
+        
+        1. Category (one of: authentication, billing, feature_request, documentation, technical_issue, account, other)
+        2. Complexity (one of: simple, medium, complex)
+        3. Department to assign to (one of: support, engineering, product, billing)
+        4. Whether the ticket can be automatically resolved (true or false)
+        5. Notes for additional context (optional)
+        
+        Ticket Title: ${title}
+        Ticket Description: ${description}
+        `;
+        
+        if (context) {
+          prompt += `\nRelevant Knowledge Base Information:\n${context}`;
+        }
+        
+        prompt += `
+        Respond with JSON only in this format:
+        {
+          "category": "category_name",
+          "complexity": "complexity_level",
+          "assignedTo": "department_name",
+          "canAutoResolve": boolean,
+          "aiNotes": "additional context" 
+        }
+        `;
+
+        console.log(`Fallback: Using OpenAI model: ${this.model} for ticket classification`);
+        
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        });
+
+        const content = response.choices[0].message.content || "{}";
         const jsonRegex = /\{[\s\S]*\}/;
         const match = content.match(jsonRegex);
-        
-        // If we found a JSON-like pattern, use that; otherwise use the whole content
         const jsonContent = match ? match[0] : content;
-        let result: any;
         
+        let result: any;
         try {
           result = JSON.parse(jsonContent);
-        } catch (initialParseError) {
-          // Try one more cleaning approach - sometimes there are unexpected characters
+        } catch (parseError) {
           const cleanedContent = jsonContent
-            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
-            .replace(/\\(?!["\\/bfnrt])/g, "\\\\"); // Escape backslashes that aren't part of escape sequences
-          
-          console.warn("Initial JSON parse failed, trying with cleaned content");
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+            .replace(/\\(?!["\\/bfnrt])/g, "\\\\");
           result = JSON.parse(cleanedContent);
         }
         
-        // Validate the result structure and ensure all required fields exist
-        if (!result || typeof result !== 'object') {
-          throw new Error("Parsed result is not an object");
-        }
-        
-        // Create a validated result with defaults for any missing fields
-        const validatedResult = {
+        return {
           category: result.category || "other",
           complexity: (result.complexity === 'simple' || result.complexity === 'medium' || result.complexity === 'complex') 
-            ? result.complexity 
-            : "medium",
+            ? result.complexity : "medium",
           assignedTo: result.assignedTo || "support",
           canAutoResolve: !!result.canAutoResolve,
           aiNotes: result.aiNotes || "This ticket has been automatically classified"
         };
         
-        if (!result.category || !result.complexity || !result.assignedTo) {
-          console.warn("OpenAI returned incomplete classification, added missing fields");
-        }
-        
-        return validatedResult;
-      } catch (jsonError) {
-        console.error("Failed to parse JSON response from OpenAI:", jsonError);
-        console.log("Raw response content:", content);
-        // Return a default classification with a note about the parsing error
+      } catch (openaiError) {
+        console.error("Both agent service and OpenAI classification failed:", openaiError);
         return {
-          category: "other",
+          category: "other", 
           complexity: "medium",
           assignedTo: "support",
           canAutoResolve: false,
-          aiNotes: "This ticket requires support team attention due to classification error"
+          aiNotes: "This ticket requires support team attention"
         };
       }
-    } catch (error) {
-      console.error("Error calling OpenAI for ticket classification:", error);
-      // Return a default classification instead of throwing an error
-      // This ensures the API doesn't fail even if AI classification fails
-      return {
-        category: "other", 
-        complexity: "medium",
-        assignedTo: "support",
-        canAutoResolve: false,
-        aiNotes: "This ticket requires support team attention"
-      };
     }
   }
   
@@ -230,60 +196,68 @@ export class OpenAIProvider implements AIProviderInterface {
     context?: string
   ): Promise<{resolved: boolean; response: string}> {
     try {
-      // Build system content with knowledge context if available
-      let systemContent = `You are an AI support assistant for a SaaS product. 
-          Your goal is to provide helpful, accurate responses to user queries and resolve issues when possible.
-          If you can fully resolve the issue, indicate this by including "[ISSUE RESOLVED]" at the end of your response.
-          If the issue requires human intervention, indicate this by including "[REQUIRES HUMAN]" at the end of your response.
-          `;
+      // Try agent service first
+      console.log(`Using agent service for auto-resolve: ${title.substring(0, 30)}...`);
       
-      // Add knowledge context if available
-      if (context) {
-        systemContent += `\n\n${context}`;
-      }
-      
-      // Convert previous messages to OpenAI format
-      const messages = [
-        {
-          role: "system" as const,
-          content: systemContent
-        },
-        ...(previousMessages || []).map(m => ({
-          role: m.role as "user" | "assistant" | "system",
-          content: m.content
-        })),
-        {
-          role: "user" as const,
-          content: `Title: ${title}\nDescription: ${description}`
-        }
-      ];
-
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages,
-        temperature: 0.7,
-        max_tokens: 800
+      const result = await agentService.attemptAutoResolve({
+        title,
+        description,
+        previousMessages,
+        context
       });
 
-      const responseText = response.choices[0].message.content || "";
+      console.log(`Agent service auto-resolve result - Resolved: ${result.resolved}`);
+      return result;
+
+    } catch (agentError) {
+      console.warn("Agent service unavailable, falling back to direct OpenAI:", agentError);
       
-      // Check if the response indicates resolution
-      const resolved = responseText.includes("[ISSUE RESOLVED]");
-      
-      // Clean up the response by removing the resolution indicators
-      const cleanResponse = responseText
-        .replace("[ISSUE RESOLVED]", "")
-        .replace("[REQUIRES HUMAN]", "")
-        .trim();
-      
-      return { resolved, response: cleanResponse };
-    } catch (error) {
-      console.error("Error calling OpenAI for ticket resolution:", error);
-      // Return a fallback response instead of throwing an error
-      return { 
-        resolved: false, 
-        response: "I apologize, but I'm unable to process your request right now. A support representative will assist you shortly." 
-      };
+      // Fallback to direct OpenAI call
+      try {
+        let systemContent = `You are an AI support assistant for a SaaS product. 
+            Your goal is to provide helpful, accurate responses to user queries and resolve issues when possible.
+            If you can fully resolve the issue, indicate this by including "[ISSUE RESOLVED]" at the end of your response.
+            If the issue requires human intervention, indicate this by including "[REQUIRES HUMAN]" at the end of your response.
+            `;
+        
+        if (context) {
+          systemContent += `\n\n${context}`;
+        }
+        
+        const messages = [
+          { role: "system" as const, content: systemContent },
+          ...(previousMessages || []).map(m => ({
+            role: m.role as "user" | "assistant" | "system",
+            content: m.content
+          })),
+          { role: "user" as const, content: `Title: ${title}\nDescription: ${description}` }
+        ];
+
+        console.log(`Fallback: Using OpenAI model: ${this.model} for auto-resolve`);
+
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 800
+        });
+
+        const responseText = response.choices[0].message.content || "";
+        const resolved = responseText.includes("[ISSUE RESOLVED]");
+        const cleanResponse = responseText
+          .replace("[ISSUE RESOLVED]", "")
+          .replace("[REQUIRES HUMAN]", "")
+          .trim();
+        
+        return { resolved, response: cleanResponse };
+        
+      } catch (openaiError) {
+        console.error("Both agent service and OpenAI auto-resolve failed:", openaiError);
+        return { 
+          resolved: false, 
+          response: "I apologize, but I'm unable to process your request right now. A support representative will assist you shortly." 
+        };
+      }
     }
   }
   

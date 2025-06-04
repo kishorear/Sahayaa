@@ -6,6 +6,7 @@ import { reloadProvidersFromDatabase } from "./ai/service";
 import { AIProviderFactory } from "./ai/providers";
 import type { ChatMessage } from "./ai";
 import { buildAIContext } from "./data-source-service";
+import agentService from "./ai/agent-service.js";
 import { z } from "zod";
 import { 
   insertTicketSchema, 
@@ -670,6 +671,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error('Error handling message creation:', error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // AGENT WORKFLOW API - Single endpoint for complete agent workflow
+  app.post("/api/agent-workflow", async (req, res) => {
+    try {
+      const { user_message, user_context, tenant_id, user_id, team_id } = req.body;
+      
+      if (!user_message) {
+        return res.status(400).json({ message: "user_message is required" });
+      }
+      
+      // Get tenant context from request or middleware
+      const resolvedTenantId = tenant_id || req.tenant?.id || req.user?.tenantId || 1;
+      
+      console.log(`Agent workflow request - Message: ${user_message.substring(0, 50)}...`);
+      
+      try {
+        // Call agent service for complete workflow
+        const result = await agentService.processWorkflow({
+          user_message,
+          user_context: {
+            ...user_context,
+            source: "node_api",
+            request_id: `req_${Date.now()}`
+          },
+          tenant_id: resolvedTenantId,
+          user_id: user_id || req.user?.id?.toString(),
+          team_id
+        });
+        
+        console.log(`Agent workflow completed - Ticket ID: ${result.ticket_id}, Status: ${result.status}`);
+        
+        // Return the complete workflow result
+        return res.status(200).json({
+          success: result.success,
+          ticket: {
+            id: result.ticket_id,
+            title: result.ticket_title,
+            status: result.status,
+            category: result.category,
+            urgency: result.urgency,
+            resolution_steps: result.resolution_steps,
+            resolution_steps_count: result.resolution_steps_count,
+            confidence_score: result.confidence_score,
+            created_at: result.created_at,
+            source: result.source
+          },
+          processing_time_ms: result.processing_time_ms,
+          error: result.error
+        });
+        
+      } catch (agentError) {
+        console.warn("Agent service unavailable, falling back to legacy workflow:", agentError);
+        
+        // Fallback to legacy ticket creation workflow
+        const classification = await classifyTicket("Agent Request", user_message, resolvedTenantId);
+        
+        // Create ticket using legacy flow
+        const ticketData: InsertTicket = {
+          title: user_message.slice(0, 100) + (user_message.length > 100 ? '...' : ''),
+          description: user_message,
+          category: classification.category,
+          urgency: classification.complexity === 'complex' ? 'high' : 
+                   classification.complexity === 'simple' ? 'low' : 'medium',
+          status: 'new',
+          tenantId: resolvedTenantId,
+          createdBy: user_id || req.user?.id || 1,
+          source: 'agent_workflow_fallback'
+        };
+        
+        const newTicket = await storage.createTicket(ticketData);
+        
+        // Try auto-resolve if possible
+        let resolution_steps: string[] = [];
+        let resolved = false;
+        
+        if (classification.canAutoResolve) {
+          try {
+            const autoResolveResult = await attemptAutoResolve(
+              newTicket.title, 
+              newTicket.description, 
+              [], 
+              resolvedTenantId
+            );
+            
+            if (autoResolveResult.resolved) {
+              resolution_steps = [autoResolveResult.response];
+              resolved = true;
+              
+              // Update ticket status
+              await storage.updateTicket(newTicket.id, { 
+                status: "resolved",
+                aiResolved: true,
+                resolvedAt: new Date()
+              });
+            }
+          } catch (resolveError) {
+            console.warn("Auto-resolve failed in fallback workflow:", resolveError);
+          }
+        }
+        
+        return res.status(200).json({
+          success: true,
+          ticket: {
+            id: newTicket.id,
+            title: newTicket.title,
+            status: resolved ? 'resolved' : newTicket.status,
+            category: newTicket.category,
+            urgency: newTicket.urgency,
+            resolution_steps,
+            resolution_steps_count: resolution_steps.length,
+            confidence_score: resolved ? 0.8 : 0.5,
+            created_at: newTicket.createdAt,
+            source: 'fallback_workflow'
+          },
+          processing_time_ms: 0,
+          error: null
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error processing agent workflow:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to process agent workflow",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 

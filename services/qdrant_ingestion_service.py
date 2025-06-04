@@ -324,6 +324,88 @@ class QdrantIngestionService:
             return []
     
     def get_collection_info(self) -> Dict[str, Any]:
+        """
+        Get collection information including vector count for monitoring.
+        Returns collection stats with sharding recommendations.
+        """
+        try:
+            collection_info = self.qdrant_client.get_collection(self.collection_name)
+            
+            vectors_count = collection_info.vectors_count
+            needs_sharding = vectors_count > MAX_VECTOR_COUNT_BEFORE_SHARD
+            
+            info = {
+                'collection_name': self.collection_name,
+                'vectors_count': vectors_count,
+                'vector_size': collection_info.config.params.vectors.size,
+                'distance': collection_info.config.params.vectors.distance.name,
+                'needs_sharding': needs_sharding,
+                'shard_threshold': MAX_VECTOR_COUNT_BEFORE_SHARD,
+                'status': collection_info.status.value,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+            if needs_sharding:
+                logger.warning("Vector collection requires sharding", extra={'extra_data': {
+                    'current_count': vectors_count,
+                    'threshold': MAX_VECTOR_COUNT_BEFORE_SHARD,
+                    'recommendation': 'implement_sharding_or_upgrade_storage'
+                }})
+            
+            logger.info("Collection info retrieved", extra={'extra_data': info})
+            
+            return info
+            
+        except Exception as e:
+            logger.error(f"Error getting collection info: {e}")
+            return {
+                'collection_name': self.collection_name,
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+    
+    def ingest_documents(self, documents: List[Dict[str, Any]]) -> int:
+        """
+        Ingest multiple documents for testing purposes.
+        Returns count of successfully ingested documents.
+        """
+        ingestion_start = time.time()
+        success_count = 0
+        
+        logger.info("Starting document ingestion", extra={'extra_data': {
+            'document_count': len(documents),
+            'collection': self.collection_name
+        }})
+        
+        for doc in documents:
+            try:
+                doc_id = doc.get('id', f"doc_{int(time.time())}")
+                content = doc.get('content', '')
+                metadata = doc.get('metadata', {})
+                
+                # Generate embedding
+                embedding = self._generate_embedding(content)
+                
+                # Create filename from metadata or use ID
+                filename = metadata.get('filename', f"{doc_id}.txt")
+                
+                # Upsert to Qdrant
+                if self._upsert_to_qdrant(filename, content, embedding):
+                    success_count += 1
+                    
+            except Exception as e:
+                logger.error(f"Failed to ingest document {doc.get('id', 'unknown')}: {e}")
+        
+        ingestion_time = (time.time() - ingestion_start) * 1000
+        
+        logger.info("Document ingestion completed", extra={'extra_data': {
+            'total_documents': len(documents),
+            'successful_ingestions': success_count,
+            'failed_ingestions': len(documents) - success_count,
+            'ingestion_time_ms': ingestion_time
+        }})
+        
+        return success_count
         """Get information about the instruction_texts collection"""
         try:
             info = self.qdrant_client.get_collection(self.collection_name)

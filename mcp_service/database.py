@@ -6,8 +6,10 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
+from sqlalchemy import text
 from .models import Base
 import logging
+from typing import Generator
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ def create_tables():
     """Create all tables if they don't exist."""
     Base.metadata.create_all(bind=engine)
 
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     """Dependency to get database session."""
     db = SessionLocal()
     try:
@@ -54,7 +56,7 @@ def test_connection():
     """Test database connection."""
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         logger.info("Database connection successful")
         return True
     except Exception as e:

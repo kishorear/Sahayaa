@@ -252,44 +252,60 @@ export default function AISettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Current Month</p>
-                      <p className="text-2xl font-bold">$127.45</p>
-                      <p className="text-xs text-muted-foreground">+15% from last month</p>
+                  {isLoadingCosts ? (
+                    <div className="text-sm text-muted-foreground">Loading cost data...</div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Current Month</p>
+                        <p className="text-2xl font-bold">
+                          ${aiUsageCosts?.currentMonth?.toFixed(2) || '0.00'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Last 30 days</p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Average per Call</p>
+                        <p className="text-2xl font-bold">
+                          ${aiUsageCosts?.avgPerCall?.toFixed(3) || '0.000'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {aiUsageCosts?.totalCalls || 0} total calls
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Projected Monthly</p>
+                        <p className="text-2xl font-bold">
+                          ${aiUsageCosts?.projectedMonthly?.toFixed(2) || '0.00'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Based on current usage</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Average per Call</p>
-                      <p className="text-2xl font-bold">$0.045</p>
-                      <p className="text-xs text-muted-foreground">-2% from last month</p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Projected Monthly</p>
-                      <p className="text-2xl font-bold">$142.80</p>
-                      <p className="text-xs text-muted-foreground">Based on current usage</p>
-                    </div>
-                  </div>
+                  )}
                   
                   <div className="mt-6">
                     <h4 className="text-sm font-medium mb-3">Cost by Provider</h4>
                     <div className="space-y-3">
-                      {aiProviders?.map((provider, index) => {
-                        const costs = [45.20, 82.25, 0.00]; // Sample costs
-                        const cost = costs[index] || 0;
-                        return (
-                          <div key={provider.id} className="flex items-center justify-between">
+                      {isLoadingByProvider ? (
+                        <div className="text-sm text-muted-foreground">Loading provider costs...</div>
+                      ) : aiUsageByProvider && aiUsageByProvider.length > 0 ? (
+                        aiUsageByProvider.map((usage, index) => (
+                          <div key={index} className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                               <div className={`w-3 h-3 rounded-full ${
-                                provider.type === 'openai' ? 'bg-green-500' :
-                                provider.type === 'gemini' ? 'bg-blue-500' :
+                                usage.providerType === 'openai' ? 'bg-green-500' :
+                                usage.providerType === 'gemini' ? 'bg-blue-500' :
                                 'bg-purple-500'
                               }`} />
-                              <span className="text-sm font-medium">{provider.name}</span>
+                              <span className="text-sm font-medium">{usage.providerName}</span>
                             </div>
-                            <span className="text-sm font-mono">${cost.toFixed(2)}</span>
+                            <span className="text-sm font-mono">
+                              ${usage.totalCost?.toFixed(2) || '0.00'}
+                            </span>
                           </div>
-                        );
-                      })}
+                        ))
+                      ) : (
+                        <div className="text-sm text-muted-foreground">No cost data available</div>
+                      )}
                     </div>
                   </div>
                 </div>

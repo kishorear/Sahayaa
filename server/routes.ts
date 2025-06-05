@@ -48,6 +48,8 @@ import creatorRoutes from "./routes/creator-routes";
 import aiAvailabilityRoutes from "./routes/ai-availability-routes";
 // Import AI providers routes
 import aiProvidersRoutes from "./routes/ai-providers-routes";
+// Import knowledge sync routes
+import { registerKnowledgeSyncRoutes } from "./routes/knowledge-sync-routes";
 // Import tenant routes for creator role
 import { tenantRoutes } from "./routes/tenant-routes";
 import { getSsoService } from "./sso-service";
@@ -1578,6 +1580,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to generate response" });
     }
   });
+
+  // Register knowledge sync routes
+  registerKnowledgeSyncRoutes(app);
   
   const httpServer = createServer(app);
   return httpServer;

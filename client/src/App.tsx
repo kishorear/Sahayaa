@@ -20,6 +20,7 @@ import IntegrationsPage from "@/pages/admin/IntegrationsPage"; // New Integratio
 import ChatWidgetPage from "@/pages/admin/ChatWidgetPage"; // New Chat Widget Page component
 import AISettingsPage from "@/pages/admin/AISettingsPage"; // AI Provider Settings Page
 import DocumentsPage from "@/pages/admin/DocumentsPage"; // Knowledge base documents management
+import AgentTestPage from "@/pages/admin/AgentTestPage"; // Agent Testing Page
 import MCPTestPage from "@/pages/MCP-Test-Page"; // MCP Testing Page
 import WidgetTestPage from "@/pages/WidgetTestPage"; // Widget Testing Page
 import KnowledgeSync from "@/pages/KnowledgeSync"; // Knowledge Repository Sync Page
@@ -65,6 +66,7 @@ function Router() {
       <ProtectedRoute path="/admin/profile" component={ProfilePage} />
       <ProtectedRoute path="/admin/widget" component={ChatWidgetPage} />
       <ProtectedRoute path="/admin/ai-settings" component={AISettingsPage} />
+      <ProtectedRoute path="/admin/agent-test" component={AgentTestPage} />
       <ProtectedRoute path="/admin/knowledge-sync" component={KnowledgeSync} />
       <CreatorProtectedRoute path="/admin/registration" component={RegistrationPage} />
       

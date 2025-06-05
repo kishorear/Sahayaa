@@ -10,7 +10,7 @@ async function setupAIProvider() {
     
     // Check if AI provider already exists for tenant 1
     const existingProvider = await client.query(
-      'SELECT * FROM ai_providers WHERE tenant_id = $1 AND type = $2', 
+      'SELECT * FROM ai_providers WHERE "tenantId" = $1 AND type = $2', 
       [1, 'gemini']
     );
     
@@ -18,9 +18,9 @@ async function setupAIProvider() {
       // Create a new Gemini AI provider for tenant 1
       const result = await client.query(`
         INSERT INTO ai_providers (
-          tenant_id, team_id, name, type, model, api_key, enabled, 
-          use_for_chat, use_for_classification, use_for_auto_resolve,
-          priority, context_window, max_tokens, temperature
+          "tenantId", "teamId", name, type, model, "apiKey", enabled, 
+          "useForChat", "useForClassification", "useForAutoResolve",
+          priority, "contextWindow", "maxTokens", temperature
         ) VALUES (
           $1, NULL, $2, $3, $4, $5, $6,
           $7, $8, $9,
@@ -37,8 +37,8 @@ async function setupAIProvider() {
       // Update existing provider with new API key and model
       const result = await client.query(`
         UPDATE ai_providers 
-        SET api_key = $1, model = $2, enabled = $3
-        WHERE tenant_id = $4 AND type = $5
+        SET "apiKey" = $1, model = $2, enabled = $3
+        WHERE "tenantId" = $4 AND type = $5
         RETURNING *
       `, [process.env.GEMINI_API_KEY, 'gemini-1.5-flash', true, 1, 'gemini']);
       

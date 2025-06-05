@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Bot } from "lucide-react";
 import AIProviderSettings from "@/components/admin/AIProviderSettings";
+import AIUsageMonitoring from "@/components/admin/AIUsageMonitoring";
 
 export default function AISettingsPage() {
   const [activeTab, setActiveTab] = useState("providers");
@@ -71,23 +72,7 @@ export default function AISettingsPage() {
           </TabsContent>
 
           <TabsContent value="monitoring" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>AI Performance Monitoring</CardTitle>
-                <CardDescription>
-                  Monitor AI performance, usage metrics, and error rates
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Coming Soon</AlertTitle>
-                  <AlertDescription>
-                    AI performance monitoring is coming in a future update.
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
+            <AIUsageMonitoring />
           </TabsContent>
         </Tabs>
       </div>

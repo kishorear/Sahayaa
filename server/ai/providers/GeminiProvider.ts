@@ -45,14 +45,18 @@ export class GeminiProvider implements AIProviderInterface {
         ],
       });
       
+      // Format messages for Gemini (excluding the last user message which we'll send separately)
+      const historyMessages = messages.slice(0, -1);
+      const currentMessage = messages[messages.length - 1];
+      
       // Create a chat session
       const chat = generativeModel.startChat({
-        history: this.formatMessagesForGemini(messages),
+        history: historyMessages.length > 0 ? this.formatMessagesForGemini(historyMessages) : [],
         systemInstruction: this.buildSystemPrompt(systemPrompt, context),
       });
       
-      // Send the message and get the response
-      const result = await chat.sendMessage("");
+      // Send the current message and get the response
+      const result = await chat.sendMessage(currentMessage?.content || "");
       const response = result.response;
       
       return response.text();

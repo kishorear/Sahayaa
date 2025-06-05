@@ -901,12 +901,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get AI response
           const aiResponse = await provider.generateChatResponse(allMessages, knowledgeContext, systemPrompt);
           
-          // For complex issues not automatically handled in the chat flow, suggest creating a ticket
-          const needsTicket = aiResponse.toLowerCase().includes("support ticket") || 
-                             aiResponse.toLowerCase().includes("contact support") ||
-                             aiResponse.toLowerCase().includes("create a ticket");
+          // Only suggest ticket creation if AI explicitly recommends it with specific phrases
+          const shouldCreateTicket = aiResponse.toLowerCase().includes("i recommend creating a support ticket") || 
+                                    aiResponse.toLowerCase().includes("please create a support ticket") ||
+                                    aiResponse.toLowerCase().includes("let me create a ticket for you");
           
-          if (needsTicket) {
+          if (shouldCreateTicket) {
             // Classify message to get appropriate category/complexity
             const classification = await classifyTicket("New chat request", message, tenantId);
             

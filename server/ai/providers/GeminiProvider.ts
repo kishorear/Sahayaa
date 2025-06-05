@@ -60,6 +60,13 @@ export class GeminiProvider implements AIProviderInterface {
       const conversationHistory = this.formatMessagesForGemini(messages.slice(0, -1)); // All except last
       const lastMessage = messages[messages.length - 1].content; // Last message to send
       
+      // If no conversation history, use generateContent instead of startChat
+      if (conversationHistory.length === 0) {
+        const prompt = this.buildSystemPrompt(systemPrompt, context) + '\n\nUser: ' + lastMessage;
+        const result = await generativeModel.generateContent(prompt);
+        return result.response.text();
+      }
+      
       const chat = generativeModel.startChat({
         history: conversationHistory,
         systemInstruction: this.buildSystemPrompt(systemPrompt, context),

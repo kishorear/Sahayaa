@@ -1,27 +1,27 @@
 {
   "authentication_guide.txt": {
     "content": "# Authentication Guide\n\n## Login Issues\nWhen users experience login problems:\n\n1. Verify username and password\n2. Check account status (locked/suspended)\n3. Verify two-factor authentication\n4. Clear browser cache\n5. Try incognito mode\n6. Check for service outages\n\n## Common Error Codes\n- AUTH001: Invalid credentials\n- AUTH002: Account locked\n- AUTH003: 2FA verification failed\n- AUTH004: Session expired\n\n## Troubleshooting Steps\nFor persistent login issues:\n1. Reset password\n2. Disable/re-enable 2FA\n3. Contact system administrator\n",
-    "created_at": "2025-06-05T00:32:39.959763",
+    "created_at": "2025-06-05T00:35:20.845563",
     "vector_dimension": 384
   },
   "billing_procedures.txt": {
     "content": "# Billing Procedures\n\n## Payment Processing\nFor payment-related inquiries:\n\n1. Verify payment method validity\n2. Check sufficient funds/credit\n3. Confirm billing address\n4. Review transaction history\n5. Check for declined transactions\n\n## Subscription Management\n- Upgrade/downgrade plans\n- Cancel subscriptions\n- Refund processing\n- Proration calculations\n\n## Error Resolution\nCommon billing errors:\n- PAY001: Card declined\n- PAY002: Insufficient funds\n- PAY003: Invalid payment method\n- PAY004: Billing address mismatch\n",
-    "created_at": "2025-06-05T00:32:40.259933",
+    "created_at": "2025-06-05T00:35:20.989027",
     "vector_dimension": 384
   },
   "api_documentation.txt": {
     "content": "# API Documentation\n\n## Rate Limiting\nAPI rate limits by tier:\n- Basic: 100 requests/hour\n- Pro: 1000 requests/hour  \n- Enterprise: 10000 requests/hour\n\n## Authentication\nUse Bearer tokens in Authorization header:\n```\nAuthorization: Bearer your_api_key_here\n```\n\n## Common Issues\n- Rate limit exceeded (429 error)\n- Invalid API key (401 error)\n- Malformed requests (400 error)\n- Server errors (500 error)\n\n## Best Practices\n1. Implement exponential backoff\n2. Cache responses when possible\n3. Use webhooks for real-time updates\n4. Monitor rate limit headers\n",
-    "created_at": "2025-06-05T00:32:40.497814",
+    "created_at": "2025-06-05T00:35:21.314939",
     "vector_dimension": 384
   },
   "api_authentication.txt": {
     "content": "# API Authentication Guide\n\n## Overview\nThis guide covers authentication methods for the support ticket API.\n\n## Bearer Token Authentication\nUse Bearer tokens in the Authorization header:\n```\nAuthorization: Bearer your-api-token-here\n```\n\n## API Key Authentication\nInclude your API key in the X-API-Key header:\n```\nX-API-Key: your-api-key-here\n```\n\n## Rate Limits\n- Free tier: 100 requests per minute\n- Premium tier: 1000 requests per minute\n- Enterprise: 5000 requests per minute\n\n## Error Codes\n- 401: Invalid or missing authentication\n- 403: Valid auth but insufficient permissions\n- 429: Rate limit exceeded\n\n## Best Practices\n1. Store API keys securely\n2. Use HTTPS for all requests\n3. Implement proper error handling\n4. Monitor rate limit headers",
-    "created_at": "2025-06-05T00:32:40.674727",
+    "created_at": "2025-06-05T00:35:21.608657",
     "vector_dimension": 384
   },
   "troubleshooting_guide.txt": {
     "content": "# Troubleshooting Guide\n\n## Common Issues\n\n### Authentication Problems\n- Check if API key is valid and not expired\n- Verify bearer token format\n- Ensure proper headers are included\n\n### Rate Limiting\n- Monitor rate limit headers in responses\n- Implement exponential backoff\n- Contact support for rate limit increases\n\n### Database Connection Issues\n- Verify database URL format\n- Check network connectivity\n- Confirm database credentials\n- Test connection pooling settings\n\n### Performance Issues\n- Monitor response times\n- Check database query performance\n- Review memory usage\n- Analyze network latency\n\n## Error Resolution\n\n### 400 Bad Request\n- Check request payload format\n- Validate required fields\n- Review parameter types\n\n### 500 Internal Server Error\n- Check server logs\n- Verify database connectivity\n- Review service dependencies\n\n### Timeout Issues\n- Increase timeout values\n- Check service health\n- Monitor resource usage",
-    "created_at": "2025-06-05T00:32:40.840944",
+    "created_at": "2025-06-05T00:35:21.796191",
     "vector_dimension": 384
   }
 }

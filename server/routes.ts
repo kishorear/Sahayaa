@@ -7,6 +7,7 @@ import { AIProviderFactory } from "./ai/providers";
 import type { ChatMessage } from "./ai";
 import { buildAIContext } from "./data-source-service";
 import agentService from "./ai/agent-service.js";
+import { LocalVectorStorage } from "../services/local_vector_storage";
 import { z } from "zod";
 import { 
   insertTicketSchema, 

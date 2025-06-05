@@ -1,0 +1,27 @@
+“Verify Qdrant is reachable locally: send a GET request to http://localhost:6333/collections and confirm it returns a list (or empty) without errors.”
+
+“Check that the instruction_texts collection exists in Qdrant: if not, recreate it with the correct schema (384-dim cosine vectors).”
+
+“Run a quick ingestion test for instructions: select one sample .txt, .pdf, or .docx file from instructions/, convert it to Markdown via MarkItDown, generate its 384-dim vector, and upsert into instruction_texts. Verify Qdrant reports a nonzero document count afterward.”
+
+“Perform a similarity search on instruction_texts: embed a simple query like ‘How to greet a customer?’ and confirm that Qdrant returns at least one result with reasonable distance.”
+
+“Confirm the FastAPI ticket service is running on port 8001: send GET /healthz (or GET /tickets/1 for a non-existent ID) and verify you receive a valid JSON error or status code 200.”
+
+“Insert a dummy ticket into FastAPI: send POST /tickets/ with { \"subject\": \"Test\", \"content\": \"Test content\", \"resolution\": \"Test resolution\" }. Confirm the response includes a new id.”
+
+“Check ticket_rag in Qdrant: after inserting the dummy ticket, retrieve ticket_rag/collections or search with the dummy resolution text to ensure the new vector is present.”
+
+“Exercise the ticket similarity endpoint: send GET /tickets/similar/?query=Test&top_k=1 and verify the dummy ticket appears in the results.”
+
+“Run the Agno workflow for a sample user message:
+• Use ChatProcessorAgent to normalize ‘I need help with Test.’
+• Use InstructionLookupAgent to retrieve any relevant instructions.
+• Use TicketLookupAgent to fetch similar tickets (should include the dummy ticket).
+• Call the LLM to draft solution steps.
+• Use TicketFormatterAgent to format the final ticket.
+Confirm that each agent returns an expected output without errors and the final formatted ticket is printed.”
+
+“Validate Redis caching (optional):
+• Connect to Redis CLI and run HGETALL instr.
+• Ensure you see all instruction names and templates loaded at startup.”

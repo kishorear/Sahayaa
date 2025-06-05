@@ -72,8 +72,22 @@ export function registerWidgetAgentRoutes(app: Express): void {
       
       const startTime = Date.now();
       
-      // Build enhanced context for agent processing
-      const aiContext = await buildAIContext(user_message, tenantId);
+      // Step 1: Preprocess message using Chat Preprocessor Agent
+      const sessionIdForPreprocessing = sessionId || `widget_${tenantId}_${Date.now()}`;
+      const preprocessorResult = await agentService.preprocessMessage(
+        user_message,
+        sessionIdForPreprocessing,
+        {
+          tenantId,
+          pageContext: user_context,
+          source: 'widget'
+        }
+      );
+      
+      console.log(`Widget Agent: Message preprocessed - Urgency: ${preprocessorResult.urgency}, Sentiment: ${preprocessorResult.sentiment}, PII masked: ${preprocessorResult.masked_pii.length}`);
+      
+      // Step 2: Build enhanced context for agent processing
+      const aiContext = await buildAIContext(preprocessorResult.normalized_prompt, tenantId);
       let enhancedContext = aiContext;
       
       if (user_context) {
@@ -86,37 +100,56 @@ User Context:
         enhancedContext += pageContextStr;
       }
       
-      // Process through agent workflow
-      const agentResponse = await agentService.processCompleteWorkflow({
-        user_message,
+      // Add preprocessing insights to context
+      const preprocessingContextStr = `
+Message Analysis:
+- Urgency Level: ${preprocessorResult.urgency}
+- Sentiment: ${preprocessorResult.sentiment}
+- Normalized Message: ${preprocessorResult.normalized_prompt}
+- PII Detected: ${preprocessorResult.masked_pii.length > 0 ? 'Yes (masked)' : 'No'}
+      `;
+      enhancedContext += preprocessingContextStr;
+      
+      // Step 3: Process through agent workflow with preprocessed message
+      const agentResponse = await agentService.processWorkflow({
+        user_message: preprocessorResult.normalized_prompt,
         user_context: {
           tenantId,
           adminId,
-          sessionId,
+          sessionId: sessionIdForPreprocessing,
           pageContext: user_context,
-          aiContext: enhancedContext
+          aiContext: enhancedContext,
+          preprocessing: preprocessorResult
         }
       });
       
       const processingTime = Date.now() - startTime;
       
-      // Create ticket if agent workflow suggests it
+      // Create ticket with preprocessing insights
       let ticketId = null;
-      if (agentResponse.shouldCreateTicket) {
+      if (agentResponse.success && (agentResponse.ticket_id || preprocessorResult.urgency === 'CRITICAL' || preprocessorResult.urgency === 'HIGH')) {
         try {
           const ticket = await storage.createTicket({
             tenantId,
-            title: agentResponse.ticket_title || `Chat Widget: ${user_message.substring(0, 50)}...`,
-            description: user_message,
+            title: agentResponse.ticket_title || `Chat Widget: ${preprocessorResult.normalized_prompt.substring(0, 50)}...`,
+            description: user_message, // Keep original message for context
             category: agentResponse.category || 'support',
-            urgency: agentResponse.urgency || 'medium',
+            urgency: preprocessorResult.urgency.toLowerCase() as 'critical' | 'high' | 'medium' | 'low',
             status: 'open',
             source: 'widget',
             metadata: {
-              sessionId,
+              sessionId: sessionIdForPreprocessing,
               pageContext: user_context,
               agentProcessed: true,
-              confidence: agentResponse.confidence_score
+              confidence: agentResponse.confidence_score,
+              preprocessing: {
+                normalizedMessage: preprocessorResult.normalized_prompt,
+                originalMessage: preprocessorResult.original_message,
+                urgencyDetected: preprocessorResult.urgency,
+                sentimentDetected: preprocessorResult.sentiment,
+                piiMasked: preprocessorResult.masked_pii.length > 0,
+                maskedPiiCount: preprocessorResult.masked_pii.length
+              }
             }
           });
           ticketId = ticket.id;
@@ -202,17 +235,35 @@ User Context:
       
       const startTime = Date.now();
       
-      // Build context for agent processing
-      const aiContext = await buildAIContext(message, tenantId);
-      
-      // Process through simplified agent workflow
-      const agentResponse = await agentService.processSimpleMessage({
+      // Step 1: Preprocess message using Chat Preprocessor Agent
+      const sessionIdForProcessing = context?.sessionId || `widget_simple_${tenantId}_${Date.now()}`;
+      const preprocessorResult = await agentService.preprocessMessage(
         message,
-        context: {
+        sessionIdForProcessing,
+        {
           tenantId,
-          aiContext,
-          pageContext: context
+          pageContext: context,
+          source: 'widget_simple'
         }
+      );
+      
+      console.log(`Widget Simple: Message preprocessed - Urgency: ${preprocessorResult.urgency}, Sentiment: ${preprocessorResult.sentiment}`);
+      
+      // Step 2: Build context for agent processing
+      const aiContext = await buildAIContext(preprocessorResult.normalized_prompt, tenantId);
+      
+      // Step 3: Process through simplified agent workflow with preprocessed message
+      const agentResponse = await agentService.generateChatResponse({
+        ticketContext: {
+          id: 0, // No ticket for simple messages
+          title: 'Widget Chat',
+          description: preprocessorResult.normalized_prompt,
+          category: 'chat',
+          tenantId
+        },
+        messageHistory: [],
+        userMessage: preprocessorResult.normalized_prompt,
+        knowledgeContext: aiContext
       });
       
       const processingTime = Date.now() - startTime;
@@ -239,11 +290,18 @@ User Context:
       }
       
       return res.json({
-        response: agentResponse.response || agentResponse.message,
-        confidence: agentResponse.confidence_score || 0.8,
+        response: agentResponse || "I understand your message. How can I help you further?",
+        confidence: 0.8,
         processing_time_ms: processingTime,
-        suggested_actions: generateSuggestedActions(message, agentResponse.response || agentResponse.message),
-        session_id: context?.sessionId
+        suggested_actions: generateSuggestedActions(message, agentResponse || ""),
+        session_id: sessionIdForProcessing,
+        preprocessing: {
+          urgency: preprocessorResult.urgency,
+          sentiment: preprocessorResult.sentiment,
+          normalized_message: preprocessorResult.normalized_prompt,
+          pii_detected: preprocessorResult.masked_pii.length > 0,
+          original_message: preprocessorResult.original_message
+        }
       });
       
     } catch (error) {
@@ -332,4 +390,58 @@ function generateSuggestedActions(userMessage: string, aiResponse: string): any[
   }
   
   return actions;
+}
+
+/**
+ * Test endpoint for Chat Preprocessor Agent
+ * 
+ * POST /api/agent/test-preprocessor
+ */
+export function registerPreprocessorTestRoute(app: Express): void {
+  app.post('/api/agent/test-preprocessor', async (req: Request, res: Response) => {
+    try {
+      const { message, sessionId } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({
+          error: 'Message is required'
+        });
+      }
+      
+      const testSessionId = sessionId || `test_${Date.now()}`;
+      
+      // Test the Chat Preprocessor Agent directly
+      const preprocessorResult = await agentService.preprocessMessage(
+        message,
+        testSessionId,
+        {
+          tenantId: 1,
+          source: 'test',
+          test: true
+        }
+      );
+      
+      // Get preprocessor status
+      const preprocessorStatus = agentService.getPreprocessorStatus();
+      
+      return res.json({
+        success: true,
+        preprocessing_result: preprocessorResult,
+        preprocessor_status: preprocessorStatus,
+        test_info: {
+          message: 'Chat Preprocessor Agent test completed successfully',
+          session_id: testSessionId,
+          agent_available: agentService.isAvailable()
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error testing Chat Preprocessor Agent:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to test Chat Preprocessor Agent',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 }

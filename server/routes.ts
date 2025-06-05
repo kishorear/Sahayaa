@@ -955,31 +955,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // User explicitly wants a ticket created
           console.log("User explicitly requested ticket creation");
           
-          // Generate a meaningful title based on the conversation context
-          const titlePrompt = `Based on this support request, generate a concise, professional ticket title (max 60 characters) that captures the main issue:
+          // Generate comprehensive ticket description based on entire conversation
+          const conversationSummary = messageHistory.length > 0 
+            ? messageHistory.map(m => `${m.sender}: ${m.content}`).join('\n')
+            : message;
 
-User message: "${message}"
-Recent conversation context: ${messageHistory.slice(-3).map(m => `${m.sender}: ${m.content}`).join('\n')}
+          const descriptionPrompt = `Based on this support conversation, create a comprehensive ticket description that summarizes the user's issue, context, and any errors they encountered:
+
+Full conversation:
+${conversationSummary}
+
+Latest request: ${message}
+
+Create a professional ticket description that includes:
+1. Brief summary of the issue
+2. Key details from the conversation
+3. Any specific errors or problems mentioned
+4. Current status/impact
+
+Format as a clear, structured description:`;
+
+          const titlePrompt = `Based on this support conversation, generate a concise, professional ticket title (max 60 characters) that captures the main error or issue:
+
+Full conversation:
+${conversationSummary}
 
 Generate only the title, no quotes or extra text:`;
 
           try {
+            // Generate AI-powered description
+            const descriptionResponse = await provider.generateChatResponse([
+              { role: 'user', content: descriptionPrompt }
+            ], '', 'You are a support ticket description generator. Create clear, comprehensive descriptions.');
+            
+            const aiGeneratedDescription = descriptionResponse.trim();
+            
+            // Generate AI-powered title
             const titleResponse = await provider.generateChatResponse([
               { role: 'user', content: titlePrompt }
-            ], '', 'You are a support ticket title generator. Create clear, concise titles.');
+            ], '', 'You are a support ticket title generator. Create clear, concise titles that identify the main issue.');
             
             const generatedTitle = titleResponse.trim().replace(/^["']|["']$/g, '').slice(0, 60);
             
-            // Create comprehensive description with conversation context
-            const conversationContext = messageHistory.length > 0 
-              ? messageHistory.slice(-5).map(m => `${m.sender}: ${m.content}`).join('\n')
-              : '';
-            
-            const fullDescription = conversationContext 
-              ? `**Latest Request:**\n${message}\n\n**Conversation Context:**\n${conversationContext}`
-              : message;
-            
-            const classification = await classifyTicket(generatedTitle, fullDescription, tenantId);
+            const classification = await classifyTicket(generatedTitle, aiGeneratedDescription, tenantId);
             
             return res.status(200).json({
               message: "I'll help you create a support ticket for this issue. Let me gather the details...",
@@ -987,7 +1005,7 @@ Generate only the title, no quotes or extra text:`;
                 type: 'suggest_ticket',
                 data: {
                   title: generatedTitle || message.slice(0, 50) + (message.length > 50 ? '...' : ''),
-                  description: fullDescription,
+                  description: aiGeneratedDescription,
                   category: classification.category,
                   complexity: classification.complexity,
                   assignedTo: classification.assignedTo,
@@ -997,10 +1015,18 @@ Generate only the title, no quotes or extra text:`;
               }
             });
           } catch (error) {
-            console.error("Error generating ticket title:", error);
+            console.error("Error generating AI ticket content:", error);
             
-            // Fallback to classification
-            const classification = await classifyTicket("User ticket request", message, tenantId);
+            // Fallback: Create basic description with conversation context
+            const conversationContext = messageHistory.length > 0 
+              ? messageHistory.slice(-5).map(m => `${m.sender}: ${m.content}`).join('\n')
+              : '';
+            
+            const fallbackDescription = conversationContext 
+              ? `**Latest Request:**\n${message}\n\n**Conversation Context:**\n${conversationContext}`
+              : message;
+            
+            const classification = await classifyTicket("User Support Request", fallbackDescription, tenantId);
             
             return res.status(200).json({
               message: "I'll help you create a support ticket for this issue. Let me gather the details...",
@@ -1008,7 +1034,7 @@ Generate only the title, no quotes or extra text:`;
                 type: 'suggest_ticket',
                 data: {
                   title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
-                  description: message,
+                  description: fallbackDescription,
                   category: classification.category,
                   complexity: classification.complexity,
                   assignedTo: classification.assignedTo,

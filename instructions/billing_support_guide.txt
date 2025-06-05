@@ -1,0 +1,35 @@
+# Billing Support Guide
+
+## Common Billing Issues
+
+### Payment Processing Problems
+1. **Credit Card Declined**
+   - Verify card details are correct
+   - Check with bank for any holds or restrictions
+   - Try alternative payment method
+   - Contact billing department if issue persists
+
+2. **Invoice Discrepancies**
+   - Review billing cycle dates
+   - Check for prorated charges
+   - Verify service usage reports
+   - Escalate to billing manager for complex cases
+
+3. **Refund Requests**
+   - Verify refund eligibility based on terms of service
+   - Process partial refunds for prorated services
+   - Full refunds require manager approval
+   - Document reason for refund in customer notes
+
+### Account Management
+- Update payment methods through customer portal
+- Billing cycles can be adjusted with 30-day notice
+- Late fees apply after 15-day grace period
+- Account suspension occurs after 30 days overdue
+
+### Escalation Guidelines
+- Payment disputes over $500 require manager review
+- Technical billing issues escalate to IT billing team
+- Refund requests over $1000 need executive approval
+
+Priority Level: HIGH for payment failures, MEDIUM for billing questions

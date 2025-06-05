@@ -1,9 +1,10 @@
 /**
- * Agent Service - HTTP client for agent workflow API
- * Replaces direct OpenAI calls with microservice calls
+ * Agent Service - Integrated multi-agent system
+ * Combines preprocessing, classification, resolution, and response generation
  */
 
 import axios, { AxiosResponse } from 'axios';
+import { ChatPreprocessorAgent, PreprocessorResult } from './agents/chat-preprocessor-agent';
 
 interface AgentServiceConfig {
   baseUrl: string;
@@ -78,10 +79,12 @@ interface AgentWorkflowResponse {
 export class AgentService {
   private baseUrl: string;
   private timeout: number;
+  private preprocessorAgent: ChatPreprocessorAgent;
 
   constructor(config: AgentServiceConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.timeout = config.timeout || 30000; // 30 seconds default
+    this.preprocessorAgent = new ChatPreprocessorAgent();
   }
 
   /**
@@ -274,6 +277,27 @@ export class AgentService {
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
+  }
+
+  /**
+   * Check if agent service is available (required method)
+   */
+  isAvailable(): boolean {
+    return this.preprocessorAgent.isAvailable();
+  }
+
+  /**
+   * Preprocess message using Chat Preprocessor Agent
+   */
+  async preprocessMessage(message: string, sessionId: string, context?: any): Promise<PreprocessorResult> {
+    return await this.preprocessorAgent.preprocess(message, sessionId, context);
+  }
+
+  /**
+   * Get preprocessor agent status
+   */
+  getPreprocessorStatus(): any {
+    return this.preprocessorAgent.getStatus();
   }
 }
 

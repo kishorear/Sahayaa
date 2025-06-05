@@ -1,0 +1,67 @@
+Purpose
+Prepare raw user messages for the rest of the pipeline by normalizing language, accurately assessing true urgency, stripping sensitive data, and preserving session context.
+
+Responsibilities
+
+    Normalize Text
+
+        Convert informal or unstructured chat input into a clear, concise prompt.
+
+        Remove filler words, correct grammar, and standardize formatting.
+
+    Determine Genuine Urgency & Sentiment
+
+        Use the Gemini API to analyze the normalized prompt and classify its urgency (e.g., “CRITICAL,” “HIGH,” “LOW”) and sentiment (e.g., “frustrated,” “neutral”).
+
+        Append an urgency tag or store it in memory for downstream agents.
+
+    Detect & Mask PII
+
+        Apply regular expressions to identify email addresses, phone numbers, and other PII.
+
+        Replace any detected PII with placeholders (e.g., [REDACTED_EMAIL]) before forwarding.
+
+    Maintain Session Context
+
+        Store relevant metadata (normalized prompt, urgency level, masked PII entries) in RedisMemory under a session key.
+
+        Retrieve previous context for multi-turn interactions when needed.
+
+Tools & Technologies
+
+    Google Gemini API
+
+        Performs text-to-text generation for normalization and classification queries (urgency, sentiment).
+
+        Endpoint usage examples:
+
+            Prompt for normalization:
+
+                “Normalize this message: ‘I need help now, it’s urgent pls!’”
+
+            Prompt for urgency analysis:
+
+                “Classify the urgency of: ‘My VPN is down and I can’t work.’ Options: CRITICAL, HIGH, MEDIUM, LOW.”
+
+            Prompt for sentiment analysis:
+
+                “Analyze sentiment of: ‘I’m really frustrated, nothing is working.’ Options: Positive, Neutral, Negative.”
+
+    Regular Expressions (Regex)
+
+        Identify patterns like \b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b for emails, \b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b for phone numbers, etc.
+
+        Replace matches with placeholders such as [REDACTED_EMAIL] or [REDACTED_PHONE].
+
+    RedisMemory (via Agno)
+
+        Store session-specific keys:
+
+            session:<id>:normalized_prompt → cleaned text
+
+            session:<id>:urgency → classified urgency
+
+            session:<id>:masked_pii → list of placeholders inserted
+
+        Retrieve and update these values to maintain context across multiple messages.
+

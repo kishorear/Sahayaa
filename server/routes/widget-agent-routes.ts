@@ -3,6 +3,7 @@ import { z } from "zod";
 import { storage } from "../storage";
 import agentService from "../ai/agent-service.js";
 import { buildAIContext } from "../data-source-service";
+import { instructionLookupAgent } from "../ai/agents/instruction-lookup-agent.js";
 
 /**
  * Agent workflow request validation schema
@@ -309,6 +310,61 @@ Message Analysis:
       res.status(500).json({ 
         error: 'Failed to process message request',
         message: 'An internal error occurred while processing your message'
+      });
+    }
+  });
+
+  /**
+   * Test InstructionLookupAgent endpoint
+   * 
+   * POST /api/test/instruction-lookup
+   */
+  app.post('/api/test/instruction-lookup', async (req: Request, res: Response) => {
+    try {
+      const { message, topK = 3 } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({
+          error: 'Message is required and must be a string'
+        });
+      }
+
+      console.log(`InstructionLookup Test: Processing message: "${message}"`);
+      
+      const startTime = Date.now();
+      
+      // Test the instruction lookup agent
+      const lookupResult = await instructionLookupAgent.lookupInstructions({
+        normalizedPrompt: message,
+        urgency: 'MEDIUM',
+        sentiment: 'neutral',
+        sessionId: `test_${Date.now()}`,
+        topK
+      });
+      
+      const processingTime = Date.now() - startTime;
+      
+      console.log(`InstructionLookup Test: Found ${lookupResult.instructions.length} instructions in ${processingTime}ms`);
+      
+      return res.json({
+        success: lookupResult.success,
+        lookup_result: lookupResult,
+        agent_status: instructionLookupAgent.getStatus(),
+        test_info: {
+          message,
+          topK,
+          processing_time_ms: processingTime,
+          instructions_found: lookupResult.instructions.length,
+          search_method: lookupResult.searchMethod
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error testing instruction lookup agent:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to test instruction lookup agent',
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });

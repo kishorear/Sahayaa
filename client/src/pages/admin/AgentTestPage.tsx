@@ -26,6 +26,31 @@ interface PreprocessorStatus {
   capabilities: string[];
 }
 
+interface InstructionResult {
+  text: string;
+  filename: string;
+  relevanceScore: number;
+  metadata?: Record<string, any>;
+}
+
+interface InstructionLookupResult {
+  success: boolean;
+  instructions: InstructionResult[];
+  searchQuery: string;
+  totalFound: number;
+  searchMethod: 'qdrant' | 'local_vector' | 'fallback';
+  error?: string;
+}
+
+interface InstructionLookupStatus {
+  name: string;
+  available: boolean;
+  qdrantConnected: boolean;
+  googleAIConfigured: boolean;
+  localVectorDocuments: number;
+  capabilities: string[];
+}
+
 interface TestResult {
   success: boolean;
   preprocessing_result: PreprocessorResult;
@@ -34,6 +59,19 @@ interface TestResult {
     message: string;
     session_id: string;
     agent_available: boolean;
+  };
+}
+
+interface InstructionTestResult {
+  success: boolean;
+  lookup_result: InstructionLookupResult;
+  agent_status: InstructionLookupStatus;
+  test_info: {
+    message: string;
+    topK: number;
+    processing_time_ms: number;
+    instructions_found: number;
+    search_method: string;
   };
 }
 

@@ -11,7 +11,6 @@ import {
   aiProviders,
   supportDocuments,
   documentUsage,
-  aiUsage,
   teams,
   type User, 
   type InsertUser, 
@@ -37,8 +36,6 @@ import {
   type InsertSupportDocument,
   type DocumentUsage,
   type InsertDocumentUsage,
-  type AiUsage,
-  type InsertAiUsage,
   type Team,
   type InsertTeam
 } from "@shared/schema";
@@ -153,13 +150,6 @@ export interface IStorage {
   getDocumentUsageById(id: number): Promise<DocumentUsage | undefined>;
   getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]>;
   getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any>;
-  
-  // AI usage tracking operations
-  logAiUsage(usage: InsertAiUsage): Promise<AiUsage>;
-  getAiUsageStats(tenantId: number, days?: number): Promise<any>;
-  getAiUsageByProvider(tenantId: number, days?: number): Promise<any[]>;
-  getAiUsageActivity(tenantId: number, limit?: number): Promise<any[]>;
-  getAiUsageCosts(tenantId: number, days?: number): Promise<any>;
   
   // Session management
   sessionStore: session.Store;
@@ -2105,52 +2095,6 @@ export class MemStorage implements IStorage {
         start: startDate,
         end: endDate
       }
-    };
-  }
-
-  // AI Usage Tracking operations - stub implementations for MemStorage
-  async logAiUsage(usage: InsertAiUsage): Promise<AiUsage> {
-    const id = this.userIdCounter++; // Reusing counter for simplicity
-    const now = new Date();
-    
-    const newUsage: AiUsage = {
-      ...usage,
-      id,
-      timestamp: now
-    };
-    
-    // Store in memory (using a new map if needed)
-    return newUsage;
-  }
-
-  async getAiUsageStats(tenantId: number, days: number = 30): Promise<any> {
-    // Return stub data for memory storage
-    return {
-      totalCalls: 0,
-      totalTokens: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      totalCost: 0
-    };
-  }
-
-  async getAiUsageByProvider(tenantId: number, days: number = 30): Promise<any[]> {
-    // Return empty array for memory storage
-    return [];
-  }
-
-  async getAiUsageActivity(tenantId: number, limit: number = 10): Promise<any[]> {
-    // Return empty array for memory storage
-    return [];
-  }
-
-  async getAiUsageCosts(tenantId: number, days: number = 30): Promise<any> {
-    // Return stub data for memory storage
-    return {
-      currentMonth: 0,
-      avgPerCall: 0,
-      totalCalls: 0,
-      projectedMonthly: 0
     };
   }
 }
@@ -4516,24 +4460,26 @@ export class DatabaseStorage implements IStorage {
   async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
     try {
       let result;
-      // Use Drizzle ORM query instead of raw SQL to avoid parameter issues
+      // Use raw SQL query to handle column name difference between schema and actual database
       if (tenantId) {
-        result = await db.select()
-          .from(widgetAnalytics)
-          .where(eq(widgetAnalytics.tenantId, tenantId));
+        result = await db.execute(
+          `SELECT * FROM widget_analytics WHERE tenant_id = $1`,
+          [tenantId]
+        );
       } else {
-        result = await db.select()
-          .from(widgetAnalytics);
+        result = await db.execute(
+          `SELECT * FROM widget_analytics`
+        );
       }
       
-      // With Drizzle ORM, result is already an array
-      if (!result || !Array.isArray(result)) {
+      // Ensure we always return an array, even if result is not in the expected format
+      if (!result || !Array.isArray(result.rows)) {
         console.warn('Unexpected result format from widget_analytics query:', result);
         return [];
       }
       
-      // Return the result array directly (Drizzle ORM already returns the rows)
-      return result.map(row => {
+      // Return the rows array which contains the actual data
+      return result.rows.map(row => {
         // Ensure metadata is parsed if it's a string
         if (row.metadata && typeof row.metadata === 'string') {
           try {
@@ -5070,125 +5016,6 @@ export class DatabaseStorage implements IStorage {
         start: startDate,
         end: endDate
       }
-    };
-  }
-
-  // AI Usage Tracking Methods
-  async logAiUsage(usage: InsertAiUsage): Promise<AiUsage> {
-    const [newUsage] = await db
-      .insert(aiUsage)
-      .values(usage)
-      .returning();
-    
-    return newUsage;
-  }
-
-  async getAiUsageStats(tenantId: number, days: number = 30): Promise<any> {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    const stats = await db
-      .select({
-        totalCalls: sql<number>`COUNT(*)`,
-        totalTokens: sql<number>`SUM(tokens_used)`,
-        avgResponseTime: sql<number>`AVG(response_time)`,
-        successRate: sql<number>`ROUND(AVG(CASE WHEN success THEN 1.0 ELSE 0.0 END) * 100, 1)`,
-        totalCost: sql<number>`SUM(COALESCE(cost, 0))`
-      })
-      .from(aiUsage)
-      .where(
-        and(
-          eq(aiUsage.tenantId, tenantId),
-          sql`timestamp >= ${startDate}`
-        )
-      );
-
-    return stats[0] || {
-      totalCalls: 0,
-      totalTokens: 0,
-      avgResponseTime: 0,
-      successRate: 100,
-      totalCost: 0
-    };
-  }
-
-  async getAiUsageByProvider(tenantId: number, days: number = 30): Promise<any[]> {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    const usage = await db
-      .select({
-        providerId: aiUsage.providerId,
-        providerName: aiProviders.name,
-        providerType: aiProviders.type,
-        totalCalls: sql<number>`COUNT(*)`,
-        totalTokens: sql<number>`SUM(${aiUsage.tokensUsed})`,
-        totalCost: sql<number>`SUM(COALESCE(${aiUsage.cost}, 0))`,
-        avgResponseTime: sql<number>`AVG(${aiUsage.responseTime})`
-      })
-      .from(aiUsage)
-      .innerJoin(aiProviders, eq(aiUsage.providerId, aiProviders.id))
-      .where(
-        and(
-          eq(aiUsage.tenantId, tenantId),
-          sql`${aiUsage.timestamp} >= ${startDate}`
-        )
-      )
-      .groupBy(aiUsage.providerId, aiProviders.name, aiProviders.type);
-
-    return usage;
-  }
-
-  async getAiUsageActivity(tenantId: number, limit: number = 10): Promise<any[]> {
-    const activity = await db
-      .select({
-        id: aiUsage.id,
-        requestType: aiUsage.requestType,
-        model: aiUsage.model,
-        tokensUsed: aiUsage.tokensUsed,
-        responseTime: aiUsage.responseTime,
-        success: aiUsage.success,
-        errorMessage: aiUsage.errorMessage,
-        timestamp: aiUsage.timestamp,
-        providerName: aiProviders.name,
-        providerType: aiProviders.type
-      })
-      .from(aiUsage)
-      .innerJoin(aiProviders, eq(aiUsage.providerId, aiProviders.id))
-      .where(eq(aiUsage.tenantId, tenantId))
-      .orderBy(desc(aiUsage.timestamp))
-      .limit(limit);
-
-    return activity;
-  }
-
-  async getAiUsageCosts(tenantId: number, days: number = 30): Promise<any> {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    const costs = await db
-      .select({
-        currentMonth: sql<number>`SUM(COALESCE(cost, 0))`,
-        avgPerCall: sql<number>`ROUND(AVG(COALESCE(cost, 0)), 2)`,
-        totalCalls: sql<number>`COUNT(*)`
-      })
-      .from(aiUsage)
-      .where(
-        and(
-          eq(aiUsage.tenantId, tenantId),
-          sql`timestamp >= ${startDate}`
-        )
-      );
-
-    const result = costs[0] || { currentMonth: 0, avgPerCall: 0, totalCalls: 0 };
-    
-    // Calculate projected monthly cost
-    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    const projectedMonthly = (result.currentMonth / days) * daysInMonth;
-
-    return {
-      ...result,
-      projectedMonthly: Math.round(projectedMonthly * 100) / 100
     };
   }
 }
@@ -5908,52 +5735,6 @@ class StorageWrapper implements IStorage {
     } catch (error) {
       console.error(`Error in deleteApiKey(${id}):`, error);
       return false;
-    }
-  }
-
-  // AI Usage Tracking wrapper methods
-  async logAiUsage(usage: InsertAiUsage): Promise<AiUsage> {
-    try {
-      return await this.storageImpl.logAiUsage(usage);
-    } catch (error) {
-      console.error(`Error in logAiUsage():`, error);
-      throw error;
-    }
-  }
-
-  async getAiUsageStats(tenantId: number, days?: number): Promise<any> {
-    try {
-      return await this.storageImpl.getAiUsageStats(tenantId, days);
-    } catch (error) {
-      console.error(`Error in getAiUsageStats(${tenantId}):`, error);
-      throw error;
-    }
-  }
-
-  async getAiUsageByProvider(tenantId: number, days?: number): Promise<any[]> {
-    try {
-      return await this.storageImpl.getAiUsageByProvider(tenantId, days);
-    } catch (error) {
-      console.error(`Error in getAiUsageByProvider(${tenantId}):`, error);
-      throw error;
-    }
-  }
-
-  async getAiUsageActivity(tenantId: number, limit?: number): Promise<any[]> {
-    try {
-      return await this.storageImpl.getAiUsageActivity(tenantId, limit);
-    } catch (error) {
-      console.error(`Error in getAiUsageActivity(${tenantId}):`, error);
-      throw error;
-    }
-  }
-
-  async getAiUsageCosts(tenantId: number, days?: number): Promise<any> {
-    try {
-      return await this.storageImpl.getAiUsageCosts(tenantId, days);
-    } catch (error) {
-      console.error(`Error in getAiUsageCosts(${tenantId}):`, error);
-      throw error;
     }
   }
 }

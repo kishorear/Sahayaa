@@ -28,6 +28,7 @@ import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
 import { registerUserRoutes } from "./routes/user-routes";
+import aiProviderRoutes from "./routes/ai-provider-routes";
 import { registerTeamMemberRoutes } from "./routes/team-member-routes";
 import teamRoutes from "./routes/team-routes";
 import { registerProfileRoutes } from "./routes/profile-routes";
@@ -174,8 +175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register user routes
   registerUserRoutes(app, requireAuth, requireRole);
   
-  // Register AI provider routes (using the correct import)
-  app.use('/api/creator', creatorRoutes);
+  // Register AI provider routes
+  app.use('/api/creator', aiProviderRoutes);
   
   // Register team member routes
   registerTeamMemberRoutes(app, requireRole);
@@ -1479,115 +1480,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(200).json(volumeData);
     } catch (error) {
       console.error("Error getting ticket volume metrics:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // AI USAGE TRACKING ROUTES
-  app.get("/api/ai-usage/stats", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
-    try {
-      const days = parseInt(req.query.days as string) || 30;
-      const isCreator = req.user?.role === 'creator';
-      
-      let tenantId: number | undefined;
-      if (isCreator && req.query.tenantId) {
-        tenantId = parseInt(req.query.tenantId as string);
-        if (isNaN(tenantId)) {
-          tenantId = undefined;
-        }
-      } else if (!isCreator && req.user) {
-        tenantId = req.user.tenantId;
-      }
-
-      if (!tenantId && !isCreator) {
-        return res.status(400).json({ message: "Tenant ID required" });
-      }
-
-      const stats = await storage.getAiUsageStats(tenantId!, days);
-      res.status(200).json(stats);
-    } catch (error) {
-      console.error("Error getting AI usage stats:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/ai-usage/by-provider", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
-    try {
-      const days = parseInt(req.query.days as string) || 30;
-      const isCreator = req.user?.role === 'creator';
-      
-      let tenantId: number | undefined;
-      if (isCreator && req.query.tenantId) {
-        tenantId = parseInt(req.query.tenantId as string);
-        if (isNaN(tenantId)) {
-          tenantId = undefined;
-        }
-      } else if (!isCreator && req.user) {
-        tenantId = req.user.tenantId;
-      }
-
-      if (!tenantId && !isCreator) {
-        return res.status(400).json({ message: "Tenant ID required" });
-      }
-
-      const usage = await storage.getAiUsageByProvider(tenantId!, days);
-      res.status(200).json(usage);
-    } catch (error) {
-      console.error("Error getting AI usage by provider:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/ai-usage/activity", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 10;
-      const isCreator = req.user?.role === 'creator';
-      
-      let tenantId: number | undefined;
-      if (isCreator && req.query.tenantId) {
-        tenantId = parseInt(req.query.tenantId as string);
-        if (isNaN(tenantId)) {
-          tenantId = undefined;
-        }
-      } else if (!isCreator && req.user) {
-        tenantId = req.user.tenantId;
-      }
-
-      if (!tenantId && !isCreator) {
-        return res.status(400).json({ message: "Tenant ID required" });
-      }
-
-      const activity = await storage.getAiUsageActivity(tenantId!, limit);
-      res.status(200).json(activity);
-    } catch (error) {
-      console.error("Error getting AI usage activity:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/ai-usage/costs", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
-    try {
-      const days = parseInt(req.query.days as string) || 30;
-      const isCreator = req.user?.role === 'creator';
-      
-      let tenantId: number | undefined;
-      if (isCreator && req.query.tenantId) {
-        tenantId = parseInt(req.query.tenantId as string);
-        if (isNaN(tenantId)) {
-          tenantId = undefined;
-        }
-      } else if (!isCreator && req.user) {
-        tenantId = req.user.tenantId;
-      }
-
-      if (!tenantId && !isCreator) {
-        return res.status(400).json({ message: "Tenant ID required" });
-      }
-
-      const costs = await storage.getAiUsageCosts(tenantId!, days);
-      res.status(200).json(costs);
-    } catch (error) {
-      console.error("Error getting AI usage costs:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

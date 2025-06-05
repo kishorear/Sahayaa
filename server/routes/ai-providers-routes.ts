@@ -13,30 +13,6 @@ import { Request } from 'express-serve-static-core';
 
 const router = Router();
 
-// Get AI provider status - MUST come first to avoid conflicts with /:id routes
-router.get('/status', async (req: Request, res: Response) => {
-  try {
-    // Authentication is handled by the middleware in routes.ts
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const { tenantId } = req.user;
-    const providers = await db.select().from(schema.aiProviders)
-      .where(eq(schema.aiProviders.tenantId, tenantId));
-
-    const statusMap: Record<string, boolean> = {};
-    providers.forEach(provider => {
-      statusMap[provider.type] = Boolean(provider.enabled);
-    });
-
-    return res.status(200).json(statusMap);
-  } catch (error) {
-    console.error('Error checking AI provider status:', error);
-    return res.status(500).json({ message: 'Error checking AI provider status' });
-  }
-});
-
 // Schema for creating/updating AI providers
 const insertAIProviderSchema = createInsertSchema(schema.aiProviders)
   .extend({
@@ -452,6 +428,34 @@ router.delete('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting AI provider:', error);
     return res.status(500).json({ message: 'Error deleting AI provider' });
+  }
+});
+
+// Get AI provider status
+// Move this endpoint before any routes with parameters to avoid conflicts
+// This should come before the '/:id' endpoints to prevent 'status' being interpreted as an ID
+router.get('/api/status', async (req: Request, res: Response) => {
+  try {
+    // Authentication is handled by the middleware in routes.ts
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    // This is just a placeholder - in a real implementation, this would
+    // check the actual connection to each AI provider
+    const statusMock = {
+      openai: true,
+      gemini: true,
+      anthropic: true,
+      'aws-bedrock': true,
+      // perplexity removed
+      custom: true
+    };
+
+    return res.status(200).json(statusMock);
+  } catch (error) {
+    console.error('Error checking AI provider status:', error);
+    return res.status(500).json({ message: 'Error checking AI provider status' });
   }
 });
 

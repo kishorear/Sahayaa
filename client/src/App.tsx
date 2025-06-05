@@ -22,6 +22,7 @@ import AISettingsPage from "@/pages/admin/AISettingsPage"; // AI Provider Settin
 import DocumentsPage from "@/pages/admin/DocumentsPage"; // Knowledge base documents management
 import MCPTestPage from "@/pages/MCP-Test-Page"; // MCP Testing Page
 import WidgetTestPage from "@/pages/WidgetTestPage"; // Widget Testing Page
+import KnowledgeSync from "@/pages/KnowledgeSync"; // Knowledge Repository Sync Page
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
 import CreatorLoginPage from "@/pages/creator/CreatorLoginPage"; // Creator login page
@@ -64,6 +65,7 @@ function Router() {
       <ProtectedRoute path="/admin/profile" component={ProfilePage} />
       <ProtectedRoute path="/admin/widget" component={ChatWidgetPage} />
       <ProtectedRoute path="/admin/ai-settings" component={AISettingsPage} />
+      <ProtectedRoute path="/admin/knowledge-sync" component={KnowledgeSync} />
       <CreatorProtectedRoute path="/admin/registration" component={RegistrationPage} />
       
       {/* 404 Route */}

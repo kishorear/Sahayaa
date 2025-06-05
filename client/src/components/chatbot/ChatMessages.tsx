@@ -18,9 +18,10 @@ type Message = {
 type ChatMessagesProps = {
   messages: Message[];
   isTyping: boolean;
+  ticketCreatedThisSession?: boolean;
 };
 
-export default function ChatMessages({ messages, isTyping }: ChatMessagesProps) {
+export default function ChatMessages({ messages, isTyping, ticketCreatedThisSession = false }: ChatMessagesProps) {
   return (
     <>
       {messages.map((message) => (
@@ -48,21 +49,29 @@ export default function ChatMessages({ messages, isTyping }: ChatMessagesProps) 
             {/* Render action buttons if present */}
             {message.actionButtons && message.actionButtons.type === 'ticket_creation' && (
               <div className="flex gap-2 mt-3">
-                <Button 
-                  size="sm" 
-                  onClick={message.actionButtons.onYes}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
-                >
-                  Yes, create ticket
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={message.actionButtons.onNo}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700"
-                >
-                  No, continue chat
-                </Button>
+                {ticketCreatedThisSession ? (
+                  <div className="text-xs text-gray-600 italic">
+                    ✓ Ticket already created this session
+                  </div>
+                ) : (
+                  <>
+                    <Button 
+                      size="sm" 
+                      onClick={message.actionButtons.onYes}
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      Yes, create ticket
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={message.actionButtons.onNo}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    >
+                      No, continue chat
+                    </Button>
+                  </>
+                )}
               </div>
             )}
             <span

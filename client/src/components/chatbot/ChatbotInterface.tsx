@@ -61,6 +61,7 @@ export default function ChatbotInterface() {
   const [isTyping, setIsTyping] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [ticketCreatedThisSession, setTicketCreatedThisSession] = useState(false);
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -151,6 +152,9 @@ export default function ChatbotInterface() {
     },
     onSuccess: async (response) => {
       const ticket = await response.json();
+      
+      // Mark that a ticket has been created this session
+      setTicketCreatedThisSession(true);
       
       // Add confirmation message to chat
       setMessages(prev => [
@@ -382,6 +386,7 @@ export default function ChatbotInterface() {
                       },
                     ]);
                     setInputMessage("");
+                    setTicketCreatedThisSession(false); // Reset ticket creation state
                     toast({
                       title: "Chat Reset",
                       description: "Starting a new chat session",
@@ -404,7 +409,11 @@ export default function ChatbotInterface() {
 
             {/* Chat messages area */}
             <div className="flex-1 px-4 py-4 overflow-y-auto" id="chat-messages">
-              <ChatMessages messages={messages} isTyping={isTyping} />
+              <ChatMessages 
+                messages={messages} 
+                isTyping={isTyping} 
+                ticketCreatedThisSession={ticketCreatedThisSession}
+              />
               <div ref={messagesEndRef} />
             </div>
 

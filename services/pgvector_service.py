@@ -119,17 +119,17 @@ class PgVectorService:
             # Generate embedding
             embedding = self._generate_embedding(content)
             
-            # Store in database
+            # Store in database (convert embedding list to string format for vector type)
             async with self.db_pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO instruction_vectors (filename, content, embedding, updated_at)
-                    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+                    VALUES ($1, $2, $3::vector, CURRENT_TIMESTAMP)
                     ON CONFLICT (filename)
                     DO UPDATE SET 
                         content = EXCLUDED.content,
                         embedding = EXCLUDED.embedding,
                         updated_at = CURRENT_TIMESTAMP
-                """, filename, content, embedding)
+                """, filename, content, str(embedding))
             
             logger.info(f"Upserted instruction: {filename}")
             return True
@@ -156,7 +156,7 @@ class PgVectorService:
             query_embedding = self._generate_embedding(query)
             embedding_time = (time.time() - embedding_start) * 1000
             
-            # Search in PostgreSQL
+            # Search in PostgreSQL (convert embedding to string format)
             search_start = time.time()
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch("""
@@ -166,7 +166,7 @@ class PgVectorService:
                     WHERE embedding IS NOT NULL
                     ORDER BY embedding <=> $1::vector
                     LIMIT $2
-                """, query_embedding, top_k)
+                """, str(query_embedding), top_k)
             
             search_time = (time.time() - search_start) * 1000
             

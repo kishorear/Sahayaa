@@ -45,18 +45,14 @@ export class GeminiProvider implements AIProviderInterface {
         ],
       });
       
-      // Format messages for Gemini (excluding the last user message which we'll send separately)
-      const historyMessages = messages.slice(0, -1);
-      const currentMessage = messages[messages.length - 1];
-      
       // Create a chat session
       const chat = generativeModel.startChat({
-        history: historyMessages.length > 0 ? this.formatMessagesForGemini(historyMessages) : [],
+        history: this.formatMessagesForGemini(messages),
         systemInstruction: this.buildSystemPrompt(systemPrompt, context),
       });
       
-      // Send the current message and get the response
-      const result = await chat.sendMessage(currentMessage?.content || "");
+      // Send the message and get the response
+      const result = await chat.sendMessage("");
       const response = result.response;
       
       return response.text();
@@ -290,12 +286,12 @@ export class GeminiProvider implements AIProviderInterface {
   /**
    * Helper function to convert message format for Gemini
    */
-  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: Array<{ text: string }> }> {
+  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: string }> {
     return messages
       .filter(message => message.role !== 'system') // Gemini uses systemInstruction instead
       .map(message => ({
         role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.content }]
+        parts: message.content
       }));
   }
 }

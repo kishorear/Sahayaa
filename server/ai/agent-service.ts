@@ -5,6 +5,7 @@
 
 import axios, { AxiosResponse } from 'axios';
 import { ChatPreprocessorAgent, PreprocessorResult } from './agents/chat-preprocessor-agent';
+import { TicketLookupAgent } from './agents/ticket-lookup-agent';
 
 interface AgentServiceConfig {
   baseUrl: string;
@@ -80,11 +81,13 @@ export class AgentService {
   private baseUrl: string;
   private timeout: number;
   private preprocessorAgent: ChatPreprocessorAgent;
+  private ticketLookupAgent: TicketLookupAgent;
 
   constructor(config: AgentServiceConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.timeout = config.timeout || 30000; // 30 seconds default
     this.preprocessorAgent = new ChatPreprocessorAgent();
+    this.ticketLookupAgent = new TicketLookupAgent();
   }
 
   /**
@@ -291,6 +294,20 @@ export class AgentService {
    */
   async preprocessMessage(message: string, sessionId: string, context?: any): Promise<PreprocessorResult> {
     return await this.preprocessorAgent.preprocess(message, sessionId, context);
+  }
+
+  /**
+   * Lookup similar tickets using TicketLookupAgent
+   */
+  async lookupSimilarTickets(query: string, topK: number = 3) {
+    return await this.ticketLookupAgent.lookupSimilarTickets(query, topK);
+  }
+
+  /**
+   * Get ticket lookup agent status
+   */
+  getTicketLookupStatus() {
+    return this.ticketLookupAgent.getStatus();
   }
 
   /**

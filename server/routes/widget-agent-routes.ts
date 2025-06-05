@@ -368,6 +368,56 @@ Message Analysis:
       });
     }
   });
+
+  /**
+   * Test TicketLookupAgent endpoint
+   * 
+   * POST /api/test/ticket-lookup
+   */
+  app.post('/api/test/ticket-lookup', async (req: Request, res: Response) => {
+    try {
+      const { message, topK = 3 } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'Message is required and must be a string'
+        });
+      }
+
+      console.log(`TicketLookup Test: Processing message: "${message}"`);
+      
+      const startTime = Date.now();
+      
+      // Use the TicketLookupAgent from the agent service
+      const lookupResult = await agentService.lookupSimilarTickets(message, topK);
+      
+      const processingTime = Date.now() - startTime;
+      
+      console.log(`TicketLookup Test: Found ${lookupResult.similar_tickets.length} tickets in ${processingTime}ms`);
+      
+      res.json({
+        success: lookupResult.success,
+        lookup_result: lookupResult,
+        agent_status: agentService.getTicketLookupStatus(),
+        test_info: {
+          message,
+          topK,
+          processing_time_ms: processingTime,
+          tickets_found: lookupResult.similar_tickets.length,
+          search_method: lookupResult.search_method
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error testing ticket lookup agent:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to test ticket lookup agent',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 }
 
 /**

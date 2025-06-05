@@ -25,9 +25,9 @@ DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 # OpenAI Configuration
 OPENAI_API_KEY=sk-your-openai-api-key-here
 
-# Qdrant Configuration (optional - will use local storage if not available)
+# Qdrant Configuration (Local Docker Instance)
 QDRANT_URL=http://localhost:6333
-QDRANT_API_KEY=your-qdrant-api-key-if-using-cloud
+# QDRANT_API_KEY is not needed for local instance
 
 # Service URLs (for microservices deployment)
 DATA_SERVICE_URL=http://localhost:8000

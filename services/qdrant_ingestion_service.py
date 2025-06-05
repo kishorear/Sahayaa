@@ -100,19 +100,15 @@ class QdrantIngestionService:
         return openai.OpenAI(api_key=api_key)
     
     def _init_qdrant(self):
-        """Initialize Qdrant client"""
+        """Initialize Qdrant client for local Docker instance"""
         try:
             from qdrant_client import QdrantClient
             
-            qdrant_url = os.getenv("QDRANT_URL")
-            qdrant_api_key = os.getenv("QDRANT_API_KEY")
+            qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
             
-            if qdrant_url and qdrant_api_key:
-                # Use Qdrant Cloud
-                return QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-            else:
-                # Use local Qdrant if available
-                return QdrantClient(host="localhost", port=6333)
+            # Local Qdrant instance - no API key needed
+            logger.info(f"Connecting to local Qdrant at {qdrant_url}")
+            return QdrantClient(url=qdrant_url)
                 
         except ImportError:
             logger.error("qdrant-client not installed. Install with: pip install qdrant-client")

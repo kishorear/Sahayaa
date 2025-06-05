@@ -1,0 +1,60 @@
+1. **Remove any references to Qdrant Cloud API keys or URLs**
+   • Identify and delete environment variables or config entries like `QDRANT_URL` pointing to a cloud endpoint.
+   • Remove any stored `QDRANT_API_KEY` values so the agent no longer attempts to authenticate to the cloud service.
+
+2. **Prepare a local data directory for Qdrant**
+   • Choose (or create) a folder on your machine named `qdrant_data/` to hold all Qdrant storage files.
+   • Ensure this directory path is accessible and writable by the agent.
+
+3. **Install and start a local Qdrant Docker container**
+   • Pull the official Qdrant image.
+   • Run a Docker container binding port 6333 to `localhost:6333` and mounting `qdrant_data/` to the container’s storage folder.
+   • Confirm via Docker that the Qdrant service is up and listening on port 6333.
+
+4. **Update environment variables for the agent**
+   • Set `QDRANT_URL=http://localhost:6333` so all client code targets the local instance.
+   • Remove any `QDRANT_API_KEY` entry (leave it blank or unset) since local Qdrant does not require an API key by default.
+
+5. **Verify connectivity to the local Qdrant instance**
+   • Instruct the agent to attempt a simple “list collections” or “health check” request against `http://localhost:6333`.
+   • If the request succeeds, the local Qdrant is reachable—proceed to the next step. If not, adjust Docker port mappings or firewall rules.
+
+6. **Recreate or migrate existing collections locally (optional)**
+   • If you need to preserve data from the cloud, instruct the agent to export cloud collections (e.g., via backup/restore or JSON dumps) and import them into the local instance.
+   • Otherwise, recreate empty collections named exactly as before (e.g., `instruction_texts`, `ticket_rag`) so that downstream scripts can run without modification.
+
+7. **Update ingestion and lookup scripts to use the new URL**
+   • Direct the agent to replace any hardcoded cloud URLs in the ingestion script with `http://localhost:6333`.
+   • Ensure the agent adjusts any client initialization logic so no API key is passed, or it is explicitly ignored.
+
+8. **Run a local ingestion test**
+   • Have the agent scan the `instructions/` folder for `.txt`, `.pdf`, `.docx`, `.pptx`, `.xlsx` files, convert them to Markdown, embed them, and upsert into `instruction_texts` on the local Qdrant.
+   • Confirm that the local Qdrant UI or a “list collections” call shows `instruction_texts` populated with the expected vector count.
+
+9. **Run a ticket‐resolution ingestion test**
+   • Instruct the agent to insert a dummy ticket resolution into the local Qdrant `ticket_rag` collection using the same embedding settings as before.
+   • Verify that the local Qdrant returns a valid collection size or index information.
+
+10. **Perform a similarity search against the local instance**
+    • Ask the agent to embed a sample query phrase and run a vector search on `instruction_texts` and on `ticket_rag`.
+    • Confirm that the returned results match expected nearest-neighbor behavior.
+
+11. **Remove any cloud‐specific monitoring or cleanup tasks**
+    • If you had scripts or cron jobs targeting the cloud endpoint, disable or delete them.
+    • Ensure all scheduled tasks now point to the local `http://localhost:6333` service.
+
+12. **Document the new local setup process**
+    • Summarize in plain text:
+    – The local data directory path (`qdrant_data/`).
+    – Docker commands or steps used to start Qdrant locally.
+    – Required environment variables (`QDRANT_URL=http://localhost:6333`).
+    – How to run ingestion scripts and how to query locally.
+    • Store this documentation alongside your other project READMEs so any engineer can replicate the in‐house setup.
+
+13. **(Optional) Secure the local instance if exposed beyond localhost**
+    • If you need authentication or TLS for your in-house Qdrant, instruct the agent to generate a self-signed certificate and configure Qdrant’s `--tls` flags or supply an API key in a local config file.
+    • Update the `QDRANT_URL` to use `https://localhost:6333` and add the corresponding `QDRANT_API_KEY` if you enabled local key-based access.
+
+14. **Confirm that all dependent services now operate without cloud credentials**
+    • Run the full pipeline (FastAPI ticket service, Qdrant ingestion, Agno agents) end to end.
+    • Ensure no errors arise related to missing API keys or unreachable endpoints.

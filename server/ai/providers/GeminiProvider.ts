@@ -286,12 +286,12 @@ export class GeminiProvider implements AIProviderInterface {
   /**
    * Helper function to convert message format for Gemini
    */
-  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: string }> {
+  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: Array<{ text: string }> }> {
     return messages
       .filter(message => message.role !== 'system') // Gemini uses systemInstruction instead
       .map(message => ({
         role: message.role === 'assistant' ? 'model' : 'user',
-        parts: message.content
+        parts: [{ text: message.content }]
       }));
   }
 }

@@ -161,7 +161,7 @@ export default function KnowledgeSync() {
   const getSyncStatusBadge = () => {
     if (!status) return null;
     
-    if (status.vector_storage.openai_available) {
+    if (status.vector_storage?.openai_available) {
       return <Badge variant="default" className="bg-green-100 text-green-800">Ready</Badge>;
     } else {
       return <Badge variant="destructive">OpenAI Unavailable</Badge>;
@@ -237,7 +237,7 @@ export default function KnowledgeSync() {
               <div className="flex items-center justify-between">
                 <span className="text-sm">OpenAI Status</span>
                 <span className="text-sm">
-                  {status?.vector_storage.openai_available ? (
+                  {status?.vector_storage?.openai_available ? (
                     <CheckCircle className="h-4 w-4 text-green-600" />
                   ) : (
                     <XCircle className="h-4 w-4 text-red-600" />
@@ -259,19 +259,19 @@ export default function KnowledgeSync() {
               <div className="flex items-center justify-between">
                 <span className="text-sm">Upload Directory</span>
                 <span className="text-sm font-mono">
-                  {status?.uploads_directory.file_count || 0} files
+                  {status?.uploads_directory?.file_count || 0} files
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Vector Storage</span>
                 <span className="text-sm font-mono">
-                  {status?.vector_storage.total_vectors || 0} vectors
+                  {status?.vector_storage?.total_vectors || 0} vectors
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Backups</span>
                 <span className="text-sm font-mono">
-                  {status?.backup_directory.backup_count || 0} files
+                  {status?.backup_directory?.backup_count || 0} files
                 </span>
               </div>
             </div>
@@ -304,12 +304,12 @@ export default function KnowledgeSync() {
             <CardHeader>
               <CardTitle>Upload Directory Files</CardTitle>
               <CardDescription>
-                Files available for processing ({status.uploads_directory.file_count} total)
+                Files available for processing ({status?.uploads_directory?.file_count || 0} total)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {status.uploads_directory.files.length > 0 ? (
+                {status?.uploads_directory?.files?.length > 0 ? (
                   status.uploads_directory.files.map((file, index) => (
                     <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
                       <FileText className="h-4 w-4 text-muted-foreground" />
@@ -330,12 +330,12 @@ export default function KnowledgeSync() {
             <CardHeader>
               <CardTitle>Vector Storage Files</CardTitle>
               <CardDescription>
-                Files processed with embeddings ({status.vector_storage.total_files} total)
+                Files processed with embeddings ({status?.vector_storage?.total_files || 0} total)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {status.vector_storage.files.length > 0 ? (
+                {status?.vector_storage?.files?.length > 0 ? (
                   status.vector_storage.files.map((file, index) => (
                     <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
                       <Database className="h-4 w-4 text-muted-foreground" />

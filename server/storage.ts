@@ -4463,11 +4463,11 @@ export class DatabaseStorage implements IStorage {
       // Use Drizzle ORM query instead of raw SQL to avoid parameter issues
       if (tenantId) {
         result = await db.select()
-          .from(schema.widgetAnalytics)
-          .where(eq(schema.widgetAnalytics.tenantId, tenantId));
+          .from(widgetAnalytics)
+          .where(eq(widgetAnalytics.tenantId, tenantId));
       } else {
         result = await db.select()
-          .from(schema.widgetAnalytics);
+          .from(widgetAnalytics);
       }
       
       // With Drizzle ORM, result is already an array

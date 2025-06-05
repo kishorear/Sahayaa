@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.16.1",
+    "asyncpg>=0.30.0",
     "fastapi>=0.115.12",
     "numpy>=2.2.6",
     "openai>=1.84.0",
@@ -12,6 +13,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "pydantic>=2.11.5",
     "pypdf2>=3.0.1",
+    "pytest>=8.4.0",
     "python-docx>=1.1.2",
     "python-dotenv>=1.1.0",
     "python-pptx>=1.0.2",

@@ -7,8 +7,12 @@ export class GeminiProvider implements AIProviderInterface {
   private model: string;
   
   constructor(config: AIProviderConfig) {
-    // Create Google Generative AI client with the provided API key
-    this.client = new GoogleGenerativeAI(config.apiKey || process.env.GEMINI_API_KEY || '');
+    // Use API key from config only - no environment variable fallback
+    if (!config.apiKey) {
+      throw new Error('Gemini API key is required');
+    }
+    
+    this.client = new GoogleGenerativeAI(config.apiKey);
     
     // Use the specified model or default to gemini-1.5-flash
     this.model = config.model || "gemini-1.5-flash";

@@ -10,8 +10,8 @@ export class GeminiProvider implements AIProviderInterface {
     // Create Google Generative AI client with the provided API key
     this.client = new GoogleGenerativeAI(config.apiKey || process.env.GEMINI_API_KEY || '');
     
-    // Use the specified model or default to gemini-pro
-    this.model = config.model || "gemini-pro";
+    // Use the specified model or default to gemini-1.5-flash
+    this.model = config.model || "gemini-1.5-flash";
     
     console.log(`Gemini provider initialized with model: ${this.model}`);
   }

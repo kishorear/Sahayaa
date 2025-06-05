@@ -115,7 +115,7 @@ export default function AISettingsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {aiUsageStats?.totalCalls || 0}
+                      {parseInt(aiUsageStats?.totalCalls) || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">Last 30 days</p>
                   </CardContent>
@@ -128,9 +128,9 @@ export default function AISettingsPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">
                       {aiUsageStats?.totalTokens ? 
-                        (aiUsageStats.totalTokens > 1000 ? 
-                          `${(aiUsageStats.totalTokens / 1000).toFixed(1)}K` : 
-                          aiUsageStats.totalTokens) : 
+                        (parseInt(aiUsageStats.totalTokens) > 1000 ? 
+                          `${(parseInt(aiUsageStats.totalTokens) / 1000).toFixed(1)}K` : 
+                          parseInt(aiUsageStats.totalTokens)) : 
                         0}
                     </div>
                     <p className="text-xs text-muted-foreground">Last 30 days</p>
@@ -144,7 +144,7 @@ export default function AISettingsPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">
                       {aiUsageStats?.avgResponseTime ? 
-                        `${aiUsageStats.avgResponseTime.toFixed(1)}s` : 
+                        `${parseFloat(aiUsageStats.avgResponseTime).toFixed(1)}s` : 
                         '-'}
                     </div>
                     <p className="text-xs text-muted-foreground">Last 30 days</p>
@@ -158,7 +158,7 @@ export default function AISettingsPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">
                       {aiUsageStats?.successRate ? 
-                        `${aiUsageStats.successRate.toFixed(1)}%` : 
+                        `${parseFloat(aiUsageStats.successRate).toFixed(1)}%` : 
                         '-'}
                     </div>
                     <p className="text-xs text-muted-foreground">Last 30 days</p>
@@ -259,23 +259,23 @@ export default function AISettingsPage() {
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Current Month</p>
                         <p className="text-2xl font-bold">
-                          ${aiUsageCosts?.currentMonth?.toFixed(2) || '0.00'}
+                          ${aiUsageCosts?.currentMonth ? parseFloat(aiUsageCosts.currentMonth).toFixed(2) : '0.00'}
                         </p>
                         <p className="text-xs text-muted-foreground">Last 30 days</p>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Average per Call</p>
                         <p className="text-2xl font-bold">
-                          ${aiUsageCosts?.avgPerCall?.toFixed(3) || '0.000'}
+                          ${aiUsageCosts?.avgPerCall ? parseFloat(aiUsageCosts.avgPerCall).toFixed(3) : '0.000'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {aiUsageCosts?.totalCalls || 0} total calls
+                          {parseInt(aiUsageCosts?.totalCalls) || 0} total calls
                         </p>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Projected Monthly</p>
                         <p className="text-2xl font-bold">
-                          ${aiUsageCosts?.projectedMonthly?.toFixed(2) || '0.00'}
+                          ${aiUsageCosts?.projectedMonthly ? parseFloat(aiUsageCosts.projectedMonthly).toFixed(2) : '0.00'}
                         </p>
                         <p className="text-xs text-muted-foreground">Based on current usage</p>
                       </div>
@@ -299,7 +299,7 @@ export default function AISettingsPage() {
                               <span className="text-sm font-medium">{usage.providerName}</span>
                             </div>
                             <span className="text-sm font-mono">
-                              ${usage.totalCost?.toFixed(2) || '0.00'}
+                              ${usage.totalCost ? parseFloat(usage.totalCost).toFixed(2) : '0.00'}
                             </span>
                           </div>
                         ))

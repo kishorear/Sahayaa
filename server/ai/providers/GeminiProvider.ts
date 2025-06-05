@@ -60,23 +60,22 @@ export class GeminiProvider implements AIProviderInterface {
       const conversationHistory = this.formatMessagesForGemini(messages.slice(0, -1)); // All except last
       const lastMessage = messages[messages.length - 1].content; // Last message to send
       
-      // If no conversation history, use generateContent instead of startChat
-      if (conversationHistory.length === 0) {
-        const prompt = this.buildSystemPrompt(systemPrompt, context) + '\n\nUser: ' + lastMessage;
-        const result = await generativeModel.generateContent(prompt);
-        return result.response.text();
+      // Always use generateContent for simplicity and reliability
+      let prompt = this.buildSystemPrompt(systemPrompt, context);
+      
+      // Add conversation history to prompt if available
+      if (conversationHistory.length > 0) {
+        prompt += '\n\nConversation History:\n';
+        conversationHistory.forEach(msg => {
+          const role = msg.role === 'model' ? 'Assistant' : 'User';
+          prompt += `${role}: ${msg.parts[0].text}\n`;
+        });
       }
       
-      const chat = generativeModel.startChat({
-        history: conversationHistory,
-        systemInstruction: this.buildSystemPrompt(systemPrompt, context),
-      });
+      prompt += `\nUser: ${lastMessage}\nAssistant:`;
       
-      // Send the last message and get the response
-      const result = await chat.sendMessage(lastMessage);
-      const response = result.response;
-      
-      return response.text();
+      const result = await generativeModel.generateContent(prompt);
+      return result.response.text();
     } catch (error) {
       console.error("Error calling Gemini for chat response:", error);
       throw new Error("Failed to generate chat response with Gemini");

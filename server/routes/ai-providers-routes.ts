@@ -13,6 +13,28 @@ import { Request } from 'express-serve-static-core';
 
 const router = Router();
 
+// Get AI provider status - must come before parameterized routes
+router.get('/status', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const statusMock = {
+      openai: true,
+      gemini: true,
+      anthropic: true,
+      'aws-bedrock': true,
+      custom: true
+    };
+
+    return res.status(200).json(statusMock);
+  } catch (error) {
+    console.error('Error checking AI provider status:', error);
+    return res.status(500).json({ message: 'Error checking AI provider status' });
+  }
+});
+
 // Schema for creating/updating AI providers
 const insertAIProviderSchema = createInsertSchema(schema.aiProviders)
   .extend({
@@ -21,7 +43,7 @@ const insertAIProviderSchema = createInsertSchema(schema.aiProviders)
     model: z.string().min(1, 'Model name is required'),
     apiKey: z.string().optional(),
     baseUrl: z.string().optional(),
-    isDefault: z.boolean().default(false),
+    isPrimary: z.boolean().default(false),
     enabled: z.boolean().default(true),
     useForChat: z.boolean().default(true),
     useForClassification: z.boolean().default(true),
@@ -117,25 +139,25 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // If setting as default, unset any existing default providers in same scope
-    if (result.data.isDefault) {
+    // If setting as primary, unset any existing primary providers in same scope
+    if (result.data.isPrimary) {
       if (result.data.teamId) {
-        // Team-specific: unset defaults for that team
+        // Team-specific: unset primary for that team
         await db.update(schema.aiProviders)
-          .set({ isDefault: false })
+          .set({ isPrimary: false })
           .where(and(
             eq(schema.aiProviders.tenantId, tenantId),
             eq(schema.aiProviders.teamId, result.data.teamId),
-            eq(schema.aiProviders.isDefault, true)
+            eq(schema.aiProviders.isPrimary, true)
           ));
       } else {
-        // Tenant-wide: unset defaults for tenant-wide providers only
+        // Tenant-wide: unset primary for tenant-wide providers only
         await db.update(schema.aiProviders)
-          .set({ isDefault: false })
+          .set({ isPrimary: false })
           .where(and(
             eq(schema.aiProviders.tenantId, tenantId),
             isNull(schema.aiProviders.teamId),
-            eq(schema.aiProviders.isDefault, true)
+            eq(schema.aiProviders.isPrimary, true)
           ));
       }
     }
@@ -431,32 +453,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Get AI provider status
-// Move this endpoint before any routes with parameters to avoid conflicts
-// This should come before the '/:id' endpoints to prevent 'status' being interpreted as an ID
-router.get('/api/status', async (req: Request, res: Response) => {
-  try {
-    // Authentication is handled by the middleware in routes.ts
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
 
-    // This is just a placeholder - in a real implementation, this would
-    // check the actual connection to each AI provider
-    const statusMock = {
-      openai: true,
-      gemini: true,
-      anthropic: true,
-      'aws-bedrock': true,
-      // perplexity removed
-      custom: true
-    };
-
-    return res.status(200).json(statusMock);
-  } catch (error) {
-    console.error('Error checking AI provider status:', error);
-    return res.status(500).json({ message: 'Error checking AI provider status' });
-  }
-});
 
 export default router;

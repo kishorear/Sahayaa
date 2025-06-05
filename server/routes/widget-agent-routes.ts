@@ -395,10 +395,10 @@ function generateSuggestedActions(userMessage: string, aiResponse: string): any[
 /**
  * Test endpoint for Chat Preprocessor Agent
  * 
- * POST /api/agent/test-preprocessor
+ * POST /api/test/preprocessor
  */
 export function registerPreprocessorTestRoute(app: Express): void {
-  app.post('/api/agent/test-preprocessor', async (req: Request, res: Response) => {
+  app.post('/api/test/preprocessor', async (req: Request, res: Response) => {
     try {
       const { message, sessionId } = req.body;
       

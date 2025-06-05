@@ -140,6 +140,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
   
+  // Register Chat Preprocessor Agent test route (before auth middleware)
+  registerPreprocessorTestRoute(app);
+  
   // Setup authentication routes and middleware
   const { requireAuth, requireRole } = await setupAuth(app);
   
@@ -178,9 +181,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register widget agent routes (new agent communication endpoints)
   registerWidgetAgentRoutes(app);
-  
-  // Register Chat Preprocessor Agent test route
-  registerPreprocessorTestRoute(app);
   
   // Register widget analytics routes
   registerWidgetAnalyticsRoutes(app, requireAuth);

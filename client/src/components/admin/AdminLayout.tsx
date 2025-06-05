@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   UserCog,
   MessageSquare,
-  UserPlus
+  UserPlus,
+  Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoIcon from "@/components/LogoIcon";
@@ -80,6 +81,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       label: "AI Settings", 
       icon: Bot,
       roles: ["administrator", "user", "creator"] // Users and creators can access AI settings
+    },
+    { 
+      path: "/admin/agent-test", 
+      label: "Agent Test", 
+      icon: Brain,
+      roles: ["administrator", "creator"] // Only admins and creators can test agents
     },
     { 
       path: "/admin/profile", 

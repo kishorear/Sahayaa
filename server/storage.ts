@@ -4460,26 +4460,24 @@ export class DatabaseStorage implements IStorage {
   async getAllWidgetAnalytics(tenantId?: number): Promise<WidgetAnalytics[]> {
     try {
       let result;
-      // Use raw SQL query to handle column name difference between schema and actual database
+      // Use Drizzle ORM query instead of raw SQL to avoid parameter issues
       if (tenantId) {
-        result = await db.execute(
-          `SELECT * FROM widget_analytics WHERE tenant_id = $1`,
-          [tenantId]
-        );
+        result = await db.select()
+          .from(schema.widgetAnalytics)
+          .where(eq(schema.widgetAnalytics.tenantId, tenantId));
       } else {
-        result = await db.execute(
-          `SELECT * FROM widget_analytics`
-        );
+        result = await db.select()
+          .from(schema.widgetAnalytics);
       }
       
-      // Ensure we always return an array, even if result is not in the expected format
-      if (!result || !Array.isArray(result.rows)) {
+      // With Drizzle ORM, result is already an array
+      if (!result || !Array.isArray(result)) {
         console.warn('Unexpected result format from widget_analytics query:', result);
         return [];
       }
       
-      // Return the rows array which contains the actual data
-      return result.rows.map(row => {
+      // Return the result array directly (Drizzle ORM already returns the rows)
+      return result.map(row => {
         // Ensure metadata is parsed if it's a string
         if (row.metadata && typeof row.metadata === 'string') {
           try {

@@ -954,23 +954,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isTicketRequest) {
           // User explicitly wants a ticket created
           console.log("User explicitly requested ticket creation");
-          const classification = await classifyTicket("User ticket request", message, tenantId);
           
-          return res.status(200).json({
-            message: "I'll help you create a support ticket for this issue. Let me gather the details...",
-            action: {
-              type: 'suggest_ticket',
-              data: {
-                title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
-                description: message,
-                category: classification.category,
-                complexity: classification.complexity,
-                assignedTo: classification.assignedTo,
-                aiNotes: classification.aiNotes,
-                tenantId: tenantId
+          // Generate a meaningful title based on the conversation context
+          const titlePrompt = `Based on this support request, generate a concise, professional ticket title (max 60 characters) that captures the main issue:
+
+User message: "${message}"
+Recent conversation context: ${messageHistory.slice(-3).map(m => `${m.sender}: ${m.content}`).join('\n')}
+
+Generate only the title, no quotes or extra text:`;
+
+          try {
+            const titleResponse = await provider.generateChatResponse([
+              { role: 'user', content: titlePrompt }
+            ], '', 'You are a support ticket title generator. Create clear, concise titles.');
+            
+            const generatedTitle = titleResponse.trim().replace(/^["']|["']$/g, '').slice(0, 60);
+            
+            // Create comprehensive description with conversation context
+            const conversationContext = messageHistory.length > 0 
+              ? messageHistory.slice(-5).map(m => `${m.sender}: ${m.content}`).join('\n')
+              : '';
+            
+            const fullDescription = conversationContext 
+              ? `**Latest Request:**\n${message}\n\n**Conversation Context:**\n${conversationContext}`
+              : message;
+            
+            const classification = await classifyTicket(generatedTitle, fullDescription, tenantId);
+            
+            return res.status(200).json({
+              message: "I'll help you create a support ticket for this issue. Let me gather the details...",
+              action: {
+                type: 'suggest_ticket',
+                data: {
+                  title: generatedTitle || message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+                  description: fullDescription,
+                  category: classification.category,
+                  complexity: classification.complexity,
+                  assignedTo: classification.assignedTo,
+                  aiNotes: classification.aiNotes,
+                  tenantId: tenantId
+                }
               }
-            }
-          });
+            });
+          } catch (error) {
+            console.error("Error generating ticket title:", error);
+            
+            // Fallback to classification
+            const classification = await classifyTicket("User ticket request", message, tenantId);
+            
+            return res.status(200).json({
+              message: "I'll help you create a support ticket for this issue. Let me gather the details...",
+              action: {
+                type: 'suggest_ticket',
+                data: {
+                  title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+                  description: message,
+                  category: classification.category,
+                  complexity: classification.complexity,
+                  assignedTo: classification.assignedTo,
+                  aiNotes: classification.aiNotes,
+                  tenantId: tenantId
+                }
+              }
+            });
+          }
         }
 
         // Create a conversational system prompt

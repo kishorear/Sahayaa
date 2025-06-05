@@ -1482,6 +1482,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  // AI USAGE TRACKING ROUTES
+  app.get("/api/ai-usage/stats", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const isCreator = req.user?.role === 'creator';
+      
+      let tenantId: number | undefined;
+      if (isCreator && req.query.tenantId) {
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator && req.user) {
+        tenantId = req.user.tenantId;
+      }
+
+      if (!tenantId && !isCreator) {
+        return res.status(400).json({ message: "Tenant ID required" });
+      }
+
+      const stats = await storage.getAiUsageStats(tenantId!, days);
+      res.status(200).json(stats);
+    } catch (error) {
+      console.error("Error getting AI usage stats:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/ai-usage/by-provider", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const isCreator = req.user?.role === 'creator';
+      
+      let tenantId: number | undefined;
+      if (isCreator && req.query.tenantId) {
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator && req.user) {
+        tenantId = req.user.tenantId;
+      }
+
+      if (!tenantId && !isCreator) {
+        return res.status(400).json({ message: "Tenant ID required" });
+      }
+
+      const usage = await storage.getAiUsageByProvider(tenantId!, days);
+      res.status(200).json(usage);
+    } catch (error) {
+      console.error("Error getting AI usage by provider:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/ai-usage/activity", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const isCreator = req.user?.role === 'creator';
+      
+      let tenantId: number | undefined;
+      if (isCreator && req.query.tenantId) {
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator && req.user) {
+        tenantId = req.user.tenantId;
+      }
+
+      if (!tenantId && !isCreator) {
+        return res.status(400).json({ message: "Tenant ID required" });
+      }
+
+      const activity = await storage.getAiUsageActivity(tenantId!, limit);
+      res.status(200).json(activity);
+    } catch (error) {
+      console.error("Error getting AI usage activity:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/ai-usage/costs", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const isCreator = req.user?.role === 'creator';
+      
+      let tenantId: number | undefined;
+      if (isCreator && req.query.tenantId) {
+        tenantId = parseInt(req.query.tenantId as string);
+        if (isNaN(tenantId)) {
+          tenantId = undefined;
+        }
+      } else if (!isCreator && req.user) {
+        tenantId = req.user.tenantId;
+      }
+
+      if (!tenantId && !isCreator) {
+        return res.status(400).json({ message: "Tenant ID required" });
+      }
+
+      const costs = await storage.getAiUsageCosts(tenantId!, days);
+      res.status(200).json(costs);
+    } catch (error) {
+      console.error("Error getting AI usage costs:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
   
   // ATTACHMENT ROUTES
   app.get("/api/tickets/:ticketId/attachments", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {

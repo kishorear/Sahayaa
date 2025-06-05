@@ -20,6 +20,27 @@ export default function AISettingsPage() {
     retry: false,
   });
 
+  // Real AI usage data queries
+  const { data: aiUsageStats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['/api/ai-usage/stats'],
+    retry: false,
+  });
+
+  const { data: aiUsageByProvider, isLoading: isLoadingByProvider } = useQuery({
+    queryKey: ['/api/ai-usage/by-provider'],
+    retry: false,
+  });
+
+  const { data: aiUsageActivity, isLoading: isLoadingActivity } = useQuery({
+    queryKey: ['/api/ai-usage/activity'],
+    retry: false,
+  });
+
+  const { data: aiUsageCosts, isLoading: isLoadingCosts } = useQuery({
+    queryKey: ['/api/ai-usage/costs'],
+    retry: false,
+  });
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -71,48 +92,80 @@ export default function AISettingsPage() {
           </TabsContent>
 
           <TabsContent value="monitoring" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total API Calls</CardTitle>
-                  <Bot className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">2,847</div>
-                  <p className="text-xs text-muted-foreground">+12% from last month</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Tokens Used</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">142.5K</div>
-                  <p className="text-xs text-muted-foreground">+8% from last month</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Average Response Time</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">1.2s</div>
-                  <p className="text-xs text-muted-foreground">-5% from last month</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">99.2%</div>
-                  <p className="text-xs text-muted-foreground">+0.1% from last month</p>
-                </CardContent>
-              </Card>
-            </div>
+            {isLoadingStats || isLoadingByProvider || isLoadingActivity || isLoadingCosts ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Loading...</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">-</div>
+                      <p className="text-xs text-muted-foreground">Loading data...</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total API Calls</CardTitle>
+                    <Bot className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {aiUsageStats?.totalCalls || 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Last 30 days</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Tokens Used</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {aiUsageStats?.totalTokens ? 
+                        (aiUsageStats.totalTokens > 1000 ? 
+                          `${(aiUsageStats.totalTokens / 1000).toFixed(1)}K` : 
+                          aiUsageStats.totalTokens) : 
+                        0}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Last 30 days</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Average Response Time</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {aiUsageStats?.avgResponseTime ? 
+                        `${aiUsageStats.avgResponseTime.toFixed(1)}s` : 
+                        '-'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Last 30 days</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {aiUsageStats?.successRate ? 
+                        `${aiUsageStats.successRate.toFixed(1)}%` : 
+                        '-'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Last 30 days</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
@@ -124,24 +177,30 @@ export default function AISettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {aiProviders?.map((provider) => (
-                      <div key={provider.id} className="flex items-center">
-                        <div className="w-full">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{provider.name}</span>
-                            <span className="text-sm text-muted-foreground">
-                              {Math.floor(Math.random() * 1000) + 100} calls
-                            </span>
-                          </div>
-                          <div className="mt-1 h-2 bg-secondary rounded-full">
-                            <div 
-                              className="h-2 bg-primary rounded-full" 
-                              style={{ width: `${Math.floor(Math.random() * 80) + 20}%` }}
-                            />
+                    {isLoadingByProvider ? (
+                      <div className="text-sm text-muted-foreground">Loading usage data...</div>
+                    ) : aiUsageByProvider && aiUsageByProvider.length > 0 ? (
+                      aiUsageByProvider.map((usage, index) => (
+                        <div key={index} className="flex items-center">
+                          <div className="w-full">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{usage.providerName}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {usage.totalCalls} calls
+                              </span>
+                            </div>
+                            <div className="mt-1 h-2 bg-secondary rounded-full">
+                              <div 
+                                className="h-2 bg-primary rounded-full" 
+                                style={{ width: `${usage.percentage || 0}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No usage data available</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -155,30 +214,30 @@ export default function AISettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[
-                      { provider: 'OpenAI GPT-4', action: 'Ticket Classification', status: 'success', time: '2 mins ago' },
-                      { provider: 'Google Gemini', action: 'Chat Response', status: 'success', time: '5 mins ago' },
-                      { provider: 'OpenAI GPT-4', action: 'Auto Resolution', status: 'success', time: '8 mins ago' },
-                      { provider: 'Google Gemini', action: 'Email Generation', status: 'error', time: '12 mins ago' },
-                      { provider: 'OpenAI GPT-4', action: 'Ticket Summary', status: 'success', time: '15 mins ago' },
-                    ].map((activity, index) => (
-                      <div key={index} className="flex items-center space-x-4">
-                        <div className={`w-2 h-2 rounded-full ${
-                          activity.status === 'success' ? 'bg-green-500' : 'bg-red-500'
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {activity.action}
-                          </p>
-                          <p className="text-sm text-gray-500 truncate">
-                            {activity.provider}
-                          </p>
+                    {isLoadingActivity ? (
+                      <div className="text-sm text-muted-foreground">Loading activity data...</div>
+                    ) : aiUsageActivity && aiUsageActivity.length > 0 ? (
+                      aiUsageActivity.map((activity, index) => (
+                        <div key={index} className="flex items-center space-x-4">
+                          <div className={`w-2 h-2 rounded-full ${
+                            activity.success ? 'bg-green-500' : 'bg-red-500'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {activity.requestType}
+                            </p>
+                            <p className="text-sm text-gray-500 truncate">
+                              {activity.providerName || activity.model}
+                            </p>
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {activity.timeAgo}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {activity.time}
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No recent activity</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

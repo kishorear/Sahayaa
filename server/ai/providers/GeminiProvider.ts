@@ -51,12 +51,8 @@ export class GeminiProvider implements AIProviderInterface {
         systemInstruction: this.buildSystemPrompt(systemPrompt, context),
       });
       
-      // Get the last user message
-      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      const messageContent = lastUserMessage?.content || "Hello";
-      
       // Send the message and get the response
-      const result = await chat.sendMessage(messageContent);
+      const result = await chat.sendMessage("");
       const response = result.response;
       
       return response.text();
@@ -278,13 +274,7 @@ export class GeminiProvider implements AIProviderInterface {
    */
   private buildSystemPrompt(systemPrompt?: string, context?: string): string {
     let fullPrompt = systemPrompt || 
-      `You are an AI support assistant. Provide helpful, concise responses.
-      
-IMPORTANT RULES:
-- Never mention generic terms like "our SaaS product", "our platform", "our service", or "our company"
-- Be specific about the actual service or feature being discussed
-- If you don't know the specific product name, simply refer to "this service" or "the system"
-- Focus on solving the user's specific issue rather than making generic product references`;
+      "You are an AI support assistant for a SaaS product. Provide helpful, concise responses.";
     
     if (context) {
       fullPrompt += `\n\nUse the following information to help with your responses:\n${context}`;
@@ -296,12 +286,12 @@ IMPORTANT RULES:
   /**
    * Helper function to convert message format for Gemini
    */
-  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: Array<{ text: string }> }> {
+  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: string }> {
     return messages
       .filter(message => message.role !== 'system') // Gemini uses systemInstruction instead
       .map(message => ({
         role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.content }]
+        parts: message.content
       }));
   }
 }

@@ -54,16 +54,10 @@ export class OpenAIProvider implements AIProviderInterface {
       
       // Fallback to direct OpenAI call
       let systemContent = systemPrompt || 
-        `You are an AI support assistant. Provide helpful, concise responses.
-        
-IMPORTANT RULES:
-- Never mention generic terms like "our SaaS product", "our platform", "our service", or "our company"
-- Be specific about the actual service or feature being discussed
-- If you don't know the specific product name, simply refer to "this service" or "the system"
-- Focus on solving the user's specific issue rather than making generic product references`;
+        `You are an AI support assistant for a SaaS product. Provide helpful, concise responses.`;
       
       if (context) {
-        systemContent += `\n\nUse the following information to help with your responses:\n${context}`;
+        systemContent += `\n\n${context}`;
       }
       
       const apiMessages = [

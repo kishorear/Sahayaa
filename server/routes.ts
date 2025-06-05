@@ -28,7 +28,6 @@ import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";
 import { registerUserRoutes } from "./routes/user-routes";
-import aiProviderRoutes from "./routes/ai-provider-routes";
 import { registerTeamMemberRoutes } from "./routes/team-member-routes";
 import teamRoutes from "./routes/team-routes";
 import { registerProfileRoutes } from "./routes/profile-routes";
@@ -175,8 +174,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register user routes
   registerUserRoutes(app, requireAuth, requireRole);
   
-  // Register AI provider routes
-  app.use('/api/creator', aiProviderRoutes);
+  // Register AI provider routes (using the correct import)
+  app.use('/api/creator', creatorRoutes);
   
   // Register team member routes
   registerTeamMemberRoutes(app, requireRole);

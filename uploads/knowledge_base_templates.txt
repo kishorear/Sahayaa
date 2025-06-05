@@ -1,0 +1,265 @@
+8 Knowledge Base Article Templates That Work
+
+Use these knowledge base article templates to improve the consistency and speed of your content creation process.
+
+FAQ Template
+
+H1: [Topic] FAQs
+
+H2: Introduction
+Provide a brief introduction to the topic covered in this FAQ article.
+
+H2: Question 1 (Example: What are the system requirements to run this software?)
+Answer:
+Concisely answer the question, or direct the reader to the product page where the system requirements can be found.
+
+H2: Question 2 (Example: How do I use a coupon code at checkout?)
+Answer:
+Explain where the promo code field is located and include a screenshot.
+
+H2: Question 3 (Example: Do you offer a warranty?)
+Answer:
+Identify how long the warranty lasts and direct the reader to the warranty page for more details.
+
+H2: Question 4 (Example: Can I return an item if I've already opened it?)
+Answer:
+Explain the criteria that must be met to return an item and receive a full refund.
+
+H2: Question 5 (Example: How long is the free trial?)
+Answer:
+Identify the free trial length and encourage the reader to talk to the sales team for more information.
+
+H2: Additional information
+Include any additional information or resources that may be helpful to the user, such as links to related articles or external websites, troubleshooting tips, or FAQs not covered in this article.
+
+Product and Service Descriptions Template
+
+H1: [Product/service name] description
+
+H2: Introduction
+Begin with an engaging introduction that provides context about the product and its purpose.
+
+H2: Description
+Provide a brief description of the product, including its main use cases, functionalities, and benefits.
+
+H2: Key features
+List the product's key features in bullet points or a numbered list.
+
+H2: Technical specifications
+Detail the product's technical specifications, including dimensions, weight, materials, and any other relevant technical details.
+
+H2: Compatibility
+Specify compatibility requirements or limitations, such as operating systems, software versions, or hardware requirements.
+
+H2: Maintenance tips
+Provide advice on maintaining the product for optimal performance and longevity.
+
+H2: Additional information
+Include any additional information about the product, such as warranty details, regulatory compliance, or certifications.
+
+H2: Conclusion
+Conclude the article by summarizing the main points about the product and encouraging users to explore further or reach out for assistance if needed.
+
+Process Guide Template
+
+H1: [Process name] guide
+
+H2: Introduction
+Start with a brief introduction explaining the purpose of the process covered in this guide.
+
+H2: Process description
+Provide a concise description of the process, outlining its objectives and significance.
+
+H2: Prerequisites
+Detail any prerequisites or requirements necessary before initiating the process.
+
+H2: Gathering materials/resources
+Provide instructions on gathering the materials and resources needed for the process.
+
+H2: Step-by-step instructions
+Offer detailed, step-by-step instructions for executing each stage of the process.
+
+H2: Tips and best practices
+Include any tips, tricks, or best practices that may aid in completing the process effectively.
+
+H2: Next steps
+Offer guidance on what to do after completing the process, including any follow-up actions.
+
+H2: Additional information
+Include any supplementary information relevant to the process, such as related documents, templates, or references.
+
+H2: Disclaimer
+Include a disclaimer stating any limitations or liabilities associated with following the process guide, and advise users to use their discretion and seek professional advice if needed.
+
+Troubleshooting Guide Template
+
+H1: [Issue] troubleshooting guide
+
+H2: Introduction
+Start with a brief introduction explaining the purpose and importance of the troubleshooting guide, emphasizing its role in resolving common issues efficiently.
+
+H2: Issue description
+Provide a clear and concise description of the specific issue or problem that this troubleshooting guide addresses.
+
+H2: Signs
+List the signs or indicators users may experience when encountering the issue.
+
+H2: Basic troubleshooting steps
+Provide a checklist of common factors to rule out potential causes of the issue.
+
+H2: Diagnostic tools/resources
+List any diagnostic tools, resources, or utilities that will allow users to diagnose the issue more thoroughly.
+
+H2: Advanced troubleshooting steps
+Offer detailed, step-by-step instructions for advanced troubleshooting methods, including any specific commands or actions to take.
+
+H3: Step 1: [Title]
+Provide a detailed description of the first common solution to the issue, including step-by-step instructions for implementation.
+
+H3: Step 2: [Title]
+Repeat the process for each additional common solution, if applicable.
+
+H2: Contact support
+Provide contact information or instructions for users to contact support for further assistance if the troubleshooting steps do not resolve the issue.
+
+H2: Additional resources
+Offer links or references to additional resources (such as forums, knowledge base articles, videos, or user guides) that may provide further assistance with troubleshooting the issue.
+
+H2: Conclusion
+Conclude the troubleshooting guide with a summary of key points and encourage users to refer back to the guide as needed for future troubleshooting needs.
+
+H2: Disclaimer
+Include a disclaimer stating any limitations or liabilities associated with following the troubleshooting guide template, and advise users to use their discretion and seek professional assistance if needed.
+
+Product Comparison Guide Template
+
+H1: [Product type] comparison guide
+
+H2: Introduction
+Start with an introduction that explains the purpose of the comparison guide, highlighting the importance of understanding the differences between these products before making a decision.
+
+H2: Key features
+Outline the key features to look for in this type of product.
+
+H2: Product comparison chart
+List the products being compared, providing their names and brief descriptions.
+
+H2: Product 1
+Write a 2–3 paragraph general overview of the product in a neutral tone.
+
+Key features:
+- Feature
+- Feature 
+- Feature
+
+Pricing: Product starting price
+
+H2: Product 2
+Write a 2–3 paragraph general overview of the product in a neutral tone.
+
+Key features:
+- Feature
+- Feature
+- Feature
+
+Pricing: Product starting price
+
+H2: Conclusion
+Summarize the pros and cons of each product based on the comparison factors discussed.
+
+H2: Additional information
+Include any additional information or considerations relevant to users when deciding, such as user testimonials, third-party reviews, or upcoming updates.
+
+How-to Guide Template
+
+H1: [Task/action] how-to guide
+
+H2: Introduction
+Start with a brief introduction that outlines the purpose of the how-to guide, explaining what task or action it will help users accomplish.
+
+H2: Why [task/action] is important
+Explain why mastering this task or action is important and how it can benefit users.
+
+H2: Materials needed
+List any materials, tools, or resources required to complete the task.
+
+H3: Step 1: [Title]
+Provide detailed instructions for the first step of the task, including any relevant screenshots, diagrams, or examples.
+
+H3: Step 2: [Title]
+Repeat the process for each subsequent step and number them sequentially.
+
+H2: Summary
+Summarize the key steps and highlights of the how-to guide, reinforcing the main points.
+
+H2: Next steps
+Suggest additional resources or actions users can take after completing the task, such as further practice, exploring related topics, or seeking advanced techniques.
+
+H2: Additional information
+Include any additional tips, best practices, or supplementary information that may be helpful to users as they complete the task.
+
+Glossary of Terms Template
+
+H1: Glossary of terms
+
+H2: Introduction
+Provide a brief introduction to the purpose of the glossary, identifying the specific market it's targeting and emphasizing its importance in clarifying unfamiliar terms and concepts to users.
+
+H2: A
+H3: Term 1
+Define the term and provide any relevant context or examples.
+
+H3: Term 2
+Define the term and provide any relevant context or examples.
+
+H2: B
+H3: Term 1
+Define the term and provide any relevant context or examples.
+
+H3: Term 2
+Define the term and provide any relevant context or examples.
+
+H2: Additional information
+Include any additional details about the glossary or add links to related pages.
+
+Customer Onboarding Guide Template
+
+H1: Customer onboarding guide
+
+H2: Introduction
+Start with a warm welcome message and a brief overview of the customer onboarding process. Emphasize the importance of this guide in helping new customers get started with your product or service.
+
+H2: Account setup
+Provide step-by-step instructions for creating an account, including any necessary registration steps and account verification processes.
+
+H2: Initial login
+Guide users through the process of logging in for the first time, including how to access their account dashboard or main interface.
+
+H2: [Product/service] overview
+Provide an overview of your product or service, highlighting its key features and functionalities.
+
+H2: Navigating the interface
+Guide users through the main sections and features of your product/service interface, explaining how to navigate it effectively.
+
+H2: Key features
+H3: Feature 1: Provide detailed instructions on using one of the key features of your product or service, including any tips or best practices.
+
+H3: Feature 2: Repeat the process for each additional key feature, if applicable.
+
+H2: Personalizing preferences
+Guide users through the process of customizing their account settings or preferences to suit their needs.
+
+H2: Advanced configuration
+Provide instructions for advanced configuration options, such as integrations, automation settings, or advanced user permissions.
+
+H2: Help center/FAQs
+Direct users to your help center or FAQs section where they can find answers to common questions or resolutions to recurring issues.
+
+H2: Contact support
+Provide contact information for your support team and instructions on how to reach out for assistance if needed.
+
+H2: Additional resources
+Offer links to additional resources—such as tutorials, video guides, or community forums—where users can find further assistance or connect with other users.
+
+H2: Conclusion
+Conclude the onboarding guide with a thank you message and encouragement for users to explore further and reach out if they have questions or need help.

@@ -7,7 +7,7 @@ import { AIProviderFactory } from "./ai/providers";
 import type { ChatMessage } from "./ai";
 import { buildAIContext } from "./data-source-service";
 import agentService from "./ai/agent-service.js";
-import { LocalVectorStorage } from "../services/local_vector_storage";
+// Removed LocalVectorStorage import - using agent service instead
 import { z } from "zod";
 import { 
   insertTicketSchema, 
@@ -840,7 +840,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get the appropriate AI provider for chat
+      // Try agent service first for chat responses
+      try {
+        const isAgentServiceAvailable = await agentService.isAvailable();
+        
+        if (isAgentServiceAvailable) {
+          console.log("Using agent service for chat response");
+          
+          const agentResponse = await agentService.generateChatResponse({
+            ticketContext: { title: "Chat Session", description: "Live chat interaction" },
+            messageHistory: chatHistory,
+            userMessage: message,
+            knowledgeContext: "Chat session context",
+            tenantId: tenantId
+          });
+          
+          if (agentResponse && agentResponse.message) {
+            return res.status(200).json({
+              message: agentResponse.message,
+              action: agentResponse.action || undefined
+            });
+          }
+        }
+      } catch (agentError) {
+        console.warn("Agent service failed for chat, falling back to AI provider:", agentError);
+      }
+      
+      // Fallback to AI provider if agent service unavailable
       const provider = AIProviderFactory.getProviderForOperation(tenantId, 'chat');
       
       if (!provider) {

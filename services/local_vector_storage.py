@@ -57,7 +57,7 @@ class LocalVectorStorage:
     Provides same interface as Qdrant for seamless replacement.
     """
     
-    def __init__(self, instructions_dir: str = "instructions"):
+    def __init__(self, instructions_dir: str = "uploads"):
         self.instructions_dir = Path(instructions_dir)
         self.supported_formats = {'.txt', '.pdf', '.docx', '.pptx', '.xlsx'}
         self.embedding_model = "text-embedding-3-small"

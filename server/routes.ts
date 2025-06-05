@@ -939,35 +939,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Legacy flow for first messages or if conversation handling fails
-      const initialClassification = await classifyTicket("New chat request", message, tenantId);
-      
-      let response: ChatbotResponse;
-      
-      if (initialClassification.canAutoResolve) {
-        // Try to auto-resolve without creating a ticket
-        const { resolved, response: aiResponse } = await attemptAutoResolve("New chat request", message, chatHistory, tenantId);
+      // For first messages, use conversational approach instead of immediately creating tickets
+      try {
+        // Get knowledge context for better responses
+        const knowledgeContext = await buildAIContext(message, tenantId);
         
-        response = {
-          message: aiResponse,
-          action: resolved ? { type: 'resolve_ticket', data: null } : undefined
-        };
-      } else {
-        // Suggest creating a ticket (ask for user confirmation first)
-        response = {
-          message: "It looks like this issue needs our support team's assistance. I can help you create a support ticket for faster resolution.",
-          action: {
-            type: 'suggest_ticket',
-            data: {
-              title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
-              description: message,
-              category: initialClassification.category,
-              complexity: initialClassification.complexity,
-              assignedTo: initialClassification.assignedTo,
-              aiNotes: initialClassification.aiNotes,
-              tenantId: tenantId
+        // Create a conversational system prompt
+        const systemPrompt = `You are a helpful customer support assistant. Your goal is to have natural conversations and help users with their questions or issues.
+
+Key Guidelines:
+- Be conversational and friendly
+- Try to resolve simple questions directly without creating tickets
+- Ask clarifying questions when needed
+- Only suggest creating a support ticket if the issue is complex and requires human intervention
+- Never automatically create tickets - always ask the user first
+- Provide helpful information and solutions when possible
+- If you can't help directly, then offer to create a ticket
+
+Examples of when NOT to create tickets:
+- General questions about products/services
+- Simple how-to questions
+- Account information requests
+- Basic troubleshooting that can be resolved with guidance
+
+Examples of when to suggest tickets:
+- Complex technical issues requiring investigation
+- Account problems that need manual intervention
+- Bug reports or system errors
+- Billing or payment issues requiring human review`;
+
+        // Generate conversational response
+        const aiResponse = await provider.generateChatResponse([
+          { role: 'user', content: message }
+        ], knowledgeContext, systemPrompt);
+        
+        // Only suggest ticket creation if the AI explicitly mentions it
+        const shouldSuggestTicket = aiResponse.toLowerCase().includes("create a ticket") || 
+                                  aiResponse.toLowerCase().includes("support ticket") ||
+                                  aiResponse.toLowerCase().includes("escalate") ||
+                                  aiResponse.toLowerCase().includes("human support");
+        
+        if (shouldSuggestTicket) {
+          const classification = await classifyTicket("User inquiry", message, tenantId);
+          response = {
+            message: aiResponse,
+            action: {
+              type: 'suggest_ticket',
+              data: {
+                title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+                description: message,
+                category: classification.category,
+                complexity: classification.complexity,
+                assignedTo: classification.assignedTo,
+                aiNotes: classification.aiNotes,
+                tenantId: tenantId
+              }
             }
-          }
+          };
+        } else {
+          response = {
+            message: aiResponse,
+            action: undefined
+          };
+        }
+      } catch (error) {
+        console.error('Error in conversational flow:', error);
+        // Fallback to simple response
+        response = {
+          message: "Hello! I'm here to help you with any questions or issues you may have. What can I assist you with today?",
+          action: undefined
         };
       }
       

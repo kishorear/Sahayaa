@@ -18,6 +18,30 @@ process.on('uncaughtException', (error) => {
 
 const app = express();
 
+// CORS Configuration for Chat Widget Cross-Origin Requests
+app.use((req, res, next) => {
+  // Allow requests from any origin for widget endpoints
+  if (req.path.startsWith('/api/widget/') || req.path.startsWith('/api/agent/')) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key');
+    res.header('Access-Control-Allow-Credentials', 'false');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+  } else {
+    // Standard CORS for internal API endpoints
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  next();
+});
+
 // Set up static file serving for uploads
 const uploadsDir = path.join(process.cwd(), 'uploads');
 app.use('/uploads', express.static(uploadsDir));

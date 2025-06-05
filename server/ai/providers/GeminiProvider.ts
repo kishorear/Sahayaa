@@ -308,11 +308,23 @@ export class GeminiProvider implements AIProviderInterface {
    * Helper function to convert message format for Gemini
    */
   private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: Array<{ text: string }> }> {
-    return messages
-      .filter(message => message.role !== 'system') // Gemini uses systemInstruction instead
-      .map(message => ({
-        role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.content }]
-      }));
+    const filtered = messages.filter(message => message.role !== 'system'); // Gemini uses systemInstruction instead
+    
+    // Ensure conversation starts with user message for Gemini API
+    if (filtered.length > 0 && filtered[0].role === 'assistant') {
+      // If first message is from assistant, remove it or skip to first user message
+      const firstUserIndex = filtered.findIndex(msg => msg.role === 'user');
+      if (firstUserIndex > 0) {
+        filtered.splice(0, firstUserIndex);
+      } else if (firstUserIndex === -1) {
+        // No user messages found, return empty array
+        return [];
+      }
+    }
+    
+    return filtered.map(message => ({
+      role: message.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: message.content }]
+    }));
   }
 }

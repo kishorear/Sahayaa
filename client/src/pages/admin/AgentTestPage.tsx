@@ -75,6 +75,48 @@ interface InstructionTestResult {
   };
 }
 
+interface SimilarTicket {
+  ticket_id: number;
+  score: number;
+  title?: string;
+  category?: string;
+  status?: string;
+  resolution?: string;
+  created_at?: string;
+}
+
+interface TicketLookupResult {
+  success: boolean;
+  similar_tickets: SimilarTicket[];
+  search_query: string;
+  total_found: number;
+  search_method: 'fastapi_service' | 'local_fallback' | 'fallback';
+  processing_time_ms: number;
+  error?: string;
+}
+
+interface TicketLookupStatus {
+  name: string;
+  available: boolean;
+  fastapi_service_connected: boolean;
+  google_ai_configured: boolean;
+  local_ticket_database: number;
+  capabilities: string[];
+}
+
+interface TicketTestResult {
+  success: boolean;
+  lookup_result: TicketLookupResult;
+  agent_status: TicketLookupStatus;
+  test_info: {
+    message: string;
+    topK: number;
+    processing_time_ms: number;
+    tickets_found: number;
+    search_method: string;
+  };
+}
+
 const sampleMessages = [
   {
     label: "Critical Emergency",

@@ -429,3 +429,27 @@ export const insertDocumentUsageSchema = createInsertSchema(documentUsage)
 
 export type DocumentUsage = typeof documentUsage.$inferSelect;
 export type InsertDocumentUsage = z.infer<typeof insertDocumentUsageSchema>;
+
+// AI usage tracking schema
+export const aiUsage = pgTable("ai_usage", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  providerId: integer("provider_id").notNull(), // Reference to AI provider
+  requestType: text("request_type").notNull(), // 'chat', 'classification', 'auto_resolve', 'email'
+  model: text("model").notNull(), // Model used (e.g., 'gpt-4', 'gemini-pro')
+  tokensUsed: integer("tokens_used").default(0), // Tokens consumed
+  responseTime: integer("response_time"), // Response time in milliseconds
+  success: boolean("success").default(true), // Whether the request was successful
+  errorMessage: text("error_message"), // Error message if failed
+  cost: integer("cost"), // Cost in cents
+  ticketId: integer("ticket_id"), // Associated ticket if applicable
+  userId: integer("user_id"), // User who triggered the request
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  metadata: json("metadata").default({}), // Additional request metadata
+});
+
+export const insertAiUsageSchema = createInsertSchema(aiUsage)
+  .omit({ id: true, timestamp: true });
+
+export type AiUsage = typeof aiUsage.$inferSelect;
+export type InsertAiUsage = z.infer<typeof insertAiUsageSchema>;

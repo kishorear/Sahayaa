@@ -9,12 +9,17 @@ import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
 import { InsertTicket } from "@shared/schema";
 
-// Simple message type
+// Message type with action buttons support
 type Message = {
   id: string;
   content: string;
   sender: "user" | "ai";
   timestamp: Date;
+  actionButtons?: {
+    type: 'ticket_creation';
+    onYes: () => void;
+    onNo: () => void;
+  };
 };
 
 export default function ChatbotInterface() {
@@ -187,38 +192,15 @@ export default function ChatbotInterface() {
   // Handle AI actions (like suggesting ticket creation)
   const handleAIAction = (action: any) => {
     if (action.type === 'suggest_ticket' && action.data) {
-      // Show confirmation message with option to create ticket
+      // Show confirmation message with interactive buttons
       const confirmMessage = {
         id: `ai-confirm-${Date.now()}`,
         content: `I think this issue would benefit from a support ticket. Would you like me to create one for you with the title "${action.data.title}"?`,
         sender: "ai" as const,
         timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, confirmMessage]);
-      
-      // Add action buttons for yes/no
-      setTimeout(() => {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `ai-buttons-${Date.now()}`,
-            content: `<div class="flex gap-2 mt-2">
-              <button onclick="window.createTicketFromChat(true)" class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
-                Yes, create ticket
-              </button>
-              <button onclick="window.createTicketFromChat(false)" class="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400">
-                No, continue chat
-              </button>
-            </div>`,
-            sender: "ai",
-            timestamp: new Date(),
-          },
-        ]);
-        
-        // Make functions available globally for buttons
-        (window as any).createTicketFromChat = (createTicket: boolean) => {
-          if (createTicket) {
+        actionButtons: {
+          type: 'ticket_creation' as const,
+          onYes: () => {
             // Create the ticket with the suggested data
             const ticketData: InsertTicket = {
               title: action.data.title,
@@ -229,7 +211,8 @@ export default function ChatbotInterface() {
             };
             
             createTicketMutation.mutate(ticketData);
-          } else {
+          },
+          onNo: () => {
             // Continue with chat
             setMessages(prev => [
               ...prev,
@@ -241,8 +224,10 @@ export default function ChatbotInterface() {
               },
             ]);
           }
-        };
-      }, 500);
+        }
+      };
+      
+      setMessages(prev => [...prev, confirmMessage]);
     }
   };
   

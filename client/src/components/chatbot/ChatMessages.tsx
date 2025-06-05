@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Bot, User } from "lucide-react";
 
@@ -7,6 +8,11 @@ type Message = {
   content: string;
   sender: "user" | "ai";
   timestamp: Date;
+  actionButtons?: {
+    type: 'ticket_creation';
+    onYes: () => void;
+    onNo: () => void;
+  };
 };
 
 type ChatMessagesProps = {
@@ -38,6 +44,27 @@ export default function ChatMessages({ messages, isTyping }: ChatMessagesProps) 
             <p className={`text-sm ${message.sender === "user" ? "text-white" : "text-gray-800"}`}>
               {message.content}
             </p>
+            
+            {/* Render action buttons if present */}
+            {message.actionButtons && message.actionButtons.type === 'ticket_creation' && (
+              <div className="flex gap-2 mt-3">
+                <Button 
+                  size="sm" 
+                  onClick={message.actionButtons.onYes}
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  Yes, create ticket
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={message.actionButtons.onNo}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >
+                  No, continue chat
+                </Button>
+              </div>
+            )}
             <span
               className={`text-xs mt-1 block ${
                 message.sender === "user" ? "text-indigo-200" : "text-gray-500"

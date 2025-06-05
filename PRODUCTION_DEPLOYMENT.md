@@ -41,6 +41,20 @@ LOG_LEVEL=info
 LOG_FORMAT=json
 ```
 
+## Local Qdrant Setup
+
+Before deployment, set up the local Qdrant instance:
+
+```bash
+# 1. Run the setup script
+./setup-local-qdrant.sh
+
+# 2. Verify setup
+python test_local_qdrant.py
+```
+
+This creates a self-hosted Docker container with no external dependencies or API keys required.
+
 ## Deployment Options
 
 ### Option 1: Integrated Deployment (Recommended for Development)

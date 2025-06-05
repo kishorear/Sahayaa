@@ -57,8 +57,9 @@ export default function KnowledgeSync() {
     try {
       setIsLoading(true);
       const response = await fetch('/api/knowledge/status');
-      const data = await response.json();
-      setStatus(data);
+      const result = await response.json();
+      // Handle both direct data and wrapped response formats
+      setStatus(result.data || result);
     } catch (error) {
       console.error('Failed to fetch knowledge sync status:', error);
       toast({

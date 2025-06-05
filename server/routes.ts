@@ -843,7 +843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Try agent service first for chat responses
       try {
-        const isAgentServiceAvailable = await agentService.isAvailable();
+        const isAgentServiceAvailable = agentService && typeof agentService.generateChatResponse === 'function';
         
         if (isAgentServiceAvailable) {
           console.log("Using agent service for chat response");

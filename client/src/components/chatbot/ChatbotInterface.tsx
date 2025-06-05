@@ -103,15 +103,19 @@ export default function ChatbotInterface() {
       setIsTyping(false);
       
       // Add AI response to chat
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          content: data.message || "I'm sorry, I couldn't process your request.",
-          sender: "ai",
-          timestamp: new Date(),
-        },
-      ]);
+      const aiMessage = {
+        id: `ai-${Date.now()}`,
+        content: data.message || "I'm sorry, I couldn't process your request.",
+        sender: "ai" as const,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Handle any actions suggested by the AI
+      if (data.action) {
+        handleAIAction(data.action);
+      }
     },
     onError: (error) => {
       setIsTyping(false);
@@ -134,6 +138,113 @@ export default function ChatbotInterface() {
       });
     },
   });
+  
+  // Mutation for creating tickets from chat
+  const createTicketMutation = useMutation({
+    mutationFn: async (ticketData: InsertTicket) => {
+      return await apiRequest("POST", "/api/tickets", ticketData);
+    },
+    onSuccess: async (response) => {
+      const ticket = await response.json();
+      
+      // Add confirmation message to chat
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `ai-ticket-${Date.now()}`,
+          content: `✅ I've created ticket #${ticket.id} for you: "${ticket.title}". You can track its progress in the tickets section. Is there anything else I can help you with?`,
+          sender: "ai",
+          timestamp: new Date(),
+        },
+      ]);
+      
+      toast({
+        title: "Ticket Created",
+        description: `Ticket #${ticket.id} has been created successfully.`,
+      });
+    },
+    onError: (error) => {
+      console.error("Error creating ticket:", error);
+      
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `ai-error-${Date.now()}`,
+          content: "I'm sorry, I encountered an error while creating your ticket. Please try again or contact support directly.",
+          sender: "ai",
+          timestamp: new Date(),
+        },
+      ]);
+      
+      toast({
+        title: "Error",
+        description: "Failed to create ticket. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Handle AI actions (like suggesting ticket creation)
+  const handleAIAction = (action: any) => {
+    if (action.type === 'suggest_ticket' && action.data) {
+      // Show confirmation message with option to create ticket
+      const confirmMessage = {
+        id: `ai-confirm-${Date.now()}`,
+        content: `I think this issue would benefit from a support ticket. Would you like me to create one for you with the title "${action.data.title}"?`,
+        sender: "ai" as const,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, confirmMessage]);
+      
+      // Add action buttons for yes/no
+      setTimeout(() => {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `ai-buttons-${Date.now()}`,
+            content: `<div class="flex gap-2 mt-2">
+              <button onclick="window.createTicketFromChat(true)" class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+                Yes, create ticket
+              </button>
+              <button onclick="window.createTicketFromChat(false)" class="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400">
+                No, continue chat
+              </button>
+            </div>`,
+            sender: "ai",
+            timestamp: new Date(),
+          },
+        ]);
+        
+        // Make functions available globally for buttons
+        (window as any).createTicketFromChat = (createTicket: boolean) => {
+          if (createTicket) {
+            // Create the ticket with the suggested data
+            const ticketData: InsertTicket = {
+              title: action.data.title,
+              description: action.data.description,
+              category: action.data.category || 'general',
+              status: 'new',
+              source: 'chat'
+            };
+            
+            createTicketMutation.mutate(ticketData);
+          } else {
+            // Continue with chat
+            setMessages(prev => [
+              ...prev,
+              {
+                id: `ai-continue-${Date.now()}`,
+                content: "No problem! Let's continue our conversation. How else can I help you?",
+                sender: "ai",
+                timestamp: new Date(),
+              },
+            ]);
+          }
+        };
+      }, 500);
+    }
+  };
   
   // Handle sending a message
   const handleSendMessage = async (e: React.FormEvent) => {

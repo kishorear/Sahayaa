@@ -944,6 +944,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get knowledge context for better responses
         const knowledgeContext = await buildAIContext(message, tenantId);
         
+        // Check if user is explicitly requesting ticket creation
+        const lowerMessage = message.toLowerCase();
+        const isTicketRequest = /\b(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage) ||
+                               /\bi\s+(want|need|would\s+like)\s+(to\s+)?(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage) ||
+                               /\bplease\s+(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage) ||
+                               /\bcan\s+you\s+(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage);
+
+        if (isTicketRequest) {
+          // User explicitly wants a ticket created
+          console.log("User explicitly requested ticket creation");
+          const classification = await classifyTicket("User ticket request", message, tenantId);
+          
+          return res.status(200).json({
+            message: "I'll help you create a support ticket for this issue. Let me gather the details...",
+            action: {
+              type: 'suggest_ticket',
+              data: {
+                title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+                description: message,
+                category: classification.category,
+                complexity: classification.complexity,
+                assignedTo: classification.assignedTo,
+                aiNotes: classification.aiNotes,
+                tenantId: tenantId
+              }
+            }
+          });
+        }
+
         // Create a conversational system prompt
         const systemPrompt = `You are a helpful customer support assistant. Your goal is to have natural conversations and help users with their questions or issues.
 
@@ -951,8 +980,8 @@ Key Guidelines:
 - Be conversational and friendly
 - Try to resolve simple questions directly without creating tickets
 - Ask clarifying questions when needed
+- If the user explicitly asks to create a ticket, support ticket, or submit a request, respond positively and mention you'll help them create one
 - Only suggest creating a support ticket if the issue is complex and requires human intervention
-- Never automatically create tickets - always ask the user first
 - Provide helpful information and solutions when possible
 - If you can't help directly, then offer to create a ticket
 
@@ -966,7 +995,8 @@ Examples of when to suggest tickets:
 - Complex technical issues requiring investigation
 - Account problems that need manual intervention
 - Bug reports or system errors
-- Billing or payment issues requiring human review`;
+- Billing or payment issues requiring human review
+- When user explicitly asks to create a ticket`;
 
         // Generate conversational response
         const aiResponse = await provider.generateChatResponse([

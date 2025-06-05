@@ -1005,10 +1005,11 @@ Examples of when to suggest tickets:
       } catch (error) {
         console.error('Error in conversational flow:', error);
         // Fallback to simple response
-        response = {
+        const response = {
           message: "Hello! I'm here to help you with any questions or issues you may have. What can I assist you with today?",
           action: undefined
         };
+        return res.status(200).json(response);
       }
       
       res.status(200).json(response);

@@ -45,14 +45,24 @@ export class GeminiProvider implements AIProviderInterface {
         ],
       });
       
-      // Create a chat session
+      // For single user message, use generateContent directly
+      if (messages.length === 1 && messages[0].role === 'user') {
+        const prompt = this.buildSystemPrompt(systemPrompt, context) + '\n\nUser: ' + messages[0].content;
+        const result = await generativeModel.generateContent(prompt);
+        return result.response.text();
+      }
+      
+      // For multi-turn conversations, use chat session
+      const conversationHistory = this.formatMessagesForGemini(messages.slice(0, -1)); // All except last
+      const lastMessage = messages[messages.length - 1].content; // Last message to send
+      
       const chat = generativeModel.startChat({
-        history: this.formatMessagesForGemini(messages),
+        history: conversationHistory,
         systemInstruction: this.buildSystemPrompt(systemPrompt, context),
       });
       
-      // Send the message and get the response
-      const result = await chat.sendMessage("");
+      // Send the last message and get the response
+      const result = await chat.sendMessage(lastMessage);
       const response = result.response;
       
       return response.text();
@@ -286,12 +296,12 @@ export class GeminiProvider implements AIProviderInterface {
   /**
    * Helper function to convert message format for Gemini
    */
-  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: string }> {
+  private formatMessagesForGemini(messages: Array<{ role: string; content: string }>): Array<{ role: string, parts: Array<{ text: string }> }> {
     return messages
       .filter(message => message.role !== 'system') // Gemini uses systemInstruction instead
       .map(message => ({
         role: message.role === 'assistant' ? 'model' : 'user',
-        parts: message.content
+        parts: [{ text: message.content }]
       }));
   }
 }

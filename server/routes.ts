@@ -1786,6 +1786,63 @@ Examples of when to suggest tickets:
     }
   });
 
+  // SupportTeam Orchestrator test endpoint - Complete five-agent pipeline
+  app.post("/api/test/support-team-orchestrator", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+    try {
+      console.log('SupportTeam Orchestrator Test: Processing complete workflow');
+      
+      // Extract input from request
+      const input = req.body;
+      
+      // Default test values if not provided
+      const workflowInput = {
+        user_message: input.user_message || "I need help with VPN connectivity issues, my credentials aren't working and it's urgent",
+        user_context: input.user_context || {
+          url: "https://example.com/support",
+          title: "Support Request",
+          userAgent: "Test Browser"
+        },
+        tenant_id: input.tenant_id || 1,
+        user_id: input.user_id || "test_user"
+      };
+      
+      console.log(`SupportTeam Orchestrator Test: Processing message: "${workflowInput.user_message.substring(0, 50)}..."`);
+      
+      // Use agent service to process the complete workflow
+      const result = await agentService.processWorkflow(workflowInput);
+      
+      console.log(`SupportTeam Orchestrator Test: Completed workflow in ${result.processing_time_ms}ms with ${(result.confidence_score * 100).toFixed(1)}% confidence`);
+      
+      res.json({
+        success: true,
+        workflow_result: result,
+        agent_status: {
+          name: 'SupportTeamOrchestrator',
+          pipeline_complete: true,
+          agents_coordinated: ['ChatPreprocessor', 'InstructionLookup', 'TicketLookup', 'TicketFormatter'],
+          processing_time_ms: result.processing_time_ms,
+          confidence_score: result.confidence_score
+        },
+        test_info: {
+          input_message: workflowInput.user_message,
+          ticket_id: result.ticket_id,
+          ticket_title: result.ticket_title,
+          resolution_steps_count: result.resolution_steps_count,
+          category: result.category,
+          urgency: result.urgency
+        }
+      });
+      
+    } catch (error) {
+      console.error('SupportTeam Orchestrator Test: Error processing workflow:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to process complete workflow'
+      });
+    }
+  });
+
   // Register knowledge sync routes
   registerKnowledgeSyncRoutes(app);
   

@@ -1738,6 +1738,54 @@ Examples of when to suggest tickets:
     }
   });
 
+  // TicketFormatterAgent test endpoint
+  app.post("/api/test/ticket-formatter", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+    try {
+      console.log('TicketFormatter Test: Processing formatting request');
+      
+      // Extract input from request
+      const input = req.body;
+      
+      // Default test values if not provided
+      const formatterInput = {
+        id: input.id || 12345,
+        subject: input.subject || "VPN connectivity issue",
+        steps: input.steps || "1. Restart your router\n2. Reinstall the VPN client\n3. Update VPN server address to vpn.example.com",
+        category: input.category || "technical",
+        urgency: input.urgency || "MEDIUM",
+        customer_name: input.customer_name || "John Smith",
+        additional_notes: input.additional_notes || "This issue has been escalated from Level 1 support."
+      };
+      
+      console.log(`TicketFormatter Test: Formatting ticket #${formatterInput.id} - ${formatterInput.subject}`);
+      
+      // Use agent service to format the ticket
+      const result = await agentService.formatTicket(formatterInput);
+      const status = agentService.getTicketFormatterStatus();
+      
+      console.log(`TicketFormatter Test: Completed formatting in ${result.processing_time_ms}ms`);
+      
+      res.json({
+        success: true,
+        formatter_result: result,
+        agent_status: status,
+        test_info: {
+          ticket_id: formatterInput.id,
+          subject: formatterInput.subject,
+          template_used: result.template_used,
+          processing_time_ms: result.processing_time_ms,
+          ai_enhanced: status.google_ai_configured
+        }
+      });
+    } catch (error) {
+      console.error('TicketFormatter Test: Error during formatting:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown formatting error'
+      });
+    }
+  });
+
   // Register knowledge sync routes
   registerKnowledgeSyncRoutes(app);
   

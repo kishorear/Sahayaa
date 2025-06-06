@@ -6,6 +6,7 @@
 import axios, { AxiosResponse } from 'axios';
 import { ChatPreprocessorAgent, PreprocessorResult } from './agents/chat-preprocessor-agent';
 import { TicketLookupAgent } from './agents/ticket-lookup-agent';
+import { TicketFormatterAgent } from './agents/ticket-formatter-agent';
 
 interface AgentServiceConfig {
   baseUrl: string;
@@ -82,12 +83,14 @@ export class AgentService {
   private timeout: number;
   private preprocessorAgent: ChatPreprocessorAgent;
   private ticketLookupAgent: TicketLookupAgent;
+  private ticketFormatterAgent: TicketFormatterAgent;
 
   constructor(config: AgentServiceConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.timeout = config.timeout || 30000; // 30 seconds default
     this.preprocessorAgent = new ChatPreprocessorAgent();
     this.ticketLookupAgent = new TicketLookupAgent();
+    this.ticketFormatterAgent = new TicketFormatterAgent();
   }
 
   /**
@@ -308,6 +311,20 @@ export class AgentService {
    */
   getTicketLookupStatus() {
     return this.ticketLookupAgent.getStatus();
+  }
+
+  /**
+   * Format ticket using TicketFormatterAgent
+   */
+  async formatTicket(input: any) {
+    return await this.ticketFormatterAgent.formatTicket(input);
+  }
+
+  /**
+   * Get ticket formatter agent status
+   */
+  getTicketFormatterStatus() {
+    return this.ticketFormatterAgent.getStatus();
   }
 
   /**

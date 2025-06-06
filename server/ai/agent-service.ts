@@ -7,6 +7,7 @@ import axios, { AxiosResponse } from 'axios';
 import { ChatPreprocessorAgent, PreprocessorResult } from './agents/chat-preprocessor-agent';
 import { TicketLookupAgent } from './agents/ticket-lookup-agent';
 import { TicketFormatterAgent } from './agents/ticket-formatter-agent';
+import { SupportTeamOrchestrator } from './agents/support-team-orchestrator';
 
 interface AgentServiceConfig {
   baseUrl: string;
@@ -84,6 +85,7 @@ export class AgentService {
   private preprocessorAgent: ChatPreprocessorAgent;
   private ticketLookupAgent: TicketLookupAgent;
   private ticketFormatterAgent: TicketFormatterAgent;
+  private orchestrator: SupportTeamOrchestrator;
 
   constructor(config: AgentServiceConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
@@ -91,6 +93,7 @@ export class AgentService {
     this.preprocessorAgent = new ChatPreprocessorAgent();
     this.ticketLookupAgent = new TicketLookupAgent();
     this.ticketFormatterAgent = new TicketFormatterAgent();
+    this.orchestrator = new SupportTeamOrchestrator();
   }
 
   /**
@@ -98,39 +101,120 @@ export class AgentService {
    */
   async processWorkflow(request: AgentWorkflowRequest): Promise<AgentWorkflowResponse> {
     try {
-      console.log(`Agent Service: Processing workflow for message: ${request.user_message.substring(0, 50)}...`);
+      console.log('AgentService: Processing workflow request:', request.user_message?.substring(0, 50) + '...');
       
-      const response: AxiosResponse<AgentWorkflowResponse> = await axios.post(
-        `${this.baseUrl}/process`,
-        request,
-        {
-          timeout: this.timeout,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      // Use the SupportTeam Orchestrator to handle the complete workflow
+      const orchestratorInput = {
+        user_message: request.user_message,
+        session_id: `${request.user_id || 'anon'}_${Date.now()}`,
+        user_context: request.user_context,
+        tenant_id: request.tenant_id,
+        user_id: request.user_id
+      };
 
-      console.log(`Agent Service: Workflow completed - Ticket #${response.data.ticket_id}, Status: ${response.data.status}`);
-      return response.data;
-
+      const result = await this.orchestrator.processUserMessage(orchestratorInput);
+      
+      if (result.success) {
+        // Extract resolution steps from the formatted ticket
+        const steps = this.extractStepsFromTicket(result.formatted_ticket);
+        
+        return {
+          success: true,
+          ticket_id: result.ticket_id,
+          ticket_title: this.extractTitleFromTicket(result.formatted_ticket),
+          status: 'resolved',
+          category: result.processing_steps.preprocessing?.category || 'general',
+          urgency: result.processing_steps.preprocessing?.urgency_level || 'medium',
+          resolution_steps: steps,
+          resolution_steps_count: steps.length,
+          confidence_score: result.confidence_score,
+          processing_time_ms: result.total_processing_time_ms,
+          created_at: new Date().toISOString(),
+          source: 'support_team_orchestrator'
+        };
+      } else {
+        return {
+          success: false,
+          ticket_title: 'Processing failed',
+          status: 'error',
+          category: 'system',
+          urgency: 'medium',
+          resolution_steps: ['Unable to process request: ' + (result.error || 'Unknown error')],
+          resolution_steps_count: 1,
+          confidence_score: 0,
+          processing_time_ms: result.total_processing_time_ms,
+          created_at: new Date().toISOString(),
+          source: 'support_team_orchestrator',
+          error: result.error
+        };
+      }
     } catch (error) {
-      console.error('Agent Service: Workflow processing failed:', error);
+      console.error('AgentService: Workflow processing failed:', error);
       
-      if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNREFUSED') {
-          throw new Error('Agent service is not available. Please ensure the agent service is running.');
-        }
-        if (error.response) {
-          throw new Error(`Agent service error: ${error.response.status} - ${error.response.data?.detail || error.response.statusText}`);
-        }
-        if (error.request) {
-          throw new Error('Agent service did not respond. Please check the service status.');
+      return {
+        success: false,
+        ticket_title: 'Error processing request',
+        status: 'error',
+        category: 'system',
+        urgency: 'medium',
+        resolution_steps: ['An error occurred while processing the request'],
+        resolution_steps_count: 1,
+        confidence_score: 0,
+        processing_time_ms: 0,
+        created_at: new Date().toISOString(),
+        source: 'agent_service_error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  private extractStepsFromTicket(formattedTicket: string): string[] {
+    // Extract numbered steps from the formatted ticket
+    const lines = formattedTicket.split('\n');
+    const steps: string[] = [];
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Match patterns like "1. Step text" or "• Step text"
+      if (/^\d+\.\s/.test(trimmed) || /^•\s/.test(trimmed) || /^-\s/.test(trimmed)) {
+        // Remove the numbering/bullet and add to steps
+        const step = trimmed.replace(/^\d+\.\s/, '').replace(/^[•-]\s/, '').trim();
+        if (step.length > 0) {
+          steps.push(step);
         }
       }
-      
-      throw new Error(`Agent service request failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+    
+    // If no numbered steps found, try to extract from general content
+    if (steps.length === 0) {
+      steps.push('Please review the detailed instructions provided in your ticket');
+    }
+    
+    return steps;
+  }
+
+  private extractTitleFromTicket(formattedTicket: string): string {
+    // Extract title from ticket format like "Ticket #123 • Title"
+    const lines = formattedTicket.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.includes('Ticket #') && trimmed.includes('•')) {
+        const titlePart = trimmed.split('•')[1]?.trim();
+        if (titlePart) {
+          return titlePart;
+        }
+      }
+    }
+    
+    // Fallback: use first meaningful line
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.length > 5 && !trimmed.toLowerCase().includes('dear customer')) {
+        return trimmed.substring(0, 50);
+      }
+    }
+    
+    return 'Support Request';
   }
 
   /**

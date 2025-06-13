@@ -125,12 +125,12 @@ export function registerWidgetTicketRoutes(app: Express): void {
         title: ticketTitle,
         description: descriptionResponse.trim(),
         category: agentInsights?.category || 'support',
-        urgency: agentInsights?.urgency || 'medium',
-        status: 'open',
+        complexity: agentInsights?.urgency || 'medium', // Map urgency to complexity
+        status: 'new',
         tenantId,
         createdBy: 1, // Widget user - could be enhanced with proper user tracking
         source: 'widget',
-        metadata: {
+        clientMetadata: {
           sessionId,
           conversationLength: conversation.length,
           agentCategory: agentInsights?.category,
@@ -184,7 +184,7 @@ export function registerWidgetTicketRoutes(app: Express): void {
           title: ticketTitle,
           description: descriptionResponse.trim(),
           category: ticket.category,
-          urgency: ticket.urgency,
+          complexity: ticket.complexity,
           status: ticket.status,
           createdAt: ticket.createdAt
         },

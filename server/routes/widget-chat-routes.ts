@@ -150,7 +150,13 @@ export function registerWidgetChatRoutes(app: Express): void {
         category: agentInsights?.category,
         urgency: agentInsights?.urgency,
         confidence: agentInsights?.confidence,
-        actions: generateSuggestedActions(message, response)
+        actions: generateSuggestedActions(message, response),
+        agentInsights: agentInsights ? {
+          category: agentInsights.category,
+          urgency: agentInsights.urgency,
+          confidence: agentInsights.confidence,
+          suggestions: agentInsights.suggestions.slice(0, 3)
+        } : null
       });
       
     } catch (error) {

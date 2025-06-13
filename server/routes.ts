@@ -180,6 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register widget chat routes (existing chat functionality)
   registerWidgetChatRoutes(app);
+  registerWidgetTicketRoutes(app);
   
   // Register widget agent routes (new agent communication endpoints)
   registerWidgetAgentRoutes(app);

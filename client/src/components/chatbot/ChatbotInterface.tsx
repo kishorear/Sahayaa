@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, X, Video, Image, Camera, Paperclip, RefreshCcw } from "lucide-react";
+import { MessageSquare, X, Video, Image, Camera, Paperclip, RefreshCcw, Ticket, AlertTriangle } from "lucide-react";
 import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
 import { InsertTicket } from "@shared/schema";
@@ -62,6 +62,12 @@ export default function ChatbotInterface() {
   const [showAttachments, setShowAttachments] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [ticketCreatedThisSession, setTicketCreatedThisSession] = useState(false);
+  const [showTicketConfirmation, setShowTicketConfirmation] = useState(false);
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+  const [createdTickets, setCreatedTickets] = useState<Set<string>>(() => {
+    const saved = sessionStorage.getItem('chatCreatedTickets');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -91,7 +97,10 @@ export default function ChatbotInterface() {
     if (messages.length > 0) {
       sessionStorage.setItem('chatMessages', JSON.stringify(messages));
     }
-  }, [isChatOpen, messages]);
+    
+    // Save created tickets
+    sessionStorage.setItem('chatCreatedTickets', JSON.stringify(Array.from(createdTickets)));
+  }, [isChatOpen, messages, createdTickets]);
   
   // Auto scroll to bottom on new messages
   useEffect(() => {
@@ -145,7 +154,71 @@ export default function ChatbotInterface() {
     },
   });
   
-  // Mutation for creating tickets from chat
+  // Mutation for creating tickets from chat conversation
+  const createWidgetTicketMutation = useMutation({
+    mutationFn: async () => {
+      const conversation = messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      }));
+
+      return await apiRequest("POST", "/api/widget/create-ticket", {
+        tenantId: 1, // Default tenant
+        sessionId: `chat_${Date.now()}`,
+        conversation: conversation,
+        context: {
+          url: window.location.href,
+          title: document.title,
+          userAgent: navigator.userAgent
+        }
+      });
+    },
+    onSuccess: async (response) => {
+      const data = await response.json();
+      setIsCreatingTicket(false);
+      setShowTicketConfirmation(false);
+      
+      if (data.success) {
+        const ticketId = data.ticket.id;
+        setCreatedTickets(prev => new Set([...Array.from(prev), `ticket_${ticketId}`]));
+        setTicketCreatedThisSession(true);
+
+        toast({
+          title: "Ticket Created Successfully",
+          description: `Ticket #${ticketId} has been created: ${data.ticket.title}`,
+        });
+
+        // Add confirmation message to chat
+        const confirmationMessage = {
+          id: `ticket-confirmation-${Date.now()}`,
+          content: `I've created ticket #${ticketId} for you: "${data.ticket.title}". Our support team will review this and get back to you.`,
+          sender: "ai" as const,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, confirmationMessage]);
+      } else {
+        toast({
+          title: "Ticket Creation Failed",
+          description: "Unable to create ticket. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error) => {
+      setIsCreatingTicket(false);
+      setShowTicketConfirmation(false);
+      console.error("Error creating ticket:", error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to create ticket. Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Original ticket creation mutation (keeping for backward compatibility)
   const createTicketMutation = useMutation({
     mutationFn: async (ticketData: InsertTicket) => {
       return await apiRequest("POST", "/api/tickets", ticketData);
@@ -233,6 +306,62 @@ export default function ChatbotInterface() {
       
       setMessages(prev => [...prev, confirmMessage]);
     }
+  };
+
+  // Check if conversation is similar to existing tickets (duplicate prevention)
+  const checkForDuplicateIssue = () => {
+    const userMessages = messages.filter(msg => msg.sender === 'user').map(msg => msg.content);
+    const conversationText = userMessages.join(' ').toLowerCase();
+    
+    // Simple keyword-based duplicate detection
+    const issueKeywords = [
+      'login', 'password', 'access', 'account', 'billing', 'payment', 'error', 
+      'bug', 'broken', 'not working', 'issue', 'problem', 'help'
+    ];
+    
+    const foundKeywords = issueKeywords.filter(keyword => 
+      conversationText.includes(keyword)
+    );
+    
+    // If we have created tickets this session and similar keywords, warn about duplicates
+    if (createdTickets.size > 0 && foundKeywords.length > 2) {
+      return {
+        isDuplicate: true,
+        keywords: foundKeywords
+      };
+    }
+    
+    return { isDuplicate: false, keywords: foundKeywords };
+  };
+
+  const handleCreateTicketClick = () => {
+    // Check if we have meaningful conversation
+    const userMessages = messages.filter(msg => msg.sender === 'user');
+    if (userMessages.length === 0) {
+      toast({
+        title: "No Content",
+        description: "Please have a conversation before creating a ticket.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const duplicateCheck = checkForDuplicateIssue();
+    
+    if (duplicateCheck.isDuplicate) {
+      // Show duplicate warning
+      toast({
+        title: "Possible Duplicate",
+        description: `You've already created ${createdTickets.size} ticket(s) this session. Are you sure this is a different issue?`,
+      });
+    }
+    
+    setShowTicketConfirmation(true);
+  };
+
+  const confirmTicketCreation = () => {
+    setIsCreatingTicket(true);
+    createWidgetTicketMutation.mutate();
   };
   
   // Handle sending a message
@@ -461,6 +590,65 @@ export default function ChatbotInterface() {
                   accept="image/*"
                   className="hidden"
                 />
+              </div>
+            )}
+
+            {/* Create Ticket Button */}
+            {messages.filter(msg => msg.sender === 'user').length > 0 && (
+              <div className="border-t border-gray-200 px-4 py-2 bg-blue-50/50">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCreateTicketClick}
+                  disabled={isCreatingTicket}
+                  className="w-full text-blue-700 border-blue-300 hover:bg-blue-100"
+                >
+                  <Ticket className="w-4 h-4 mr-2" />
+                  {isCreatingTicket ? "Creating Ticket..." : "Create Ticket from Conversation"}
+                </Button>
+                {createdTickets.size > 0 && (
+                  <p className="text-xs text-blue-600 mt-1 text-center">
+                    {createdTickets.size} ticket(s) created this session
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Ticket Confirmation Dialog */}
+            {showTicketConfirmation && (
+              <div className="border-t border-gray-200 px-4 py-3 bg-yellow-50">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-yellow-900 mb-1">Create Support Ticket</h4>
+                    <p className="text-sm text-yellow-700 mb-3">
+                      This will create a support ticket from your current conversation. 
+                      {createdTickets.size > 0 && (
+                        <span className="block mt-1 font-medium">
+                          Note: You've already created {createdTickets.size} ticket(s) this session.
+                        </span>
+                      )}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={confirmTicketCreation}
+                        disabled={isCreatingTicket}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isCreatingTicket ? "Creating..." : "Yes, Create Ticket"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowTicketConfirmation(false)}
+                        disabled={isCreatingTicket}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

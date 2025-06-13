@@ -45,7 +45,21 @@ export function registerWidgetChatRoutes(app: Express): void {
       
       console.log(`Widget Chat: Processing message for tenant ${tenantId}: "${message.substring(0, 50)}..."`);
       
-      // Use the SupportTeam Orchestrator for intelligent processing
+      // Build context for AI
+      const aiContext = await buildAIContext(message, tenantId);
+      
+      // Include page context if available
+      let enhancedContext = aiContext;
+      if (context) {
+        const pageContextStr = `
+          User is on page: ${context.url || 'Unknown'}
+          Page title: ${context.title || 'Unknown'}
+        `;
+        enhancedContext += pageContextStr;
+      }
+      
+      // Get agent insights as supplementary context (non-blocking)
+      let agentInsights = null;
       try {
         const workflowInput = {
           user_message: message,
@@ -61,112 +75,83 @@ export function registerWidgetChatRoutes(app: Express): void {
         const orchestratorResult = await agentService.processWorkflow(workflowInput);
         
         if (orchestratorResult.success) {
-          console.log(`Widget Chat: Orchestrator processed successfully - Ticket #${orchestratorResult.ticket_id}`);
-          
-          // Extract the formatted response from the ticket
-          const response = extractResponseFromTicket(orchestratorResult);
-          
-          // Log successful interaction
-          try {
-            if (sessionId) {
-              await storage.recordWidgetInteraction({
-                tenantId,
-                sessionId,
-                messageType: 'user',
-                message,
-                timestamp: new Date(),
-                url: req.body.url || null,
-                metadata: {
-                  ticketId: orchestratorResult.ticket_id,
-                  confidence: orchestratorResult.confidence_score,
-                  processingTimeMs: orchestratorResult.processing_time_ms,
-                  category: orchestratorResult.category,
-                  urgency: orchestratorResult.urgency,
-                  agentPipeline: 'five_agent_orchestrator'
-                }
-              });
-            }
-          } catch (logError) {
-            console.error('Error recording widget interaction:', logError);
-          }
-          
-          return res.json({
-            message: response,
-            sessionId,
-            ticketId: orchestratorResult.ticket_id,
-            confidence: orchestratorResult.confidence_score,
+          agentInsights = {
             category: orchestratorResult.category,
             urgency: orchestratorResult.urgency,
-            actions: generateSuggestedActions(message, response)
-          });
-        } else {
-          console.warn(`Widget Chat: Orchestrator failed, falling back to standard AI: ${orchestratorResult.error}`);
-          throw new Error(`Orchestrator failed: ${orchestratorResult.error}`);
+            confidence: orchestratorResult.confidence_score,
+            suggestions: orchestratorResult.resolution_steps || [],
+            processingTime: orchestratorResult.processing_time_ms
+          };
+          console.log(`Widget Chat: Agent insights gathered - Category: ${orchestratorResult.category}, Urgency: ${orchestratorResult.urgency}`);
         }
-      } catch (orchestratorError) {
-        console.warn(`Widget Chat: Orchestrator unavailable, using fallback AI: ${orchestratorError.message}`);
-        
-        // Fallback to original AI method
-        const messages: ChatMessage[] = [
-          { role: 'user', content: message }
-        ];
-        
-        const aiContext = await buildAIContext(message, tenantId);
-        
-        let enhancedContext = aiContext;
-        if (context) {
-          const pageContextStr = `
-            User is on page: ${context.url || 'Unknown'}
-            Page title: ${context.title || 'Unknown'}
-          `;
-          enhancedContext += pageContextStr;
-        }
-        
-        const widgetTicketContext = {
-          id: 0,
-          title: 'Widget Chat',
-          description: message,
-          category: 'support',
-          tenantId
-        };
-
-        const messageText = messages.length > 0 && messages[0].role === 'user' 
-          ? messages[0].content 
-          : message;
-          
-        const response = await generateChatResponse(
-          widgetTicketContext,
-          [],
-          messageText
-        );
-        
-        // Log fallback interaction
-        try {
-          if (sessionId) {
-            await storage.recordWidgetInteraction({
-              tenantId,
-              sessionId,
-              messageType: 'user',
-              message,
-              timestamp: new Date(),
-              url: req.body.url || null,
-              metadata: {
-                responseLength: response.length,
-                aiUsed: true,
-                fallbackMethod: 'standard_ai'
-              }
-            });
-          }
-        } catch (logError) {
-          console.error('Error recording widget interaction:', logError);
-        }
-        
-        return res.json({
-          message: response,
-          sessionId,
-          actions: generateSuggestedActions(message, response)
-        });
+      } catch (agentError: any) {
+        console.warn(`Widget Chat: Agent insights unavailable: ${agentError.message}`);
       }
+      
+      // Create ticket context for LLM processing
+      const widgetTicketContext = {
+        id: 0,
+        title: 'Widget Chat',
+        description: message,
+        category: agentInsights?.category || 'support',
+        tenantId
+      };
+
+      // Generate LLM response with agent insights as additional context
+      const messages: ChatMessage[] = [
+        { role: 'user', content: message }
+      ];
+      
+      let contextualPrompt = enhancedContext;
+      if (agentInsights) {
+        contextualPrompt += `\n\nAgent Analysis: Category: ${agentInsights.category}, Urgency: ${agentInsights.urgency}, Confidence: ${agentInsights.confidence}`;
+        if (agentInsights.suggestions.length > 0) {
+          contextualPrompt += `\nSuggested steps: ${agentInsights.suggestions.slice(0, 3).join('; ')}`;
+        }
+      }
+
+      const messageText = messages.length > 0 && messages[0].role === 'user' 
+        ? messages[0].content 
+        : message;
+        
+      const response = await generateChatResponse(
+        widgetTicketContext,
+        [],
+        messageText
+      );
+      
+      // Log interaction with agent insights if available
+      try {
+        if (sessionId) {
+          await storage.recordWidgetInteraction({
+            tenantId,
+            sessionId,
+            messageType: 'user',
+            message,
+            timestamp: new Date(),
+            url: req.body.url || null,
+            metadata: {
+              responseLength: response.length,
+              aiUsed: true,
+              agentInsights: agentInsights ? 'available' : 'unavailable',
+              category: agentInsights?.category || 'unknown',
+              urgency: agentInsights?.urgency || 'unknown',
+              confidence: agentInsights?.confidence || 0
+            }
+          });
+        }
+      } catch (logError) {
+        console.error('Error recording widget interaction:', logError);
+      }
+      
+      return res.json({
+        message: response,
+        sessionId,
+        category: agentInsights?.category,
+        urgency: agentInsights?.urgency,
+        confidence: agentInsights?.confidence,
+        actions: generateSuggestedActions(message, response)
+      });
       
     } catch (error) {
       console.error('Error processing widget chat request:', error);

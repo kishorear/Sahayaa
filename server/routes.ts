@@ -46,6 +46,8 @@ import { registerWidgetApiKeyRoutes } from "./routes/widget-api-keys-routes";
 import { registerWidgetAgentRoutes, registerPreprocessorTestRoute } from "./routes/widget-agent-routes";
 // Import widget chat routes for existing chat functionality
 import { registerWidgetChatRoutes } from "./routes/widget-chat-routes";
+// Import widget ticket creation routes
+import { registerWidgetTicketRoutes } from "./routes/widget-ticket-routes";
 // Import creator routes for multi-tenant management
 import creatorRoutes from "./routes/creator-routes";
 // Import AI provider availability routes

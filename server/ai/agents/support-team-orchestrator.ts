@@ -227,20 +227,31 @@ Please provide step-by-step resolution instructions:`;
         input.user_context
       );
       
-      if (!preprocessResult.success) {
-        throw new Error(`Preprocessing failed: ${preprocessResult.error}`);
+      // Handle the actual response format from ChatPreprocessorAgent
+      if (!preprocessResult || !preprocessResult.normalized_prompt) {
+        throw new Error(`Preprocessing failed: Invalid response format`);
       }
 
-      processingSteps.preprocessing = preprocessResult;
-      this.storeSessionData(sessionId, 'processed_message', preprocessResult.processed_message);
-      this.storeSessionData(sessionId, 'urgency', preprocessResult.urgency_level);
+      processingSteps.preprocessing = {
+        success: true,
+        processed_message: preprocessResult.normalized_prompt,
+        urgency_level: preprocessResult.urgency,
+        sentiment: preprocessResult.sentiment,
+        original_message: preprocessResult.original_message,
+        session_id: preprocessResult.session_id
+      };
+      this.storeSessionData(sessionId, 'processed_message', preprocessResult.normalized_prompt);
+      this.storeSessionData(sessionId, 'urgency', preprocessResult.urgency);
 
       // Step 2: Run InstructionLookupAgent
       console.log('SupportTeamOrchestrator: Step 2 - Running InstructionLookupAgent');
-      const instructionResult = await this.instructionLookupAgent.lookupInstructions(
-        preprocessResult.processed_message, 
-        3
-      );
+      const instructionResult = await this.instructionLookupAgent.lookupInstructions({
+        normalizedPrompt: preprocessResult.normalized_prompt,
+        urgency: preprocessResult.urgency as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+        sentiment: preprocessResult.sentiment as 'positive' | 'neutral' | 'negative',
+        sessionId: sessionId,
+        topK: 3
+      });
       
       processingSteps.instruction_lookup = instructionResult;
       this.storeSessionData(sessionId, 'instructions', instructionResult.instructions);
@@ -248,8 +259,7 @@ Please provide step-by-step resolution instructions:`;
       // Step 3: Run TicketLookupAgent
       console.log('SupportTeamOrchestrator: Step 3 - Running TicketLookupAgent');
       const ticketResult = await this.ticketLookupAgent.lookupSimilarTickets(
-        preprocessResult.processed_message, 
-        3
+        preprocessResult.normalized_prompt
       );
       
       processingSteps.ticket_lookup = ticketResult;
@@ -258,7 +268,7 @@ Please provide step-by-step resolution instructions:`;
       // Step 4: Generate solution steps using LLM
       console.log('SupportTeamOrchestrator: Step 4 - Generating solution steps');
       const solutionResult = await this.generateSolutionSteps(
-        preprocessResult.processed_message,
+        preprocessResult.normalized_prompt,
         instructionResult.instructions || [],
         ticketResult.similar_tickets || []
       );

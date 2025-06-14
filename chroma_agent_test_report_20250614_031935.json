@@ -1,0 +1,242 @@
+{
+  "test_summary": {
+    "total_tests": 5,
+    "successful_tests": 0,
+    "failed_tests": 5,
+    "success_rate": "0.0%",
+    "total_workflow_steps": 8,
+    "successful_steps": 0,
+    "step_success_rate": "0.0%"
+  },
+  "detailed_results": {
+    "ChatProcessorAgent": {
+      "success": false,
+      "timestamp": "2025-06-14T03:19:35.812792",
+      "result": {
+        "success": false,
+        "error": "No module named 'agents.chat_processor_agent'; 'agents' is not a package",
+        "workflow_trace": [
+          {
+            "step": "0_error",
+            "agent": "ChatProcessorAgent",
+            "input": "Test message",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.chat_processor_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          }
+        ]
+      }
+    },
+    "ChromaInstructionLookupAgent": {
+      "success": false,
+      "timestamp": "2025-06-14T03:19:35.813080",
+      "result": {
+        "success": false,
+        "error": "No module named 'agents.chroma_instruction_lookup_agent'; 'agents' is not a package",
+        "instructions": [],
+        "confidence_score": 0.0,
+        "workflow_trace": [
+          {
+            "step": "1_error",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "password reset procedure",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.chroma_instruction_lookup_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          }
+        ]
+      }
+    },
+    "ChromaTicketLookupAgent": {
+      "success": false,
+      "timestamp": "2025-06-14T03:19:35.813604",
+      "result": {
+        "success": false,
+        "error": "No module named 'agents.chroma_ticket_lookup_agent'; 'agents' is not a package",
+        "similar_tickets": [],
+        "confidence_score": 0.0,
+        "workflow_trace": [
+          {
+            "step": "2_error",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "login issues with password",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.chroma_ticket_lookup_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          }
+        ]
+      }
+    },
+    "TicketFormatterAgent": {
+      "success": false,
+      "timestamp": "2025-06-14T03:19:35.813860",
+      "result": {
+        "success": false,
+        "error": "No module named 'agents.ticket_formatter_agent'; 'agents' is not a package",
+        "workflow_trace": [
+          {
+            "step": "3_error",
+            "agent": "TicketFormatterAgent",
+            "input": "Test data",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.ticket_formatter_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          }
+        ]
+      }
+    },
+    "CompleteWorkflow": {
+      "success": false,
+      "timestamp": "2025-06-14T03:19:35.814136",
+      "result": {
+        "success": false,
+        "total_duration_ms": 0.15,
+        "agents_tested": 4,
+        "successful_agents": 0,
+        "chat_processing": false,
+        "instruction_lookup": false,
+        "ticket_lookup": false,
+        "ticket_formatting": false,
+        "workflow_trace": [
+          {
+            "step": "0_error",
+            "agent": "ChatProcessorAgent",
+            "input": "Test message",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.chat_processor_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          },
+          {
+            "step": "1_error",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "password reset procedure",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.chroma_instruction_lookup_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          },
+          {
+            "step": "2_error",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "login issues with password",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.chroma_ticket_lookup_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          },
+          {
+            "step": "3_error",
+            "agent": "TicketFormatterAgent",
+            "input": "Test data",
+            "resource": "Error Handler",
+            "output": "Error: No module named 'agents.ticket_formatter_agent'; 'agents' is not a package",
+            "duration_ms": 0,
+            "success": false
+          }
+        ],
+        "final_ticket": {
+          "title": "Login Issue After System Update",
+          "category": "authentication",
+          "urgency": "medium",
+          "confidence": 0.8
+        }
+      }
+    }
+  },
+  "workflow_traces": {
+    "ChatProcessorAgent": [
+      {
+        "step": "0_error",
+        "agent": "ChatProcessorAgent",
+        "input": "Test message",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.chat_processor_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      }
+    ],
+    "ChromaInstructionLookupAgent": [
+      {
+        "step": "1_error",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "password reset procedure",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.chroma_instruction_lookup_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      }
+    ],
+    "ChromaTicketLookupAgent": [
+      {
+        "step": "2_error",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "login issues with password",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.chroma_ticket_lookup_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      }
+    ],
+    "TicketFormatterAgent": [
+      {
+        "step": "3_error",
+        "agent": "TicketFormatterAgent",
+        "input": "Test data",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.ticket_formatter_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      }
+    ],
+    "CompleteWorkflow": [
+      {
+        "step": "0_error",
+        "agent": "ChatProcessorAgent",
+        "input": "Test message",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.chat_processor_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      },
+      {
+        "step": "1_error",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "password reset procedure",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.chroma_instruction_lookup_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      },
+      {
+        "step": "2_error",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "login issues with password",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.chroma_ticket_lookup_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      },
+      {
+        "step": "3_error",
+        "agent": "TicketFormatterAgent",
+        "input": "Test data",
+        "resource": "Error Handler",
+        "output": "Error: No module named 'agents.ticket_formatter_agent'; 'agents' is not a package",
+        "duration_ms": 0,
+        "success": false
+      }
+    ]
+  },
+  "agent_status": {
+    "chat_processor": false,
+    "instruction_lookup": false,
+    "ticket_lookup": false,
+    "ticket_formatter": false,
+    "complete_workflow": false
+  }
+}

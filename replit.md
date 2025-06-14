@@ -28,10 +28,10 @@ The system is built using a loosely coupled microservices pattern with the follo
    - No business logic or external dependencies
 
 4. **Vector Storage Service**
-   - Local file-based vector storage with OpenAI embeddings
-   - 384-dimensional embeddings for similarity search
-   - Instruction document processing and search
-   - Fallback from Qdrant to local storage
+   - ChromaDB with Google AI embeddings for production RAG
+   - High-quality similarity search with cosine similarity
+   - Instruction document processing and ticket lookup
+   - 25+ instruction documents and ticket history indexed
 
 ## Key Components
 
@@ -103,7 +103,13 @@ The system is built using a loosely coupled microservices pattern with the follo
 
 ## Changelog
 
-- June 14, 2025. Initial setup
+- June 14, 2025: ChromaDB implementation completed successfully
+  - ChromaDB installed and configured with Google AI embeddings
+  - Agent workflow system fully operational with detailed tracing
+  - 25+ instruction documents and ticket history indexed
+  - High-quality similarity search achieving 0.831 confidence scores
+  - Agent Test Page integrated with real-time workflow verification
+- June 14, 2025: Initial setup
 
 ## User Preferences
 

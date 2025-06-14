@@ -1,0 +1,15 @@
+{
+  "test_timestamp": "2025-06-14T03:21:19.059690",
+  "chromadb_service": {
+    "success": true,
+    "instruction_count": 25,
+    "ticket_count": 2,
+    "storage_type": "chromadb"
+  },
+  "chromadb_agents": {
+    "success": true,
+    "instruction_agent": true,
+    "ticket_agent": true
+  },
+  "overall_success": true
+}

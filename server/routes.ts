@@ -48,6 +48,8 @@ import { registerWidgetAgentRoutes, registerPreprocessorTestRoute } from "./rout
 import { registerWidgetChatRoutes } from "./routes/widget-chat-routes";
 // Import widget ticket creation routes
 import { registerWidgetTicketRoutes } from "./routes/widget-ticket-routes";
+// Import agent test routes
+import agentTestRoutes from "./routes/agent-test-routes";
 // Import creator routes for multi-tenant management
 import creatorRoutes from "./routes/creator-routes";
 // Import AI provider availability routes
@@ -1848,6 +1850,9 @@ Examples of when to suggest tickets:
 
   // Register knowledge sync routes
   registerKnowledgeSyncRoutes(app);
+  
+  // Register agent test routes
+  app.use('/api/agent', agentTestRoutes);
   
   const httpServer = createServer(app);
   return httpServer;

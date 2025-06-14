@@ -259,7 +259,8 @@ Please provide step-by-step resolution instructions:`;
       // Step 3: Run TicketLookupAgent
       console.log('SupportTeamOrchestrator: Step 3 - Running TicketLookupAgent');
       const ticketResult = await this.ticketLookupAgent.lookupSimilarTickets(
-        preprocessResult.normalized_prompt
+        preprocessResult.normalized_prompt,
+        3
       );
       
       processingSteps.ticket_lookup = ticketResult;
@@ -290,7 +291,7 @@ Please provide step-by-step resolution instructions:`;
         subject: subject,
         steps: solutionResult.steps,
         category: this.categorizeMessage(input.user_message),
-        urgency: preprocessResult.urgency_level,
+        urgency: preprocessResult.urgency,
         customer_name: "Customer"
       });
 
@@ -323,7 +324,13 @@ Please provide step-by-step resolution instructions:`;
         success: false,
         ticket_id: 0,
         formatted_ticket: '',
-        processing_steps: {},
+        processing_steps: {
+          preprocessing: {},
+          instruction_lookup: {},
+          ticket_lookup: {},
+          solution_generation: {},
+          formatting: {}
+        },
         total_processing_time_ms: totalTime,
         confidence_score: 0,
         error: error instanceof Error ? error.message : 'Unknown orchestration error'

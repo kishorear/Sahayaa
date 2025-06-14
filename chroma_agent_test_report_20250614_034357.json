@@ -1,0 +1,488 @@
+{
+  "test_summary": {
+    "total_tests": 5,
+    "successful_tests": 2,
+    "failed_tests": 3,
+    "success_rate": "40.0%",
+    "total_workflow_steps": 16,
+    "successful_steps": 12,
+    "step_success_rate": "75.0%"
+  },
+  "detailed_results": {
+    "ChatProcessorAgent": {
+      "success": false,
+      "timestamp": "2025-06-14T03:43:53.926263",
+      "result": {
+        "success": false,
+        "error": "'ChatProcessorAgent' object has no attribute 'process_message'",
+        "workflow_trace": [
+          {
+            "step": "0_error",
+            "agent": "ChatProcessorAgent",
+            "input": "Test message",
+            "resource": "Error Handler",
+            "output": "Error: 'ChatProcessorAgent' object has no attribute 'process_message'",
+            "duration_ms": 0,
+            "success": false
+          }
+        ]
+      }
+    },
+    "ChromaInstructionLookupAgent": {
+      "success": true,
+      "timestamp": "2025-06-14T03:43:57.019143",
+      "result": {
+        "success": true,
+        "instructions": [
+          {
+            "id": "658d156cd703306b846271991759009c",
+            "title": "test_password_reset.txt",
+            "content": "To reset your password: 1. Go to login page 2. Click forgot password 3. Enter email 4. Check email for reset link",
+            "similarity_score": 0.8310821237906965,
+            "metadata": {
+              "category": "authentication",
+              "created_at": "2025-06-14T03:43:45.185919",
+              "filename": "test_password_reset.txt",
+              "source": "test",
+              "text_length": 113
+            }
+          },
+          {
+            "id": "31b2bf8e6a83b3995fadd015dee200ad",
+            "title": "authentication_guide.txt",
+            "content": "# Authentication Guide\n\n## Login Issues\nWhen users experience login problems:\n\n1. Verify username and password\n2. Check account status (locked/suspended)\n3. Verify two-factor authentication\n4. Clear browser cache\n5. Try incognito mode\n6. Check for service outages\n\n## Common Error Codes\n- AUTH001: Invalid credentials\n- AUTH002: Account locked\n- AUTH003: 2FA verification failed\n- AUTH004: Session expired\n\n## Troubleshooting Steps\nFor persistent login issues:\n1. Reset password\n2. Disable/re-enable ...",
+            "similarity_score": 0.595748870843438,
+            "metadata": {
+              "created_at": "2025-06-14T03:20:36.004820",
+              "filename": "authentication_guide.txt",
+              "source_directory": "instructions",
+              "text_length": 535
+            }
+          },
+          {
+            "id": "820c501a6d08e1fda2071c98be13fabf",
+            "title": "technical_support_procedures.txt",
+            "content": "# Technical Support Procedures\n\n## System Outage Response\n\n### Critical System Failures\n1. **Immediate Response (0-5 minutes)**\n   - Acknowledge the issue publicly via status page\n   - Alert engineering team and management\n   - Begin preliminary diagnostics\n   - Estimate impact and affected users\n\n2. **Investigation Phase (5-30 minutes)**\n   - Check system monitoring dashboards\n   - Review recent deployments and changes\n   - Identify root cause or contributing factors\n   - Document findings in i...",
+            "similarity_score": 0.5522661073159905,
+            "metadata": {
+              "created_at": "2025-06-14T03:20:37.713935",
+              "filename": "technical_support_procedures.txt",
+              "source_directory": "instructions",
+              "text_length": 1597
+            }
+          }
+        ],
+        "confidence_score": 0.8310821237906965,
+        "query": "password reset procedure",
+        "total_results": 3,
+        "processing_time_ms": 447.71,
+        "storage_type": "chromadb",
+        "workflow_trace": [
+          {
+            "step": "1a",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "Query: password reset procedure...",
+            "resource": "Query Processing",
+            "output": "Processed query: password reset procedure...",
+            "duration_ms": 5.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:56.571415"
+          },
+          {
+            "step": "1b",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "Vector search for: password reset procedure...",
+            "resource": "ChromaDB + Gemini Embeddings",
+            "output": "Found 3 relevant instructions",
+            "duration_ms": 447.65,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.019093"
+          },
+          {
+            "step": "1c",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "Format 3 results",
+            "resource": "Result Formatting",
+            "output": "Formatted instructions with confidence: 0.831",
+            "duration_ms": 5.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.019119"
+          }
+        ]
+      }
+    },
+    "ChromaTicketLookupAgent": {
+      "success": true,
+      "timestamp": "2025-06-14T03:43:57.260552",
+      "result": {
+        "success": true,
+        "similar_tickets": [
+          {
+            "id": 9001,
+            "title": "Cannot login after password reset",
+            "description": "User tried to reset password but still cannot access account. Getting invalid credentials error....",
+            "similarity_score": 0.7932137615088182,
+            "category": "authentication",
+            "status": "resolved",
+            "metadata": {
+              "category": "authentication",
+              "created_at": "2025-06-14T03:43:45.537510",
+              "description": "User tried to reset password but still cannot access account. Getting invalid credentials error.",
+              "status": "resolved",
+              "ticket_id": 9001,
+              "title": "Cannot login after password reset"
+            }
+          },
+          {
+            "id": 1001,
+            "title": "Cannot login after password reset",
+            "description": "User attempted password reset but still cannot access account. Getting 'invalid credentials' error....",
+            "similarity_score": 0.7924241336182622,
+            "category": "authentication",
+            "status": "resolved",
+            "metadata": {
+              "category": "authentication",
+              "created_at": "2025-06-14T03:20:42.375735",
+              "description": "User attempted password reset but still cannot access account. Getting 'invalid credentials' error.",
+              "source": "sample_data",
+              "status": "resolved",
+              "ticket_id": 1001,
+              "title": "Cannot login after password reset"
+            }
+          }
+        ],
+        "confidence_score": 0.7932137615088182,
+        "query": "login issues with password",
+        "total_results": 2,
+        "processing_time_ms": 232.48,
+        "data_source": "chromadb",
+        "workflow_trace": [
+          {
+            "step": "2a",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "Query: login issues with password...",
+            "resource": "Query Processing",
+            "output": "Processed query: login issues with password...",
+            "duration_ms": 3.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.028063"
+          },
+          {
+            "step": "2b",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "Vector search for: login issues with password...",
+            "resource": "ChromaDB + Gemini Embeddings",
+            "output": "Found 2 similar tickets",
+            "duration_ms": 232.43,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.260517"
+          },
+          {
+            "step": "2c",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "Format 2 results",
+            "resource": "Result Formatting",
+            "output": "Formatted tickets with confidence: 0.793",
+            "duration_ms": 3.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.260536"
+          }
+        ]
+      }
+    },
+    "TicketFormatterAgent": {
+      "success": false,
+      "timestamp": "2025-06-14T03:43:57.263375",
+      "result": {
+        "success": false,
+        "error": "'TicketFormatterAgent' object has no attribute 'format_ticket_response'",
+        "workflow_trace": [
+          {
+            "step": "3_error",
+            "agent": "TicketFormatterAgent",
+            "input": "Test data",
+            "resource": "Error Handler",
+            "output": "Error: 'TicketFormatterAgent' object has no attribute 'format_ticket_response'",
+            "duration_ms": 0,
+            "success": false
+          }
+        ]
+      }
+    },
+    "CompleteWorkflow": {
+      "success": false,
+      "timestamp": "2025-06-14T03:43:57.680844",
+      "result": {
+        "success": false,
+        "total_duration_ms": 417.38,
+        "agents_tested": 4,
+        "successful_agents": 2,
+        "chat_processing": false,
+        "instruction_lookup": true,
+        "ticket_lookup": true,
+        "ticket_formatting": false,
+        "workflow_trace": [
+          {
+            "step": "0_error",
+            "agent": "ChatProcessorAgent",
+            "input": "Test message",
+            "resource": "Error Handler",
+            "output": "Error: 'ChatProcessorAgent' object has no attribute 'process_message'",
+            "duration_ms": 0,
+            "success": false
+          },
+          {
+            "step": "1a",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "Query: password reset procedure...",
+            "resource": "Query Processing",
+            "output": "Processed query: password reset procedure...",
+            "duration_ms": 5.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.269886"
+          },
+          {
+            "step": "1b",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "Vector search for: password reset procedure...",
+            "resource": "ChromaDB + Gemini Embeddings",
+            "output": "Found 3 relevant instructions",
+            "duration_ms": 203.9,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.473805"
+          },
+          {
+            "step": "1c",
+            "agent": "ChromaInstructionLookupAgent",
+            "input": "Format 3 results",
+            "resource": "Result Formatting",
+            "output": "Formatted instructions with confidence: 0.831",
+            "duration_ms": 5.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.473826"
+          },
+          {
+            "step": "2a",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "Query: login issues with password...",
+            "resource": "Query Processing",
+            "output": "Processed query: login issues with password...",
+            "duration_ms": 3.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.479412"
+          },
+          {
+            "step": "2b",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "Vector search for: login issues with password...",
+            "resource": "ChromaDB + Gemini Embeddings",
+            "output": "Found 2 similar tickets",
+            "duration_ms": 201.36,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.680789"
+          },
+          {
+            "step": "2c",
+            "agent": "ChromaTicketLookupAgent",
+            "input": "Format 2 results",
+            "resource": "Result Formatting",
+            "output": "Formatted tickets with confidence: 0.793",
+            "duration_ms": 3.0,
+            "success": true,
+            "timestamp": "2025-06-14T03:43:57.680805"
+          },
+          {
+            "step": "3_error",
+            "agent": "TicketFormatterAgent",
+            "input": "Test data",
+            "resource": "Error Handler",
+            "output": "Error: 'TicketFormatterAgent' object has no attribute 'format_ticket_response'",
+            "duration_ms": 0,
+            "success": false
+          }
+        ],
+        "final_ticket": {
+          "title": "Login Issue After System Update",
+          "category": "authentication",
+          "urgency": "medium",
+          "confidence": 0.8
+        }
+      }
+    }
+  },
+  "workflow_traces": {
+    "ChatProcessorAgent": [
+      {
+        "step": "0_error",
+        "agent": "ChatProcessorAgent",
+        "input": "Test message",
+        "resource": "Error Handler",
+        "output": "Error: 'ChatProcessorAgent' object has no attribute 'process_message'",
+        "duration_ms": 0,
+        "success": false
+      }
+    ],
+    "ChromaInstructionLookupAgent": [
+      {
+        "step": "1a",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "Query: password reset procedure...",
+        "resource": "Query Processing",
+        "output": "Processed query: password reset procedure...",
+        "duration_ms": 5.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:56.571415"
+      },
+      {
+        "step": "1b",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "Vector search for: password reset procedure...",
+        "resource": "ChromaDB + Gemini Embeddings",
+        "output": "Found 3 relevant instructions",
+        "duration_ms": 447.65,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.019093"
+      },
+      {
+        "step": "1c",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "Format 3 results",
+        "resource": "Result Formatting",
+        "output": "Formatted instructions with confidence: 0.831",
+        "duration_ms": 5.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.019119"
+      }
+    ],
+    "ChromaTicketLookupAgent": [
+      {
+        "step": "2a",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "Query: login issues with password...",
+        "resource": "Query Processing",
+        "output": "Processed query: login issues with password...",
+        "duration_ms": 3.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.028063"
+      },
+      {
+        "step": "2b",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "Vector search for: login issues with password...",
+        "resource": "ChromaDB + Gemini Embeddings",
+        "output": "Found 2 similar tickets",
+        "duration_ms": 232.43,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.260517"
+      },
+      {
+        "step": "2c",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "Format 2 results",
+        "resource": "Result Formatting",
+        "output": "Formatted tickets with confidence: 0.793",
+        "duration_ms": 3.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.260536"
+      }
+    ],
+    "TicketFormatterAgent": [
+      {
+        "step": "3_error",
+        "agent": "TicketFormatterAgent",
+        "input": "Test data",
+        "resource": "Error Handler",
+        "output": "Error: 'TicketFormatterAgent' object has no attribute 'format_ticket_response'",
+        "duration_ms": 0,
+        "success": false
+      }
+    ],
+    "CompleteWorkflow": [
+      {
+        "step": "0_error",
+        "agent": "ChatProcessorAgent",
+        "input": "Test message",
+        "resource": "Error Handler",
+        "output": "Error: 'ChatProcessorAgent' object has no attribute 'process_message'",
+        "duration_ms": 0,
+        "success": false
+      },
+      {
+        "step": "1a",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "Query: password reset procedure...",
+        "resource": "Query Processing",
+        "output": "Processed query: password reset procedure...",
+        "duration_ms": 5.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.269886"
+      },
+      {
+        "step": "1b",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "Vector search for: password reset procedure...",
+        "resource": "ChromaDB + Gemini Embeddings",
+        "output": "Found 3 relevant instructions",
+        "duration_ms": 203.9,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.473805"
+      },
+      {
+        "step": "1c",
+        "agent": "ChromaInstructionLookupAgent",
+        "input": "Format 3 results",
+        "resource": "Result Formatting",
+        "output": "Formatted instructions with confidence: 0.831",
+        "duration_ms": 5.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.473826"
+      },
+      {
+        "step": "2a",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "Query: login issues with password...",
+        "resource": "Query Processing",
+        "output": "Processed query: login issues with password...",
+        "duration_ms": 3.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.479412"
+      },
+      {
+        "step": "2b",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "Vector search for: login issues with password...",
+        "resource": "ChromaDB + Gemini Embeddings",
+        "output": "Found 2 similar tickets",
+        "duration_ms": 201.36,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.680789"
+      },
+      {
+        "step": "2c",
+        "agent": "ChromaTicketLookupAgent",
+        "input": "Format 2 results",
+        "resource": "Result Formatting",
+        "output": "Formatted tickets with confidence: 0.793",
+        "duration_ms": 3.0,
+        "success": true,
+        "timestamp": "2025-06-14T03:43:57.680805"
+      },
+      {
+        "step": "3_error",
+        "agent": "TicketFormatterAgent",
+        "input": "Test data",
+        "resource": "Error Handler",
+        "output": "Error: 'TicketFormatterAgent' object has no attribute 'format_ticket_response'",
+        "duration_ms": 0,
+        "success": false
+      }
+    ]
+  },
+  "agent_status": {
+    "chat_processor": false,
+    "instruction_lookup": true,
+    "ticket_lookup": true,
+    "ticket_formatter": false,
+    "complete_workflow": false
+  }
+}

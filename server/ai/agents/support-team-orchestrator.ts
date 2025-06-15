@@ -20,6 +20,7 @@ import { ChatPreprocessorAgent } from './chat-preprocessor-agent.js';
 import { InstructionLookupAgent } from './instruction-lookup-agent.js';
 import { TicketLookupAgent } from './ticket-lookup-agent.js';
 import { TicketFormatterAgent } from './ticket-formatter-agent.js';
+import { redisMemory } from '../../../services/redis_memory_service.js';
 
 interface OrchestratorInput {
   user_message: string;
@@ -69,7 +70,6 @@ export class SupportTeamOrchestrator {
   private instructionLookupAgent: InstructionLookupAgent;
   private ticketLookupAgent: TicketLookupAgent;
   private formatterAgent: TicketFormatterAgent;
-  private sessionMemory: Map<string, any> = new Map();
 
   constructor() {
     this.initializeGoogleAI();
@@ -95,14 +95,109 @@ export class SupportTeamOrchestrator {
     console.log('SupportTeamOrchestrator: All sub-agents initialized');
   }
 
-  private storeSessionData(sessionId: string, key: string, value: any): void {
-    const sessionKey = `${sessionId}:${key}`;
-    this.sessionMemory.set(sessionKey, value);
-  }
+  /**
+   * Main workflow method - processes user message through all five agent stages
+   */
+  async processUserRequest(input: OrchestratorInput): Promise<OrchestratorResult> {
+    const startTime = Date.now();
+    const sessionId = input.session_id || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log(`SupportTeamOrchestrator: Starting workflow for session ${sessionId}`);
+    
+    try {
+      // Stage 1: ChatPreprocessorAgent - normalize and extract metadata
+      console.log('SupportTeamOrchestrator: Stage 1 - Message preprocessing');
+      const preprocessorResult = await this.preprocessorAgent.processMessage({
+        userMessage: input.user_message,
+        sessionId,
+        userContext: input.user_context
+      });
 
-  private getSessionData(sessionId: string, key: string): any {
-    const sessionKey = `${sessionId}:${key}`;
-    return this.sessionMemory.get(sessionKey);
+      if (!preprocessorResult.success) {
+        throw new Error(`Preprocessor failed: ${preprocessorResult.error}`);
+      }
+
+      // Stage 2: InstructionLookupAgent - find relevant instructions using ChromaDB
+      console.log('SupportTeamOrchestrator: Stage 2 - Instruction lookup via ChromaDB');
+      const instructionResult = await this.instructionLookupAgent.lookupInstructions({
+        normalizedPrompt: preprocessorResult.normalizedPrompt,
+        urgency: preprocessorResult.urgency,
+        sentiment: preprocessorResult.sentiment,
+        sessionId,
+        topK: 3
+      });
+
+      // Stage 3: TicketLookupAgent - find similar tickets using MCP FastAPI
+      console.log('SupportTeamOrchestrator: Stage 3 - Ticket lookup via MCP FastAPI');
+      const ticketResult = await this.ticketLookupAgent.lookupSimilarTickets({
+        normalizedPrompt: preprocessorResult.normalizedPrompt,
+        urgency: preprocessorResult.urgency,
+        sentiment: preprocessorResult.sentiment,
+        sessionId,
+        tenantId: input.tenant_id || 1,
+        topK: 3
+      });
+
+      // Stage 4: Solution Generation using LLM with context
+      console.log('SupportTeamOrchestrator: Stage 4 - Solution generation');
+      const solutionResult = await this.generateSolutionSteps(
+        preprocessorResult.normalizedPrompt,
+        instructionResult.instructions || [],
+        ticketResult.tickets || [],
+        preprocessorResult.urgency
+      );
+
+      // Stage 5: TicketFormatterAgent - create professional ticket response
+      console.log('SupportTeamOrchestrator: Stage 5 - Ticket formatting');
+      const formatterResult = await this.formatterAgent.formatTicketResponse({
+        ticketTitle: this.extractSubject(input.user_message),
+        ticketDescription: preprocessorResult.normalizedPrompt,
+        category: solutionResult.category || 'General',
+        urgency: preprocessorResult.urgency,
+        resolutionSteps: solutionResult.steps || [],
+        confidenceScore: solutionResult.confidence || 0.5,
+        sessionId
+      });
+
+      const totalProcessingTime = Date.now() - startTime;
+      
+      console.log(`SupportTeamOrchestrator: Workflow completed in ${totalProcessingTime}ms`);
+
+      return {
+        success: true,
+        ticket_id: formatterResult.ticketId || Math.floor(Math.random() * 100000),
+        formatted_ticket: formatterResult.formattedResponse || 'Ticket processing completed',
+        processing_steps: {
+          preprocessing: preprocessorResult,
+          instruction_lookup: instructionResult,
+          ticket_lookup: ticketResult,
+          solution_generation: solutionResult,
+          formatting: formatterResult
+        },
+        total_processing_time_ms: totalProcessingTime,
+        confidence_score: solutionResult.confidence || 0.5
+      };
+
+    } catch (error: any) {
+      const totalProcessingTime = Date.now() - startTime;
+      console.error('SupportTeamOrchestrator: Workflow failed:', error.message);
+      
+      return {
+        success: false,
+        ticket_id: 0,
+        formatted_ticket: 'Error processing request',
+        processing_steps: {
+          preprocessing: null,
+          instruction_lookup: null,
+          ticket_lookup: null,
+          solution_generation: null,
+          formatting: null
+        },
+        total_processing_time_ms: totalProcessingTime,
+        confidence_score: 0,
+        error: error.message
+      };
+    }
   }
 
   private extractSubject(userMessage: string): string {
@@ -122,8 +217,9 @@ export class SupportTeamOrchestrator {
   private async generateSolutionSteps(
     processedMessage: string,
     instructions: any[],
-    similarTickets: any[]
-  ): Promise<{ steps: string; confidence: number }> {
+    similarTickets: any[],
+    urgency: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+  ): Promise<{ steps: string[]; confidence: number; category: string }> {
     if (!this.genAI) {
       // Fallback solution generation without AI
       return this.generateFallbackSolution(instructions, similarTickets);
@@ -145,7 +241,7 @@ export class SupportTeamOrchestrator {
       if (similarTickets.length > 0) {
         historicalContext = '\n\nSIMILAR PAST RESOLUTIONS:\n' +
           similarTickets.map((ticket, idx) => 
-            `${idx + 1}. Ticket #${ticket.ticket_id} (Similarity: ${ticket.score?.toFixed(2) || 'N/A'}):\n${ticket.resolution || ticket.title || 'No resolution available'}`
+            `${idx + 1}. Ticket #${ticket.ticket_id} (Similarity: ${ticket.similarity_score?.toFixed(2) || 'N/A'}):\n${ticket.resolution_excerpt || ticket.title || 'No resolution available'}`
           ).join('\n\n');
       }
 
@@ -169,7 +265,10 @@ Please provide step-by-step resolution instructions:`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const steps = response.text().trim();
+      const stepsText = response.text().trim();
+
+      // Parse steps into array
+      const steps = stepsText.split('\n').filter(line => line.trim().length > 0);
 
       // Calculate confidence based on available context
       let confidence = 0.5; // Base confidence
@@ -177,7 +276,10 @@ Please provide step-by-step resolution instructions:`;
       if (similarTickets.length > 0) confidence += 0.2;
       if (instructions.length > 1 && similarTickets.length > 1) confidence += 0.1;
 
-      return { steps, confidence: Math.min(confidence, 1.0) };
+      // Determine category based on message content
+      const category = this.categorizeMessage(processedMessage);
+
+      return { steps, confidence: Math.min(confidence, 1.0), category };
 
     } catch (error) {
       console.error('SupportTeamOrchestrator: AI solution generation failed:', error);
@@ -185,7 +287,7 @@ Please provide step-by-step resolution instructions:`;
     }
   }
 
-  private generateFallbackSolution(instructions: any[], similarTickets: any[]): { steps: string; confidence: number } {
+  private generateFallbackSolution(instructions: any[], similarTickets: any[]): { steps: string[]; confidence: number; category: string } {
     let steps = "Based on similar issues, here are the recommended steps:\n\n";
     
     if (similarTickets.length > 0) {

@@ -1856,6 +1856,9 @@ Examples of when to suggest tickets:
   // Register agent test routes
   app.use('/api/agent', agentTestRoutes);
   
+  // Register agent resources routes for agent-specific file uploads
+  app.use('/api/agent-resources', agentResourcesRoutes);
+  
   const httpServer = createServer(app);
   return httpServer;
 }

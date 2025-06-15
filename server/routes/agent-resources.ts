@@ -3,9 +3,16 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 import { storage } from '../storage';
-import { requireAuth } from '../auth';
 
 const router = express.Router();
+
+// Simple authentication middleware
+const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  next();
+};
 
 // Agent configuration with file type restrictions
 const AGENT_CONFIGS = {

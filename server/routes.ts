@@ -48,6 +48,8 @@ import { registerWidgetAgentRoutes, registerPreprocessorTestRoute } from "./rout
 import { registerWidgetChatRoutes } from "./routes/widget-chat-routes";
 // Import widget ticket creation routes
 import { registerWidgetTicketRoutes } from "./routes/widget-ticket-routes";
+// Import agent resources routes for agent-specific file uploads
+import agentResourcesRoutes from "./routes/agent-resources";
 // Import agent test routes
 import agentTestRoutes from "./routes/agent-test-routes";
 // Import creator routes for multi-tenant management

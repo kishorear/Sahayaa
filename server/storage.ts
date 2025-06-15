@@ -5740,6 +5740,52 @@ class StorageWrapper implements IStorage {
       return false;
     }
   }
+
+  // Agent Resources operations - for agent-specific file uploads with strict isolation
+  async getAgentResources(agentType: string, tenantId: number): Promise<AgentResource[]> {
+    try {
+      return await this.storageImpl.getAgentResources(agentType, tenantId);
+    } catch (error) {
+      console.error(`Error in getAgentResources(${agentType}, ${tenantId}):`, error);
+      return [];
+    }
+  }
+
+  async getAgentResource(id: number, tenantId: number): Promise<AgentResource | undefined> {
+    try {
+      return await this.storageImpl.getAgentResource(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getAgentResource(${id}, ${tenantId}):`, error);
+      return undefined;
+    }
+  }
+
+  async createAgentResource(data: InsertAgentResource): Promise<AgentResource> {
+    try {
+      return await this.storageImpl.createAgentResource(data);
+    } catch (error) {
+      console.error('Error in createAgentResource:', error);
+      throw error;
+    }
+  }
+
+  async deleteAgentResource(id: number, tenantId: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteAgentResource(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteAgentResource(${id}, ${tenantId}):`, error);
+      return false;
+    }
+  }
+
+  async getAgentResourcesByType(agentType: string): Promise<AgentResource[]> {
+    try {
+      return await this.storageImpl.getAgentResourcesByType(agentType);
+    } catch (error) {
+      console.error(`Error in getAgentResourcesByType(${agentType}):`, error);
+      return [];
+    }
+  }
 }
 
 export const storage = new StorageWrapper();

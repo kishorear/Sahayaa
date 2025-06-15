@@ -306,8 +306,9 @@ Please provide step-by-step resolution instructions:`;
     steps += "   - Your system configuration details";
 
     return { 
-      steps, 
-      confidence: similarTickets.length > 0 ? 0.6 : 0.4
+      steps: steps.split('\n').filter(line => line.trim().length > 0),
+      confidence: similarTickets.length > 0 ? 0.6 : 0.4,
+      category: 'General'
     };
   }
 
@@ -323,57 +324,50 @@ Please provide step-by-step resolution instructions:`;
 
       // Step 1: Run ChatProcessorAgent
       console.log('SupportTeamOrchestrator: Step 1 - Running ChatProcessorAgent');
-      const preprocessResult = await this.preprocessorAgent.preprocess(
-        input.user_message, 
-        sessionId, 
-        input.user_context
-      );
+      const preprocessResult = await this.preprocessorAgent.processMessage({
+        userMessage: input.user_message,
+        sessionId,
+        userContext: input.user_context
+      });
       
-      // Handle the actual response format from ChatPreprocessorAgent
-      if (!preprocessResult || !preprocessResult.normalized_prompt) {
-        throw new Error(`Preprocessing failed: Invalid response format`);
+      if (!preprocessResult.success) {
+        throw new Error(`Preprocessing failed: ${preprocessResult.error}`);
       }
 
-      processingSteps.preprocessing = {
-        success: true,
-        processed_message: preprocessResult.normalized_prompt,
-        urgency_level: preprocessResult.urgency,
-        sentiment: preprocessResult.sentiment,
-        original_message: preprocessResult.original_message,
-        session_id: preprocessResult.session_id
-      };
-      this.storeSessionData(sessionId, 'processed_message', preprocessResult.normalized_prompt);
-      this.storeSessionData(sessionId, 'urgency', preprocessResult.urgency);
+      processingSteps.preprocessing = preprocessResult;
 
       // Step 2: Run InstructionLookupAgent
       console.log('SupportTeamOrchestrator: Step 2 - Running InstructionLookupAgent');
       const instructionResult = await this.instructionLookupAgent.lookupInstructions({
-        normalizedPrompt: preprocessResult.normalized_prompt,
-        urgency: preprocessResult.urgency as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
-        sentiment: preprocessResult.sentiment as 'positive' | 'neutral' | 'negative',
+        normalizedPrompt: preprocessResult.normalizedPrompt,
+        urgency: preprocessResult.urgency,
+        sentiment: preprocessResult.sentiment,
         sessionId: sessionId,
         topK: 3
       });
       
       processingSteps.instruction_lookup = instructionResult;
-      this.storeSessionData(sessionId, 'instructions', instructionResult.instructions);
 
       // Step 3: Run TicketLookupAgent
       console.log('SupportTeamOrchestrator: Step 3 - Running TicketLookupAgent');
-      const ticketResult = await this.ticketLookupAgent.lookupSimilarTickets(
-        preprocessResult.normalized_prompt,
-        3
-      );
+      const ticketResult = await this.ticketLookupAgent.lookupSimilarTickets({
+        normalizedPrompt: preprocessResult.normalizedPrompt,
+        urgency: preprocessResult.urgency,
+        sentiment: preprocessResult.sentiment,
+        sessionId: sessionId,
+        tenantId: input.tenant_id || 1,
+        topK: 3
+      });
       
       processingSteps.ticket_lookup = ticketResult;
-      this.storeSessionData(sessionId, 'similar_tickets', ticketResult.similar_tickets);
 
       // Step 4: Generate solution steps using LLM
       console.log('SupportTeamOrchestrator: Step 4 - Generating solution steps');
       const solutionResult = await this.generateSolutionSteps(
-        preprocessResult.normalized_prompt,
+        preprocessResult.normalizedPrompt,
         instructionResult.instructions || [],
-        ticketResult.similar_tickets || []
+        ticketResult.tickets || [],
+        preprocessResult.urgency
       );
       
       processingSteps.solution_generation = {
@@ -391,10 +385,11 @@ Please provide step-by-step resolution instructions:`;
       const formatResult = await this.formatterAgent.formatTicket({
         id: ticketId,
         subject: subject,
-        steps: solutionResult.steps,
-        category: this.categorizeMessage(input.user_message),
+        steps: solutionResult.steps.join('\n'),
+        category: solutionResult.category,
         urgency: preprocessResult.urgency,
-        customer_name: "Customer"
+        customer_name: "Customer",
+        additional_notes: `Confidence: ${(solutionResult.confidence * 100).toFixed(1)}%`
       });
 
       if (!formatResult.success) {
@@ -481,12 +476,7 @@ Please provide step-by-step resolution instructions:`;
   }
 
   clearSession(sessionId: string): void {
-    const keysToDelete = Array.from(this.sessionMemory.keys()).filter(key => 
-      key.startsWith(`${sessionId}:`)
-    );
-    
-    keysToDelete.forEach(key => this.sessionMemory.delete(key));
-    console.log(`SupportTeamOrchestrator: Cleared session data for ${sessionId}`);
+    console.log(`SupportTeamOrchestrator: Session ${sessionId} cleared (delegated to RedisMemory)`);
   }
 
   async testWorkflow(): Promise<OrchestratorResult> {
@@ -505,3 +495,5 @@ Please provide step-by-step resolution instructions:`;
     return await this.processUserMessage(testInput);
   }
 }
+
+export const supportTeamOrchestrator = new SupportTeamOrchestrator();

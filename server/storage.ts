@@ -154,6 +154,11 @@ export interface IStorage {
   getDocumentUsageByDocumentId(documentId: number): Promise<DocumentUsage[]>;
   getDocumentUsageAnalytics(startDate: Date, endDate: Date, tenantId?: number): Promise<any>;
   
+  // Agent resource operations
+  getAgentResources(agentType: string, tenantId: number): Promise<any[]>;
+  createAgentResource(resourceData: any): Promise<any>;
+  deleteAgentResource(id: number, tenantId: number): Promise<boolean>;
+  
   // Session management
   sessionStore: session.Store;
 }
@@ -171,6 +176,7 @@ export class MemStorage implements IStorage {
   private supportDocuments: Map<number, SupportDocument>;
   private documentUsageData: Map<number, DocumentUsage>;
   private widgetApiKeysData: Map<number, WidgetApiKey>;
+  private agentResources: Map<number, any>;
   private tenantIdCounter: number;
   private teamIdCounter: number;
   private userIdCounter: number;
@@ -183,6 +189,7 @@ export class MemStorage implements IStorage {
   private supportDocumentIdCounter: number;
   private documentUsageIdCounter: number;
   private widgetApiKeyIdCounter: number;
+  private agentResourceIdCounter: number;
   
   // Add caches for critical data in production
   private userCache: Map<string, User> = new Map();
@@ -208,6 +215,7 @@ export class MemStorage implements IStorage {
     this.supportDocuments = new Map();
     this.documentUsageData = new Map();
     this.widgetApiKeysData = new Map();
+    this.agentResources = new Map();
     this.tenantIdCounter = 1;
     this.teamIdCounter = 1;
     this.userIdCounter = 1;
@@ -220,6 +228,7 @@ export class MemStorage implements IStorage {
     this.supportDocumentIdCounter = 1;
     this.documentUsageIdCounter = 1;
     this.widgetApiKeyIdCounter = 1;
+    this.agentResourceIdCounter = 1;
     
     // Initialize sample documents in the constructor
     this.initSampleSupportDocuments();
@@ -2099,6 +2108,35 @@ export class MemStorage implements IStorage {
         end: endDate
       }
     };
+  }
+
+  // Agent resource operations
+  async getAgentResources(agentType: string, tenantId: number): Promise<any[]> {
+    const resources = Array.from(this.agentResources.values()).filter(
+      resource => resource.agentType === agentType && resource.tenantId === tenantId
+    );
+    return resources;
+  }
+
+  async createAgentResource(resourceData: any): Promise<any> {
+    const id = this.agentResourceIdCounter++;
+    const resource = {
+      id,
+      ...resourceData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.agentResources.set(id, resource);
+    return resource;
+  }
+
+  async deleteAgentResource(id: number, tenantId: number): Promise<boolean> {
+    const resource = this.agentResources.get(id);
+    if (resource && resource.tenantId === tenantId) {
+      this.agentResources.delete(id);
+      return true;
+    }
+    return false;
   }
 }
 

@@ -96,106 +96,134 @@ export class SupportTeamOrchestrator {
   }
 
   /**
-   * Main workflow method - processes user message through all five agent stages
+   * Main workflow method (legacy) - redirects to processUserMessage
    */
   async processUserRequest(input: OrchestratorInput): Promise<OrchestratorResult> {
+    return await this.processUserMessage(input);
+  }
+
+  /**
+   * Updated workflow method - processes user message through all five agent stages
+   */
+  async processUserMessage(input: OrchestratorInput): Promise<OrchestratorResult> {
     const startTime = Date.now();
-    const sessionId = input.session_id || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sessionId = input.session_id || `session_${Date.now()}`;
     
     console.log(`SupportTeamOrchestrator: Starting workflow for session ${sessionId}`);
-    
+    console.log(`SupportTeamOrchestrator: User message: "${input.user_message.substring(0, 50)}..."`);
+
     try {
-      // Stage 1: ChatPreprocessorAgent - normalize and extract metadata
-      console.log('SupportTeamOrchestrator: Stage 1 - Message preprocessing');
-      const preprocessorResult = await this.preprocessorAgent.processMessage({
+      const processingSteps: any = {};
+
+      // Step 1: Run ChatProcessorAgent
+      console.log('SupportTeamOrchestrator: Step 1 - Running ChatProcessorAgent');
+      const preprocessResult = await this.preprocessorAgent.processMessage({
         userMessage: input.user_message,
         sessionId,
         userContext: input.user_context
       });
-
-      if (!preprocessorResult.success) {
-        throw new Error(`Preprocessor failed: ${preprocessorResult.error}`);
+      
+      if (!preprocessResult.success) {
+        throw new Error(`Preprocessing failed: ${preprocessResult.error}`);
       }
 
-      // Stage 2: InstructionLookupAgent - find relevant instructions using ChromaDB
-      console.log('SupportTeamOrchestrator: Stage 2 - Instruction lookup via ChromaDB');
+      processingSteps.preprocessing = preprocessResult;
+
+      // Step 2: Run InstructionLookupAgent
+      console.log('SupportTeamOrchestrator: Step 2 - Running InstructionLookupAgent');
       const instructionResult = await this.instructionLookupAgent.lookupInstructions({
-        normalizedPrompt: preprocessorResult.normalizedPrompt,
-        urgency: preprocessorResult.urgency,
-        sentiment: preprocessorResult.sentiment,
-        sessionId,
+        normalizedPrompt: preprocessResult.normalizedPrompt,
+        urgency: preprocessResult.urgency,
+        sentiment: preprocessResult.sentiment,
+        sessionId: sessionId,
         topK: 3
       });
+      
+      processingSteps.instruction_lookup = instructionResult;
 
-      // Stage 3: TicketLookupAgent - find similar tickets using MCP FastAPI
-      console.log('SupportTeamOrchestrator: Stage 3 - Ticket lookup via MCP FastAPI');
+      // Step 3: Run TicketLookupAgent
+      console.log('SupportTeamOrchestrator: Step 3 - Running TicketLookupAgent');
       const ticketResult = await this.ticketLookupAgent.lookupSimilarTickets({
-        normalizedPrompt: preprocessorResult.normalizedPrompt,
-        urgency: preprocessorResult.urgency,
-        sentiment: preprocessorResult.sentiment,
-        sessionId,
+        normalizedPrompt: preprocessResult.normalizedPrompt,
+        urgency: preprocessResult.urgency,
+        sentiment: preprocessResult.sentiment,
+        sessionId: sessionId,
         tenantId: input.tenant_id || 1,
         topK: 3
       });
+      
+      processingSteps.ticket_lookup = ticketResult;
 
-      // Stage 4: Solution Generation using LLM with context
-      console.log('SupportTeamOrchestrator: Stage 4 - Solution generation');
+      // Step 4: Generate solution steps using LLM
+      console.log('SupportTeamOrchestrator: Step 4 - Generating solution steps');
       const solutionResult = await this.generateSolutionSteps(
-        preprocessorResult.normalizedPrompt,
+        preprocessResult.normalizedPrompt,
         instructionResult.instructions || [],
         ticketResult.tickets || [],
-        preprocessorResult.urgency
+        preprocessResult.urgency
       );
+      
+      processingSteps.solution_generation = {
+        success: true,
+        steps: solutionResult.steps,
+        confidence_score: solutionResult.confidence,
+        processing_time_ms: Date.now() - startTime
+      };
 
-      // Stage 5: TicketFormatterAgent - create professional ticket response
-      console.log('SupportTeamOrchestrator: Stage 5 - Ticket formatting');
-      const formatterResult = await this.formatterAgent.formatTicketResponse({
-        ticketTitle: this.extractSubject(input.user_message),
-        ticketDescription: preprocessorResult.normalizedPrompt,
-        category: solutionResult.category || 'General',
-        urgency: preprocessorResult.urgency,
-        resolutionSteps: solutionResult.steps || [],
-        confidenceScore: solutionResult.confidence || 0.5,
-        sessionId
+      // Step 5: Run TicketFormatterAgent
+      console.log('SupportTeamOrchestrator: Step 5 - Running TicketFormatterAgent');
+      const ticketId = Math.floor(Math.random() * 90000) + 10000; // Generate realistic ticket ID
+      const subject = this.extractSubject(input.user_message);
+      
+      const formatResult = await this.formatterAgent.formatTicket({
+        id: ticketId,
+        subject: subject,
+        steps: solutionResult.steps.join('\n'),
+        category: solutionResult.category,
+        urgency: preprocessResult.urgency,
+        customer_name: "Customer",
+        additional_notes: `Confidence: ${(solutionResult.confidence * 100).toFixed(1)}%`
       });
 
-      const totalProcessingTime = Date.now() - startTime;
+      if (!formatResult.success) {
+        throw new Error(`Formatting failed: ${formatResult.error}`);
+      }
+
+      processingSteps.formatting = formatResult;
+
+      const totalTime = Date.now() - startTime;
       
-      console.log(`SupportTeamOrchestrator: Workflow completed in ${totalProcessingTime}ms`);
+      console.log(`SupportTeamOrchestrator: Workflow completed successfully in ${totalTime}ms`);
+      console.log(`SupportTeamOrchestrator: Generated ticket #${ticketId} with ${solutionResult.confidence * 100}% confidence`);
 
       return {
         success: true,
-        ticket_id: formatterResult.ticketId || Math.floor(Math.random() * 100000),
-        formatted_ticket: formatterResult.formattedResponse || 'Ticket processing completed',
-        processing_steps: {
-          preprocessing: preprocessorResult,
-          instruction_lookup: instructionResult,
-          ticket_lookup: ticketResult,
-          solution_generation: solutionResult,
-          formatting: formatterResult
-        },
-        total_processing_time_ms: totalProcessingTime,
-        confidence_score: solutionResult.confidence || 0.5
+        ticket_id: ticketId,
+        formatted_ticket: formatResult.formatted_ticket,
+        processing_steps: processingSteps,
+        total_processing_time_ms: totalTime,
+        confidence_score: solutionResult.confidence
       };
 
-    } catch (error: any) {
-      const totalProcessingTime = Date.now() - startTime;
-      console.error('SupportTeamOrchestrator: Workflow failed:', error.message);
+    } catch (error) {
+      const totalTime = Date.now() - startTime;
       
+      console.error('SupportTeamOrchestrator: Workflow failed:', error);
+
       return {
         success: false,
         ticket_id: 0,
-        formatted_ticket: 'Error processing request',
+        formatted_ticket: '',
         processing_steps: {
-          preprocessing: null,
-          instruction_lookup: null,
-          ticket_lookup: null,
-          solution_generation: null,
-          formatting: null
+          preprocessing: {},
+          instruction_lookup: {},
+          ticket_lookup: {},
+          solution_generation: {},
+          formatting: {}
         },
-        total_processing_time_ms: totalProcessingTime,
+        total_processing_time_ms: totalTime,
         confidence_score: 0,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown orchestration error'
       };
     }
   }

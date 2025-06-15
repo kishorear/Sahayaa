@@ -1,0 +1,28 @@
+{
+  "verification_date": "2025-06-15T01:35:47.686Z",
+  "uploaded_file": {
+    "name": "1749950933609-qy7xz0o6odc.docx",
+    "size_kb": 2219,
+    "location": "tenant-1/instruction-lookup/",
+    "status": "verified_and_active"
+  },
+  "templates_available": [
+    "FAQ Template",
+    "Product Description Template",
+    "Process Guide Template",
+    "Troubleshooting Guide Template",
+    "Customer Onboarding Template"
+  ],
+  "agent_integration": {
+    "chromadb_collection": "instruction_lookup_tenant_1",
+    "documents_indexed": 5,
+    "search_enabled": true,
+    "tenant_isolation": true
+  },
+  "expected_improvements": [
+    "FAQ responses will follow your template structure",
+    "Product descriptions will use your standardized format",
+    "Troubleshooting guides will match your methodology",
+    "Customer onboarding will follow your process template"
+  ]
+}

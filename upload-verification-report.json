@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-06-15T01:34:26.431Z",
+  "file": "./uploads/agent-resources/tenant-1/instruction-lookup/1749950933609-qy7xz0o6odc.docx",
+  "status": "verified",
+  "templates_available": 8,
+  "agent_integration": "active",
+  "chromadb_ready": true
+}

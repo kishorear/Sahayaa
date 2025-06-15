@@ -32,32 +32,54 @@ if (fs.existsSync(UPLOADED_FILE)) {
 console.log('\n2. CONTENT ANALYSIS:');
 const content = fs.readFileSync(UPLOADED_FILE, 'utf8');
 
-// Extract templates from the content
+// Extract templates using different patterns
 const templates = [];
-const lines = content.split('\n');
-let currentTemplate = null;
 
-for (let i = 0; i < lines.length; i++) {
-  const line = lines[i].trim();
-  
-  if (line.startsWith('H1:')) {
-    if (currentTemplate) {
-      templates.push(currentTemplate);
+// Split by H1 headings and process each section
+const h1Sections = content.split(/(?=H1:)/);
+
+for (const section of h1Sections) {
+  if (section.trim().startsWith('H1:')) {
+    const lines = section.split('\n');
+    const titleLine = lines.find(line => line.trim().startsWith('H1:'));
+    
+    if (titleLine) {
+      const title = titleLine.replace('H1:', '').trim();
+      const sectionContent = section.replace(titleLine, '').trim();
+      
+      // Extract H2 sections
+      const h2Sections = sectionContent.split(/H2:/).filter(s => s.trim());
+      const sections = h2Sections.map(s => s.split('\n')[0].trim()).filter(s => s);
+      
+      templates.push({
+        title: title,
+        content: sectionContent,
+        sections: sections,
+        wordCount: sectionContent.split(/\s+/).length
+      });
     }
-    currentTemplate = {
-      title: line.replace('H1:', '').trim(),
-      content: '',
-      sections: []
-    };
-  } else if (line.startsWith('H2:') && currentTemplate) {
-    currentTemplate.sections.push(line.replace('H2:', '').trim());
-  } else if (currentTemplate && line.length > 0) {
-    currentTemplate.content += line + ' ';
   }
 }
 
-if (currentTemplate) {
-  templates.push(currentTemplate);
+// If no H1 sections found, try alternative parsing
+if (templates.length === 0) {
+  // Look for major sections by content patterns
+  const sections = content.split(/\n\s*\n/).filter(section => section.trim().length > 50);
+  
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    const lines = section.split('\n');
+    const firstLine = lines[0].trim();
+    
+    if (firstLine.length > 0 && firstLine.length < 100) {
+      templates.push({
+        title: firstLine,
+        content: section,
+        sections: lines.filter(line => line.trim().startsWith('H2:')).map(line => line.replace('H2:', '').trim()),
+        wordCount: section.split(/\s+/).length
+      });
+    }
+  }
 }
 
 console.log(`   ✓ Total templates extracted: ${templates.length}`);

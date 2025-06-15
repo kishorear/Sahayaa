@@ -35,7 +35,8 @@ const AGENT_CONFIGS = {
     allowedTypes: ['.txt', '.md', '.json'],
     maxFileSize: 5 * 1024 * 1024, // 5MB
     icon: Bot,
-    color: 'bg-blue-500'
+    color: 'bg-blue-500',
+    disabled: false
   },
   'instruction-lookup': {
     name: 'Instruction Lookup Agent',
@@ -43,12 +44,13 @@ const AGENT_CONFIGS = {
     allowedTypes: ['.txt', '.pdf', '.docx', '.pptx', '.xlsx'],
     maxFileSize: 10 * 1024 * 1024, // 10MB
     icon: FileText,
-    color: 'bg-green-500'
+    color: 'bg-green-500',
+    disabled: false
   },
   'ticket-lookup': {
     name: 'Ticket Lookup Agent',
     description: 'Finds similar tickets via MCP FastAPI server (no uploads)',
-    allowedTypes: [],
+    allowedTypes: [] as string[],
     maxFileSize: 0,
     icon: AlertCircle,
     color: 'bg-orange-500',
@@ -60,7 +62,8 @@ const AGENT_CONFIGS = {
     allowedTypes: ['.txt', '.md', '.json', '.html'],
     maxFileSize: 2 * 1024 * 1024, // 2MB
     icon: CheckCircle,
-    color: 'bg-purple-500'
+    color: 'bg-purple-500',
+    disabled: false
   }
 };
 

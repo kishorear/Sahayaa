@@ -20,15 +20,17 @@ const AGENT_CONFIGS = {
     name: 'Chat Preprocessor Agent',
     allowedTypes: ['.txt', '.md', '.json'],
     maxFileSize: 5 * 1024 * 1024, // 5MB
+    disabled: false
   },
   'instruction-lookup': {
     name: 'Instruction Lookup Agent',
     allowedTypes: ['.txt', '.pdf', '.docx', '.pptx', '.xlsx'],
     maxFileSize: 10 * 1024 * 1024, // 10MB
+    disabled: false
   },
   'ticket-lookup': {
     name: 'Ticket Lookup Agent',
-    allowedTypes: [], // No uploads allowed
+    allowedTypes: [] as string[], // No uploads allowed
     maxFileSize: 0,
     disabled: true
   },
@@ -36,6 +38,7 @@ const AGENT_CONFIGS = {
     name: 'Ticket Formatter Agent',
     allowedTypes: ['.txt', '.md', '.json', '.html'],
     maxFileSize: 2 * 1024 * 1024, // 2MB
+    disabled: false
   }
 };
 

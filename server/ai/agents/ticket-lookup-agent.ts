@@ -1,265 +1,166 @@
 /**
- * TicketLookupAgent - Third agent in the multi-agent pipeline
+ * TicketLookupAgent - Retrieves similar tickets from MCP FastAPI server
  * 
- * Purpose: Finds and returns the most similar past tickets based on vector similarity
- * to provide context for resolving new support requests.
- * 
- * Responsibilities:
- * 1. Receive the normalized prompt from ChatPreprocessorAgent
- * 2. Search for similar tickets using vector similarity
- * 3. Return ticket IDs, scores, and resolution context
- * 4. Provide structured data for downstream LLM processing
+ * This agent:
+ * 1. Uses MCP FastAPI service on port 8000 for relational ticket data
+ * 2. Queries /tickets/similar/ endpoint for semantic similarity
+ * 3. Returns top-3 similar tickets with {ticket_id, similarity_score, resolution_excerpt}
+ * 4. Uses RedisMemory for session context sharing
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import axios from 'axios';
+import { redisMemory } from '../../../services/redis_memory_service.js';
 
-interface SimilarTicket {
+interface TicketLookupInput {
+  normalizedPrompt: string;
+  urgency: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  sentiment: 'positive' | 'neutral' | 'negative';
+  sessionId: string;
+  tenantId?: number;
+  topK?: number;
+}
+
+interface TicketResult {
   ticket_id: number;
-  score: number;
+  similarity_score: number;
+  resolution_excerpt: string;
   title?: string;
   category?: string;
   status?: string;
-  resolution?: string;
-  created_at?: string;
+  metadata?: Record<string, any>;
 }
 
-interface TicketLookupResult {
+interface TicketLookupOutput {
   success: boolean;
-  similar_tickets: SimilarTicket[];
-  search_query: string;
-  total_found: number;
-  search_method: 'fastapi_service' | 'local_fallback' | 'fallback';
+  tickets: TicketResult[];
+  searchQuery: string;
+  totalFound: number;
+  searchMethod: 'mcp_fastapi';
   processing_time_ms: number;
   error?: string;
 }
 
-interface TicketLookupStatus {
-  name: string;
-  available: boolean;
-  fastapi_service_connected: boolean;
-  google_ai_configured: boolean;
-  local_ticket_database: number;
-  capabilities: string[];
-}
-
 export class TicketLookupAgent {
-  private genAI: GoogleGenerativeAI | null = null;
-  private fastApiBaseUrl: string = 'http://localhost:8001';
-  private fallbackTickets: SimilarTicket[] = [];
+  private mcpServiceUrl: string = 'http://localhost:8000';
 
   constructor() {
-    this.initializeGoogleAI();
-    this.initializeFallbackData();
+    console.log('TicketLookupAgent: Initialized for MCP FastAPI service');
   }
 
-  private initializeGoogleAI(): void {
-    const googleApiKey = process.env.GOOGLE_API_KEY;
-    if (googleApiKey) {
-      this.genAI = new GoogleGenerativeAI(googleApiKey);
-      console.log('TicketLookupAgent: Google AI initialized for embeddings');
-    } else {
-      console.warn('TicketLookupAgent: GOOGLE_API_KEY not available');
-    }
-  }
-
-  private initializeFallbackData(): void {
-    // Create realistic fallback tickets for demonstration
-    this.fallbackTickets = [
-      {
-        ticket_id: 1001,
-        score: 0.85,
-        title: "VPN Connection Issues",
-        category: "technical",
-        status: "resolved",
-        resolution: "Reset VPN configuration and updated client software. Issue resolved after clearing DNS cache and reconnecting.",
-        created_at: "2025-01-15T10:30:00Z"
-      },
-      {
-        ticket_id: 1002, 
-        score: 0.78,
-        title: "Email Authentication Problems",
-        category: "technical",
-        status: "resolved", 
-        resolution: "Updated email server settings and regenerated authentication tokens. Verified SMTP configuration.",
-        created_at: "2025-01-12T14:20:00Z"
-      },
-      {
-        ticket_id: 1003,
-        score: 0.72,
-        title: "Billing Payment Declined",
-        category: "billing",
-        status: "resolved",
-        resolution: "Customer updated payment method and confirmed billing address. Payment processed successfully.",
-        created_at: "2025-01-10T09:15:00Z"
-      }
-    ];
-  }
-
-  private async generateEmbedding(text: string): Promise<number[]> {
-    if (!this.genAI) {
-      throw new Error('Google AI not available for embeddings');
-    }
-
-    try {
-      const model = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
-      const result = await model.embedContent(text);
-      return result.embedding.values;
-    } catch (error) {
-      console.error('TicketLookupAgent: Error generating embedding:', error);
-      throw error;
-    }
-  }
-
-  private async searchFastApiService(query: string, topK: number = 3): Promise<SimilarTicket[]> {
-    try {
-      const response = await axios.get(`${this.fastApiBaseUrl}/tickets/similar/`, {
-        params: {
-          query: query,
-          top_k: topK
-        },
-        timeout: 5000
-      });
-
-      console.log(`TicketLookupAgent: FastAPI service returned ${response.data.length} tickets`);
-      return response.data.map((ticket: any) => ({
-        ticket_id: ticket.ticket_id,
-        score: ticket.score,
-        title: ticket.title,
-        category: ticket.category,
-        status: ticket.status,
-        resolution: ticket.resolution,
-        created_at: ticket.created_at
-      }));
-    } catch (error) {
-      console.log('TicketLookupAgent: FastAPI service not available, using local fallback');
-      throw error;
-    }
-  }
-
-  private async searchLocalFallback(query: string, topK: number = 3): Promise<SimilarTicket[]> {
-    // Simple keyword-based matching for fallback
-    const queryLower = query.toLowerCase();
-    
-    const scored = this.fallbackTickets.map(ticket => {
-      let score = 0;
-      const titleLower = ticket.title?.toLowerCase() || '';
-      const resolutionLower = ticket.resolution?.toLowerCase() || '';
-      
-      // Basic keyword matching
-      if (titleLower.includes('vpn') && queryLower.includes('vpn')) score += 0.3;
-      if (titleLower.includes('email') && queryLower.includes('email')) score += 0.3;
-      if (titleLower.includes('billing') && queryLower.includes('billing')) score += 0.3;
-      if (titleLower.includes('payment') && queryLower.includes('payment')) score += 0.3;
-      if (titleLower.includes('auth') && (queryLower.includes('auth') || queryLower.includes('login'))) score += 0.3;
-      
-      // Urgency matching
-      if (queryLower.includes('urgent') || queryLower.includes('critical')) score += 0.1;
-      
-      return {
-        ...ticket,
-        score: Math.min(score, 0.9) // Cap at 0.9 for fallback
-      };
-    });
-
-    return scored
-      .filter(ticket => ticket.score > 0.1)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, topK);
-  }
-
-  async lookupSimilarTickets(query: string, topK: number = 3): Promise<TicketLookupResult> {
+  /**
+   * Main lookup method - searches MCP FastAPI for similar tickets
+   */
+  async lookupSimilarTickets(input: TicketLookupInput): Promise<TicketLookupOutput> {
     const startTime = Date.now();
     
-    console.log(`TicketLookupAgent: Looking up similar tickets for: "${query}"`);
-
     try {
-      // Try FastAPI service first
-      const tickets = await this.searchFastApiService(query, topK);
+      console.log(`TicketLookupAgent: Looking up similar tickets for: "${input.normalizedPrompt}"`);
+      
+      // Retrieve session data from RedisMemory
+      const sessionData = await redisMemory.getSessionData(input.sessionId);
+      
+      // Use MCP FastAPI service for ticket similarity search
+      const response = await axios.post(`${this.mcpServiceUrl}/tickets/similar/`, {
+        query: input.normalizedPrompt,
+        tenant_id: input.tenantId || 1,
+        top_k: input.topK || 3,
+        urgency: input.urgency,
+        sentiment: input.sentiment
+      }, {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const results = response.data;
+      const tickets: TicketResult[] = results.similar_tickets?.map((ticket: any) => ({
+        ticket_id: ticket.id || ticket.ticket_id,
+        similarity_score: ticket.similarity_score || ticket.score || 0,
+        resolution_excerpt: ticket.resolution_excerpt || ticket.resolution?.substring(0, 200) + '...' || 'No resolution available',
+        title: ticket.title || 'Untitled',
+        category: ticket.category || 'General',
+        status: ticket.status || 'Unknown',
+        metadata: ticket.metadata || {}
+      })) || [];
+
+      // Store ticket hits in RedisMemory
+      await redisMemory.updateSessionField(input.sessionId, 'ticket_hits', tickets);
+
       const processingTime = Date.now() - startTime;
       
-      console.log(`TicketLookupAgent: Found ${tickets.length} tickets via FastAPI service`);
-      console.log(`TicketLookupAgent: Completed lookup in ${processingTime}ms using fastapi_service`);
+      console.log(`TicketLookupAgent: Found ${tickets.length} similar tickets via MCP FastAPI in ${processingTime}ms`);
 
       return {
         success: true,
-        similar_tickets: tickets,
-        search_query: query,
-        total_found: tickets.length,
-        search_method: 'fastapi_service',
+        tickets,
+        searchQuery: input.normalizedPrompt,
+        totalFound: tickets.length,
+        searchMethod: 'mcp_fastapi',
         processing_time_ms: processingTime
       };
 
-    } catch (fastApiError) {
-      // Fallback to local search
-      try {
-        const tickets = await this.searchLocalFallback(query, topK);
-        const processingTime = Date.now() - startTime;
-        
-        console.log(`TicketLookupAgent: Found ${tickets.length} tickets via local fallback`);
-        console.log(`TicketLookupAgent: Completed lookup in ${processingTime}ms using local_fallback`);
-
-        return {
-          success: true,
-          similar_tickets: tickets,
-          search_query: query,
-          total_found: tickets.length,
-          search_method: 'local_fallback',
-          processing_time_ms: processingTime
-        };
-
-      } catch (fallbackError) {
-        // Final fallback with generic tickets
-        const processingTime = Date.now() - startTime;
-        
-        console.log('TicketLookupAgent: Using generic fallback tickets');
-        console.log(`TicketLookupAgent: Completed lookup in ${processingTime}ms using fallback`);
-
-        return {
-          success: true,
-          similar_tickets: [
-            {
-              ticket_id: 9999,
-              score: 0.5,
-              title: "General Support Request",
-              category: "general",
-              status: "resolved",
-              resolution: "Follow standard troubleshooting procedures: 1) Verify user permissions 2) Check system status 3) Review logs 4) Escalate if needed",
-              created_at: new Date().toISOString()
-            }
-          ],
-          search_query: query,
-          total_found: 1,
-          search_method: 'fallback',
-          processing_time_ms: processingTime
-        };
-      }
+    } catch (error: any) {
+      const processingTime = Date.now() - startTime;
+      console.error('TicketLookupAgent: MCP FastAPI lookup failed:', error.message);
+      
+      // No fallback allowed - MCP server is mandatory
+      return {
+        success: false,
+        tickets: [],
+        searchQuery: input.normalizedPrompt,
+        totalFound: 0,
+        searchMethod: 'mcp_fastapi',
+        processing_time_ms: processingTime,
+        error: `MCP FastAPI service unavailable: ${error.message}`
+      };
     }
   }
 
-  getStatus(): TicketLookupStatus {
-    return {
-      name: 'TicketLookupAgent',
-      available: true,
-      fastapi_service_connected: false, // Will be checked dynamically
-      google_ai_configured: this.genAI !== null,
-      local_ticket_database: this.fallbackTickets.length,
-      capabilities: [
-        'Vector similarity search',
-        'FastAPI service integration', 
-        'Local ticket database fallback',
-        'Resolution context extraction',
-        'Relevance scoring'
-      ]
-    };
+  /**
+   * Get ticket details by ID from MCP FastAPI
+   */
+  async getTicketById(ticketId: number, tenantId: number = 1): Promise<any> {
+    try {
+      const response = await axios.get(`${this.mcpServiceUrl}/tickets/${ticketId}`, {
+        params: { tenant_id: tenantId },
+        timeout: 5000
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      console.error(`TicketLookupAgent: Failed to get ticket ${ticketId}:`, error.message);
+      return null;
+    }
   }
 
-  async testConnection(): Promise<boolean> {
+  /**
+   * Status check for the agent
+   */
+  async getStatus(): Promise<any> {
     try {
-      const response = await axios.get(`${this.fastApiBaseUrl}/health`, { timeout: 3000 });
-      return response.status === 200;
+      const response = await axios.get(`${this.mcpServiceUrl}/health`, { timeout: 2000 });
+      return {
+        name: 'TicketLookupAgent',
+        available: true,
+        mcp_fastapi_connected: response.status === 200,
+        ticket_count: response.data?.ticket_count || 0,
+        capabilities: ['mcp_fastapi_search', 'redis_memory', 'ticket_similarity'],
+        service_url: this.mcpServiceUrl
+      };
     } catch (error) {
-      return false;
+      return {
+        name: 'TicketLookupAgent',
+        available: false,
+        mcp_fastapi_connected: false,
+        ticket_count: 0,
+        capabilities: ['redis_memory'],
+        service_url: this.mcpServiceUrl,
+        error: 'MCP FastAPI service not available - THIS IS REQUIRED'
+      };
     }
   }
 }
+
+// Export singleton instance for use in other modules
+export const ticketLookupAgent = new TicketLookupAgent();

@@ -5059,6 +5059,27 @@ export class DatabaseStorage implements IStorage {
       }
     };
   }
+
+  // Agent resource operations - simple in-memory implementation for now
+  async getAgentResources(agentType: string, tenantId: number): Promise<any[]> {
+    // For now, return empty array - this would need a proper database table
+    return [];
+  }
+
+  async createAgentResource(resourceData: any): Promise<any> {
+    // For now, just return the data with an ID - this would need a proper database table
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      ...resourceData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async deleteAgentResource(id: number, tenantId: number): Promise<boolean> {
+    // For now, always return true - this would need a proper database table
+    return true;
+  }
 }
 
 // Create a function to initialize storage with fallback to in-memory if database fails

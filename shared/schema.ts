@@ -429,3 +429,24 @@ export const insertDocumentUsageSchema = createInsertSchema(documentUsage)
 
 export type DocumentUsage = typeof documentUsage.$inferSelect;
 export type InsertDocumentUsage = z.infer<typeof insertDocumentUsageSchema>;
+
+// Agent resources table for agent-specific file uploads with strict isolation
+export const agentResources = pgTable("agent_resources", {
+  id: serial("id").primaryKey(),
+  agentType: text("agent_type").notNull(), // 'chat-preprocessor', 'instruction-lookup', 'ticket-formatter'
+  filename: text("filename").notNull(), // Server-side filename (unique)
+  originalName: text("original_name").notNull(), // Original filename as uploaded
+  fileSize: integer("file_size").notNull(), // File size in bytes
+  fileType: text("file_type").notNull(), // File extension (.txt, .pdf, etc.)
+  filePath: text("file_path").notNull(), // Path to the stored file
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  uploadedBy: integer("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uploadDate: timestamp("upload_date").defaultNow().notNull(),
+  metadata: json("metadata").default({}), // Additional file metadata
+});
+
+export const insertAgentResourceSchema = createInsertSchema(agentResources)
+  .omit({ id: true, uploadDate: true });
+
+export type AgentResource = typeof agentResources.$inferSelect;
+export type InsertAgentResource = z.infer<typeof insertAgentResourceSchema>;

@@ -12,6 +12,7 @@ import {
   supportDocuments,
   documentUsage,
   teams,
+  agentResources,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -37,7 +38,9 @@ import {
   type DocumentUsage,
   type InsertDocumentUsage,
   type Team,
-  type InsertTeam
+  type InsertTeam,
+  type AgentResource,
+  type InsertAgentResource
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";

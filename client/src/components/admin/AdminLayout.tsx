@@ -65,10 +65,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       roles: ["creator"] // Only creators can access the registration page
     },
     { 
-      path: "/admin/documents", 
-      label: "Documents", 
+      path: "/admin/agent-resources", 
+      label: "Agent Resources", 
       icon: FileText,
-      roles: ["administrator", "support_engineer", "creator"] // Support engineers and creators need docs access
+      roles: ["administrator", "support_engineer", "creator"] // Support engineers and creators need agent resources access
     },
     { 
       path: "/admin/integrations", 

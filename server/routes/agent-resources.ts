@@ -45,7 +45,7 @@ const AGENT_CONFIGS = {
 // Configure multer for file uploads with agent-specific directories
 const storage_config = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const agentType = req.body.agent_type;
+    const agentType = req.params.agentType || req.query.agentType;
     const tenantId = req.user?.tenantId || 1;
     
     // Create agent-specific directory structure
@@ -70,7 +70,7 @@ const storage_config = multer.diskStorage({
 
 // File filter for validation
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const agentType = req.body.agent_type;
+  const agentType = req.params.agentType || req.query.agentType;
   const config = AGENT_CONFIGS[agentType as keyof typeof AGENT_CONFIGS];
   
   if (!config) {
@@ -120,10 +120,10 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/agent-resources/upload - Upload file for specific agent
-router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
+// POST /api/agent-resources/upload/:agentType - Upload file for specific agent
+router.post('/upload/:agentType', requireAuth, upload.single('file'), async (req, res) => {
   try {
-    const { agent_type } = req.body;
+    const agentType = req.params.agentType;
     const file = req.file;
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId || 1;
@@ -132,11 +132,11 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
     
-    if (!agent_type) {
+    if (!agentType) {
       return res.status(400).json({ error: 'Agent type is required' });
     }
     
-    const config = AGENT_CONFIGS[agent_type as keyof typeof AGENT_CONFIGS];
+    const config = AGENT_CONFIGS[agentType as keyof typeof AGENT_CONFIGS];
     if (!config) {
       return res.status(400).json({ error: 'Invalid agent type' });
     }
@@ -156,7 +156,7 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
     
     // Store file information in database
     const resourceData = {
-      agentType: agent_type,
+      agentType: agentType,
       filename: file.filename,
       originalName: file.originalname,
       fileSize: file.size,

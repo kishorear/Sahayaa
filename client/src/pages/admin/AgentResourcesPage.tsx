@@ -108,9 +108,8 @@ export default function AgentResourcesPage() {
     mutationFn: async ({ file, agentType }: { file: File; agentType: string }) => {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('agent_type', agentType);
 
-      const response = await fetch('/api/agent-resources/upload', {
+      const response = await fetch(`/api/agent-resources/upload/${agentType}`, {
         method: 'POST',
         body: formData,
       });

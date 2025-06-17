@@ -8,13 +8,12 @@ import { z } from "zod";
 import { Loader2, InfoIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["administrator", "support_engineer", "user"]).default("user"),
 });
 
 export default function AuthPage() {
@@ -26,7 +25,6 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
-      role: "user",
     },
   });
   
@@ -88,31 +86,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={loginForm.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem className="space-y-3">
-                            <FormLabel>Role / Department</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select your role" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="user">Regular User</SelectItem>
-                                <SelectItem value="support_engineer">Support Engineer</SelectItem>
-                                <SelectItem value="administrator">Administrator</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+
                       <Button 
                         type="submit" 
                         className="w-full"
@@ -131,7 +105,7 @@ export default function AuthPage() {
                   </Form>
                   
                   <div className="mt-6">
-                    <Alert variant="secondary" className="bg-muted/50">
+                    <Alert className="bg-muted/50">
                       <InfoIcon className="h-4 w-4 mr-2" />
                       <AlertDescription>
                         Need an account? Please contact a system creator to register as a new user.

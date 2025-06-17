@@ -2,15 +2,21 @@
 
 ## Introduction
 
-This package contains everything you need to integrate the Support AI Chat Widget into your website or application. The widget provides an intelligent chat interface powered by your Support AI tenant configuration, allowing your users to get instant support through an AI-powered chat interface.
+This package contains everything you need to integrate the Support AI Chat Widget into your website or application. The widget provides an intelligent chat interface powered by your Support AI tenant configuration with advanced agent workflow orchestration, allowing your users to get comprehensive support through multi-agent AI processing.
 
 ## What's Included
 
 This integration package includes:
 
+- **Agent Workflow Integration** - Multi-agent orchestration for comprehensive issue resolution
 - **Authentication-enabled Chat Widget** - Requires users to log in before chatting
+- **Intelligent Ticket Creation** - Automatic ticket generation with AI classification
+- **Knowledge Base Integration** - Access to instruction documents and similar ticket lookup
+- **Resolution Steps** - Step-by-step guidance powered by agent collaboration
+- **Confidence Scoring** - AI response quality metrics and reliability indicators
 - **API Key Integration** - Connects to your specific AI provider configuration
 - **Customizable UI** - Matches your brand colors and positioning preferences
+- **Advanced Analytics** - Enhanced event tracking with agent workflow metrics
 - **Sample Implementation** - Complete examples to help you get started quickly
 - **Technical Documentation** - Detailed API reference and configuration options
 

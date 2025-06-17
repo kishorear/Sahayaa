@@ -37,7 +37,7 @@ X-API-Key: YOUR_API_KEY
 **Request Body:**
 ```json
 {
-  "email": "user@example.com",
+  "username": "user123",
   "password": "userPassword123",
   "tenantId": 12345
 }

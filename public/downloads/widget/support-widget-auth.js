@@ -758,27 +758,32 @@
       typingIndicator.innerHTML = '<span>.</span><span>.</span><span>.</span>';
       this.messagesContainer.appendChild(typingIndicator);
       
-      // Prepare request
+      // Prepare request data for agent workflow
       const requestData = {
-        message: message,
-        tenantId: config.tenantId,
-        sessionId: this.sessionId
+        user_message: message,
+        tenant_id: parseInt(config.tenantId),
+        session_id: this.sessionId,
+        user_context: {
+          url: window.location.href,
+          referrer: document.referrer,
+          timestamp: new Date().toISOString()
+        }
       };
       
-      // Add user data if authenticated
+      // Add authenticated user data
       if (this.isAuthenticated && this.userInfo) {
-        requestData.user = {
-          id: this.userInfo.id,
-          username: this.userInfo.username
-        };
+        requestData.user_id = this.userInfo.id.toString();
+        requestData.user_context.username = this.userInfo.username;
+        requestData.user_context.name = this.userInfo.name;
       }
       
-      // Make API request
-      fetch(`${config.serverUrl}/api/chatbot`, {
+      // Make API request to agent workflow endpoint
+      fetch(`${config.serverUrl}/api/agents/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': config.apiKey
+          'X-API-Key': config.apiKey,
+          'X-Tenant-ID': config.tenantId.toString()
         },
         body: JSON.stringify(requestData)
       })
@@ -793,17 +798,41 @@
         const indicators = this.messagesContainer.querySelectorAll('.support-typing-indicator');
         indicators.forEach(indicator => this.messagesContainer.removeChild(indicator));
         
-        // Add AI response
-        this.addMessage('assistant', data.message || 'I apologize, but I was unable to process your request.');
-        
-        // Handle special actions if any
-        if (data.action) {
-          this.handleSpecialAction(data.action);
-        }
-        
-        // Report response event
-        if (config.reportData) {
-          this.reportEvent('message_received', { content: data.message });
+        // Handle agent workflow response
+        if (data.success) {
+          // Display the resolution steps as formatted responses
+          if (data.resolution_steps && data.resolution_steps.length > 0) {
+            data.resolution_steps.forEach(step => {
+              this.addMessage('assistant', step);
+            });
+          } else {
+            this.addMessage('assistant', 'I apologize, but I was unable to process your request.');
+          }
+          
+          // Show ticket information if created
+          if (data.ticket_id) {
+            this.addMessage('assistant', `I've created ticket #${data.ticket_id} for you. Status: ${data.status}, Category: ${data.category}, Urgency: ${data.urgency}`);
+          }
+          
+          // Show confidence information for high-quality responses
+          if (data.confidence_score && data.confidence_score > 0.7) {
+            console.log(`Support AI Confidence: ${(data.confidence_score * 100).toFixed(1)}%`);
+          }
+          
+          // Report response event with enhanced metrics
+          if (config.reportData) {
+            this.reportEvent('agent_response_received', { 
+              ticket_id: data.ticket_id,
+              confidence_score: data.confidence_score,
+              resolution_steps_count: data.resolution_steps_count,
+              processing_time_ms: data.processing_time_ms,
+              category: data.category,
+              urgency: data.urgency
+            });
+          }
+        } else {
+          // Handle error case
+          this.addMessage('assistant', data.error || 'I apologize, but I encountered an issue processing your request.');
         }
       })
       .catch(error => {

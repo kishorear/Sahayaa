@@ -94,29 +94,34 @@ The API key mechanism allows the widget to securely connect to your tenant's AI 
 3. **Access Control**: Backend validates the key to ensure it has access to the specified tenant
 4. **AI Provider Selection**: Tenant-specific AI provider configuration is applied to the conversation
 
-### Message Exchange API
+### Agent Workflow API
 
-#### Send Message
+#### Process Support Request
 
 ```
-POST https://api.support.ai/api/chatbot
+POST https://api.support.ai/api/agents/process
 ```
 
 **Headers:**
 ```
 Content-Type: application/json
 X-API-Key: YOUR_API_KEY
+X-Tenant-ID: YOUR_TENANT_ID
 ```
 
 **Request Body:**
 ```json
 {
-  "message": "I need help with my order",
-  "tenantId": 12345,
-  "sessionId": "session_abc123",
-  "user": {
-    "id": "user-uuid-123",
-    "email": "user@example.com"
+  "user_message": "I need help with my order",
+  "tenant_id": 12345,
+  "session_id": "session_abc123",
+  "user_id": "user-uuid-123",
+  "user_context": {
+    "url": "https://example.com/checkout",
+    "referrer": "https://example.com/products",
+    "timestamp": "2025-06-17T23:30:00.000Z",
+    "username": "user123",
+    "name": "John Doe"
   }
 }
 ```
@@ -124,23 +129,30 @@ X-API-Key: YOUR_API_KEY
 **Success Response (200 OK):**
 ```json
 {
-  "message": "I'd be happy to help with your order. Could you please provide your order number?",
-  "action": null
+  "success": true,
+  "ticket_id": 1234,
+  "ticket_title": "Order Status Inquiry",
+  "status": "open",
+  "category": "orders",
+  "urgency": "medium",
+  "resolution_steps": [
+    "I'd be happy to help with your order inquiry.",
+    "To assist you better, could you please provide your order number?",
+    "You can find this in your order confirmation email or account dashboard."
+  ],
+  "resolution_steps_count": 3,
+  "confidence_score": 0.85,
+  "processing_time_ms": 1250,
+  "created_at": "2025-06-17T23:30:01.250Z",
+  "source": "widget"
 }
 ```
 
-**Response with Action (200 OK):**
+**Error Response (400 Bad Request):**
 ```json
 {
-  "message": "I've found your order #12345. It looks like it was shipped yesterday and should arrive tomorrow.",
-  "action": {
-    "type": "display_order",
-    "data": {
-      "orderId": "ORD-12345",
-      "status": "shipped",
-      "estimatedDelivery": "2025-05-20"
-    }
-  }
+  "success": false,
+  "error": "Invalid request format or missing required fields"
 }
 ```
 

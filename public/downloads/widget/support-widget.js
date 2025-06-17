@@ -316,11 +316,105 @@
     }
     
     /**
-     * Simulate a response from the support AI
-     * In a production environment, this would be replaced with an API call
+     * Send message to agent workflow or fallback to simulation
      * @param {string} userMessage - The message from the user
      */
     simulateResponse(userMessage) {
+      // Try agent workflow first if available
+      if (config.apiKey && config.apiKey !== "__API_KEY__") {
+        this.sendToAgentWorkflow(userMessage);
+      } else {
+        this.fallbackSimulation(userMessage);
+      }
+    }
+    
+    /**
+     * Send message to agent workflow service
+     * @param {string} message - The message to send
+     */
+    sendToAgentWorkflow(message) {
+      // Add typing indicator
+      const typingIndicator = document.createElement('div');
+      typingIndicator.className = 'support-message support-message-assistant support-typing-indicator';
+      typingIndicator.innerHTML = '<span>.</span><span>.</span><span>.</span>';
+      this.messagesContainer.appendChild(typingIndicator);
+      
+      // Prepare request data for agent workflow
+      const requestData = {
+        user_message: message,
+        tenant_id: parseInt(config.tenantId),
+        session_id: this.sessionId,
+        user_context: {
+          url: window.location.href,
+          referrer: document.referrer,
+          timestamp: new Date().toISOString()
+        }
+      };
+      
+      // Make API request to agent workflow endpoint
+      fetch(`${config.serverUrl}/api/agents/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': config.apiKey,
+          'X-Tenant-ID': config.tenantId.toString()
+        },
+        body: JSON.stringify(requestData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Agent workflow unavailable');
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Remove typing indicator
+        const indicators = this.messagesContainer.querySelectorAll('.support-typing-indicator');
+        indicators.forEach(indicator => this.messagesContainer.removeChild(indicator));
+        
+        // Handle agent workflow response
+        if (data.success) {
+          // Display resolution steps
+          if (data.resolution_steps && data.resolution_steps.length > 0) {
+            data.resolution_steps.forEach(step => {
+              this.addMessage('assistant', step);
+            });
+          }
+          
+          // Show ticket information if created
+          if (data.ticket_id) {
+            this.addMessage('assistant', `I've created ticket #${data.ticket_id} for you. Category: ${data.category}, Urgency: ${data.urgency}`);
+          }
+          
+          // Report enhanced analytics
+          if (config.reportData) {
+            this.reportEvent('agent_response_received', { 
+              ticket_id: data.ticket_id,
+              confidence_score: data.confidence_score,
+              category: data.category,
+              urgency: data.urgency
+            });
+          }
+        } else {
+          this.addMessage('assistant', data.error || 'I encountered an issue processing your request.');
+        }
+      })
+      .catch(error => {
+        console.warn('Agent workflow failed, using fallback:', error);
+        // Remove typing indicator
+        const indicators = this.messagesContainer.querySelectorAll('.support-typing-indicator');
+        indicators.forEach(indicator => this.messagesContainer.removeChild(indicator));
+        
+        // Fallback to simulation
+        this.fallbackSimulation(message);
+      });
+    }
+    
+    /**
+     * Fallback simulation when agent workflow is unavailable
+     * @param {string} userMessage - The message from the user
+     */
+    fallbackSimulation(userMessage) {
       // Simulate typing indicator
       const typingIndicator = document.createElement('div');
       typingIndicator.className = 'support-message support-message-assistant';

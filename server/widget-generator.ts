@@ -39,9 +39,10 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   // Base directory for source files
   const baseDir = path.join(process.cwd(), 'public', 'downloads', 'widget');
 
-  // Add documentation files as-is
+  // Add documentation files including agent workflow guide
   archive.file(path.join(baseDir, 'documentation.md'), { name: 'documentation.md' });
   archive.file(path.join(baseDir, 'api-documentation.md'), { name: 'api-documentation.md' });
+  archive.file(path.join(baseDir, 'agent-workflow-integration-guide.md'), { name: 'agent-workflow-guide.md' });
 
   // Read the widget JS template
   const widgetJs = fs.readFileSync(path.join(baseDir, 'support-widget.js'), 'utf8');

@@ -41,9 +41,10 @@ export async function generateAuthWidgetPackage(config: WidgetConfig, res: Respo
   // Base directory for source files
   const baseDir = path.join(process.cwd(), 'public', 'downloads', 'widget');
 
-  // Add documentation files for authentication widget
+  // Add documentation files for authentication widget with agent workflow
   archive.file(path.join(baseDir, 'README-auth-widget.md'), { name: 'README.md' });
   archive.file(path.join(baseDir, 'api-documentation-auth.md'), { name: 'api-documentation.md' });
+  archive.file(path.join(baseDir, 'agent-workflow-integration-guide.md'), { name: 'agent-workflow-guide.md' });
 
   // Read the enhanced widget JS template
   const widgetJs = fs.readFileSync(path.join(baseDir, 'support-widget-auth.js'), 'utf8');
@@ -99,14 +100,14 @@ export async function generateAuthWidgetPackage(config: WidgetConfig, res: Respo
  * Generates an integration guide with step-by-step instructions
  */
 function generateIntegrationGuide(config: WidgetConfig): string {
-  return `# Support AI Chat Widget Integration Guide
+  return `# Support AI Chat Widget Integration Guide - Agent Workflow Enhanced
 
 ## Quick Start Integration
 
 Add the following code to your website, right before the closing \`</body>\` tag:
 
 \`\`\`html
-<!-- Support AI Chat Widget Configuration -->
+<!-- Support AI Chat Widget Configuration with Agent Workflow -->
 <script>
   window.supportAiConfig = {
     tenantId: ${config.tenantId},
@@ -117,7 +118,13 @@ Add the following code to your website, right before the closing \`</body>\` tag
     requireAuth: true,
     autoOpen: ${config.autoOpen},
     branding: ${config.branding},
-    reportData: ${config.reportData}
+    reportData: ${config.reportData},
+    
+    // Agent workflow enhancements
+    enableAgentWorkflow: true,
+    showConfidenceScore: false,
+    enableTicketCreation: true,
+    trackAgentMetrics: true
   };
 </script>
 
@@ -148,16 +155,28 @@ Add the following code to your website, right before the closing \`</body>\` tag
 
    Open your website and click the chat button. Verify that:
    - Authentication flow works correctly
-   - Messages are sent and received properly
+   - Messages trigger agent workflow processing
+   - Automatic ticket creation occurs for support requests
+   - Resolution steps are displayed clearly
    - Widget styling matches your website's design
 
-5. **Advanced Configuration**
+5. **Agent Workflow Features**
 
-   See the README.md and api-documentation.md files for detailed information on:
-   - Custom styling options
-   - Advanced authentication integration
-   - Programmatic control of the widget
-   - Event handling and callbacks
+   The enhanced widget now includes:
+   - Multi-agent processing for comprehensive responses
+   - Automatic ticket creation with AI classification
+   - Knowledge base integration for instruction lookup
+   - Similar ticket search for faster resolution
+   - Confidence scoring for response quality
+   - Processing time tracking for performance monitoring
+
+6. **Advanced Configuration**
+
+   See the included documentation files for detailed information on:
+   - Agent workflow integration (agent-workflow-guide.md)
+   - API endpoints and response formats (api-documentation.md)
+   - Custom styling options and event handling (README.md)
+   - Authentication integration and security features
 
 ## Troubleshooting
 

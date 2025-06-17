@@ -53,12 +53,14 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
   // Customize the widget JS with the provided configuration
   const customizedWidgetJs = widgetJs
     .replace('__TENANT_ID__', config.tenantId.toString())
+    .replace('__API_KEY__', config.apiKey)
     .replace('__PRIMARY_COLOR__', config.primaryColor)
     .replace('__POSITION__', config.position)
     .replace('__GREETING_MESSAGE__', config.greetingMessage)
     .replace('__AUTO_OPEN__', config.autoOpen.toString())
     .replace('__BRANDING__', config.branding.toString())
-    .replace('__REPORT_DATA__', config.reportData.toString());
+    .replace('__REPORT_DATA__', config.reportData.toString())
+    .replace('https://api.support.ai', process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://your-support-ai-domain.com');
 
   // Customize the sample implementation with the provided configuration
   const customizedSampleHtml = sampleHtml

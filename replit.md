@@ -103,6 +103,15 @@ The system is built using a loosely coupled microservices pattern with the follo
 
 ## Changelog
 
+- June 17, 2025: Chat widget package updated with complete agent workflow integration
+  - Enhanced support-widget-auth.js with agent orchestrator endpoint integration
+  - Updated support-widget.js to include agent workflow with graceful fallbacks
+  - Added comprehensive agent workflow integration guide documentation
+  - Updated API documentation with new /api/agents/process endpoint specifications
+  - Enhanced widget generators to include agent workflow configuration options
+  - Implemented automatic ticket creation and resolution steps display in widgets
+  - Added confidence scoring and processing time tracking for widget responses
+  - Updated README files with agent workflow capabilities and features
 - June 14, 2025: ChromaDB agent workflow integration completed successfully
   - Fixed SupportTeamOrchestrator interface mismatches with agent methods
   - Resolved response format handling between ChatPreprocessorAgent and orchestrator

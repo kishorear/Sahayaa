@@ -12,6 +12,7 @@
   // Default configuration settings that will be replaced with user values
   const defaultConfig = {
     tenantId: "__TENANT_ID__",
+    apiKey: "__API_KEY__",
     primaryColor: "__PRIMARY_COLOR__",
     position: "__POSITION__",
     greetingMessage: "__GREETING_MESSAGE__",

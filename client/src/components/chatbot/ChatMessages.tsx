@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Bot, User } from "lucide-react";
+import FormattedMessage from "./FormattedMessage";
 
 type Message = {
   id: string;
@@ -42,9 +43,10 @@ export default function ChatMessages({ messages, isTyping, ticketCreatedThisSess
                 : "ml-3 bg-gray-100 py-2 px-4 rounded-lg rounded-tl-none max-w-[75%]"
             }`}
           >
-            <p className={`text-sm ${message.sender === "user" ? "text-white" : "text-gray-800"}`}>
-              {message.content}
-            </p>
+            <FormattedMessage 
+              content={message.content} 
+              isUser={message.sender === "user"} 
+            />
             
             {/* Render action buttons if present */}
             {message.actionButtons && message.actionButtons.type === 'ticket_creation' && (

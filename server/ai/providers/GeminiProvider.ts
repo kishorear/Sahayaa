@@ -294,7 +294,15 @@ export class GeminiProvider implements AIProviderInterface {
    */
   private buildSystemPrompt(systemPrompt?: string, context?: string): string {
     let fullPrompt = systemPrompt || 
-      "You are an AI support assistant for a SaaS product. Provide helpful, concise responses.";
+      `You are an AI support assistant for a SaaS product. Format your responses for maximum readability:
+
+- Use bullet points for lists of steps or actions
+- Use numbered lists for sequential instructions (Step 1:, Step 2:, etc.)
+- Break complex information into clear paragraphs
+- Highlight important information
+- Use action-oriented language for troubleshooting
+
+Provide helpful, well-structured responses that are easy to follow.`;
     
     if (context) {
       fullPrompt += `\n\nUse the following information to help with your responses:\n${context}`;

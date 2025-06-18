@@ -273,7 +273,7 @@ export class SupportTeamOrchestrator {
           ).join('\n\n');
       }
 
-      const prompt = `You are a professional technical support specialist. Based on the user's issue and available context, provide clear, step-by-step resolution instructions.
+      const prompt = `You are a professional technical support specialist. Based on the user's issue and available context, provide clear, well-formatted resolution instructions.
 
 USER ISSUE: ${processedMessage}
 
@@ -281,15 +281,22 @@ ${instructionContext}
 
 ${historicalContext}
 
-REQUIREMENTS:
-1. Provide clear, numbered step-by-step instructions
-2. Keep instructions professional and easy to follow
-3. Use the context above to inform your solution
-4. Focus on the most likely resolution based on similar past cases
-5. Include verification steps where appropriate
-6. Keep the tone helpful and reassuring
+FORMAT YOUR RESPONSE FOR MAXIMUM READABILITY:
+- Use numbered lists for sequential steps (Step 1:, Step 2:, etc.)
+- Use bullet points for lists of options or requirements
+- Break complex information into clear paragraphs
+- Highlight important warnings or notes
+- Use action-oriented language (e.g., "Click on...", "Navigate to...", "Verify that...")
+- Include verification steps where appropriate
 
-Please provide step-by-step resolution instructions:`;
+REQUIREMENTS:
+1. Provide clear, step-by-step instructions that are easy to follow
+2. Use the context above to inform your solution
+3. Focus on the most likely resolution based on similar past cases
+4. Keep the tone helpful and professional
+5. Structure your response with proper formatting for readability
+
+Please provide well-formatted, step-by-step resolution instructions:`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;

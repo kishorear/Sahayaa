@@ -1069,6 +1069,13 @@ Generate only the title, no quotes or extra text:`;
         // Create a conversational system prompt
         const systemPrompt = `You are a helpful customer support assistant. Your goal is to have natural conversations and help users with their questions or issues.
 
+Format your responses for maximum readability:
+- Use bullet points for lists of steps or actions
+- Use numbered lists for sequential instructions (Step 1:, Step 2:, etc.)
+- Break complex information into clear paragraphs
+- Highlight important information or warnings
+- Use action-oriented language for troubleshooting
+
 Key Guidelines:
 - Be conversational and friendly
 - Try to resolve simple questions directly without creating tickets

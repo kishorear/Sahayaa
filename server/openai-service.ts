@@ -239,7 +239,14 @@ export async function generateChatResponseWithAI(
       Ticket #${ticketContext.id}: "${ticketContext.title}"
       Original description: "${ticketContext.description}"
       
-      Provide helpful, concise responses based on this context. If you can fully resolve the issue, indicate this clearly in your response.
+      Format your responses for maximum readability:
+      - Use bullet points for lists of steps or actions
+      - Use numbered lists for sequential instructions (Step 1:, Step 2:, etc.)
+      - Break complex information into clear paragraphs
+      - Highlight important information or warnings
+      - Use action-oriented language for troubleshooting
+      
+      Provide helpful, well-structured responses based on this context. If you can fully resolve the issue, indicate this clearly in your response.
       If you need more information or the issue requires human intervention, make that clear as well.`;
     
     // Add knowledge context if available

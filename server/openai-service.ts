@@ -235,7 +235,7 @@ export async function generateChatResponseWithAI(
 ): Promise<string> {
   try {
     // Create a system message with ticket context and knowledge context if available
-    let systemContent = `You are an AI support assistant for a SaaS product. You're currently helping with a ticket in the "${ticketContext.category}" category.
+    let systemContent = `You are a support assistant helping quality analysts and software testers with ticket "${ticketContext.title}" in the "${ticketContext.category}" category.
       Ticket #${ticketContext.id}: "${ticketContext.title}"
       Original description: "${ticketContext.description}"
       
@@ -244,10 +244,16 @@ export async function generateChatResponseWithAI(
       - Use numbered lists for sequential instructions (Step 1:, Step 2:, etc.)
       - Break complex information into clear paragraphs
       - Highlight important information or warnings
-      - Use action-oriented language for troubleshooting
       
-      Provide helpful, well-structured responses based on this context. If you can fully resolve the issue, indicate this clearly in your response.
-      If you need more information or the issue requires human intervention, make that clear as well.`;
+      Key Guidelines:
+      - User is a QA analyst/tester who found this issue
+      - Provide quick workarounds or information gathering steps only
+      - Keep recommendations simple and non-technical
+      - Don't provide code solutions or technical implementations
+      - Focus on ticket resolution rather than complex troubleshooting
+      
+      Provide helpful, non-technical guidance based on this ticket context. If you can provide a simple workaround, indicate this clearly.
+      If the issue requires developer intervention, make that clear as well.`;
     
     // Add knowledge context if available
     if (knowledgeContext) {

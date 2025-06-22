@@ -103,6 +103,13 @@ The system is built using a loosely coupled microservices pattern with the follo
 
 ## Changelog
 
+- June 22, 2025: AI chat behavior optimized for QA/testing workflow
+  - Updated all AI providers to focus on quality analysts and software testers
+  - Changed system prompts to assume users are reporting legitimate issues
+  - Eliminated technical code solutions in favor of practical workarounds
+  - Enhanced ticket creation focus over complex troubleshooting attempts
+  - Improved response formatting with bullet points and structured guidance
+  - Modified chat interface to prioritize information gathering for tickets
 - June 17, 2025: Chat widget package updated with complete agent workflow integration
   - Enhanced support-widget-auth.js with agent orchestrator endpoint integration
   - Updated support-widget.js to include agent workflow with graceful fallbacks

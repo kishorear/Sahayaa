@@ -273,7 +273,7 @@ export class SupportTeamOrchestrator {
           ).join('\n\n');
       }
 
-      const prompt = `You are a professional technical support specialist. Based on the user's issue and available context, provide clear, well-formatted resolution instructions.
+      const prompt = `You are a support specialist helping quality analysts and software testers who have discovered issues. Based on the user's issue and available context, provide practical, non-technical recommendations.
 
 USER ISSUE: ${processedMessage}
 
@@ -286,17 +286,17 @@ FORMAT YOUR RESPONSE FOR MAXIMUM READABILITY:
 - Use bullet points for lists of options or requirements
 - Break complex information into clear paragraphs
 - Highlight important warnings or notes
-- Use action-oriented language (e.g., "Click on...", "Navigate to...", "Verify that...")
-- Include verification steps where appropriate
 
-REQUIREMENTS:
-1. Provide clear, step-by-step instructions that are easy to follow
-2. Use the context above to inform your solution
-3. Focus on the most likely resolution based on similar past cases
-4. Keep the tone helpful and professional
-5. Structure your response with proper formatting for readability
+REQUIREMENTS FOR QA/TESTER AUDIENCE:
+1. User is a QA analyst/tester who found this issue
+2. Provide simple, non-technical workarounds or information gathering steps
+3. Don't provide code solutions or technical implementations
+4. Keep recommendations practical and easy to follow
+5. Focus on ticket resolution rather than complex troubleshooting
+6. Use the context above to inform your recommendations
+7. If no simple workaround exists, recommend escalation to development team
 
-Please provide well-formatted, step-by-step resolution instructions:`;
+Please provide practical, non-technical resolution steps suitable for QA analysts:`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;

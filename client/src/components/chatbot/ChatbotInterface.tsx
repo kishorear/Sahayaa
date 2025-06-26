@@ -4,7 +4,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, X, Video, Image, Camera, Paperclip, RefreshCcw, Ticket, AlertTriangle } from "lucide-react";
+import { MessageSquare, X, Video, Image, Camera, Paperclip, RefreshCcw, Ticket, AlertTriangle, GripVertical } from "lucide-react";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
 import { InsertTicket } from "@shared/schema";
@@ -492,7 +493,11 @@ export default function ChatbotInterface() {
 
         {/* Chat window */}
         {isChatOpen && (
-          <div className="w-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden" style={{ height: "550px" }}>
+          <div className="w-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden resize relative" style={{ height: "550px", minWidth: "300px", minHeight: "400px", maxWidth: "600px", maxHeight: "800px" }}>
+            {/* Resize handle indicator */}
+            <div className="absolute bottom-0 right-0 w-4 h-4 bg-gray-200 cursor-se-resize flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity z-10">
+              <GripVertical className="w-3 h-3 text-gray-500 rotate-45" />
+            </div>
             {/* Chat header */}
             <div className="bg-primary text-white px-4 py-4 flex justify-between items-center">
               <div className="flex items-center">

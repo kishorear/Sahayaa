@@ -86,7 +86,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/agent-test", 
       label: "Agent Test", 
       icon: Brain,
-      roles: ["administrator", "creator"] // Only admins and creators can test agents
+      roles: ["creator"] // Only creators can test agents
     },
     { 
       path: "/admin/profile", 

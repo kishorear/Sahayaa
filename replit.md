@@ -103,6 +103,10 @@ The system is built using a loosely coupled microservices pattern with the follo
 
 ## Changelog
 
+- June 26, 2025: Role-based access control refined
+  - Agent Test tab now restricted to creator role users only
+  - Chat box made resizable with proper constraints (300x400px min, 600x800px max)
+  - Maintained default dimensions while adding resize functionality
 - June 22, 2025: AI chat behavior optimized for QA/testing workflow
   - Updated all AI providers to focus on quality analysts and software testers
   - Changed system prompts to assume users are reporting legitimate issues

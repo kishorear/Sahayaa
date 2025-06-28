@@ -222,7 +222,7 @@ export default function Dashboard() {
                   onCheckedChange={(checked) => handleWidgetConfigChange('branding', checked)}
                 />
                 <Label htmlFor="branding" className="text-sm text-muted-foreground">
-                  Display Support AI branding on widget
+                  Display Sahayaa AI branding on widget
                 </Label>
               </div>
             </div>
@@ -237,7 +237,7 @@ export default function Dashboard() {
                   onCheckedChange={(checked) => handleWidgetConfigChange('reportData', checked)}
                 />
                 <Label htmlFor="reportData" className="text-sm text-muted-foreground">
-                  Send analytics data back to Support AI
+                  Send analytics data back to Sahayaa AI
                 </Label>
               </div>
             </div>

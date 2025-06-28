@@ -13,8 +13,8 @@ export default function HowItWorksPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <img src="/logo.svg" alt="Support AI Logo" className="w-8 h-8" />
-                <span className="ml-2 text-xl font-bold">Support AI</span>
+                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold">Sahayaa AI</span>
               </div>
             </Link>
             <div className="flex items-center space-x-6">

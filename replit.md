@@ -1,4 +1,4 @@
-# Support Ticket Management System
+# Sahayaa AI Ticket Management System
 
 ## Overview
 
@@ -103,6 +103,11 @@ The system is built using a loosely coupled microservices pattern with the follo
 
 ## Changelog
 
+- June 28, 2025: Complete rebranding from "Support AI" to "Sahayaa AI"
+  - Updated all UI components, pages, and user-facing text
+  - Modified widget documentation and sample files
+  - Updated page titles, navigation bars, and footer text
+  - Changed branding references throughout the application
 - June 26, 2025: Role-based access control refined
   - Agent Test tab now restricted to creator role users only
   - Chat box made resizable with proper constraints (300x400px min, 600x800px max)

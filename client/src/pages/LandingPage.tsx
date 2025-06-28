@@ -12,7 +12,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <LogoIcon className="w-10 h-10" />
-              <span className="ml-2 text-xl font-bold">Support AI</span>
+              <span className="ml-2 text-xl font-bold">Sahayaa AI</span>
             </div>
             <div className="flex items-center space-x-6">
               <Link href="/pricing">
@@ -46,7 +46,7 @@ export default function LandingPage() {
               AI-Powered Support That Resolves Issues Instantly
             </h1>
             <p className="text-xl mb-8 text-indigo-100">
-              Support AI automatically handles, routes, and resolves customer tickets
+              Sahayaa AI automatically handles, routes, and resolves customer tickets
               to provide faster support and reduce team workload.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -1,11 +1,11 @@
 /**
- * Support AI Chat Widget
+ * Sahayaa AI Chat Widget
  * A lightweight client-side chat widget for intelligent customer support
  * 
  * This file will be customized with your specific configuration settings
- * when downloaded from the Support AI admin dashboard.
+ * when downloaded from the Sahayaa AI admin dashboard.
  * 
- * Support AI: Empowering Support with Intelligent Assistance
+ * Sahayaa AI: Empowering Support with Intelligent Assistance
  */
 
 (function() {

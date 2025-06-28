@@ -27,7 +27,7 @@ This integration package includes:
 Add the following code to your website, right before the closing `</body>` tag:
 
 ```html
-<!-- Support AI Chat Widget Configuration -->
+<!-- Sahayaa AI Chat Widget Configuration -->
 <script>
   window.supportAiConfig = {
     tenantId: YOUR_TENANT_ID,
@@ -39,11 +39,11 @@ Add the following code to your website, right before the closing `</body>` tag:
   };
 </script>
 
-<!-- Support AI Chat Widget Script -->
+<!-- Sahayaa AI Chat Widget Script -->
 <script src="support-widget-auth.js" async></script>
 ```
 
-Replace `YOUR_TENANT_ID` and `YOUR_API_KEY` with the values from your Support AI admin dashboard.
+Replace `YOUR_TENANT_ID` and `YOUR_API_KEY` with the values from your Sahayaa AI admin dashboard.
 
 ### Testing Your Integration
 

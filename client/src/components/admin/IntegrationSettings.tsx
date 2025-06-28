@@ -291,7 +291,7 @@ export default function IntegrationSettings() {
         <Info className="h-4 w-4" />
         <AlertTitle>Integration Information</AlertTitle>
         <AlertDescription>
-          Connect your Support AI system to third-party platforms to synchronize tickets and responses.
+          Connect your Sahayaa AI system to third-party platforms to synchronize tickets and responses.
           Your API keys are securely stored and never exposed in client-side code.
         </AlertDescription>
       </Alert>

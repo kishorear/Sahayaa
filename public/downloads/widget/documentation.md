@@ -1,8 +1,8 @@
-# Support AI Chat Widget Documentation
+# Sahayaa AI Chat Widget Documentation
 
 ## Overview
 
-The Support AI Chat Widget is a customizable, lightweight chat interface that integrates directly with your Support AI account. It provides your website visitors with instant AI-powered support and connects them with human agents when needed.
+The Sahayaa AI Chat Widget is a customizable, lightweight chat interface that integrates directly with your Sahayaa AI account. It provides your website visitors with instant AI-powered support and connects them with human agents when needed.
 
 ## Quick Start
 
@@ -11,7 +11,7 @@ The Support AI Chat Widget is a customizable, lightweight chat interface that in
 Add the following script tags to your website, right before the closing `</body>` tag:
 
 ```html
-<!-- Support AI Chat Widget -->
+<!-- Sahayaa AI Chat Widget -->
 <script>
   window.supportAiConfig = {
     tenantId: YOUR_TENANT_ID,

@@ -1,5 +1,5 @@
 /**
- * Support AI Universal Integration Script
+ * Sahayaa AI Universal Integration Script
  * 
  * This script provides a simple way to integrate the support chat widget
  * across website content.

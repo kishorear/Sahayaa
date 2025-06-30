@@ -103,6 +103,12 @@ The system is built using a loosely coupled microservices pattern with the follo
 
 ## Changelog
 
+- June 30, 2025: Deployment module format issues resolved
+  - Converted CommonJS agent-service.js to ES module format
+  - Consolidated duplicate agent service files (removed redundant CommonJS version)
+  - Updated all import statements to use unified TypeScript agent service
+  - Fixed esbuild compatibility issues for production deployment
+  - Verified application functionality and module resolution
 - June 28, 2025: Complete rebranding from "Support AI" to "Sahayaa AI"
   - Updated all UI components, pages, and user-facing text
   - Modified widget documentation and sample files

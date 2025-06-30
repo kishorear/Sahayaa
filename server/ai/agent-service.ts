@@ -103,51 +103,62 @@ export class AgentService {
     try {
       console.log('AgentService: Processing workflow request:', request.user_message?.substring(0, 50) + '...');
       
-      // Use the SupportTeam Orchestrator to handle the complete workflow
-      const orchestratorInput = {
-        user_message: request.user_message,
-        session_id: `${request.user_id || 'anon'}_${Date.now()}`,
-        user_context: request.user_context,
-        tenant_id: request.tenant_id,
-        user_id: request.user_id
-      };
-
-      const result = await this.orchestrator.processUserMessage(orchestratorInput);
+      // TEMPORARY FIX: Use direct ticket creation instead of the problematic orchestrator
+      // This ensures tickets are created in the database properly
+      const { storage } = await import('../../storage.js');
+      const { classifyTicket } = await import('../../ai.js');
       
-      if (result.success) {
-        // Extract resolution steps from the formatted ticket
-        const steps = this.extractStepsFromTicket(result.formatted_ticket);
-        
-        return {
-          success: true,
-          ticket_id: result.ticket_id,
-          ticket_title: this.extractTitleFromTicket(result.formatted_ticket),
-          status: 'resolved',
-          category: result.processing_steps.preprocessing?.category || 'general',
-          urgency: result.processing_steps.preprocessing?.urgency_level || 'medium',
-          resolution_steps: steps,
-          resolution_steps_count: steps.length,
-          confidence_score: result.confidence_score,
-          processing_time_ms: result.total_processing_time_ms,
-          created_at: new Date().toISOString(),
-          source: 'support_team_orchestrator'
-        };
-      } else {
-        return {
-          success: false,
-          ticket_title: 'Processing failed',
-          status: 'error',
-          category: 'system',
-          urgency: 'medium',
-          resolution_steps: ['Unable to process request: ' + (result.error || 'Unknown error')],
-          resolution_steps_count: 1,
-          confidence_score: 0,
-          processing_time_ms: result.total_processing_time_ms,
-          created_at: new Date().toISOString(),
-          source: 'support_team_orchestrator',
-          error: result.error
-        };
-      }
+      const startTime = Date.now();
+      
+      // Create a proper title from the user message
+      const title = this.extractTitleFromMessage(request.user_message);
+      
+      // Classify the ticket
+      const classification = await classifyTicket(title, request.user_message, request.tenant_id || 1);
+      
+      // Create comprehensive description
+      const description = `**User Request:**\n${request.user_message}\n\n**Processing Method:** Agent Workflow\n\n**AI Classification:**\n- Category: ${classification.category}\n- Complexity: ${classification.complexity}\n- Assigned To: ${classification.assignedTo}\n- Can Auto-Resolve: ${classification.canAutoResolve}\n\n**AI Notes:**\n${classification.aiNotes}`;
+      
+      // Create the ticket data
+      const ticketData = {
+        title: title,
+        description: description,
+        category: classification.category,
+        complexity: classification.complexity,
+        status: classification.canAutoResolve ? 'resolved' : 'new',
+        assignedTo: classification.assignedTo,
+        aiNotes: `Agent workflow processed. ${classification.aiNotes}`,
+        aiResolved: classification.canAutoResolve,
+        tenantId: request.tenant_id || 1,
+        createdBy: request.user_id ? parseInt(request.user_id) : 1,
+        source: 'agent_workflow'
+      };
+      
+      // Create the actual ticket in the database
+      const createdTicket = await storage.createTicket(ticketData);
+      
+      // Generate resolution steps
+      const resolutionSteps = this.generateResolutionSteps(request.user_message, classification);
+      
+      const processingTime = Date.now() - startTime;
+      
+      console.log(`AgentService: Successfully created ticket #${createdTicket.id} in ${processingTime}ms`);
+      
+      return {
+        success: true,
+        ticket_id: createdTicket.id,
+        ticket_title: createdTicket.title,
+        status: createdTicket.status,
+        category: createdTicket.category,
+        urgency: this.mapComplexityToUrgency(classification.complexity),
+        resolution_steps: resolutionSteps,
+        resolution_steps_count: resolutionSteps.length,
+        confidence_score: classification.canAutoResolve ? 0.8 : 0.6,
+        processing_time_ms: processingTime,
+        created_at: createdTicket.createdAt,
+        source: 'agent_workflow_fixed'
+      };
+      
     } catch (error) {
       console.error('AgentService: Workflow processing failed:', error);
       
@@ -191,6 +202,64 @@ export class AgentService {
     }
     
     return steps;
+  }
+
+  private extractTitleFromMessage(userMessage: string): string {
+    // Extract meaningful title from user message
+    const words = userMessage.split(' ').filter(word => word.length > 0);
+    
+    // Remove common stop words
+    const stopWords = ['i', 'am', 'is', 'are', 'the', 'a', 'an', 'and', 'or', 'but', 'my', 'me', 'need', 'want', 'can', 'could', 'please', 'help'];
+    const meaningfulWords = words.filter(word => 
+      !stopWords.includes(word.toLowerCase()) && word.length > 2
+    );
+    
+    // Take first 6-8 meaningful words for title
+    const titleWords = meaningfulWords.slice(0, 7);
+    const title = titleWords.join(' ') || words.slice(0, 8).join(' ');
+    
+    // Limit to 80 characters
+    return title.length > 80 ? title.substring(0, 77) + '...' : title;
+  }
+
+  private generateResolutionSteps(userMessage: string, classification: any): string[] {
+    const steps: string[] = [];
+    
+    if (classification.canAutoResolve) {
+      if (classification.category === 'authentication') {
+        steps.push('Check your login credentials');
+        steps.push('Try resetting your password if needed');
+        steps.push('Clear browser cache and cookies');
+        steps.push('Contact support if issue persists');
+      } else if (classification.category === 'documentation') {
+        steps.push('Review relevant documentation');
+        steps.push('Check our knowledge base for guides');
+        steps.push('Follow step-by-step instructions');
+      } else {
+        steps.push('Review the ticket details provided');
+        steps.push('Follow any applicable troubleshooting steps');
+        steps.push('Contact support if additional help is needed');
+      }
+    } else {
+      steps.push('Ticket has been created and assigned to the support team');
+      steps.push('A support agent will review your request');
+      steps.push('You will receive an update within 24 hours');
+      steps.push('Check your email for further communications');
+    }
+    
+    return steps;
+  }
+
+  private mapComplexityToUrgency(complexity: string): string {
+    switch (complexity) {
+      case 'simple':
+        return 'low';
+      case 'complex':
+        return 'high';
+      case 'medium':
+      default:
+        return 'medium';
+    }
   }
 
   private extractTitleFromTicket(formattedTicket: string): string {

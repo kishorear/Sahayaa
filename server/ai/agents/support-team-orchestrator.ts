@@ -11,8 +11,9 @@
  * 3. Run InstructionLookupAgent to find relevant instructions
  * 4. Run TicketLookupAgent to find similar past tickets
  * 5. Call LLM to draft solution steps using historical context
- * 6. Run TicketFormatterAgent to create professional ticket response
- * 7. Return final formatted output to frontend
+ * 6. Create actual ticket in database 
+ * 7. Run TicketFormatterAgent to create professional ticket response
+ * 8. Return final formatted output to frontend
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -21,6 +22,9 @@ import { InstructionLookupAgent } from './instruction-lookup-agent.js';
 import { TicketLookupAgent } from './ticket-lookup-agent.js';
 import { TicketFormatterAgent } from './ticket-formatter-agent.js';
 import { redisMemory } from '../../../services/redis_memory_service.js';
+import { storage } from '../../storage.js';
+import { InsertTicket } from '../../../shared/schema.js';
+import { classifyTicket } from '../../ai.js';
 
 interface OrchestratorInput {
   user_message: string;
@@ -103,7 +107,7 @@ export class SupportTeamOrchestrator {
   }
 
   /**
-   * Updated workflow method - processes user message through all five agent stages
+   * Updated workflow method - processes user message through all agent stages and creates real tickets
    */
   async processUserMessage(input: OrchestratorInput): Promise<OrchestratorResult> {
     const startTime = Date.now();
@@ -170,17 +174,48 @@ export class SupportTeamOrchestrator {
         processing_time_ms: Date.now() - startTime
       };
 
-      // Step 5: Run TicketFormatterAgent
-      console.log('SupportTeamOrchestrator: Step 5 - Running TicketFormatterAgent');
-      const ticketId = Math.floor(Math.random() * 90000) + 10000; // Generate realistic ticket ID
+      // Step 5: Create actual ticket in database
+      console.log('SupportTeamOrchestrator: Step 5 - Creating ticket in database');
       const subject = this.extractSubject(input.user_message);
       
+      // Classify the ticket properly using the AI system
+      const classification = await classifyTicket(subject, preprocessResult.normalizedPrompt, input.tenant_id || 1);
+      
+      // Create comprehensive description from solution steps and context
+      const fullDescription = this.buildTicketDescription(
+        input.user_message,
+        solutionResult.steps,
+        instructionResult.instructions || [],
+        ticketResult.tickets || []
+      );
+      
+      // Create the ticket data
+      const ticketData: InsertTicket = {
+        title: subject,
+        description: fullDescription,
+        category: classification.category,
+        complexity: classification.complexity,
+        status: solutionResult.confidence > 0.7 ? "resolved" : "new",
+        assignedTo: classification.assignedTo,
+        aiNotes: `Agent workflow confidence: ${(solutionResult.confidence * 100).toFixed(1)}%\n${classification.aiNotes}`,
+        aiResolved: solutionResult.confidence > 0.7,
+        tenantId: input.tenant_id || 1,
+        createdBy: input.user_id ? parseInt(input.user_id) : 1,
+        source: 'agent_workflow',
+        resolvedAt: solutionResult.confidence > 0.7 ? new Date() : undefined
+      };
+      
+      // Create the actual ticket in the database
+      const createdTicket = await storage.createTicket(ticketData);
+      
+      // Step 6: Run TicketFormatterAgent with real ticket data
+      console.log('SupportTeamOrchestrator: Step 6 - Running TicketFormatterAgent');
       const formatResult = await this.formatterAgent.formatTicket({
-        id: ticketId,
-        subject: subject,
+        id: createdTicket.id,
+        subject: createdTicket.title,
         steps: solutionResult.steps.join('\n'),
-        category: solutionResult.category,
-        urgency: preprocessResult.urgency,
+        category: createdTicket.category,
+        urgency: this.mapUrgencyToTicketUrgency(preprocessResult.urgency),
         customer_name: "Customer",
         additional_notes: `Confidence: ${(solutionResult.confidence * 100).toFixed(1)}%`
       });
@@ -194,11 +229,11 @@ export class SupportTeamOrchestrator {
       const totalTime = Date.now() - startTime;
       
       console.log(`SupportTeamOrchestrator: Workflow completed successfully in ${totalTime}ms`);
-      console.log(`SupportTeamOrchestrator: Generated ticket #${ticketId} with ${solutionResult.confidence * 100}% confidence`);
+      console.log(`SupportTeamOrchestrator: Created ticket #${createdTicket.id} with ${solutionResult.confidence * 100}% confidence`);
 
       return {
         success: true,
-        ticket_id: ticketId,
+        ticket_id: createdTicket.id,
         formatted_ticket: formatResult.formatted_ticket,
         processing_steps: processingSteps,
         total_processing_time_ms: totalTime,
@@ -242,253 +277,182 @@ export class SupportTeamOrchestrator {
     return subjectWords.join(' ') || words.slice(0, 5).join(' ');
   }
 
+  private buildTicketDescription(
+    originalMessage: string,
+    solutionSteps: string[],
+    instructions: any[],
+    similarTickets: any[]
+  ): string {
+    let description = `**User Request:**\n${originalMessage}\n\n`;
+    
+    if (solutionSteps.length > 0) {
+      description += `**Recommended Solution:**\n`;
+      solutionSteps.forEach((step, index) => {
+        description += `${index + 1}. ${step}\n`;
+      });
+      description += '\n';
+    }
+    
+    if (instructions.length > 0) {
+      description += `**Relevant Instructions Found:**\n`;
+      instructions.slice(0, 2).forEach((instruction, index) => {
+        description += `• ${instruction.title || instruction.filename}\n`;
+      });
+      description += '\n';
+    }
+    
+    if (similarTickets.length > 0) {
+      description += `**Similar Past Issues:**\n`;
+      similarTickets.slice(0, 2).forEach((ticket, index) => {
+        description += `• Ticket #${ticket.id}: ${ticket.title}\n`;
+      });
+    }
+    
+    return description.trim();
+  }
+
+  private mapUrgencyToTicketUrgency(agentUrgency: string): string {
+    switch (agentUrgency.toLowerCase()) {
+      case 'critical':
+        return 'high';
+      case 'high':
+        return 'high';
+      case 'medium':
+        return 'medium';
+      case 'low':
+        return 'low';
+      default:
+        return 'medium';
+    }
+  }
+
   private async generateSolutionSteps(
     processedMessage: string,
     instructions: any[],
     similarTickets: any[],
     urgency: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
   ): Promise<{ steps: string[]; confidence: number; category: string }> {
+    
     if (!this.genAI) {
-      // Fallback solution generation without AI
-      return this.generateFallbackSolution(instructions, similarTickets);
+      console.warn('SupportTeamOrchestrator: Google AI not available, using fallback solution generation');
+      return {
+        steps: [
+          'Review the user request carefully',
+          'Gather additional information if needed',
+          'Provide appropriate solution based on available resources',
+          'Follow up to ensure issue resolution'
+        ],
+        confidence: 0.6,
+        category: 'general'
+      };
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-      // Build context from instructions and historical resolutions
-      let instructionContext = '';
+      // Build context from instructions and similar tickets
+      let contextPrompt = `User Issue: ${processedMessage}\nUrgency Level: ${urgency}\n\n`;
+      
       if (instructions.length > 0) {
-        instructionContext = '\n\nRELEVANT SUPPORT INSTRUCTIONS:\n' +
-          instructions.map((inst, idx) => 
-            `${idx + 1}. From ${inst.filename || 'Support Guide'} (Score: ${inst.score?.toFixed(2) || 'N/A'}):\n${inst.text}`
-          ).join('\n\n');
+        contextPrompt += 'Relevant Instructions:\n';
+        instructions.slice(0, 3).forEach((instruction, index) => {
+          contextPrompt += `${index + 1}. ${instruction.title || instruction.filename}: ${instruction.content?.substring(0, 200) || 'Content available'}\n`;
+        });
+        contextPrompt += '\n';
       }
-
-      let historicalContext = '';
+      
       if (similarTickets.length > 0) {
-        historicalContext = '\n\nSIMILAR PAST RESOLUTIONS:\n' +
-          similarTickets.map((ticket, idx) => 
-            `${idx + 1}. Ticket #${ticket.ticket_id} (Similarity: ${ticket.similarity_score?.toFixed(2) || 'N/A'}):\n${ticket.resolution_excerpt || ticket.title || 'No resolution available'}`
-          ).join('\n\n');
+        contextPrompt += 'Similar Past Tickets:\n';
+        similarTickets.slice(0, 3).forEach((ticket, index) => {
+          contextPrompt += `${index + 1}. ${ticket.title}: ${ticket.description?.substring(0, 150) || 'Description available'}\n`;
+        });
+        contextPrompt += '\n';
       }
+      
+      contextPrompt += `Please provide a step-by-step solution for this user's issue. Format as numbered steps that are:
+1. Clear and actionable
+2. Appropriate for the urgency level (${urgency})
+3. Based on the provided context and instructions
+4. Professional and helpful
 
-      const prompt = `You are a support specialist helping quality analysts and software testers who have discovered issues. Based on the user's issue and available context, provide practical, non-technical recommendations.
+Respond with only the numbered steps, no additional explanation.`;
 
-USER ISSUE: ${processedMessage}
-
-${instructionContext}
-
-${historicalContext}
-
-FORMAT YOUR RESPONSE FOR MAXIMUM READABILITY:
-- Use numbered lists for sequential steps (Step 1:, Step 2:, etc.)
-- Use bullet points for lists of options or requirements
-- Break complex information into clear paragraphs
-- Highlight important warnings or notes
-
-REQUIREMENTS FOR QA/TESTER AUDIENCE:
-1. User is a QA analyst/tester who found this issue
-2. Provide simple, non-technical workarounds or information gathering steps
-3. Don't provide code solutions or technical implementations
-4. Keep recommendations practical and easy to follow
-5. Focus on ticket resolution rather than complex troubleshooting
-6. Use the context above to inform your recommendations
-7. If no simple workaround exists, recommend escalation to development team
-
-Please provide practical, non-technical resolution steps suitable for QA analysts:`;
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const stepsText = response.text().trim();
-
-      // Parse steps into array
-      const steps = stepsText.split('\n').filter(line => line.trim().length > 0);
-
-      // Calculate confidence based on available context
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const result = await model.generateContent(contextPrompt);
+      const response = result.response;
+      const text = response.text();
+      
+      // Parse the response into steps
+      const steps: string[] = [];
+      const lines = text.split('\n');
+      
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (/^\d+\.\s/.test(trimmed)) {
+          const step = trimmed.replace(/^\d+\.\s/, '').trim();
+          if (step.length > 0) {
+            steps.push(step);
+          }
+        }
+      }
+      
+      // If no numbered steps found, try to extract from general content
+      if (steps.length === 0) {
+        const sentences = text.split('.').filter(s => s.trim().length > 10);
+        sentences.slice(0, 4).forEach(sentence => {
+          steps.push(sentence.trim());
+        });
+      }
+      
+      // Ensure we have at least some steps
+      if (steps.length === 0) {
+        steps.push('Review the user request and provide appropriate assistance');
+      }
+      
+      // Calculate confidence based on context availability
       let confidence = 0.5; // Base confidence
       if (instructions.length > 0) confidence += 0.2;
       if (similarTickets.length > 0) confidence += 0.2;
-      if (instructions.length > 1 && similarTickets.length > 1) confidence += 0.1;
-
-      // Determine category based on message content
-      const category = this.categorizeMessage(processedMessage);
-
-      return { steps, confidence: Math.min(confidence, 1.0), category };
-
-    } catch (error) {
-      console.error('SupportTeamOrchestrator: AI solution generation failed:', error);
-      return this.generateFallbackSolution(instructions, similarTickets);
-    }
-  }
-
-  private generateFallbackSolution(instructions: any[], similarTickets: any[]): { steps: string[]; confidence: number; category: string } {
-    let steps = "Based on similar issues, here are the recommended steps:\n\n";
-    
-    if (similarTickets.length > 0) {
-      // Use the best matching ticket's resolution
-      const bestTicket = similarTickets[0];
-      steps += `1. Review the resolution from similar case #${bestTicket.ticket_id}:\n   ${bestTicket.resolution || bestTicket.title || 'Contact support for specific guidance'}\n\n`;
-    }
-
-    if (instructions.length > 0) {
-      steps += "2. Refer to the relevant support documentation for detailed guidance\n\n";
-    }
-
-    steps += "3. If the issue persists, please contact our support team with:\n";
-    steps += "   - Details of steps already attempted\n";
-    steps += "   - Any error messages encountered\n";
-    steps += "   - Your system configuration details";
-
-    return { 
-      steps: steps.split('\n').filter(line => line.trim().length > 0),
-      confidence: similarTickets.length > 0 ? 0.6 : 0.4,
-      category: 'General'
-    };
-  }
-
-  async processUserMessage(input: OrchestratorInput): Promise<OrchestratorResult> {
-    const startTime = Date.now();
-    const sessionId = input.session_id || `session_${Date.now()}`;
-    
-    console.log(`SupportTeamOrchestrator: Starting workflow for session ${sessionId}`);
-    console.log(`SupportTeamOrchestrator: User message: "${input.user_message.substring(0, 50)}..."`);
-
-    try {
-      const processingSteps: any = {};
-
-      // Step 1: Run ChatProcessorAgent
-      console.log('SupportTeamOrchestrator: Step 1 - Running ChatProcessorAgent');
-      const preprocessResult = await this.preprocessorAgent.processMessage({
-        userMessage: input.user_message,
-        sessionId,
-        userContext: input.user_context
-      });
+      if (steps.length > 2) confidence += 0.1;
       
-      if (!preprocessResult.success) {
-        throw new Error(`Preprocessing failed: ${preprocessResult.error}`);
+      // Determine category based on the processed message
+      let category = 'general';
+      const lowerMessage = processedMessage.toLowerCase();
+      if (lowerMessage.includes('login') || lowerMessage.includes('password') || lowerMessage.includes('access')) {
+        category = 'authentication';
+      } else if (lowerMessage.includes('payment') || lowerMessage.includes('billing') || lowerMessage.includes('subscription')) {
+        category = 'billing';
+      } else if (lowerMessage.includes('bug') || lowerMessage.includes('error') || lowerMessage.includes('broken')) {
+        category = 'technical_issue';
+      } else if (lowerMessage.includes('feature') || lowerMessage.includes('enhancement') || lowerMessage.includes('request')) {
+        category = 'feature_request';
       }
-
-      processingSteps.preprocessing = preprocessResult;
-
-      // Step 2: Run InstructionLookupAgent
-      console.log('SupportTeamOrchestrator: Step 2 - Running InstructionLookupAgent');
-      const instructionResult = await this.instructionLookupAgent.lookupInstructions({
-        normalizedPrompt: preprocessResult.normalizedPrompt,
-        urgency: preprocessResult.urgency,
-        sentiment: preprocessResult.sentiment,
-        sessionId: sessionId,
-        topK: 3
-      });
       
-      processingSteps.instruction_lookup = instructionResult;
-
-      // Step 3: Run TicketLookupAgent
-      console.log('SupportTeamOrchestrator: Step 3 - Running TicketLookupAgent');
-      const ticketResult = await this.ticketLookupAgent.lookupSimilarTickets({
-        normalizedPrompt: preprocessResult.normalizedPrompt,
-        urgency: preprocessResult.urgency,
-        sentiment: preprocessResult.sentiment,
-        sessionId: sessionId,
-        tenantId: input.tenant_id || 1,
-        topK: 3
-      });
-      
-      processingSteps.ticket_lookup = ticketResult;
-
-      // Step 4: Generate solution steps using LLM
-      console.log('SupportTeamOrchestrator: Step 4 - Generating solution steps');
-      const solutionResult = await this.generateSolutionSteps(
-        preprocessResult.normalizedPrompt,
-        instructionResult.instructions || [],
-        ticketResult.tickets || [],
-        preprocessResult.urgency
-      );
-      
-      processingSteps.solution_generation = {
-        success: true,
-        steps: solutionResult.steps,
-        confidence_score: solutionResult.confidence,
-        processing_time_ms: Date.now() - startTime
-      };
-
-      // Step 5: Run TicketFormatterAgent
-      console.log('SupportTeamOrchestrator: Step 5 - Running TicketFormatterAgent');
-      const ticketId = Math.floor(Math.random() * 90000) + 10000; // Generate realistic ticket ID
-      const subject = this.extractSubject(input.user_message);
-      
-      const formatResult = await this.formatterAgent.formatTicket({
-        id: ticketId,
-        subject: subject,
-        steps: solutionResult.steps.join('\n'),
-        category: solutionResult.category,
-        urgency: preprocessResult.urgency,
-        customer_name: "Customer",
-        additional_notes: `Confidence: ${(solutionResult.confidence * 100).toFixed(1)}%`
-      });
-
-      if (!formatResult.success) {
-        throw new Error(`Formatting failed: ${formatResult.error}`);
-      }
-
-      processingSteps.formatting = formatResult;
-
-      const totalTime = Date.now() - startTime;
-      
-      console.log(`SupportTeamOrchestrator: Workflow completed successfully in ${totalTime}ms`);
-      console.log(`SupportTeamOrchestrator: Generated ticket #${ticketId} with ${solutionResult.confidence * 100}% confidence`);
-
       return {
-        success: true,
-        ticket_id: ticketId,
-        formatted_ticket: formatResult.formatted_ticket,
-        processing_steps: processingSteps,
-        total_processing_time_ms: totalTime,
-        confidence_score: solutionResult.confidence
+        steps: steps.slice(0, 6), // Limit to 6 steps maximum
+        confidence: Math.min(confidence, 0.95), // Cap at 95%
+        category
       };
-
+      
     } catch (error) {
-      const totalTime = Date.now() - startTime;
+      console.error('SupportTeamOrchestrator: Error generating solution steps:', error);
       
-      console.error('SupportTeamOrchestrator: Workflow failed:', error);
-
+      // Fallback solution generation
       return {
-        success: false,
-        ticket_id: 0,
-        formatted_ticket: '',
-        processing_steps: {
-          preprocessing: {},
-          instruction_lookup: {},
-          ticket_lookup: {},
-          solution_generation: {},
-          formatting: {}
-        },
-        total_processing_time_ms: totalTime,
-        confidence_score: 0,
-        error: error instanceof Error ? error.message : 'Unknown orchestration error'
+        steps: [
+          'Acknowledge the user request',
+          'Gather additional information if needed',
+          'Provide solution based on available resources',
+          'Follow up to ensure satisfaction'
+        ],
+        confidence: 0.4,
+        category: 'general'
       };
     }
   }
 
-  private categorizeMessage(message: string): string {
-    const lowerMessage = message.toLowerCase();
-    
-    if (lowerMessage.includes('billing') || lowerMessage.includes('payment') || lowerMessage.includes('invoice')) {
-      return 'billing';
-    }
-    
-    if (lowerMessage.includes('vpn') || lowerMessage.includes('connection') || lowerMessage.includes('network')) {
-      return 'technical';
-    }
-    
-    if (lowerMessage.includes('account') || lowerMessage.includes('login') || lowerMessage.includes('password')) {
-      return 'account';
-    }
-    
-    return 'general';
-  }
-
-  getStatus(): OrchestratorStatus {
+  /**
+   * Check orchestrator and sub-agent status
+   */
+  async getStatus(): Promise<OrchestratorStatus> {
     return {
       name: 'SupportTeamOrchestrator',
       available: true,
@@ -500,35 +464,13 @@ Please provide practical, non-technical resolution steps suitable for QA analyst
       },
       llm_configured: this.genAI !== null,
       capabilities: [
-        'Complete workflow orchestration',
-        'Multi-agent coordination',
-        'Session memory management',
-        'Context-aware solution generation',
-        'Professional ticket formatting',
-        'Error handling and recovery'
+        'chat_preprocessing',
+        'instruction_lookup',
+        'ticket_similarity_search',
+        'solution_generation',
+        'ticket_formatting',
+        'database_integration'
       ]
     };
   }
-
-  clearSession(sessionId: string): void {
-    console.log(`SupportTeamOrchestrator: Session ${sessionId} cleared (delegated to RedisMemory)`);
-  }
-
-  async testWorkflow(): Promise<OrchestratorResult> {
-    const testInput: OrchestratorInput = {
-      user_message: "I need help with VPN connectivity issues, my credentials aren't working and it's urgent",
-      session_id: `test_${Date.now()}`,
-      user_context: {
-        url: "https://example.com/support",
-        title: "Support Request",
-        userAgent: "Test Browser"
-      },
-      tenant_id: 1,
-      user_id: "test_user"
-    };
-
-    return await this.processUserMessage(testInput);
-  }
 }
-
-export const supportTeamOrchestrator = new SupportTeamOrchestrator();

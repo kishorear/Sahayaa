@@ -166,4 +166,4 @@ class AgentService {
 
 // Export singleton instance
 const agentService = new AgentService();
-module.exports = agentService;
+export default agentService;

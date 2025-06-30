@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { generateChatResponse } from "../ai";
 import type { ChatMessage } from "../ai";
 import { buildAIContext } from "../data-source-service";
-import agentService from "../ai/agent-service.js";
+import agentService from "../ai/agent-service-client.js";
 
 /**
  * Widget chat request validation schema

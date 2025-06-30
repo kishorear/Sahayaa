@@ -6,7 +6,7 @@ import { reloadProvidersFromDatabase } from "./ai/service";
 import { AIProviderFactory } from "./ai/providers";
 import type { ChatMessage } from "./ai";
 import { buildAIContext } from "./data-source-service";
-import agentService from "./ai/agent-service-client.js";
+import agentService from "./ai/agent-service";
 // Removed LocalVectorStorage import - using agent service instead
 import { z } from "zod";
 import { 

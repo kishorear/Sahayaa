@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
-import agentService from "../ai/agent-service-client.js";
+import agentService from "../ai/agent-service";
 import { buildAIContext } from "../data-source-service";
 import { instructionLookupAgent } from "../ai/agents/instruction-lookup-agent.js";
 

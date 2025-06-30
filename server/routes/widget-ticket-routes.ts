@@ -3,7 +3,7 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { generateChatResponse } from "../ai";
 import type { ChatMessage } from "../ai";
-import agentService from "../ai/agent-service.js";
+import agentService from "../ai/agent-service";
 
 /**
  * Widget ticket creation request validation schema

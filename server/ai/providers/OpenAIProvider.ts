@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { AIProviderInterface, AIProviderConfig } from "./AIProviderInterface";
-import agentService from "../agent-service-client.js";
+import agentService from "../agent-service";
 
 export class OpenAIProvider implements AIProviderInterface {
   name = 'openai';

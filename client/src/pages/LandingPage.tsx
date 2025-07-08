@@ -205,9 +205,7 @@ export default function LandingPage() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-xl">
-                    S
-                  </div>
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-xl">A</div>
                   <div className="ml-4">
                     <h4 className="font-bold">ANONYMOUS</h4>
                     <p className="text-sm text-gray-500">Head of Support, CloudServe</p>

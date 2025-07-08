@@ -53,21 +53,33 @@ The system is built using a loosely coupled microservices pattern with the follo
 - Automated response generation
 - Confidence scoring and fallback mechanisms
 
-### Agent System
-- **Chat Processor Agent**: Processes incoming messages and extracts metadata
-- **Instruction Lookup Agent**: Searches for relevant instructions using vector similarity
-- **Ticket Lookup Agent**: Finds similar historical tickets
-- **Ticket Formatter Agent**: Formats and structures ticket responses
-- **Support Team Agent**: Coordinates the overall support workflow
+### AI Agent System - Core Workflow Engine
+Every customer interaction is processed through our intelligent AI agent system. Each workflow stage is handled by specialized AI agents working together:
 
-## Data Flow
+- **Chat Processor Agent**: Analyzes and extracts key information from customer messages
+- **Instruction Lookup Agent**: Searches through knowledge base using vector similarity search
+- **Ticket Lookup Agent**: Finds similar historical tickets for enhanced context
+- **Ticket Formatter Agent**: Structures responses with comprehensive resolution steps
+- **Support Team Agent**: Orchestrates the entire workflow and coordinates all other agents
+
+**Key Benefits:**
+- Every support request is processed by AI agents for consistent quality
+- Multi-agent coordination ensures comprehensive analysis and response
+- Real-time processing with immediate ticket creation and classification
+- Intelligent routing based on AI agent analysis and confidence scoring
+
+## AI Agent-Driven Data Flow
 
 1. **Ticket Creation**: User submits support request through web interface or API
-2. **Agent Processing**: Request is processed by the agent orchestrator
-3. **Similarity Search**: Vector search finds relevant instructions and similar tickets
-4. **AI Response**: LLM generates intelligent response based on context
-5. **Ticket Management**: Ticket is created, updated, and tracked in the system
-6. **Multi-tenant Isolation**: All data is properly isolated by tenant
+2. **AI Agent Orchestration**: Support Team Agent coordinates the complete workflow
+3. **Multi-Agent Processing**: 
+   - Chat Processor Agent analyzes the user message
+   - Instruction Lookup Agent searches knowledge base with vector similarity
+   - Ticket Lookup Agent finds similar historical tickets
+   - Ticket Formatter Agent structures the response
+4. **AI-Enhanced Response**: LLM generates intelligent response using agent-gathered context
+5. **Automated Ticket Management**: Ticket is created, classified, and tracked by AI agents
+6. **Multi-tenant Isolation**: All data and AI agent processing is properly isolated by tenant
 
 ## External Dependencies
 
@@ -103,6 +115,12 @@ The system is built using a loosely coupled microservices pattern with the follo
 
 ## Changelog
 
+- July 8, 2025: Enhanced AI agent workflow documentation
+  - Updated landing page to emphasize AI agent-powered workflows in hero section and key features
+  - Modified "How It Works" documentation to highlight multi-agent processing pipeline
+  - Enhanced replit.md with detailed AI agent system descriptions and benefits
+  - Updated data flow documentation to show AI agent orchestration process
+  - All user-facing documentation now clearly shows AI agents handle each workflow step
 - June 30, 2025: Deployment module format issues resolved
   - Converted CommonJS agent-service.js to ES module format
   - Consolidated duplicate agent service files (removed redundant CommonJS version)

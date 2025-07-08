@@ -42,11 +42,10 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              AI-Powered Support That Resolves Issues Instantly
+              AI Agent-Powered Support That Resolves Issues Instantly
             </h1>
             <p className="text-xl mb-8 text-indigo-100">
-              Sahayaa AI automatically handles, routes, and resolves customer tickets
-              to provide faster support and reduce team workload.
+              Sahayaa AI uses specialized AI agents working together to automatically analyze, process, and resolve customer tickets with intelligent workflow coordination.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth">
@@ -74,11 +73,13 @@ export default function LandingPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="mb-4 p-3 bg-indigo-100 rounded-full w-14 h-14 flex items-center justify-center">
-                  <LogoIcon className="w-10 h-10" />
+                  <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path>
+                  </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">Intelligent Routing</h3>
+                <h3 className="text-xl font-bold mb-2">AI Agent-Powered Workflow</h3>
                 <p className="text-gray-600">
-                  AI classifies tickets by complexity and automatically routes them to the right department - engineering, support, billing, or product teams.
+                  Every customer inquiry is processed by specialized AI agents that work together - analyzing messages, searching knowledge bases, finding similar tickets, and formatting responses.
                 </p>
               </CardContent>
             </Card>
@@ -90,9 +91,9 @@ export default function LandingPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">Automatic Resolution</h3>
+                <h3 className="text-xl font-bold mb-2">Multi-Agent Auto-Resolution</h3>
                 <p className="text-gray-600">
-                  Level 1 support issues are automatically resolved by the AI, freeing up your team to focus on more complex problems.
+                  AI agents automatically resolve Level 1 support issues using coordinated analysis, knowledge base lookup, and structured response generation.
                 </p>
               </CardContent>
             </Card>
@@ -104,9 +105,9 @@ export default function LandingPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">Context Enhancement</h3>
+                <h3 className="text-xl font-bold mb-2">Agent-Enhanced Context</h3>
                 <p className="text-gray-600">
-                  AI adds valuable context to tickets that require human intervention, making the resolution process faster and more efficient.
+                  AI agents provide comprehensive context for human agents by analyzing similar tickets, gathering relevant instructions, and structuring all information for faster resolution.
                 </p>
               </CardContent>
             </Card>
@@ -138,11 +139,11 @@ export default function LandingPage() {
                   <div className="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center z-10">
                     <span className="text-xl font-bold">2</span>
                   </div>
-                  <h3 className="text-xl font-bold ml-4">AI Analysis</h3>
+                  <h3 className="text-xl font-bold ml-4">AI Agent Processing</h3>
                 </div>
                 <div className="ml-20">
                   <p className="text-gray-600">
-                    The AI analyzes the inquiry to determine its category, complexity, and whether it can be resolved automatically.
+                    Multiple AI agents work together: Chat Processor analyzes the message, Instruction Lookup searches knowledge bases, Ticket Lookup finds similar cases, and Formatter structures the response.
                   </p>
                 </div>
               </div>

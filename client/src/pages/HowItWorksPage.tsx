@@ -94,46 +94,47 @@ export default function HowItWorksPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>End-to-End Support Workflow</CardTitle>
+              <CardTitle>AI Agent-Driven Workflow System</CardTitle>
               <CardDescription>
-                How customer inquiries are processed through the system
+                How specialized AI agents process each customer inquiry
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="prose max-w-none">
                 <p>
-                  When a customer interacts with the support system, the following process takes place:
+                  Every customer interaction is processed through our intelligent AI agent system. Each workflow stage is handled by specialized AI agents working together:
                 </p>
                 
-                <h4>1. Initial Contact</h4>
+                <h4>1. Initial Contact & Processing</h4>
                 <p>
-                  Customer initiates contact through one of several channels:
+                  Customer initiates contact through multiple channels, immediately processed by AI agents:
                 </p>
                 <ul>
-                  <li><strong>Chat Widget</strong> - Embedded in your website or application</li>
-                  <li><strong>Email</strong> - Sent to your configured support email address</li>
-                  <li><strong>API</strong> - Via direct API call from your other systems</li>
+                  <li><strong>Chat Widget</strong> - Embedded in your website with real-time AI agent responses</li>
+                  <li><strong>Email</strong> - Automatically processed by AI agents for instant classification</li>
+                  <li><strong>API</strong> - Direct integration with AI agent workflow endpoints</li>
                 </ul>
 
-                <h4>2. AI Analysis & Classification</h4>
+                <h4>2. Multi-Agent AI Processing Pipeline</h4>
                 <p>
-                  The system processes the inquiry using AI capabilities:
+                  Each inquiry is processed by specialized AI agents working in coordination:
                 </p>
                 <ul>
-                  <li><strong>NLP Processing</strong> - Natural language processing extracts key details</li>
-                  <li><strong>Knowledge Base Lookup</strong> - Relevant documentation is retrieved from your knowledge base</li>
-                  <li><strong>Classification</strong> - Ticket is categorized and assigned complexity level</li>
-                  <li><strong>Auto-Resolution Assessment</strong> - System determines if the issue can be automatically resolved</li>
+                  <li><strong>Chat Processor Agent</strong> - Analyzes and extracts key information from customer messages</li>
+                  <li><strong>Instruction Lookup Agent</strong> - Searches through knowledge base using vector similarity</li>
+                  <li><strong>Ticket Lookup Agent</strong> - Finds similar historical tickets for context</li>
+                  <li><strong>Ticket Formatter Agent</strong> - Structures responses with comprehensive resolution steps</li>
+                  <li><strong>Support Team Agent</strong> - Orchestrates the entire workflow and coordinates all other agents</li>
                 </ul>
 
-                <h4>3. Resolution Pathways</h4>
+                <h4>3. AI Agent-Powered Resolution Pathways</h4>
                 <p>
-                  Based on the analysis, the ticket follows one of these paths:
+                  Based on AI agent analysis, tickets follow optimized resolution paths:
                 </p>
                 <ul>
-                  <li><strong>Path A: Automatic Resolution</strong> - Simple issues are resolved by the AI without human intervention</li>
-                  <li><strong>Path B: Guided Self-Service</strong> - AI suggests knowledge base articles that may resolve the issue</li>
-                  <li><strong>Path C: Human Agent</strong> - Complex issues are routed to appropriate human agents with AI-enhanced context</li>
+                  <li><strong>Path A: AI Agent Auto-Resolution</strong> - Agents provide immediate solutions with step-by-step guidance</li>
+                  <li><strong>Path B: AI Agent-Guided Self-Service</strong> - Agents suggest relevant knowledge base articles with context</li>
+                  <li><strong>Path C: AI Agent-Enhanced Human Handoff</strong> - Agents prepare comprehensive context for human agents</li>
                 </ul>
               </div>
             </CardContent>

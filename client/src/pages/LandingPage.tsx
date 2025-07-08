@@ -37,7 +37,6 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
-
       {/* Hero Section */}
       <header className="bg-gradient-to-r from-indigo-600 to-indigo-500 text-white">
         <div className="container mx-auto px-4 py-16 md:py-24">
@@ -67,7 +66,6 @@ export default function LandingPage() {
           </div>
         </div>
       </header>
-
       {/* Features */}
       <section id="features" className="py-16 bg-white">
         <div className="container mx-auto px-4">
@@ -115,7 +113,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* How it works */}
       <section id="how-it-works" className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
@@ -183,7 +180,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Testimonials */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
@@ -213,7 +209,7 @@ export default function LandingPage() {
                     S
                   </div>
                   <div className="ml-4">
-                    <h4 className="font-bold">Sarah Miller</h4>
+                    <h4 className="font-bold">ANONYMOUS</h4>
                     <p className="text-sm text-gray-500">Head of Support, CloudServe</p>
                   </div>
                 </div>
@@ -225,7 +221,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* CTA */}
       <section className="py-16 bg-primary text-white">
         <div className="container mx-auto px-4 text-center">
@@ -253,7 +248,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="bg-gray-800 text-gray-300 py-12">
         <div className="container mx-auto px-4">

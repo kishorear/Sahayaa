@@ -126,7 +126,7 @@ export default function LandingPage() {
                   <div className="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center z-10">
                     <span className="text-xl font-bold">1</span>
                   </div>
-                  <h3 className="text-xl font-bold ml-4">Customer Reaches Out</h3>
+                  <h3 className="text-xl font-bold ml-4">User Reaches Out</h3>
                 </div>
                 <div className="ml-20">
                   <p className="text-gray-600">

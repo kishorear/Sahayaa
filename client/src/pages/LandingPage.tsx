@@ -45,7 +45,7 @@ export default function LandingPage() {
               AI Agent-Powered Support That Resolves Issues Instantly
             </h1>
             <p className="text-xl mb-8 text-indigo-100">
-              Sahayaa AI uses specialized AI agents working together to automatically analyze, process, and resolve customer tickets with intelligent workflow coordination.
+              Sahayaa AI uses specialized AI agents with MCP integration to analyze issues and provide solution suggestions based on previously resolved similar tickets.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth">
@@ -91,9 +91,9 @@ export default function LandingPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">Multi-Agent Auto-Resolution</h3>
+                <h3 className="text-xl font-bold mb-2">MCP-Enhanced Solution Suggestions</h3>
                 <p className="text-gray-600">
-                  AI agents automatically resolve Level 1 support issues using coordinated analysis, knowledge base lookup, and structured response generation.
+                  AI agents use MCP (Model Context Protocol) to analyze similar previous tickets and provide step-by-step solution suggestions for issues that have been resolved before.
                 </p>
               </CardContent>
             </Card>
@@ -153,11 +153,11 @@ export default function LandingPage() {
                   <div className="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center z-10">
                     <span className="text-xl font-bold">3</span>
                   </div>
-                  <h3 className="text-xl font-bold ml-4">Resolution or Routing</h3>
+                  <h3 className="text-xl font-bold ml-4">MCP Solution Suggestions or Routing</h3>
                 </div>
                 <div className="ml-20">
                   <p className="text-gray-600">
-                    Simple issues are resolved immediately by the AI. More complex tickets are routed to the appropriate team with context and recommendations.
+                    For known issues, AI agents provide MCP-powered solution suggestions based on previous resolutions. Complex or new tickets are routed to the appropriate team with enhanced context.
                   </p>
                 </div>
               </div>

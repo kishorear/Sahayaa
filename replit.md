@@ -53,33 +53,33 @@ The system is built using a loosely coupled microservices pattern with the follo
 - Automated response generation
 - Confidence scoring and fallback mechanisms
 
-### AI Agent System - Core Workflow Engine
-Every customer interaction is processed through our intelligent AI agent system. Each workflow stage is handled by specialized AI agents working together:
+### AI Agent System with MCP Integration - Core Workflow Engine
+Every customer interaction is processed through our intelligent AI agent system using MCP (Model Context Protocol) features. Each workflow stage is handled by specialized AI agents working together:
 
 - **Chat Processor Agent**: Analyzes and extracts key information from customer messages
-- **Instruction Lookup Agent**: Searches through knowledge base using vector similarity search
-- **Ticket Lookup Agent**: Finds similar historical tickets for enhanced context
-- **Ticket Formatter Agent**: Structures responses with comprehensive resolution steps
-- **Support Team Agent**: Orchestrates the entire workflow and coordinates all other agents
+- **Instruction Lookup Agent**: Uses MCP to search through knowledge base and find relevant solutions
+- **Ticket Lookup Agent**: Leverages MCP to find similar historical tickets with successful resolutions
+- **Ticket Formatter Agent**: Structures MCP-sourced solution suggestions into actionable steps
+- **Support Team Agent**: Orchestrates the MCP workflow and coordinates all other agents
 
 **Key Benefits:**
-- Every support request is processed by AI agents for consistent quality
-- Multi-agent coordination ensures comprehensive analysis and response
-- Real-time processing with immediate ticket creation and classification
-- Intelligent routing based on AI agent analysis and confidence scoring
+- MCP-powered solution suggestions based on previously resolved similar issues
+- Multi-agent coordination ensures comprehensive analysis and contextual matching
+- Real-time processing with immediate ticket creation and solution suggestions
+- Intelligent routing with MCP-enhanced context for complex or new issues
 
-## AI Agent-Driven Data Flow
+## MCP-Enhanced AI Agent Data Flow
 
 1. **Ticket Creation**: User submits support request through web interface or API
-2. **AI Agent Orchestration**: Support Team Agent coordinates the complete workflow
-3. **Multi-Agent Processing**: 
+2. **AI Agent Orchestration**: Support Team Agent coordinates the complete MCP workflow
+3. **Multi-Agent MCP Processing**: 
    - Chat Processor Agent analyzes the user message
-   - Instruction Lookup Agent searches knowledge base with vector similarity
-   - Ticket Lookup Agent finds similar historical tickets
-   - Ticket Formatter Agent structures the response
-4. **AI-Enhanced Response**: LLM generates intelligent response using agent-gathered context
-5. **Automated Ticket Management**: Ticket is created, classified, and tracked by AI agents
-6. **Multi-tenant Isolation**: All data and AI agent processing is properly isolated by tenant
+   - Instruction Lookup Agent uses MCP to search knowledge base for relevant solutions
+   - Ticket Lookup Agent leverages MCP to find similar historical tickets with successful resolutions
+   - Ticket Formatter Agent structures MCP-sourced solution suggestions into actionable steps
+4. **MCP-Powered Response**: System provides solution suggestions based on previous successful resolutions
+5. **Automated Ticket Management**: Ticket is created, classified, and enhanced with MCP context
+6. **Multi-tenant Isolation**: All data and MCP agent processing is properly isolated by tenant
 
 ## External Dependencies
 
@@ -115,6 +115,13 @@ Every customer interaction is processed through our intelligent AI agent system.
 
 ## Changelog
 
+- July 8, 2025: Updated documentation to reflect MCP-based solution suggestions
+  - Clarified that AI agents provide solution suggestions using MCP (Model Context Protocol) rather than automatic resolution
+  - Updated landing page features to emphasize MCP-powered solution suggestions based on previous resolutions
+  - Modified "How It Works" documentation to highlight MCP integration for finding similar historical tickets
+  - Enhanced replit.md with MCP-enhanced AI agent system descriptions and workflow
+  - Updated data flow documentation to show MCP-powered solution suggestion process
+  - All documentation now accurately reflects that system suggests solutions rather than automatically resolving tickets
 - July 8, 2025: Enhanced AI agent workflow documentation
   - Updated landing page to emphasize AI agent-powered workflows in hero section and key features
   - Modified "How It Works" documentation to highlight multi-agent processing pipeline

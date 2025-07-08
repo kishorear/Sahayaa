@@ -115,26 +115,26 @@ export default function HowItWorksPage() {
                   <li><strong>API</strong> - Direct integration with AI agent workflow endpoints</li>
                 </ul>
 
-                <h4>2. Multi-Agent AI Processing Pipeline</h4>
+                <h4>2. Multi-Agent MCP Processing Pipeline</h4>
                 <p>
-                  Each inquiry is processed by specialized AI agents working in coordination:
+                  Each inquiry is processed by specialized AI agents using MCP (Model Context Protocol) features:
                 </p>
                 <ul>
                   <li><strong>Chat Processor Agent</strong> - Analyzes and extracts key information from customer messages</li>
-                  <li><strong>Instruction Lookup Agent</strong> - Searches through knowledge base using vector similarity</li>
-                  <li><strong>Ticket Lookup Agent</strong> - Finds similar historical tickets for context</li>
-                  <li><strong>Ticket Formatter Agent</strong> - Structures responses with comprehensive resolution steps</li>
-                  <li><strong>Support Team Agent</strong> - Orchestrates the entire workflow and coordinates all other agents</li>
+                  <li><strong>Instruction Lookup Agent</strong> - Uses MCP to search through knowledge base and find relevant solutions</li>
+                  <li><strong>Ticket Lookup Agent</strong> - Leverages MCP to find similar historical tickets with successful resolutions</li>
+                  <li><strong>Ticket Formatter Agent</strong> - Structures MCP-sourced solution suggestions into actionable steps</li>
+                  <li><strong>Support Team Agent</strong> - Orchestrates the MCP workflow and coordinates all other agents</li>
                 </ul>
 
-                <h4>3. AI Agent-Powered Resolution Pathways</h4>
+                <h4>3. MCP-Powered Solution Pathways</h4>
                 <p>
-                  Based on AI agent analysis, tickets follow optimized resolution paths:
+                  Based on AI agent analysis, tickets follow intelligent resolution paths:
                 </p>
                 <ul>
-                  <li><strong>Path A: AI Agent Auto-Resolution</strong> - Agents provide immediate solutions with step-by-step guidance</li>
-                  <li><strong>Path B: AI Agent-Guided Self-Service</strong> - Agents suggest relevant knowledge base articles with context</li>
-                  <li><strong>Path C: AI Agent-Enhanced Human Handoff</strong> - Agents prepare comprehensive context for human agents</li>
+                  <li><strong>Path A: MCP Solution Suggestions</strong> - For known issues, agents provide step-by-step solutions based on previous successful resolutions</li>
+                  <li><strong>Path B: Knowledge Base Integration</strong> - Agents search and suggest relevant documentation with contextual matching</li>
+                  <li><strong>Path C: Enhanced Human Handoff</strong> - For complex or new issues, agents prepare comprehensive context for human agents</li>
                 </ul>
               </div>
             </CardContent>

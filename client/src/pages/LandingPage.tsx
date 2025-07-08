@@ -129,9 +129,7 @@ export default function LandingPage() {
                   <h3 className="text-xl font-bold ml-4">User Reaches Out</h3>
                 </div>
                 <div className="ml-20">
-                  <p className="text-gray-600">
-                    Customers interact with the AI chatbot through your website or app, describing their issue or question.
-                  </p>
+                  <p className="text-gray-600">Users interact with the AI chatbot through your website or app, describing their issue or question.</p>
                 </div>
               </div>
               

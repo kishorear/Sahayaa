@@ -192,7 +192,7 @@ export default function LandingPage() {
                   </div>
                   <div className="ml-4">
                     <h4 className="font-bold">ANONYMOUS</h4>
-                    <p className="text-sm text-gray-500">CTO, TechStart Inc.</p>
+                    
                   </div>
                 </div>
                 <p className="text-gray-600 italic">
@@ -207,7 +207,7 @@ export default function LandingPage() {
                   <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-xl">A</div>
                   <div className="ml-4">
                     <h4 className="font-bold">ANONYMOUS</h4>
-                    <p className="text-sm text-gray-500">Head of Support, CloudServe</p>
+                    
                   </div>
                 </div>
                 <p className="text-gray-600 italic">

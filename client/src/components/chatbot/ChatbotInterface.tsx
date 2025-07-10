@@ -69,6 +69,12 @@ export default function ChatbotInterface() {
     const saved = sessionStorage.getItem('chatCreatedTickets');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+  const [attachments, setAttachments] = useState<Array<{
+    filename: string;
+    data: string; // base64 encoded
+    mimeType: string;
+    size: number;
+  }>>([]);
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -164,10 +170,13 @@ export default function ChatbotInterface() {
         timestamp: msg.timestamp.toISOString()
       }));
 
+      console.log('Creating ticket with attachments:', attachments.length);
+      
       return await apiRequest("POST", "/api/widget/create-ticket", {
         tenantId: 1, // Default tenant
         sessionId: `chat_${Date.now()}`,
         conversation: conversation,
+        attachments: attachments.length > 0 ? attachments : undefined,
         context: {
           url: window.location.href,
           title: document.title,
@@ -184,6 +193,9 @@ export default function ChatbotInterface() {
         const ticketId = data.ticket.id;
         setCreatedTickets(prev => new Set([...Array.from(prev), `ticket_${ticketId}`]));
         setTicketCreatedThisSession(true);
+        
+        // Clear attachments after successful ticket creation
+        setAttachments([]);
 
         toast({
           title: "Ticket Created Successfully",
@@ -400,33 +412,51 @@ export default function ChatbotInterface() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Create a new user message with the image
-    setMessages(prev => [
-      ...prev,
-      {
-        id: `user-${Date.now()}`,
-        content: `I've shared an image: ${file.name}`,
-        sender: "user",
-        timestamp: new Date(),
-      },
-    ]);
-    
-    // Show typing indicator
-    setIsTyping(true);
-    
-    // Add AI response acknowledging the image
-    setTimeout(() => {
-      setIsTyping(false);
+    // Convert file to base64 for storage
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Data = (reader.result as string).split(',')[1]; // Remove data:image/...;base64, prefix
+      
+      // Store in attachments state
+      setAttachments(prev => [
+        ...prev,
+        {
+          filename: file.name,
+          data: base64Data,
+          mimeType: file.type,
+          size: file.size
+        }
+      ]);
+      
+      // Create a new user message with the image
       setMessages(prev => [
         ...prev,
         {
-          id: `ai-${Date.now()}`,
-          content: "I've received your image. This will help us better understand your situation. Is there anything else you'd like to tell me about this issue?",
-          sender: "ai",
+          id: `user-${Date.now()}`,
+          content: `I've shared an image: ${file.name}`,
+          sender: "user",
           timestamp: new Date(),
         },
       ]);
-    }, 1500);
+      
+      // Show typing indicator
+      setIsTyping(true);
+      
+      // Add AI response acknowledging the image
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            content: "I've received your image. This will help us better understand your situation. Is there anything else you'd like to tell me about this issue?",
+            sender: "ai",
+            timestamp: new Date(),
+          },
+        ]);
+      }, 1500);
+    };
+    reader.readAsDataURL(file);
     
     // Reset the file input
     e.target.value = "";
@@ -473,41 +503,58 @@ export default function ChatbotInterface() {
         // Convert canvas to blob
         canvas.toBlob((blob) => {
           if (blob) {
-            // Create a file from the blob
-            const file = new File([blob], `screenshot-${Date.now()}.png`, { type: 'image/png' });
+            const filename = `screenshot-${Date.now()}.png`;
             
-            // Create a new user message with the screenshot
-            setMessages(prev => [
-              ...prev,
-              {
-                id: `user-${Date.now()}`,
-                content: `I've captured a screenshot: ${file.name}`,
-                sender: "user",
-                timestamp: new Date(),
-              },
-            ]);
-            
-            // Show typing indicator
-            setIsTyping(true);
-            
-            // Add AI response acknowledging the screenshot
-            setTimeout(() => {
-              setIsTyping(false);
+            // Convert blob to base64 for storage
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64Data = (reader.result as string).split(',')[1]; // Remove data:image/png;base64, prefix
+              
+              // Store in attachments state
+              setAttachments(prev => [
+                ...prev,
+                {
+                  filename,
+                  data: base64Data,
+                  mimeType: 'image/png',
+                  size: blob.size
+                }
+              ]);
+              
+              // Create a new user message with the screenshot
               setMessages(prev => [
                 ...prev,
                 {
-                  id: `ai-${Date.now()}`,
-                  content: "I've received your screenshot. This visual context will help me better understand the issue you're experiencing. Can you tell me more about what you're seeing?",
-                  sender: "ai",
+                  id: `user-${Date.now()}`,
+                  content: `I've captured a screenshot: ${filename}`,
+                  sender: "user",
                   timestamp: new Date(),
                 },
               ]);
-            }, 1500);
+              
+              // Show typing indicator
+              setIsTyping(true);
+              
+              // Add AI response acknowledging the screenshot
+              setTimeout(() => {
+                setIsTyping(false);
+                setMessages(prev => [
+                  ...prev,
+                  {
+                    id: `ai-${Date.now()}`,
+                    content: "I've received your screenshot. This visual context will help me better understand the issue you're experiencing. Can you tell me more about what you're seeing?",
+                    sender: "ai",
+                    timestamp: new Date(),
+                  },
+                ]);
+              }, 1500);
 
-            toast({
-              title: "Screenshot Captured",
-              description: "Screenshot has been automatically captured and attached.",
-            });
+              toast({
+                title: "Screenshot Captured",
+                description: "Screenshot has been automatically captured and attached.",
+              });
+            };
+            reader.readAsDataURL(blob);
           }
         }, 'image/png');
       });
@@ -620,6 +667,7 @@ export default function ChatbotInterface() {
                     ]);
                     setInputMessage("");
                     setTicketCreatedThisSession(false); // Reset ticket creation state
+                    setAttachments([]); // Clear attachments
                     toast({
                       title: "Chat Reset",
                       description: "Starting a new chat session",
@@ -765,6 +813,11 @@ export default function ChatbotInterface() {
                 </Button>
                 <span className="text-xs text-gray-500 ml-1">
                   {showAttachments ? "Hide options" : "Add attachments"}
+                  {attachments.length > 0 && (
+                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                      {attachments.length} file{attachments.length > 1 ? 's' : ''} ready
+                    </span>
+                  )}
                 </span>
               </div>
               <form className="flex items-center" onSubmit={handleSendMessage}>

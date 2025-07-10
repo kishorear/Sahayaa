@@ -21,9 +21,7 @@ export default function LandingPage() {
               <Link href="/docs">
                 <span className="hover:text-primary transition-colors cursor-pointer">Documentation</span>
               </Link>
-              <Link href="/api">
-                <span className="hover:text-primary transition-colors cursor-pointer">API</span>
-              </Link>
+
               <Link href="/how-it-works">
                 <span className="hover:text-primary transition-colors cursor-pointer">How It Works</span>
               </Link>
@@ -269,9 +267,7 @@ export default function LandingPage() {
               <Link href="/docs">
                 <span className="hover:text-white transition-colors cursor-pointer">Documentation</span>
               </Link>
-              <Link href="/api">
-                <span className="hover:text-white transition-colors cursor-pointer">API</span>
-              </Link>
+
               <Link href="/contact">
                 <span className="hover:text-white transition-colors cursor-pointer">Contact Us</span>
               </Link>

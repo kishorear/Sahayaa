@@ -2,10 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import LogoIcon from "@/components/LogoIcon";
-import { useAuth } from "@/hooks/use-auth";
 
 export default function LandingPage() {
-  const { user } = useAuth();
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation Bar */}
@@ -17,12 +15,9 @@ export default function LandingPage() {
               <span className="ml-2 text-xl font-bold">Sahayaa AI</span>
             </div>
             <div className="flex items-center space-x-6">
-              {/* Only show pricing to non-users or non-logged-in users */}
-              {(!user || user.role !== 'user') && (
-                <Link href="/pricing">
-                  <span className="hover:text-primary transition-colors cursor-pointer">Pricing</span>
-                </Link>
-              )}
+              <Link href="/pricing">
+                <span className="hover:text-primary transition-colors cursor-pointer">Pricing</span>
+              </Link>
               <Link href="/docs">
                 <span className="hover:text-primary transition-colors cursor-pointer">Documentation</span>
               </Link>
@@ -56,17 +51,14 @@ export default function LandingPage() {
                   Get Started
                 </Button>
               </Link>
-              {/* Only show pricing to non-users or non-logged-in users */}
-              {(!user || user.role !== 'user') && (
-                <Link href="/pricing">
-                  <Button 
-                    size="lg" 
-                    className="bg-primary text-white hover:bg-primary/90"
-                  >
-                    View Pricing
-                  </Button>
-                </Link>
-              )}
+              <Link href="/pricing">
+                <Button 
+                  size="lg" 
+                  className="bg-primary text-white hover:bg-primary/90"
+                >
+                  View Pricing
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -240,17 +232,14 @@ export default function LandingPage() {
                 Sign Up Now
               </Button>
             </Link>
-            {/* Only show pricing to non-users or non-logged-in users */}
-            {(!user || user.role !== 'user') && (
-              <Link href="/pricing">
-                <Button 
-                  size="lg" 
-                  className="bg-primary text-white hover:bg-primary/90"
-                >
-                  View Pricing
-                </Button>
-              </Link>
-            )}
+            <Link href="/pricing">
+              <Button 
+                size="lg" 
+                className="bg-primary text-white hover:bg-primary/90"
+              >
+                View Pricing
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -266,12 +255,9 @@ export default function LandingPage() {
               <p className="mt-2 text-sm">AI-powered customer support solution</p>
             </div>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-              {/* Only show pricing to non-users or non-logged-in users */}
-              {(!user || user.role !== 'user') && (
-                <Link href="/pricing">
-                  <span className="hover:text-white transition-colors cursor-pointer">Pricing</span>
-                </Link>
-              )}
+              <Link href="/pricing">
+                <span className="hover:text-white transition-colors cursor-pointer">Pricing</span>
+              </Link>
               <Link href="/how-it-works">
                 <span className="hover:text-white transition-colors cursor-pointer">How It Works</span>
               </Link>

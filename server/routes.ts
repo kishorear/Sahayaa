@@ -1326,6 +1326,13 @@ Your goal is to quickly gather issue details and create comprehensive support ti
         return ticketDate >= cutoffDate;
       });
       
+      console.log(`Summary metrics for ${timePeriod}:`, {
+        totalTickets: tickets.length,
+        cutoffDate: cutoffDate.toISOString(),
+        filteredTickets: filteredTickets.length,
+        resolvedInFilter: filteredTickets.filter(t => t.status === "resolved" || t.resolvedAt !== null).length
+      });
+      
       const totalTickets = filteredTickets.length;
       const resolvedTickets = filteredTickets.filter(t => t.status === "resolved" || t.resolvedAt !== null).length;
       
@@ -1388,13 +1395,13 @@ Your goal is to quickly gather issue details and create comprehensive support ti
       // Total of AI resolved interactions (tickets + auto-resolved chats)
       const totalAiResolved = aiResolvedTicketsCount + autoResolvedChatsCount;
       
-      // Total interactions (tickets + auto-resolved chats that didn't create tickets)
-      const totalInteractions = totalTickets + autoResolvedChatsCount;
+      // Total interactions (filtered tickets + auto-resolved chats that didn't create tickets)
+      const totalInteractions = filteredTickets.length + autoResolvedChatsCount;
       
       // Calculate the AI resolution percentage
       const aiResolvedPercentage = totalInteractions > 0 ? 
         Math.round((totalAiResolved / totalInteractions) * 100) + "%" : 
-        "0%";
+        "N/A";
       
       res.status(200).json({
         totalTickets,

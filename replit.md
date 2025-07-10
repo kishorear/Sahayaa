@@ -115,6 +115,12 @@ Every customer interaction is processed through our intelligent AI agent system 
 
 ## Changelog
 
+- July 10, 2025: Critical bug fixes for AI ticket generation functionality
+  - Fixed widget ticket title generation to use sophisticated AI service with MCP integration instead of basic fallback
+  - Resolved analytics dashboard time period filtering to use filtered tickets for accurate AI resolution rate calculations
+  - Fixed production deployment gap by rebuilding and syncing latest development features
+  - Updated widget ticket creation endpoint to properly handle latestUserMessage variable scope
+  - Verified MCP-enhanced title generation produces descriptive titles like "Login System: Invalid Credentials After Password Reset"
 - July 8, 2025: Updated documentation to reflect MCP-based solution suggestions
   - Clarified that AI agents provide solution suggestions using MCP (Model Context Protocol) rather than automatic resolution
   - Updated landing page features to emphasize MCP-powered solution suggestions based on previous resolutions

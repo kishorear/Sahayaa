@@ -85,6 +85,7 @@ export function registerWidgetTicketRoutes(app: Express): void {
       // Step 3: Get agent insights for additional suggestions
       let agentInsights = null;
       try {
+        const latestUserMessage = conversation.filter(msg => msg.role === 'user').pop()?.content || '';
         const workflowInput = {
           user_message: latestUserMessage,
           user_context: {
@@ -165,7 +166,8 @@ export function registerWidgetTicketRoutes(app: Express): void {
       }
       
       // Step 6: Generate ulterior suggestions
-      const suggestions = generateUlteriorSuggestions(latestUserMessage, agentInsights, ticket);
+      const latestUserMessageForSuggestions = conversation.filter(msg => msg.role === 'user').pop()?.content || '';
+      const suggestions = generateUlteriorSuggestions(latestUserMessageForSuggestions, agentInsights, ticket);
       
       console.log(`Widget Ticket: Successfully created ticket #${ticket.id} - "${ticketTitle}"`);
       

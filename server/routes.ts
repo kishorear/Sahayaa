@@ -1329,11 +1329,11 @@ Your goal is to quickly gather issue details and create comprehensive support ti
       const totalTickets = filteredTickets.length;
       const resolvedTickets = filteredTickets.filter(t => t.status === "resolved" || t.resolvedAt !== null).length;
       
-      // Calculate avg response time (placeholder calculation, would be more accurate in real app)
+      // Calculate avg response time using filtered tickets based on time period
       let totalResponseTime = 0;
       let ticketsWithResponseTime = 0;
       
-      for (const ticket of tickets) {
+      for (const ticket of filteredTickets) {
         // Account for tickets with status = 'resolved' even if resolvedAt is null
         if ((ticket.status === "resolved" || ticket.resolvedAt !== null) && ticket.createdAt) {
           const created = new Date(ticket.createdAt);
@@ -1382,8 +1382,8 @@ Your goal is to quickly gather issue details and create comprehensive support ti
         // Continue with default value of 0 for autoResolvedChatsCount
       }
       
-      // Count tickets resolved by AI
-      const aiResolvedTicketsCount = tickets.filter(t => t.aiResolved).length;
+      // Count tickets resolved by AI from filtered tickets
+      const aiResolvedTicketsCount = filteredTickets.filter(t => t.aiResolved).length;
       
       // Total of AI resolved interactions (tickets + auto-resolved chats)
       const totalAiResolved = aiResolvedTicketsCount + autoResolvedChatsCount;

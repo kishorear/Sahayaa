@@ -4504,12 +4504,11 @@ export class DatabaseStorage implements IStorage {
       // Use raw SQL query to handle column name difference between schema and actual database
       if (tenantId) {
         result = await db.execute(
-          `SELECT * FROM widget_analytics WHERE tenant_id = $1`,
-          [tenantId]
+          sql`SELECT * FROM widget_analytics WHERE tenant_id = ${tenantId}`
         );
       } else {
         result = await db.execute(
-          `SELECT * FROM widget_analytics`
+          sql`SELECT * FROM widget_analytics`
         );
       }
       
@@ -4542,8 +4541,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Find the widget analytics entry for this tenant
       const results = await db.execute(
-        `SELECT * FROM widget_analytics WHERE tenant_id = $1 LIMIT 1`,
-        [interaction.tenantId]
+        sql`SELECT * FROM widget_analytics WHERE tenant_id = ${interaction.tenantId} LIMIT 1`
       );
       
       if (!results || !Array.isArray(results.rows) || results.rows.length === 0) {
@@ -4600,21 +4598,13 @@ export class DatabaseStorage implements IStorage {
       
       // Update the database
       await db.execute(
-        `UPDATE widget_analytics 
-         SET messages_received = $1, 
-             messages_sent = $2, 
-             interactions = $3, 
-             last_activity = $4, 
-             metadata = $5
-         WHERE tenant_id = $6`,
-        [
-          messagesReceived,
-          messagesSent,
-          interactions,
-          new Date(),
-          JSON.stringify(metadata),
-          interaction.tenantId
-        ]
+        sql`UPDATE widget_analytics 
+            SET messages_received = ${messagesReceived}, 
+                messages_sent = ${messagesSent}, 
+                interactions = ${interactions}, 
+                last_activity = ${new Date()}, 
+                metadata = ${JSON.stringify(metadata)}
+            WHERE tenant_id = ${interaction.tenantId}`
       );
     } catch (error) {
       console.error('Error recording widget interaction:', error);

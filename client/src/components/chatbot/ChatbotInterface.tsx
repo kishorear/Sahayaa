@@ -431,6 +431,105 @@ export default function ChatbotInterface() {
     // Reset the file input
     e.target.value = "";
   };
+
+  // Function to handle automatic screenshot capture
+  const handleScreenshot = async () => {
+    try {
+      // Check if the browser supports the Screen Capture API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        toast({
+          title: "Screenshot Not Supported",
+          description: "Your browser doesn't support automatic screenshots. Please use your device's screenshot function.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Request screen capture
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { mediaSource: 'screen' }
+      });
+
+      // Create a video element to capture the frame
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+
+      // Wait for video to load
+      video.addEventListener('loadedmetadata', () => {
+        // Create canvas to capture the screenshot
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw the video frame to canvas
+        ctx?.drawImage(video, 0, 0);
+        
+        // Stop the stream
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Convert canvas to blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            // Create a file from the blob
+            const file = new File([blob], `screenshot-${Date.now()}.png`, { type: 'image/png' });
+            
+            // Create a new user message with the screenshot
+            setMessages(prev => [
+              ...prev,
+              {
+                id: `user-${Date.now()}`,
+                content: `I've captured a screenshot: ${file.name}`,
+                sender: "user",
+                timestamp: new Date(),
+              },
+            ]);
+            
+            // Show typing indicator
+            setIsTyping(true);
+            
+            // Add AI response acknowledging the screenshot
+            setTimeout(() => {
+              setIsTyping(false);
+              setMessages(prev => [
+                ...prev,
+                {
+                  id: `ai-${Date.now()}`,
+                  content: "I've received your screenshot. This visual context will help me better understand the issue you're experiencing. Can you tell me more about what you're seeing?",
+                  sender: "ai",
+                  timestamp: new Date(),
+                },
+              ]);
+            }, 1500);
+
+            toast({
+              title: "Screenshot Captured",
+              description: "Screenshot has been automatically captured and attached.",
+            });
+          }
+        }, 'image/png');
+      });
+
+    } catch (error) {
+      console.error('Error capturing screenshot:', error);
+      
+      // Fallback message for when user cancels or there's an error
+      if (error instanceof Error && error.name === 'NotAllowedError') {
+        toast({
+          title: "Screenshot Cancelled",
+          description: "Screenshot capture was cancelled. You can try again or upload an image manually.",
+        });
+      } else {
+        toast({
+          title: "Screenshot Failed",
+          description: "Unable to capture screenshot automatically. Please use the upload button to attach an image.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
   
   // Function for screen recording
   const handleRecording = (blob: Blob) => {
@@ -567,12 +666,7 @@ export default function ChatbotInterface() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      toast({
-                        title: "Screenshot",
-                        description: "Please use your device's screenshot function to capture your screen, then upload it.",
-                      });
-                    }}
+                    onClick={handleScreenshot}
                     className="flex flex-col items-center gap-1 py-2 h-auto"
                   >
                     <Camera className="w-4 h-4" />

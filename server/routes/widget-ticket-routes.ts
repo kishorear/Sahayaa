@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
-import { generateChatResponse } from "../ai";
+import { generateChatResponse, generateTicketTitle } from "../ai";
 import type { ChatMessage } from "../ai";
 import agentService from "../ai/agent-service";
 
@@ -53,21 +53,13 @@ export function registerWidgetTicketRoutes(app: Express): void {
       
       console.log(`Widget Ticket: Creating ticket for tenant ${tenantId} with ${conversation.length} messages`);
       
-      // Step 1: Generate ticket title from issue summary using LLM
-      const latestUserMessage = conversation.filter(msg => msg.role === 'user').pop()?.content || '';
-      const titlePrompt = `Based on this support request, generate a concise, professional ticket title (max 80 characters):
+      // Step 1: Generate sophisticated ticket title using the AI title generation service
+      const conversationForTitle: ChatMessage[] = conversation.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      }));
       
-      User message: "${latestUserMessage}"
-      
-      Generate only the title, no additional text.`;
-      
-      const titleResponse = await generateChatResponse(
-        { id: 0, title: 'Title Generation', description: latestUserMessage, category: 'support', tenantId },
-        [{ role: 'user', content: titlePrompt }],
-        titlePrompt
-      );
-      
-      const ticketTitle = titleResponse.trim().replace(/^["']|["']$/g, '').substring(0, 80);
+      const ticketTitle = await generateTicketTitle(conversationForTitle, tenantId);
       
       // Step 2: Generate comprehensive ticket description from conversation using LLM
       const conversationText = conversation.map(msg => 

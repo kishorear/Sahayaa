@@ -747,22 +747,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
       } catch (agentError) {
-        console.warn("Agent service unavailable, falling back to legacy workflow:", agentError);
+        console.warn("Agent service unavailable, falling back to AI-powered workflow:", agentError);
         
-        // Fallback to legacy ticket creation workflow
-        const classification = await classifyTicket("Agent Request", user_message, resolvedTenantId);
+        // Enhanced fallback using AI providers for sophisticated ticket generation
+        console.log("Using AI-powered fallback for ticket generation");
         
-        // Create ticket using legacy flow
+        // Step 1: Generate sophisticated ticket title using AI
+        const conversationForTitle: ChatMessage[] = [{
+          role: 'user' as const,
+          content: user_message
+        }];
+        
+        let aiGeneratedTitle: string;
+        try {
+          aiGeneratedTitle = await generateTicketTitle(conversationForTitle, resolvedTenantId);
+          console.log(`AI-generated title: "${aiGeneratedTitle}"`);
+        } catch (titleError) {
+          console.warn("AI title generation failed, using intelligent fallback:", titleError);
+          // Intelligent fallback that preserves key information
+          aiGeneratedTitle = user_message.length > 50 
+            ? user_message.substring(0, 47) + '...'
+            : user_message;
+        }
+        
+        // Step 2: Generate comprehensive description using AI
+        let enhancedDescription: string;
+        try {
+          const descriptionPrompt = `Create a professional ticket description from this user request. Include the issue details and any context:
+
+User Request: ${user_message}
+
+${user_context ? `Context: ${JSON.stringify(user_context)}` : ''}
+
+Generate a comprehensive, professional ticket description.`;
+          
+          const descriptionResponse = await generateChatResponse(
+            { id: 0, title: aiGeneratedTitle, description: user_message, category: 'support', tenantId: resolvedTenantId },
+            [{ role: 'user', content: descriptionPrompt }],
+            descriptionPrompt
+          );
+          
+          enhancedDescription = descriptionResponse.message || user_message;
+          console.log("AI-enhanced description generated successfully");
+        } catch (descError) {
+          console.warn("AI description generation failed, using original message:", descError);
+          enhancedDescription = user_message;
+        }
+        
+        // Step 3: Classify the ticket using AI
+        const classification = await classifyTicket(aiGeneratedTitle, enhancedDescription, resolvedTenantId);
+        
+        // Create ticket using AI-enhanced data
         const ticketData: InsertTicket = {
-          title: user_message.slice(0, 100) + (user_message.length > 100 ? '...' : ''),
-          description: user_message,
+          title: aiGeneratedTitle,
+          description: enhancedDescription,
           category: classification.category,
+          complexity: classification.complexity,
           urgency: classification.complexity === 'complex' ? 'high' : 
                    classification.complexity === 'simple' ? 'low' : 'medium',
           status: 'new',
           tenantId: resolvedTenantId,
           createdBy: user_id || req.user?.id || 1,
-          source: 'agent_workflow_fallback'
+          source: 'ai_powered_fallback',
+          aiNotes: `AI-powered fallback: ${classification.aiNotes}`
         };
         
         const newTicket = await storage.createTicket(ticketData);
@@ -1037,7 +1084,9 @@ Generate only the title, no quotes or extra text:`;
           } catch (error) {
             console.error("Error generating AI ticket content:", error);
             
-            // Fallback: Create basic description with conversation context
+            // Enhanced AI-powered fallback
+            console.log("Using AI-powered fallback for ticket suggestion");
+            
             const conversationContext = messageHistory.length > 0 
               ? messageHistory.slice(-5).map(m => `${m.sender}: ${m.content}`).join('\n')
               : '';
@@ -1046,19 +1095,36 @@ Generate only the title, no quotes or extra text:`;
               ? `**Latest Request:**\n${message}\n\n**Conversation Context:**\n${conversationContext}`
               : message;
             
-            const classification = await classifyTicket("User Support Request", fallbackDescription, tenantId);
+            // Generate AI-powered title using the generateTicketTitle function
+            let aiTitle: string;
+            try {
+              const conversationForTitle: ChatMessage[] = [{
+                role: 'user' as const,
+                content: message
+              }];
+              aiTitle = await generateTicketTitle(conversationForTitle, tenantId);
+              console.log(`AI-generated fallback title: "${aiTitle}"`);
+            } catch (titleError) {
+              console.warn("AI title generation failed in fallback, using intelligent extraction:", titleError);
+              // Use intelligent extraction instead of simple truncation
+              aiTitle = message.length > 50 
+                ? message.substring(0, 47) + '...'
+                : message;
+            }
+            
+            const classification = await classifyTicket(aiTitle, fallbackDescription, tenantId);
             
             return res.status(200).json({
               message: "I'll help you create a support ticket for this issue. Let me gather the details...",
               action: {
                 type: 'suggest_ticket',
                 data: {
-                  title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+                  title: aiTitle,
                   description: fallbackDescription,
                   category: classification.category,
                   complexity: classification.complexity,
                   assignedTo: classification.assignedTo,
-                  aiNotes: classification.aiNotes,
+                  aiNotes: `AI-powered fallback: ${classification.aiNotes}`,
                   tenantId: tenantId
                 }
               }

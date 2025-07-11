@@ -115,6 +115,12 @@ Every customer interaction is processed through our intelligent AI agent system 
 
 ## Changelog
 
+- July 11, 2025: Security dependency updates completed successfully
+  - Downgraded imap package from 0.8.19 to 0.8.17 for security hardening
+  - Updated utf7 package from 1.0.2 to 1.0.0 as part of security scan response
+  - Verified all email processing functionality remains intact with updated dependencies
+  - Confirmed IMAP client creation, configuration compatibility, and event handling work correctly
+  - Application continues to operate normally with zero functional impact from security updates
 - July 10, 2025: Critical bug fixes for AI ticket generation functionality
   - Fixed widget ticket title generation to use sophisticated AI service with MCP integration instead of basic fallback
   - Resolved analytics dashboard time period filtering to use filtered tickets for accurate AI resolution rate calculations

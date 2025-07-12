@@ -747,66 +747,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
       } catch (agentError) {
-        console.warn("Agent service unavailable, falling back to AI-powered workflow:", agentError);
+        console.warn("Agent service unavailable, falling back to legacy workflow:", agentError);
         
-        // Enhanced fallback using AI providers for sophisticated ticket generation
-        console.log("Using AI-powered fallback for ticket generation");
+        // Fallback to legacy ticket creation workflow
+        const classification = await classifyTicket("Agent Request", user_message, resolvedTenantId);
         
-        // Step 1: Generate sophisticated ticket title using AI
-        const conversationForTitle: ChatMessage[] = [{
-          role: 'user' as const,
-          content: user_message
-        }];
-        
-        let aiGeneratedTitle: string;
-        try {
-          aiGeneratedTitle = await generateTicketTitle(conversationForTitle, resolvedTenantId);
-          console.log(`AI-generated title: "${aiGeneratedTitle}"`);
-        } catch (titleError) {
-          console.error("AI title generation failed:", titleError);
-          throw new Error("AI title generation required but failed");
-        }
-        
-        // Step 2: Generate comprehensive description using AI
-        let enhancedDescription: string;
-        try {
-          const descriptionPrompt = `Create a professional ticket description from this user request. Include the issue details and any context:
-
-User Request: ${user_message}
-
-${user_context ? `Context: ${JSON.stringify(user_context)}` : ''}
-
-Generate a comprehensive, professional ticket description.`;
-          
-          const descriptionResponse = await generateChatResponse(
-            { id: 0, title: aiGeneratedTitle, description: user_message, category: 'support', tenantId: resolvedTenantId },
-            [{ role: 'user', content: descriptionPrompt }],
-            descriptionPrompt
-          );
-          
-          enhancedDescription = descriptionResponse.message || user_message;
-          console.log("AI-enhanced description generated successfully");
-        } catch (descError) {
-          console.error("AI description generation failed:", descError);
-          throw new Error("AI description generation required but failed");
-        }
-        
-        // Step 3: Classify the ticket using AI
-        const classification = await classifyTicket(aiGeneratedTitle, enhancedDescription, resolvedTenantId);
-        
-        // Create ticket using AI-enhanced data
+        // Create ticket using legacy flow
         const ticketData: InsertTicket = {
-          title: aiGeneratedTitle,
-          description: enhancedDescription,
+          title: user_message.slice(0, 100) + (user_message.length > 100 ? '...' : ''),
+          description: user_message,
           category: classification.category,
-          complexity: classification.complexity,
           urgency: classification.complexity === 'complex' ? 'high' : 
                    classification.complexity === 'simple' ? 'low' : 'medium',
           status: 'new',
           tenantId: resolvedTenantId,
           createdBy: user_id || req.user?.id || 1,
-          source: 'ai_powered_fallback',
-          aiNotes: `AI-powered fallback: ${classification.aiNotes}`
+          source: 'agent_workflow_fallback'
         };
         
         const newTicket = await storage.createTicket(ticketData);
@@ -1081,9 +1037,7 @@ Generate only the title, no quotes or extra text:`;
           } catch (error) {
             console.error("Error generating AI ticket content:", error);
             
-            // Enhanced AI-powered fallback
-            console.log("Using AI-powered fallback for ticket suggestion");
-            
+            // Fallback: Create basic description with conversation context
             const conversationContext = messageHistory.length > 0 
               ? messageHistory.slice(-5).map(m => `${m.sender}: ${m.content}`).join('\n')
               : '';
@@ -1092,33 +1046,19 @@ Generate only the title, no quotes or extra text:`;
               ? `**Latest Request:**\n${message}\n\n**Conversation Context:**\n${conversationContext}`
               : message;
             
-            // Generate AI-powered title using the generateTicketTitle function
-            let aiTitle: string;
-            try {
-              const conversationForTitle: ChatMessage[] = [{
-                role: 'user' as const,
-                content: message
-              }];
-              aiTitle = await generateTicketTitle(conversationForTitle, tenantId);
-              console.log(`AI-generated fallback title: "${aiTitle}"`);
-            } catch (titleError) {
-              console.error("AI title generation failed in chatbot fallback:", titleError);
-              throw new Error("AI title generation required but failed");
-            }
-            
-            const classification = await classifyTicket(aiTitle, fallbackDescription, tenantId);
+            const classification = await classifyTicket("User Support Request", fallbackDescription, tenantId);
             
             return res.status(200).json({
               message: "I'll help you create a support ticket for this issue. Let me gather the details...",
               action: {
                 type: 'suggest_ticket',
                 data: {
-                  title: aiTitle,
+                  title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
                   description: fallbackDescription,
                   category: classification.category,
                   complexity: classification.complexity,
                   assignedTo: classification.assignedTo,
-                  aiNotes: `AI-powered fallback: ${classification.aiNotes}`,
+                  aiNotes: classification.aiNotes,
                   tenantId: tenantId
                 }
               }

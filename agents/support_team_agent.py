@@ -418,14 +418,16 @@ class SupportTeamAgent:
         return steps
     
     def _extract_subject(self, user_message: str, chat_result: Dict[str, Any]) -> str:
-        """Extract appropriate subject line from user message."""
-        # Use normalized prompt if available, otherwise original message
-        text = chat_result.get("normalized_prompt", user_message)
+        """Extract appropriate subject line using AI processing."""
+        # Use AI-processed normalized prompt from chat result
+        subject = chat_result.get("normalized_prompt", user_message)
         
-        # Truncate to reasonable subject length
-        subject = text[:80] + "..." if len(text) > 80 else text
+        # AI agents should provide well-formatted subjects
+        # Only limit to reasonable length if needed
+        if len(subject) > 120:
+            subject = subject[:117] + "..."
         
-        # Add category prefix if detected
+        # Add category prefix if detected by AI classification
         category = chat_result.get("suggested_category", "")
         if category and category != "general":
             subject = f"[{category.title()}] {subject}"

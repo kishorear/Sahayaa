@@ -76,9 +76,10 @@ classification = await classifyTicket(aiGeneratedTitle, enhancedDescription, ten
 - No AI classification enhancement
 
 **After Fix:**
-- Sophisticated titles: "Authentication: Account Access Issue After Password Reset"
-- Comprehensive descriptions: AI-generated professional summaries
-- Enhanced classification with AI insights
+- Sophisticated titles: "Authentication: Account Access Issue After Password Reset" (AI-generated ONLY)
+- Comprehensive descriptions: AI-generated professional summaries (AI-generated ONLY)
+- Enhanced classification with AI insights (AI-generated ONLY)
+- NO basic fallbacks: System requires AI providers for all ticket generation
 
 ### Benefits Achieved
 

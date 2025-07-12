@@ -763,11 +763,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           aiGeneratedTitle = await generateTicketTitle(conversationForTitle, resolvedTenantId);
           console.log(`AI-generated title: "${aiGeneratedTitle}"`);
         } catch (titleError) {
-          console.warn("AI title generation failed, using intelligent fallback:", titleError);
-          // Intelligent fallback that preserves key information
-          aiGeneratedTitle = user_message.length > 50 
-            ? user_message.substring(0, 47) + '...'
-            : user_message;
+          console.error("AI title generation failed:", titleError);
+          throw new Error("AI title generation required but failed");
         }
         
         // Step 2: Generate comprehensive description using AI
@@ -790,8 +787,8 @@ Generate a comprehensive, professional ticket description.`;
           enhancedDescription = descriptionResponse.message || user_message;
           console.log("AI-enhanced description generated successfully");
         } catch (descError) {
-          console.warn("AI description generation failed, using original message:", descError);
-          enhancedDescription = user_message;
+          console.error("AI description generation failed:", descError);
+          throw new Error("AI description generation required but failed");
         }
         
         // Step 3: Classify the ticket using AI
@@ -1105,11 +1102,8 @@ Generate only the title, no quotes or extra text:`;
               aiTitle = await generateTicketTitle(conversationForTitle, tenantId);
               console.log(`AI-generated fallback title: "${aiTitle}"`);
             } catch (titleError) {
-              console.warn("AI title generation failed in fallback, using intelligent extraction:", titleError);
-              // Use intelligent extraction instead of simple truncation
-              aiTitle = message.length > 50 
-                ? message.substring(0, 47) + '...'
-                : message;
+              console.error("AI title generation failed in chatbot fallback:", titleError);
+              throw new Error("AI title generation required but failed");
             }
             
             const classification = await classifyTicket(aiTitle, fallbackDescription, tenantId);

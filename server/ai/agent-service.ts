@@ -110,8 +110,10 @@ export class AgentService {
       
       const startTime = Date.now();
       
-      // Create a proper title from the user message
-      const title = this.extractTitleFromMessage(request.user_message);
+      // Generate AI-powered title using the same system as the main workflow
+      const { generateTicketTitle } = await import('../../ai.js');
+      const conversationForTitle = [{ role: 'user' as const, content: request.user_message }];
+      const title = await generateTicketTitle(conversationForTitle, request.tenant_id);
       
       // Classify the ticket
       const classification = await classifyTicket(title, request.user_message, request.tenant_id || 1);
@@ -204,23 +206,7 @@ export class AgentService {
     return steps;
   }
 
-  private extractTitleFromMessage(userMessage: string): string {
-    // Extract meaningful title from user message
-    const words = userMessage.split(' ').filter(word => word.length > 0);
-    
-    // Remove common stop words
-    const stopWords = ['i', 'am', 'is', 'are', 'the', 'a', 'an', 'and', 'or', 'but', 'my', 'me', 'need', 'want', 'can', 'could', 'please', 'help'];
-    const meaningfulWords = words.filter(word => 
-      !stopWords.includes(word.toLowerCase()) && word.length > 2
-    );
-    
-    // Take first 6-8 meaningful words for title
-    const titleWords = meaningfulWords.slice(0, 7);
-    const title = titleWords.join(' ') || words.slice(0, 8).join(' ');
-    
-    // Limit to 80 characters
-    return title.length > 80 ? title.substring(0, 77) + '...' : title;
-  }
+  // REMOVED: Basic title extraction method - now using AI-powered title generation exclusively
 
   private generateResolutionSteps(userMessage: string, classification: any): string[] {
     const steps: string[] = [];

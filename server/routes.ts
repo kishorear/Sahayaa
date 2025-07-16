@@ -53,6 +53,8 @@ import { registerWidgetTicketRoutes } from "./routes/widget-ticket-routes";
 import agentResourcesRoutes from "./routes/agent-resources";
 // Import agent test routes
 import agentTestRoutes from "./routes/agent-test-routes";
+// Import MCP database routes for multi-database support
+import { registerMcpDatabaseRoutes } from "./routes/mcp-database-routes";
 // Import enhanced agent routes with MCP integration
 import agentRoutes from "./routes/agent-routes";
 // Import creator routes for multi-tenant management
@@ -65,6 +67,8 @@ import aiProvidersRoutes from "./routes/ai-providers-routes";
 import { registerKnowledgeSyncRoutes } from "./routes/knowledge-sync-routes";
 // Import tenant routes for creator role
 import { tenantRoutes } from "./routes/tenant-routes";
+// Import MCP database routes for multi-database support
+import { registerMcpDatabaseRoutes } from "./routes/mcp-database-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
@@ -240,6 +244,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register tenant routes - access restricted to creator role users only
   app.use('/api', requireAuth, tenantRoutes);
+  
+  // Register MCP database routes for multi-database support
+  registerMcpDatabaseRoutes(app, requireAuth, requireRole);
   
   // Initialize SSO service for all tenants
   try {

@@ -450,3 +450,101 @@ export const insertAgentResourceSchema = createInsertSchema(agentResources)
 
 export type AgentResource = typeof agentResources.$inferSelect;
 export type InsertAgentResource = z.infer<typeof insertAgentResourceSchema>;
+
+// Database connection types enum for MCP integration
+export const DatabaseTypeEnum = z.enum([
+  'oracle',
+  'mysql',
+  'postgresql',
+  'mssql',
+  'sqlite'
+]);
+
+// MCP Database connections for external data sources
+export const mcpDatabaseConnections = pgTable("mcp_database_connections", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // Display name for the connection
+  type: text("type").notNull(), // oracle, mysql, postgresql, mssql, sqlite
+  host: text("host").notNull(),
+  port: integer("port").notNull(),
+  database: text("database").notNull(),
+  username: text("username").notNull(),
+  password: text("password").notNull(), // Encrypted in production
+  schema: text("schema"), // Optional schema name
+  description: text("description"), // Purpose of this connection
+  isActive: boolean("is_active").default(true).notNull(),
+  connectionString: text("connection_string"), // Full connection string if needed
+  sslConfig: json("ssl_config").default({}), // SSL configuration
+  metadata: json("metadata").default({}), // Additional connection metadata
+  createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  lastTested: timestamp("last_tested"), // Last successful connection test
+  testStatus: text("test_status").default("pending"), // pending, success, failed
+  errorMessage: text("error_message"), // Last error if connection failed
+}, (table) => {
+  return {
+    // Create a unique index on name + tenantId
+    connectionNameUnique: uniqueIndex("mcp_connection_name_tenant_unique").on(table.name, table.tenantId),
+  };
+});
+
+export const insertMcpDatabaseConnectionSchema = createInsertSchema(mcpDatabaseConnections)
+  .omit({ id: true, createdAt: true, updatedAt: true, lastTested: true });
+
+export type McpDatabaseConnection = typeof mcpDatabaseConnections.$inferSelect;
+export type InsertMcpDatabaseConnection = z.infer<typeof insertMcpDatabaseConnectionSchema>;
+
+// MCP Query templates for reusable database queries
+export const mcpQueryTemplates = pgTable("mcp_query_templates", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => mcpDatabaseConnections.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // Template name
+  description: text("description"),
+  queryType: text("query_type").notNull(), // data_dictionary, ticket_lookup, similarity_search
+  sqlTemplate: text("sql_template").notNull(), // SQL query with parameters
+  parameters: json("parameters").default([]), // Parameter definitions
+  isActive: boolean("is_active").default(true).notNull(),
+  useForMcp: boolean("use_for_mcp").default(true).notNull(), // Use in MCP responses
+  priority: integer("priority").default(50).notNull(), // Query priority (1-100)
+  createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Create a unique index on name + connectionId
+    queryTemplateNameUnique: uniqueIndex("mcp_query_template_name_connection_unique").on(table.name, table.connectionId),
+  };
+});
+
+export const insertMcpQueryTemplateSchema = createInsertSchema(mcpQueryTemplates)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+export type McpQueryTemplate = typeof mcpQueryTemplates.$inferSelect;
+export type InsertMcpQueryTemplate = z.infer<typeof insertMcpQueryTemplateSchema>;
+
+// MCP Query execution logs
+export const mcpQueryLogs = pgTable("mcp_query_logs", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => mcpDatabaseConnections.id, { onDelete: "cascade" }),
+  templateId: integer("template_id").references(() => mcpQueryTemplates.id, { onDelete: "set null" }),
+  ticketId: integer("ticket_id").references(() => tickets.id, { onDelete: "set null" }),
+  queryText: text("query_text").notNull(), // Actual executed query
+  parameters: json("parameters").default({}), // Query parameters used
+  executionTime: integer("execution_time_ms"), // Query execution time in ms
+  resultCount: integer("result_count"), // Number of rows returned
+  success: boolean("success").notNull(),
+  errorMessage: text("error_message"), // Error if query failed
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  metadata: json("metadata").default({}), // Additional execution metadata
+});
+
+export const insertMcpQueryLogSchema = createInsertSchema(mcpQueryLogs)
+  .omit({ id: true, timestamp: true });
+
+export type McpQueryLog = typeof mcpQueryLogs.$inferSelect;
+export type InsertMcpQueryLog = z.infer<typeof insertMcpQueryLogSchema>;

@@ -13,6 +13,9 @@ import {
   documentUsage,
   teams,
   agentResources,
+  mcpDatabaseConnections,
+  mcpQueryTemplates,
+  mcpQueryLogs,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -40,7 +43,13 @@ import {
   type Team,
   type InsertTeam,
   type AgentResource,
-  type InsertAgentResource
+  type InsertAgentResource,
+  type McpDatabaseConnection,
+  type InsertMcpDatabaseConnection,
+  type McpQueryTemplate,
+  type InsertMcpQueryTemplate,
+  type McpQueryLog,
+  type InsertMcpQueryLog
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -156,8 +165,30 @@ export interface IStorage {
   
   // Agent resource operations
   getAgentResources(agentType: string, tenantId: number): Promise<any[]>;
+  getAgentResource(id: number, tenantId: number): Promise<AgentResource | undefined>;
+  getAgentResourcesByType(agentType: string): Promise<AgentResource[]>;
   createAgentResource(resourceData: any): Promise<any>;
   deleteAgentResource(id: number, tenantId: number): Promise<boolean>;
+  
+  // MCP Database Connection operations
+  getMcpDatabaseConnections(tenantId: number): Promise<McpDatabaseConnection[]>;
+  getMcpDatabaseConnectionById(id: number, tenantId?: number): Promise<McpDatabaseConnection | undefined>;
+  createMcpDatabaseConnection(connection: InsertMcpDatabaseConnection): Promise<McpDatabaseConnection>;
+  updateMcpDatabaseConnection(id: number, updates: Partial<McpDatabaseConnection>, tenantId?: number): Promise<McpDatabaseConnection>;
+  deleteMcpDatabaseConnection(id: number, tenantId?: number): Promise<boolean>;
+  testMcpDatabaseConnection(id: number, tenantId?: number): Promise<{ success: boolean; message: string }>;
+  
+  // MCP Query Template operations
+  getMcpQueryTemplates(tenantId: number): Promise<McpQueryTemplate[]>;
+  getMcpQueryTemplateById(id: number, tenantId?: number): Promise<McpQueryTemplate | undefined>;
+  createMcpQueryTemplate(template: InsertMcpQueryTemplate): Promise<McpQueryTemplate>;
+  updateMcpQueryTemplate(id: number, updates: Partial<McpQueryTemplate>, tenantId?: number): Promise<McpQueryTemplate>;
+  deleteMcpQueryTemplate(id: number, tenantId?: number): Promise<boolean>;
+  
+  // MCP Query Log operations
+  getMcpQueryLogs(tenantId: number, limit?: number): Promise<McpQueryLog[]>;
+  createMcpQueryLog(log: InsertMcpQueryLog): Promise<McpQueryLog>;
+  getMcpQueryLogsByTemplate(templateId: number, tenantId?: number): Promise<McpQueryLog[]>;
   
   // Session management
   sessionStore: session.Store;
@@ -177,6 +208,9 @@ export class MemStorage implements IStorage {
   private documentUsageData: Map<number, DocumentUsage>;
   private widgetApiKeysData: Map<number, WidgetApiKey>;
   private agentResources: Map<number, any>;
+  private mcpDatabaseConnections: Map<number, McpDatabaseConnection>;
+  private mcpQueryTemplates: Map<number, McpQueryTemplate>;
+  private mcpQueryLogs: Map<number, McpQueryLog>;
   private tenantIdCounter: number;
   private teamIdCounter: number;
   private userIdCounter: number;
@@ -190,6 +224,9 @@ export class MemStorage implements IStorage {
   private documentUsageIdCounter: number;
   private widgetApiKeyIdCounter: number;
   private agentResourceIdCounter: number;
+  private mcpDatabaseConnectionIdCounter: number;
+  private mcpQueryTemplateIdCounter: number;
+  private mcpQueryLogIdCounter: number;
   
   // Add caches for critical data in production
   private userCache: Map<string, User> = new Map();
@@ -216,6 +253,9 @@ export class MemStorage implements IStorage {
     this.documentUsageData = new Map();
     this.widgetApiKeysData = new Map();
     this.agentResources = new Map();
+    this.mcpDatabaseConnections = new Map();
+    this.mcpQueryTemplates = new Map();
+    this.mcpQueryLogs = new Map();
     this.tenantIdCounter = 1;
     this.teamIdCounter = 1;
     this.userIdCounter = 1;
@@ -229,6 +269,9 @@ export class MemStorage implements IStorage {
     this.documentUsageIdCounter = 1;
     this.widgetApiKeyIdCounter = 1;
     this.agentResourceIdCounter = 1;
+    this.mcpDatabaseConnectionIdCounter = 1;
+    this.mcpQueryTemplateIdCounter = 1;
+    this.mcpQueryLogIdCounter = 1;
     
     // Initialize sample documents in the constructor
     this.initSampleSupportDocuments();
@@ -2137,6 +2180,193 @@ export class MemStorage implements IStorage {
       return true;
     }
     return false;
+  }
+
+  async getAgentResource(id: number, tenantId: number): Promise<AgentResource | undefined> {
+    const resource = this.agentResources.get(id);
+    if (resource && resource.tenantId === tenantId) {
+      return resource;
+    }
+    return undefined;
+  }
+
+  async getAgentResourcesByType(agentType: string): Promise<AgentResource[]> {
+    const resources = Array.from(this.agentResources.values()).filter(
+      resource => resource.agentType === agentType
+    );
+    return resources;
+  }
+
+  // MCP Database Connection operations
+  async getMcpDatabaseConnections(tenantId: number): Promise<McpDatabaseConnection[]> {
+    const connections = Array.from(this.mcpDatabaseConnections.values()).filter(
+      connection => connection.tenantId === tenantId
+    );
+    return connections;
+  }
+
+  async getMcpDatabaseConnectionById(id: number, tenantId?: number): Promise<McpDatabaseConnection | undefined> {
+    const connection = this.mcpDatabaseConnections.get(id);
+    if (connection && (!tenantId || connection.tenantId === tenantId)) {
+      return connection;
+    }
+    return undefined;
+  }
+
+  async createMcpDatabaseConnection(connection: InsertMcpDatabaseConnection): Promise<McpDatabaseConnection> {
+    const id = this.mcpDatabaseConnectionIdCounter++;
+    const newConnection = {
+      id,
+      ...connection,
+      schema: connection.schema || null,
+      description: connection.description || null,
+      metadata: connection.metadata || {},
+      isActive: connection.isActive !== undefined ? connection.isActive : true,
+      lastTested: null,
+      testSuccess: null,
+      errorMessage: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.mcpDatabaseConnections.set(id, newConnection);
+    return newConnection;
+  }
+
+  async updateMcpDatabaseConnection(id: number, updates: Partial<McpDatabaseConnection>, tenantId?: number): Promise<McpDatabaseConnection> {
+    const connection = this.mcpDatabaseConnections.get(id);
+    if (!connection || (tenantId && connection.tenantId !== tenantId)) {
+      throw new Error('MCP database connection not found');
+    }
+    
+    const updatedConnection = {
+      ...connection,
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.mcpDatabaseConnections.set(id, updatedConnection);
+    return updatedConnection;
+  }
+
+  async deleteMcpDatabaseConnection(id: number, tenantId?: number): Promise<boolean> {
+    const connection = this.mcpDatabaseConnections.get(id);
+    if (connection && (!tenantId || connection.tenantId === tenantId)) {
+      this.mcpDatabaseConnections.delete(id);
+      return true;
+    }
+    return false;
+  }
+
+  async testMcpDatabaseConnection(id: number, tenantId?: number): Promise<{ success: boolean; message: string }> {
+    const connection = this.mcpDatabaseConnections.get(id);
+    if (!connection || (tenantId && connection.tenantId !== tenantId)) {
+      return { success: false, message: 'Connection not found' };
+    }
+    
+    // Mock test - in production this would attempt actual connection
+    return { success: true, message: 'Connection test successful' };
+  }
+
+  // MCP Query Template operations
+  async getMcpQueryTemplates(tenantId: number): Promise<McpQueryTemplate[]> {
+    const templates = Array.from(this.mcpQueryTemplates.values()).filter(
+      template => template.tenantId === tenantId
+    );
+    return templates;
+  }
+
+  async getMcpQueryTemplateById(id: number, tenantId?: number): Promise<McpQueryTemplate | undefined> {
+    const template = this.mcpQueryTemplates.get(id);
+    if (template && (!tenantId || template.tenantId === tenantId)) {
+      return template;
+    }
+    return undefined;
+  }
+
+  async createMcpQueryTemplate(template: InsertMcpQueryTemplate): Promise<McpQueryTemplate> {
+    const id = this.mcpQueryTemplateIdCounter++;
+    const newTemplate = {
+      id,
+      ...template,
+      description: template.description || null,
+      priority: template.priority || 1,
+      isActive: template.isActive !== undefined ? template.isActive : true,
+      parameters: template.parameters || {},
+      useForMcp: template.useForMcp !== undefined ? template.useForMcp : true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.mcpQueryTemplates.set(id, newTemplate);
+    return newTemplate;
+  }
+
+  async updateMcpQueryTemplate(id: number, updates: Partial<McpQueryTemplate>, tenantId?: number): Promise<McpQueryTemplate> {
+    const template = this.mcpQueryTemplates.get(id);
+    if (!template || (tenantId && template.tenantId !== tenantId)) {
+      throw new Error('MCP query template not found');
+    }
+    
+    const updatedTemplate = {
+      ...template,
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.mcpQueryTemplates.set(id, updatedTemplate);
+    return updatedTemplate;
+  }
+
+  async deleteMcpQueryTemplate(id: number, tenantId?: number): Promise<boolean> {
+    const template = this.mcpQueryTemplates.get(id);
+    if (template && (!tenantId || template.tenantId === tenantId)) {
+      this.mcpQueryTemplates.delete(id);
+      return true;
+    }
+    return false;
+  }
+
+  // MCP Query Log operations
+  async getMcpQueryLogs(tenantId: number, limit?: number): Promise<McpQueryLog[]> {
+    let logs = Array.from(this.mcpQueryLogs.values()).filter(
+      log => log.tenantId === tenantId
+    );
+    
+    // Sort by timestamp descending (newest first)
+    logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    
+    if (limit) {
+      logs = logs.slice(0, limit);
+    }
+    
+    return logs;
+  }
+
+  async createMcpQueryLog(log: InsertMcpQueryLog): Promise<McpQueryLog> {
+    const id = this.mcpQueryLogIdCounter++;
+    const newLog = {
+      id,
+      ...log,
+      ticketId: log.ticketId || null,
+      metadata: log.metadata || {},
+      errorMessage: log.errorMessage || null,
+      templateId: log.templateId || null,
+      executionTime: log.executionTime || null,
+      resultCount: log.resultCount || null,
+      userId: log.userId || null,
+      parameters: log.parameters || {},
+      timestamp: new Date()
+    };
+    this.mcpQueryLogs.set(id, newLog);
+    return newLog;
+  }
+
+  async getMcpQueryLogsByTemplate(templateId: number, tenantId?: number): Promise<McpQueryLog[]> {
+    const logs = Array.from(this.mcpQueryLogs.values()).filter(
+      log => log.templateId === templateId && (!tenantId || log.tenantId === tenantId)
+    );
+    
+    // Sort by timestamp descending (newest first)
+    logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    
+    return logs;
   }
 }
 
@@ -5070,6 +5300,161 @@ export class DatabaseStorage implements IStorage {
     // For now, always return true - this would need a proper database table
     return true;
   }
+
+  async getAgentResource(id: number, tenantId: number): Promise<AgentResource | undefined> {
+    // For now, return undefined - this would need a proper database table
+    return undefined;
+  }
+
+  async getAgentResourcesByType(agentType: string): Promise<AgentResource[]> {
+    // For now, return empty array - this would need a proper database table
+    return [];
+  }
+
+  // MCP Database Connection operations - simple in-memory implementation for now
+  async getMcpDatabaseConnections(tenantId: number): Promise<McpDatabaseConnection[]> {
+    // For now, return empty array - this would need a proper database table
+    return [];
+  }
+
+  async getMcpDatabaseConnectionById(id: number, tenantId?: number): Promise<McpDatabaseConnection | undefined> {
+    // For now, return undefined - this would need a proper database table
+    return undefined;
+  }
+
+  async createMcpDatabaseConnection(connection: InsertMcpDatabaseConnection): Promise<McpDatabaseConnection> {
+    // For now, just return the data with an ID - this would need a proper database table
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      ...connection,
+      schema: connection.schema || null,
+      description: connection.description || null,
+      metadata: connection.metadata || {},
+      isActive: connection.isActive !== undefined ? connection.isActive : true,
+      connectionString: connection.connectionString || null,
+      lastTested: null,
+      testSuccess: null,
+      errorMessage: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async updateMcpDatabaseConnection(id: number, updates: Partial<McpDatabaseConnection>, tenantId?: number): Promise<McpDatabaseConnection> {
+    // For now, just return the updates with the ID - this would need a proper database table
+    return {
+      id,
+      name: 'Mock Connection',
+      type: 'mysql',
+      tenantId: tenantId || 1,
+      createdBy: 1,
+      username: 'user',
+      password: 'pass',
+      host: 'localhost',
+      port: 3306,
+      database: 'test',
+      schema: null,
+      description: null,
+      metadata: {},
+      isActive: true,
+      connectionString: null,
+      lastTested: null,
+      errorMessage: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...updates
+    };
+  }
+
+  async deleteMcpDatabaseConnection(id: number, tenantId?: number): Promise<boolean> {
+    // For now, always return true - this would need a proper database table
+    return true;
+  }
+
+  async testMcpDatabaseConnection(id: number, tenantId?: number): Promise<{ success: boolean; message: string }> {
+    // For now, return mock success - this would need actual connection testing
+    return { success: true, message: 'Connection test successful (mock)' };
+  }
+
+  // MCP Query Template operations - simple in-memory implementation for now
+  async getMcpQueryTemplates(tenantId: number): Promise<McpQueryTemplate[]> {
+    // For now, return empty array - this would need a proper database table
+    return [];
+  }
+
+  async getMcpQueryTemplateById(id: number, tenantId?: number): Promise<McpQueryTemplate | undefined> {
+    // For now, return undefined - this would need a proper database table
+    return undefined;
+  }
+
+  async createMcpQueryTemplate(template: InsertMcpQueryTemplate): Promise<McpQueryTemplate> {
+    // For now, just return the data with an ID - this would need a proper database table
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      ...template,
+      description: template.description || null,
+      priority: template.priority || 1,
+      isActive: template.isActive !== undefined ? template.isActive : true,
+      parameters: template.parameters || {},
+      useForMcp: template.useForMcp !== undefined ? template.useForMcp : true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async updateMcpQueryTemplate(id: number, updates: Partial<McpQueryTemplate>, tenantId?: number): Promise<McpQueryTemplate> {
+    // For now, just return the updates with the ID - this would need a proper database table
+    return {
+      id,
+      name: 'Mock Template',
+      tenantId: tenantId || 1,
+      createdBy: 1,
+      description: null,
+      priority: 1,
+      isActive: true,
+      connectionId: 1,
+      queryType: 'select',
+      sqlTemplate: 'SELECT * FROM table',
+      parameters: {},
+      useForMcp: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...updates
+    };
+  }
+
+  async deleteMcpQueryTemplate(id: number, tenantId?: number): Promise<boolean> {
+    // For now, always return true - this would need a proper database table
+    return true;
+  }
+
+  // MCP Query Log operations - simple in-memory implementation for now
+  async getMcpQueryLogs(tenantId: number, limit?: number): Promise<McpQueryLog[]> {
+    // For now, return empty array - this would need a proper database table
+    return [];
+  }
+
+  async createMcpQueryLog(log: InsertMcpQueryLog): Promise<McpQueryLog> {
+    // For now, just return the data with an ID - this would need a proper database table
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      ...log,
+      ticketId: log.ticketId || null,
+      metadata: log.metadata || {},
+      errorMessage: log.errorMessage || null,
+      templateId: log.templateId || null,
+      executionTime: log.executionTime || null,
+      resultCount: log.resultCount || null,
+      userId: log.userId || null,
+      parameters: log.parameters || {},
+      timestamp: new Date()
+    };
+  }
+
+  async getMcpQueryLogsByTemplate(templateId: number, tenantId?: number): Promise<McpQueryLog[]> {
+    // For now, return empty array - this would need a proper database table
+    return [];
+  }
 }
 
 // Create a function to initialize storage with fallback to in-memory if database fails
@@ -5832,6 +6217,135 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.getAgentResourcesByType(agentType);
     } catch (error) {
       console.error(`Error in getAgentResourcesByType(${agentType}):`, error);
+      return [];
+    }
+  }
+
+  // MCP Database Connection operations
+  async getMcpDatabaseConnections(tenantId: number): Promise<McpDatabaseConnection[]> {
+    try {
+      return await this.storageImpl.getMcpDatabaseConnections(tenantId);
+    } catch (error) {
+      console.error(`Error in getMcpDatabaseConnections(${tenantId}):`, error);
+      return [];
+    }
+  }
+
+  async getMcpDatabaseConnectionById(id: number, tenantId: number): Promise<McpDatabaseConnection | undefined> {
+    try {
+      return await this.storageImpl.getMcpDatabaseConnectionById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getMcpDatabaseConnectionById(${id}, ${tenantId}):`, error);
+      return undefined;
+    }
+  }
+
+  async createMcpDatabaseConnection(data: InsertMcpDatabaseConnection): Promise<McpDatabaseConnection> {
+    try {
+      return await this.storageImpl.createMcpDatabaseConnection(data);
+    } catch (error) {
+      console.error('Error in createMcpDatabaseConnection:', error);
+      throw error;
+    }
+  }
+
+  async updateMcpDatabaseConnection(id: number, updates: Partial<McpDatabaseConnection>, tenantId?: number): Promise<McpDatabaseConnection> {
+    try {
+      return await this.storageImpl.updateMcpDatabaseConnection(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateMcpDatabaseConnection(${id}, ${tenantId}):`, error);
+      throw error;
+    }
+  }
+
+  async deleteMcpDatabaseConnection(id: number, tenantId: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteMcpDatabaseConnection(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteMcpDatabaseConnection(${id}, ${tenantId}):`, error);
+      return false;
+    }
+  }
+
+  async testMcpDatabaseConnection(id: number, tenantId: number): Promise<{ success: boolean; message: string; error?: string }> {
+    try {
+      return await this.storageImpl.testMcpDatabaseConnection(id, tenantId);
+    } catch (error) {
+      console.error(`Error in testMcpDatabaseConnection(${id}, ${tenantId}):`, error);
+      return { success: false, message: 'Test failed', error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // MCP Query Template operations
+  async getMcpQueryTemplates(tenantId: number): Promise<McpQueryTemplate[]> {
+    try {
+      return await this.storageImpl.getMcpQueryTemplates(tenantId);
+    } catch (error) {
+      console.error(`Error in getMcpQueryTemplates(${tenantId}):`, error);
+      return [];
+    }
+  }
+
+  async getMcpQueryTemplateById(id: number, tenantId: number): Promise<McpQueryTemplate | undefined> {
+    try {
+      return await this.storageImpl.getMcpQueryTemplateById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getMcpQueryTemplateById(${id}, ${tenantId}):`, error);
+      return undefined;
+    }
+  }
+
+  async createMcpQueryTemplate(data: InsertMcpQueryTemplate): Promise<McpQueryTemplate> {
+    try {
+      return await this.storageImpl.createMcpQueryTemplate(data);
+    } catch (error) {
+      console.error('Error in createMcpQueryTemplate:', error);
+      throw error;
+    }
+  }
+
+  async updateMcpQueryTemplate(id: number, updates: Partial<McpQueryTemplate>, tenantId?: number): Promise<McpQueryTemplate> {
+    try {
+      return await this.storageImpl.updateMcpQueryTemplate(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateMcpQueryTemplate(${id}, ${tenantId}):`, error);
+      throw error;
+    }
+  }
+
+  async deleteMcpQueryTemplate(id: number, tenantId: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteMcpQueryTemplate(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteMcpQueryTemplate(${id}, ${tenantId}):`, error);
+      return false;
+    }
+  }
+
+  // MCP Query Log operations
+  async getMcpQueryLogs(tenantId: number): Promise<McpQueryLog[]> {
+    try {
+      return await this.storageImpl.getMcpQueryLogs(tenantId);
+    } catch (error) {
+      console.error(`Error in getMcpQueryLogs(${tenantId}):`, error);
+      return [];
+    }
+  }
+
+  async createMcpQueryLog(log: InsertMcpQueryLog): Promise<McpQueryLog> {
+    try {
+      return await this.storageImpl.createMcpQueryLog(log);
+    } catch (error) {
+      console.error('Error in createMcpQueryLog:', error);
+      throw error;
+    }
+  }
+
+  async getMcpQueryLogsByTemplate(templateId: number, tenantId?: number): Promise<McpQueryLog[]> {
+    try {
+      return await this.storageImpl.getMcpQueryLogsByTemplate(templateId, tenantId);
+    } catch (error) {
+      console.error(`Error in getMcpQueryLogsByTemplate(${templateId}, ${tenantId}):`, error);
       return [];
     }
   }

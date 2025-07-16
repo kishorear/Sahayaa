@@ -1,7 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import monitoringRoutes from "./routes/monitoring-routes.js";
 import { setupVite, serveStatic, log } from "./vite";
 import { testDbConnection, reconnectDb } from "./db";
+import { validateEnvironmentAtStartup } from "./environment-validator";
+import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
 import path from "path";
 
 // Process-level unhandled rejection handler to prevent crashes
@@ -15,6 +18,9 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
   // Continue execution, don't crash the server
 });
+
+// Validate environment before starting the application
+validateEnvironmentAtStartup();
 
 const app = express();
 

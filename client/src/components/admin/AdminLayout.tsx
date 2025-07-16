@@ -16,7 +16,8 @@ import {
   UserCog,
   MessageSquare,
   UserPlus,
-  Brain
+  Brain,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoIcon from "@/components/LogoIcon";
@@ -105,6 +106,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       label: "Chat Widget", 
       icon: MessageSquare,
       roles: ["administrator", "creator"] // Only admins and creators manage widget
+    },
+    { 
+      path: "/admin/monitoring", 
+      label: "Monitoring", 
+      icon: Activity,
+      roles: ["administrator", "creator"] // Only admins and creators can access monitoring
     },
   ];
   

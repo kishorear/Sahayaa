@@ -20,6 +20,7 @@ import {
   type ChatbotResponse
 } from "@shared/schema";
 import { setupAuth } from "./auth";
+import monitoringRoutes from "./routes/monitoring-routes.js";
 import { registerEmailRoutes } from "./routes/email-routes";
 import { registerEmailSupportRoutes } from "./routes/email-support-routes";
 import { registerIntegrationRoutes } from "./routes/integration-routes";
@@ -64,6 +65,7 @@ import { registerKnowledgeSyncRoutes } from "./routes/knowledge-sync-routes";
 import { tenantRoutes } from "./routes/tenant-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
+import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
 
 /**
  * Calculate the cutoff date based on the selected time period
@@ -145,6 +147,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       error_type: "server_error"
     });
   };
+  
+  // Register health check endpoints (before auth middleware)
+  app.get('/health', healthCheckHandler);
+  app.get('/healthz', healthCheckHandler);
+  app.get('/ready', readinessHandler);
+  app.get('/readiness', readinessHandler);
+  app.get('/live', livenessHandler);
+  app.get('/liveness', livenessHandler);
+  
+  // Add monitoring endpoints for system performance and health
+  app.use('/api/monitoring', monitoringRoutes);
   
   // Register Chat Preprocessor Agent test route (before auth middleware)
   registerPreprocessorTestRoute(app);

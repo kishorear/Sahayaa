@@ -53,6 +53,8 @@ import { registerWidgetTicketRoutes } from "./routes/widget-ticket-routes";
 import agentResourcesRoutes from "./routes/agent-resources";
 // Import agent test routes
 import agentTestRoutes from "./routes/agent-test-routes";
+// Import enhanced agent routes with MCP integration
+import agentRoutes from "./routes/agent-routes";
 // Import creator routes for multi-tenant management
 import creatorRoutes from "./routes/creator-routes";
 // Import AI provider availability routes
@@ -1893,6 +1895,9 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   
   // Register agent resources routes for agent-specific file uploads
   app.use('/api/agent-resources', agentResourcesRoutes);
+  
+  // Register enhanced agent routes with MCP integration
+  app.use('/api/agents', agentRoutes);
   
   const httpServer = createServer(app);
   return httpServer;

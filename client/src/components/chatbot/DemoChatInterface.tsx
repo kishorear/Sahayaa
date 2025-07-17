@@ -236,14 +236,6 @@ export default function DemoChatInterface() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setInputMessage("How do I integrate the API?")}
-            disabled={isTyping}
-          >
-            API Integration
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => setInputMessage("What are your pricing plans?")}
             disabled={isTyping}
           >

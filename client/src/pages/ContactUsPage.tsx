@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, MapPin, Phone, Mail, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Phone, Mail, CheckCircle, AlertCircle } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 // Define form schemas
@@ -140,20 +140,6 @@ export default function ContactUsPage() {
                 
                 <div className="space-y-6">
                   <div className="flex items-start">
-                    <MapPin className="w-5 h-5 mt-1 mr-3 text-primary" />
-                    <div>
-                      <h3 className="font-medium">Address</h3>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        123 AI Boulevard<br />
-                        San Francisco, CA 94107<br />
-                        United States
-                      </p>
-                    </div>
-                  </div>
-                  
-                  
-                  
-                  <div className="flex items-start">
                     <Mail className="w-5 h-5 mt-1 mr-3 text-primary" />
                     <div>
                       <h3 className="font-medium">Email</h3>
@@ -162,15 +148,6 @@ export default function ContactUsPage() {
                       </p>
                     </div>
                   </div>
-                </div>
-                
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <h3 className="font-medium mb-3">Office Hours</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Monday - Friday: 9:00 AM - 6:00 PM PST<br />
-                    Saturday: 10:00 AM - 4:00 PM PST<br />
-                    Sunday: Closed
-                  </p>
                 </div>
               </div>
             </div>

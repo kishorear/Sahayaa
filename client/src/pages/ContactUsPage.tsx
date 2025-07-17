@@ -151,15 +151,7 @@ export default function ContactUsPage() {
                     </div>
                   </div>
                   
-                  <div className="flex items-start">
-                    <Phone className="w-5 h-5 mt-1 mr-3 text-primary" />
-                    <div>
-                      <h3 className="font-medium">Phone</h3>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        +1 (555) 123-4567
-                      </p>
-                    </div>
-                  </div>
+                  
                   
                   <div className="flex items-start">
                     <Mail className="w-5 h-5 mt-1 mr-3 text-primary" />

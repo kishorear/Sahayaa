@@ -28,6 +28,9 @@ export default function LandingPage() {
               <Link href="/contact">
                 <span className="hover:text-primary transition-colors cursor-pointer">Contact Us</span>
               </Link>
+              <Link href="/demo">
+                <span className="hover:text-primary transition-colors cursor-pointer">Demo</span>
+              </Link>
               <Link href="/auth">
                 <Button size="sm">Login</Button>
               </Link>

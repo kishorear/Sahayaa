@@ -10,6 +10,7 @@ import DocumentationPage from "@/pages/DocumentationPage"; // Documentation page
 import HowItWorksPage from "@/pages/HowItWorksPage"; // How It Works page
 import ApiDocsPage from "@/pages/ApiDocsPage"; // API documentation page
 import ContactUsPage from "@/pages/ContactUsPage"; // Contact Us page with Email Support
+import DemoPage from "@/pages/DemoPage"; // Demo page with interactive chat
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import TicketsPage from "@/pages/admin/TicketsPage";
 import TicketDetailsPage from "@/pages/admin/TicketDetailsPage";
@@ -46,6 +47,7 @@ function Router() {
       <Route path="/api" component={ApiDocsPage} />
       <Route path="/how-it-works" component={HowItWorksPage} />
       <Route path="/contact" component={ContactUsPage} />
+      <Route path="/demo" component={DemoPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/mcp-test" component={MCPTestPage} />
       <Route path="/widget-test" component={WidgetTestPage} />

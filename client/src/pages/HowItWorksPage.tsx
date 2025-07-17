@@ -30,6 +30,12 @@ export default function HowItWorksPage() {
               <Link href="/how-it-works">
                 <span className="text-primary font-medium">How It Works</span>
               </Link>
+              <Link href="/contact">
+                <span className="hover:text-primary transition-colors cursor-pointer">Contact Us</span>
+              </Link>
+              <Link href="/demo">
+                <span className="hover:text-primary transition-colors cursor-pointer">Demo</span>
+              </Link>
               <Link href="/auth">
                 <Button size="sm">Login</Button>
               </Link>

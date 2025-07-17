@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Play, MessageSquare, Video, ArrowRight, Zap, Shield, Brain } from 'lucide-react';
 import DemoChatInterface from '@/components/chatbot/DemoChatInterface';
+import LogoIcon from '@/components/LogoIcon';
 
 export default function DemoPage() {
   const [activeTab, setActiveTab] = useState("chat");
@@ -17,7 +18,7 @@ export default function DemoPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold">Sahayaa AI</span>
               </div>
             </Link>
@@ -209,25 +210,25 @@ export default function DemoPage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Get Started?</h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Experience the power of AI-driven customer support for your business. Start your free trial today.
+            Experience the power of AI-driven customer support for your business.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth">
+            <Link href="/contact">
               <Button 
                 size="lg" 
                 className="bg-white text-primary hover:bg-white/90"
               >
-                Start Free Trial
+                Contact Sales
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
-            <Link href="/contact">
+            <Link href="/pricing">
               <Button 
                 size="lg" 
                 variant="outline" 
                 className="border-white text-white hover:bg-white hover:text-primary"
               >
-                Talk to Sales
+                View Pricing
               </Button>
             </Link>
           </div>
@@ -240,7 +241,7 @@ export default function DemoPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold text-white">Sahayaa AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>

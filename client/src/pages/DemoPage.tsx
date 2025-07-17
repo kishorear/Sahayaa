@@ -212,7 +212,7 @@ export default function DemoPage() {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Experience the power of AI-driven customer support for your business.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex justify-center">
             <Link href="/contact">
               <Button 
                 size="lg" 
@@ -220,15 +220,6 @@ export default function DemoPage() {
               >
                 Contact Sales
                 <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-            <Link href="/pricing">
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="border-white text-white hover:bg-white hover:text-primary"
-              >
-                View Pricing
               </Button>
             </Link>
           </div>

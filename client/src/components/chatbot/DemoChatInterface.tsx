@@ -232,32 +232,7 @@ export default function DemoChatInterface() {
           </Button>
         </div>
         
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setInputMessage("What are your pricing plans?")}
-            disabled={isTyping}
-          >
-            Pricing
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setInputMessage("I can't access my dashboard")}
-            disabled={isTyping}
-          >
-            Technical Issue
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setInputMessage("Can you create a support ticket?")}
-            disabled={isTyping}
-          >
-            Create Ticket
-          </Button>
-        </div>
+
       </div>
     </div>
   );

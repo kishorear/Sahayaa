@@ -129,21 +129,45 @@ export default function DemoPage() {
                   
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Sample Questions</CardTitle>
+                      <CardTitle className="text-lg">Agent Capabilities Demo</CardTitle>
+                      <CardDescription>See how our AI agents work together to solve complex problems</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                          <p className="text-sm">"How do I integrate the API?"</p>
+                      <div className="space-y-3">
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-700">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">Technical</span>
+                            <span className="text-xs text-blue-600 dark:text-blue-400">Multi-Agent Workflow</span>
+                          </div>
+                          <p className="text-sm font-medium">"My API integration is failing with 401 errors"</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Watch: ChatProcessor → InstructionLookup → TicketLookup → LLM Resolution</p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                          <p className="text-sm">"I can't access my dashboard"</p>
+                        
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 p-3 rounded-lg border border-green-200 dark:border-green-700">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 px-2 py-1 rounded">Billing</span>
+                            <span className="text-xs text-green-600 dark:text-green-400">Intelligent Analysis</span>
+                          </div>
+                          <p className="text-sm font-medium">"I need to change my billing plan and update payment method"</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">See: Account verification → Usage analysis → Plan optimization</p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                          <p className="text-sm">"What are your pricing plans?"</p>
+                        
+                        <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/30 dark:to-violet-900/30 p-3 rounded-lg border border-purple-200 dark:border-purple-700">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Ticket</span>
+                            <span className="text-xs text-purple-600 dark:text-purple-400">Auto-Creation</span>
+                          </div>
+                          <p className="text-sm font-medium">"Create a support ticket for my dashboard login problem"</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Experience: Classification → Priority → Team routing → SLA assignment</p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                          <p className="text-sm">"How do I cancel my subscription?"</p>
+                        
+                        <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/30 dark:to-red-900/30 p-3 rounded-lg border border-orange-200 dark:border-orange-700">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200 px-2 py-1 rounded">Setup</span>
+                            <span className="text-xs text-orange-600 dark:text-orange-400">Knowledge Base</span>
+                          </div>
+                          <p className="text-sm font-medium">"How do I set up webhook notifications for my application?"</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Demonstrates: Documentation search → Similar cases → Step-by-step guidance</p>
                         </div>
                       </div>
                     </CardContent>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahayaa AI Widget - Basic Integration Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .subtitle {
+            text-align: center;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            font-size: 1.2em;
+        }
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #fff;
+        }
+        .feature h3 {
+            margin-top: 0;
+            color: #fff;
+            font-size: 1.4em;
+        }
+        .feature p {
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        .demo-button {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 30px auto;
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+        }
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(99, 102, 241, 0.4);
+        }
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .highlight {
+            background: rgba(255, 255, 0, 0.2);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Sahayaa AI Widget Demo</h1>
+        <p class="subtitle">Experience Multi-Agent Intelligence in Action</p>
+        
+        <div class="feature">
+            <h3>🔍 Behind-the-Scenes Processing</h3>
+            <p>Watch our AI agents work together to process your requests. See the ChatProcessor analyze your message, InstructionLookup search the knowledge base, TicketLookup find similar cases, and the LLM generate comprehensive solutions.</p>
+        </div>
+        
+        <div class="feature">
+            <h3>⚡ Multi-Agent Orchestration</h3>
+            <p>Our system coordinates multiple specialized agents to provide the most accurate and helpful responses. Each agent has a specific role in understanding and resolving your queries.</p>
+        </div>
+        
+        <div class="feature">
+            <h3>📊 Confidence Scoring & Analytics</h3>
+            <p>Every response includes confidence scores, processing times, and relevant data insights to ensure transparency and quality in our AI assistance.</p>
+        </div>
+
+        <button class="demo-button" onclick="openSahayaaChat()">
+            🚀 Try the Chat Widget
+        </button>
+
+        <div class="feature">
+            <h3>💻 Integration Code</h3>
+            <p>Here's how simple it is to add Sahayaa AI to your website:</p>
+            <div class="code-block">
+&lt;!-- Add this before closing &lt;/body&gt; tag --&gt;
+&lt;script&gt;
+  window.sahayaaConfig = {
+    <span class="highlight">apiKey: "your_api_key_here"</span>,
+    <span class="highlight">serverUrl: "https://your-server.com"</span>,
+    primaryColor: "#6366F1",
+    position: "right",
+    enableAgentWorkflow: true,
+    showBehindTheScenes: true
+  };
+&lt;/script&gt;
+&lt;script src="sahayaa-chat-widget.js" async&gt;&lt;/script&gt;
+&lt;link rel="stylesheet" href="widget-styles.css"&gt;
+            </div>
+        </div>
+    </div>
+
+    <!-- Sahayaa AI Configuration -->
+    <script>
+        window.sahayaaConfig = {
+            // Demo configuration - replace with your actual settings
+            apiKey: "demo_api_key_for_testing",
+            serverUrl: "http://localhost:3000", // Update with your server URL
+            primaryColor: "#6366F1",
+            position: "right",
+            greetingMessage: "🤖 Welcome to Sahayaa AI! Try asking about technical issues, billing questions, or general support.",
+            autoOpen: false,
+            requireAuth: false,
+            enableBranding: true,
+            trackEvents: true,
+            
+            // Enhanced Agent Workflow Settings
+            enableAgentWorkflow: true,
+            showBehindTheScenes: true,
+            showConfidenceScores: true,
+            showProcessingTimes: true,
+            maxProcessingTime: 5000,
+            confidenceThreshold: 0.8
+        };
+
+        function openSahayaaChat() {
+            if (window.SahayaaAI) {
+                window.SahayaaAI.openChat();
+            } else {
+                alert('Widget is loading... Please try again in a moment.');
+            }
+        }
+
+        // Listen for widget events
+        window.addEventListener('sahayaaWidgetEvent', function(event) {
+            console.log('Sahayaa Widget Event:', event.detail);
+        });
+    </script>
+
+    <!-- Sahayaa AI Chat Widget -->
+    <script src="../frontend/sahayaa-chat-widget.js" async></script>
+    <link rel="stylesheet" href="../frontend/widget-styles.css">
+</body>
+</html>

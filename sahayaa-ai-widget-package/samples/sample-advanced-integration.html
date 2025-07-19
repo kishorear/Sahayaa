@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahayaa AI Widget - Advanced Integration Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8fafc;
+            color: #334155;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-radius: 20px;
+        }
+        .controls {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .control-group input:focus, .control-group select:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+        .button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background-color 0.2s;
+        }
+        .button:hover {
+            background: #5b5bd6;
+        }
+        .button.secondary {
+            background: #64748b;
+        }
+        .event-log {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .event-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Advanced Widget Integration</h1>
+        <p>Customize and test all widget features with real-time configuration changes</p>
+    </div>
+
+    <div class="controls">
+        <h2>Widget Configuration</h2>
+        <div class="grid">
+            <div class="control-group">
+                <label for="apiKey">API Key:</label>
+                <input type="text" id="apiKey" value="demo_api_key_advanced" placeholder="Enter your API key">
+            </div>
+            <div class="control-group">
+                <label for="serverUrl">Server URL:</label>
+                <input type="url" id="serverUrl" value="http://localhost:3000" placeholder="https://your-server.com">
+            </div>
+            <div class="control-group">
+                <label for="primaryColor">Primary Color:</label>
+                <input type="color" id="primaryColor" value="#6366f1">
+            </div>
+            <div class="control-group">
+                <label for="position">Position:</label>
+                <select id="position">
+                    <option value="right">Right</option>
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="greetingMessage">Greeting Message:</label>
+                <input type="text" id="greetingMessage" value="Hello! How can our AI agents help you today?" placeholder="Enter greeting message">
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="autoOpen">
+                <label for="autoOpen">Auto Open Chat</label>
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="requireAuth">
+                <label for="requireAuth">Require Authentication</label>
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="enableBranding" checked>
+                <label for="enableBranding">Enable Branding</label>
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="trackEvents" checked>
+                <label for="trackEvents">Track Events</label>
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="enableAgentWorkflow" checked>
+                <label for="enableAgentWorkflow">Enable Agent Workflow</label>
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="showBehindTheScenes" checked>
+                <label for="showBehindTheScenes">Show Behind the Scenes</label>
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="showConfidenceScores">
+                <label for="showConfidenceScores">Show Confidence Scores</label>
+            </div>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="showProcessingTimes">
+                <label for="showProcessingTimes">Show Processing Times</label>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <button class="button" onclick="updateWidgetConfig()">🔄 Update Widget Configuration</button>
+            <button class="button" onclick="openWidget()">💬 Open Chat Widget</button>
+            <button class="button" onclick="closeWidget()">❌ Close Chat Widget</button>
+            <button class="button secondary" onclick="clearEventLog()">🗑️ Clear Event Log</button>
+        </div>
+    </div>
+
+    <div class="event-log">
+        <h3>Real-time Event Log</h3>
+        <div id="eventLog">
+            <div class="event-item">Widget initialized with advanced configuration...</div>
+        </div>
+    </div>
+
+    <script>
+        let widgetInstance = null;
+
+        // Initialize widget configuration
+        window.sahayaaConfig = {
+            apiKey: "demo_api_key_advanced",
+            serverUrl: "http://localhost:3000",
+            primaryColor: "#6366f1",
+            position: "right",
+            greetingMessage: "Hello! How can our AI agents help you today?",
+            autoOpen: false,
+            requireAuth: false,
+            enableBranding: true,
+            trackEvents: true,
+            enableAgentWorkflow: true,
+            showBehindTheScenes: true,
+            showConfidenceScores: false,
+            showProcessingTimes: false,
+            maxProcessingTime: 5000,
+            confidenceThreshold: 0.8
+        };
+
+        function logEvent(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const eventLog = document.getElementById('eventLog');
+            const eventItem = document.createElement('div');
+            eventItem.className = 'event-item';
+            eventItem.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            if (data) {
+                eventItem.innerHTML += `<br><span style="color: #64748b;">${JSON.stringify(data, null, 2)}</span>`;
+            }
+            eventLog.insertBefore(eventItem, eventLog.firstChild);
+            
+            // Keep only last 20 events
+            while (eventLog.children.length > 20) {
+                eventLog.removeChild(eventLog.lastChild);
+            }
+        }
+
+        function updateWidgetConfig() {
+            const newConfig = {
+                apiKey: document.getElementById('apiKey').value,
+                serverUrl: document.getElementById('serverUrl').value,
+                primaryColor: document.getElementById('primaryColor').value,
+                position: document.getElementById('position').value,
+                greetingMessage: document.getElementById('greetingMessage').value,
+                autoOpen: document.getElementById('autoOpen').checked,
+                requireAuth: document.getElementById('requireAuth').checked,
+                enableBranding: document.getElementById('enableBranding').checked,
+                trackEvents: document.getElementById('trackEvents').checked,
+                enableAgentWorkflow: document.getElementById('enableAgentWorkflow').checked,
+                showBehindTheScenes: document.getElementById('showBehindTheScenes').checked,
+                showConfidenceScores: document.getElementById('showConfidenceScores').checked,
+                showProcessingTimes: document.getElementById('showProcessingTimes').checked,
+                maxProcessingTime: 5000,
+                confidenceThreshold: 0.8
+            };
+
+            // Update global config
+            window.sahayaaConfig = { ...window.sahayaaConfig, ...newConfig };
+            
+            logEvent('Widget configuration updated', {
+                primaryColor: newConfig.primaryColor,
+                position: newConfig.position,
+                enableAgentWorkflow: newConfig.enableAgentWorkflow,
+                showBehindTheScenes: newConfig.showBehindTheScenes
+            });
+
+            // Reinitialize widget (in a real implementation, you might need to destroy and recreate)
+            alert('Configuration updated! The widget will use new settings for future interactions.');
+        }
+
+        function openWidget() {
+            if (window.SahayaaAI) {
+                window.SahayaaAI.openChat();
+                logEvent('Chat widget opened programmatically');
+            } else {
+                logEvent('ERROR: Widget not loaded yet');
+            }
+        }
+
+        function closeWidget() {
+            if (window.SahayaaAI) {
+                window.SahayaaAI.closeChat();
+                logEvent('Chat widget closed programmatically');
+            } else {
+                logEvent('ERROR: Widget not loaded yet');
+            }
+        }
+
+        function clearEventLog() {
+            const eventLog = document.getElementById('eventLog');
+            eventLog.innerHTML = '<div class="event-item">Event log cleared...</div>';
+        }
+
+        // Listen for all widget events
+        window.addEventListener('sahayaaWidgetEvent', function(event) {
+            const { event: eventName, sessionId, timestamp, ...data } = event.detail;
+            logEvent(`Widget Event: ${eventName}`, {
+                sessionId: sessionId?.substring(0, 8) + '...',
+                timestamp,
+                ...data
+            });
+        });
+
+        // Listen for widget-specific events
+        window.addEventListener('sahayaaOpenChat', function() {
+            logEvent('Chat opened via API call');
+        });
+
+        window.addEventListener('sahayaaCloseChat', function() {
+            logEvent('Chat closed via API call');
+        });
+
+        window.addEventListener('sahayaaTrackEvent', function(event) {
+            logEvent('Custom event tracked', event.detail);
+        });
+
+        // Demo functions for testing widget API
+        function sendTestMessage() {
+            if (window.SahayaaAI) {
+                // This would require access to widget internals
+                logEvent('Test message sent (simulated)');
+            }
+        }
+
+        function simulateAgentWorkflow() {
+            logEvent('Simulating agent workflow...', {
+                step1: 'ChatProcessor analyzing message',
+                step2: 'InstructionLookup searching knowledge base',
+                step3: 'TicketLookup finding similar cases',
+                step4: 'LLM generating response'
+            });
+        }
+
+        // Initialize event logging
+        document.addEventListener('DOMContentLoaded', function() {
+            logEvent('Advanced demo page loaded');
+            
+            // Set form values from current config
+            document.getElementById('apiKey').value = window.sahayaaConfig.apiKey;
+            document.getElementById('serverUrl').value = window.sahayaaConfig.serverUrl;
+            document.getElementById('primaryColor').value = window.sahayaaConfig.primaryColor;
+            document.getElementById('position').value = window.sahayaaConfig.position;
+            document.getElementById('greetingMessage').value = window.sahayaaConfig.greetingMessage;
+            document.getElementById('autoOpen').checked = window.sahayaaConfig.autoOpen;
+            document.getElementById('requireAuth').checked = window.sahayaaConfig.requireAuth;
+            document.getElementById('enableBranding').checked = window.sahayaaConfig.enableBranding;
+            document.getElementById('trackEvents').checked = window.sahayaaConfig.trackEvents;
+            document.getElementById('enableAgentWorkflow').checked = window.sahayaaConfig.enableAgentWorkflow;
+            document.getElementById('showBehindTheScenes').checked = window.sahayaaConfig.showBehindTheScenes;
+            document.getElementById('showConfidenceScores').checked = window.sahayaaConfig.showConfidenceScores;
+            document.getElementById('showProcessingTimes').checked = window.sahayaaConfig.showProcessingTimes;
+        });
+    </script>
+
+    <!-- Sahayaa AI Chat Widget -->
+    <script src="../frontend/sahayaa-chat-widget.js" async></script>
+    <link rel="stylesheet" href="../frontend/widget-styles.css">
+</body>
+</html>

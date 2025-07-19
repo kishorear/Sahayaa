@@ -145,7 +145,7 @@ export default function ContactUsPage() {
                     <div>
                       <h3 className="font-medium">Email</h3>
                       <p className="text-gray-600 dark:text-gray-400">
-                        {emailStatus?.supportEmail || "support@supportai.com"}
+                        {emailStatus?.supportEmail || "support@sahayaa.ai"}
                       </p>
                     </div>
                   </div>

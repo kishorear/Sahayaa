@@ -87,12 +87,12 @@ export default function LandingPage() {
               <CardContent className="pt-6">
                 <div className="mb-4 p-3 bg-green-100 rounded-full w-14 h-14 flex items-center justify-center">
                   <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">MCP-Enhanced Solution Suggestions</h3>
+                <h3 className="text-xl font-bold mb-2">80% Efficiency Boost for Support Teams</h3>
                 <p className="text-gray-600">
-                  AI agents use MCP (Model Context Protocol) to analyze similar previous tickets and provide step-by-step solution suggestions for issues that have been resolved before.
+                  Dramatically improve your support team's productivity by automatically handling routine inquiries and providing instant solution suggestions, letting your team focus on complex issues that truly need human expertise.
                 </p>
               </CardContent>
             </Card>

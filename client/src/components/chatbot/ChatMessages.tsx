@@ -39,8 +39,8 @@ export default function ChatMessages({ messages, isTyping, ticketCreatedThisSess
           <div
             className={`${
               message.sender === "user"
-                ? "mr-3 bg-primary py-2 px-4 rounded-lg rounded-tr-none text-white max-w-[75%]"
-                : "ml-3 bg-gray-100 py-2 px-4 rounded-lg rounded-tl-none max-w-[75%]"
+                ? "mr-3 bg-primary py-2 px-4 rounded-lg rounded-tr-none text-white max-w-[80%]"
+                : "ml-3 bg-gray-100 py-2 px-4 rounded-lg rounded-tl-none max-w-[80%] min-w-0"
             }`}
           >
             <FormattedMessage 
@@ -50,17 +50,17 @@ export default function ChatMessages({ messages, isTyping, ticketCreatedThisSess
             
             {/* Render action buttons if present */}
             {message.actionButtons && message.actionButtons.type === 'ticket_creation' && (
-              <div className="flex gap-2 mt-3">
+              <div className="flex flex-col gap-2 mt-3 w-full">
                 {ticketCreatedThisSession ? (
                   <div className="text-xs text-gray-600 italic">
                     ✓ Ticket already created this session
                   </div>
                 ) : (
-                  <>
+                  <div className="flex flex-wrap gap-2">
                     <Button 
                       size="sm" 
                       onClick={message.actionButtons.onYes}
-                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                      className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 flex-shrink-0"
                     >
                       Yes, create ticket
                     </Button>
@@ -68,11 +68,11 @@ export default function ChatMessages({ messages, isTyping, ticketCreatedThisSess
                       size="sm" 
                       variant="outline" 
                       onClick={message.actionButtons.onNo}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-700"
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs px-3 py-1 flex-shrink-0"
                     >
                       No, continue chat
                     </Button>
-                  </>
+                  </div>
                 )}
               </div>
             )}

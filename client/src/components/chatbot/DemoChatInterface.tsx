@@ -9,8 +9,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 type DemoMessage = {
   id: string;
   content: string;
-  sender: "user" | "ai";
+  sender: "user" | "ai" | "system";
   timestamp: Date;
+  processingSteps?: {
+    step: string;
+    details: string;
+    duration: number;
+    status: 'processing' | 'complete' | 'found';
+    data?: any;
+  }[];
 };
 
 // Demo responses showcasing agent workflow capabilities
@@ -42,7 +49,7 @@ const demoResponses = {
   ]
 };
 
-// Function to determine response type based on message content
+// Function to determine response type and generate processing steps
 function getResponseType(message: string): keyof typeof demoResponses {
   const lowerMessage = message.toLowerCase();
   
@@ -56,6 +63,163 @@ function getResponseType(message: string): keyof typeof demoResponses {
     return 'ticket';
   } else {
     return 'general';
+  }
+}
+
+// Function to generate realistic processing steps based on message type
+function generateProcessingSteps(message: string, responseType: keyof typeof demoResponses) {
+  const lowerMessage = message.toLowerCase();
+  
+  const baseSteps = [
+    {
+      step: "ChatProcessor Agent",
+      details: `Analyzing user message: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`,
+      duration: 450,
+      status: 'complete' as const,
+      data: {
+        category: responseType,
+        confidence: 0.94,
+        keywords_extracted: lowerMessage.split(' ').filter(w => w.length > 3).slice(0, 3)
+      }
+    }
+  ];
+
+  switch (responseType) {
+    case 'technical':
+      return [
+        ...baseSteps,
+        {
+          step: "InstructionLookup Agent",
+          details: "Searching knowledge base for API integration documentation",
+          duration: 680,
+          status: 'found' as const,
+          data: {
+            documents_found: 8,
+            relevance_score: 0.89,
+            top_matches: ["API Authentication Guide", "Common Integration Errors", "Webhook Setup"]
+          }
+        },
+        {
+          step: "TicketLookup Agent", 
+          details: "Finding similar resolved technical tickets",
+          duration: 520,
+          status: 'found' as const,
+          data: {
+            similar_tickets: 12,
+            resolution_rate: 0.89,
+            avg_resolution_time: "15 minutes",
+            patterns: ["401 authentication errors", "API key format issues", "CORS configuration"]
+          }
+        },
+        {
+          step: "LLM Resolution Agent",
+          details: "Generating comprehensive technical solution using OpenAI",
+          duration: 890,
+          status: 'complete' as const,
+          data: {
+            model_used: "gpt-4",
+            tokens_processed: 1247,
+            solution_confidence: 0.92,
+            steps_generated: 5
+          }
+        }
+      ];
+    
+    case 'billing':
+      return [
+        ...baseSteps,
+        {
+          step: "Account Context Agent",
+          details: "Retrieving customer billing and usage data",
+          duration: 380,
+          status: 'found' as const,
+          data: {
+            current_plan: "Professional ($79/month)",
+            usage_percentage: 0.67,
+            last_payment: "2024-12-01",
+            status: "Active"
+          }
+        },
+        {
+          step: "BillingOptimizer Agent",
+          details: "Analyzing usage patterns for cost optimization",
+          duration: 620,
+          status: 'complete' as const,
+          data: {
+            optimization_found: true,
+            potential_savings: "$20/month",
+            recommended_plan: "Growth Plan ($59/month)",
+            confidence: 0.87
+          }
+        },
+        {
+          step: "PolicyCompliance Agent",
+          details: "Checking billing policies and regulations",
+          duration: 340,
+          status: 'complete' as const,
+          data: {
+            compliance_status: "Compliant",
+            regulations_checked: ["PCI DSS", "GDPR", "SOX"],
+            policy_violations: 0
+          }
+        }
+      ];
+      
+    case 'ticket':
+      return [
+        ...baseSteps,
+        {
+          step: "TicketClassifier Agent",
+          details: "Categorizing issue and determining priority",
+          duration: 420,
+          status: 'complete' as const,
+          data: {
+            category: "Technical Support",
+            priority: "Medium",
+            department: "Engineering",
+            sla_target: "24 hours"
+          }
+        },
+        {
+          step: "ContextEnricher Agent",
+          details: "Gathering relevant context from user history and similar cases",
+          duration: 760,
+          status: 'found' as const,
+          data: {
+            user_history: 3,
+            similar_cases: 23,
+            success_rate: 0.96,
+            common_solutions: ["Password reset", "Cache clear", "Browser update"]
+          }
+        },
+        {
+          step: "TicketFormatter Agent",
+          details: "Creating structured ticket with auto-generated fields",
+          duration: 290,
+          status: 'complete' as const,
+          data: {
+            ticket_id: "#TKT-2024-" + Math.floor(Math.random() * 9999),
+            auto_tags: ["login-issues", "dashboard", "authentication"],
+            estimated_resolution: "2-3 business days"
+          }
+        }
+      ];
+      
+    default:
+      return [
+        ...baseSteps,
+        {
+          step: "ContextAnalysis Agent",
+          details: "Understanding user intent and gathering relevant information",
+          duration: 590,
+          status: 'complete' as const,
+          data: {
+            intent_confidence: 0.85,
+            context_sources: 4,
+            knowledge_domains: ["general_support", "product_info", "troubleshooting"]
+          }
+        }
+      ];
   }
 }
 
@@ -123,6 +287,7 @@ export default function DemoChatInterface() {
       const responses = demoResponses[responseType];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
       
+      // First, add the AI response
       const aiMessage: DemoMessage = {
         id: (Date.now() + 1).toString(),
         content: randomResponse,
@@ -133,6 +298,21 @@ export default function DemoChatInterface() {
       setMessages(prev => [...prev, aiMessage]);
       setIsTyping(false);
       setProcessingStep(0);
+
+      // Then add the behind-the-scenes processing breakdown
+      setTimeout(() => {
+        const processingSteps = generateProcessingSteps(messageToSend, responseType);
+        const systemMessage: DemoMessage = {
+          id: (Date.now() + 2).toString(),
+          content: "🔍 **Behind the Scenes: Agent Workflow Analysis**",
+          sender: "system",
+          timestamp: new Date(),
+          processingSteps: processingSteps
+        };
+
+        setMessages(prev => [...prev, systemMessage]);
+      }, 1000); // Show processing details 1 second after the response
+      
     }, processingTime + Math.random() * 1000); // Longer, more realistic processing time
   };
 
@@ -190,52 +370,113 @@ export default function DemoChatInterface() {
 
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-900">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[70%] rounded-lg p-3 ${
-                message.sender === "user"
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              }`}
-            >
-              <div className="flex items-start gap-2">
-                {message.sender === "ai" && (
-                  <Bot className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                )}
-                {message.sender === "user" && (
-                  <User className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                )}
-                <div className="flex-1">
-                  <div className="text-sm whitespace-pre-wrap">
-                    {message.content.split('\n').map((line, index) => {
-                      // Format agent workflow steps with visual indicators
-                      if (line.includes('**Step') || line.includes('**Agent')) {
-                        return <div key={index} className="font-medium text-primary mb-1">{line}</div>;
-                      }
-                      if (line.includes('**') && (line.includes('✅') || line.includes('Complete'))) {
-                        return <div key={index} className="text-green-600 dark:text-green-400 font-medium">{line}</div>;
-                      }
-                      if (line.includes('**Confidence') || line.includes('**Resolution') || line.includes('**Similar')) {
-                        return <div key={index} className="text-blue-600 dark:text-blue-400 font-medium">{line}</div>;
-                      }
-                      if (line.includes('**Ticket') || line.includes('**ID:') || line.includes('**Reference:')) {
-                        return <div key={index} className="text-purple-600 dark:text-purple-400 font-medium">{line}</div>;
-                      }
-                      return <div key={index}>{line}</div>;
-                    })}
+        {messages.map((message) => {
+          if (message.sender === "system" && message.processingSteps) {
+            // Special rendering for system messages with processing steps
+            return (
+              <div key={message.id} className="flex justify-center">
+                <div className="max-w-[90%] rounded-lg p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                      <MessageSquare className="w-3 h-3 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-indigo-900 dark:text-indigo-100">{message.content}</h3>
                   </div>
-                  <p className="text-xs opacity-70 mt-1">
-                    {message.timestamp.toLocaleTimeString()}
+                  
+                  <div className="space-y-3">
+                    {message.processingSteps.map((step, index) => (
+                      <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${
+                              step.status === 'complete' ? 'bg-green-500' : 
+                              step.status === 'found' ? 'bg-blue-500' : 'bg-yellow-500'
+                            }`}></span>
+                            <span className="font-medium text-sm">{step.step}</span>
+                          </div>
+                          <span className="text-xs text-gray-500">{step.duration}ms</span>
+                        </div>
+                        
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{step.details}</p>
+                        
+                        {step.data && (
+                          <div className="bg-gray-50 dark:bg-gray-700 rounded p-2 text-xs">
+                            <div className="grid grid-cols-1 gap-1">
+                              {Object.entries(step.data).map(([key, value]) => (
+                                <div key={key} className="flex justify-between">
+                                  <span className="text-gray-500 dark:text-gray-400 capitalize">
+                                    {key.replace(/_/g, ' ')}:
+                                  </span>
+                                  <span className="font-mono text-gray-700 dark:text-gray-300">
+                                    {Array.isArray(value) ? value.join(', ') : 
+                                     typeof value === 'number' && value < 1 ? (value * 100).toFixed(0) + '%' :
+                                     value?.toString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+                    Processing completed in {message.processingSteps.reduce((total, step) => total + step.duration, 0)}ms
                   </p>
                 </div>
               </div>
+            );
+          }
+          
+          // Normal message rendering
+          return (
+            <div
+              key={message.id}
+              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[70%] rounded-lg p-3 ${
+                  message.sender === "user"
+                    ? "bg-primary text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {message.sender === "ai" && (
+                    <Bot className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  )}
+                  {message.sender === "user" && (
+                    <User className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  )}
+                  <div className="flex-1">
+                    <div className="text-sm whitespace-pre-wrap">
+                      {message.content.split('\n').map((line, index) => {
+                        // Format agent workflow steps with visual indicators
+                        if (line.includes('**Step') || line.includes('**Agent')) {
+                          return <div key={index} className="font-medium text-primary mb-1">{line}</div>;
+                        }
+                        if (line.includes('**') && (line.includes('✅') || line.includes('Complete'))) {
+                          return <div key={index} className="text-green-600 dark:text-green-400 font-medium">{line}</div>;
+                        }
+                        if (line.includes('**Confidence') || line.includes('**Resolution') || line.includes('**Similar')) {
+                          return <div key={index} className="text-blue-600 dark:text-blue-400 font-medium">{line}</div>;
+                        }
+                        if (line.includes('**Ticket') || line.includes('**ID:') || line.includes('**Reference:')) {
+                          return <div key={index} className="text-purple-600 dark:text-purple-400 font-medium">{line}</div>;
+                        }
+                        return <div key={index}>{line}</div>;
+                      })}
+                    </div>
+                    <p className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         
         {isTyping && (
           <div className="flex justify-start">

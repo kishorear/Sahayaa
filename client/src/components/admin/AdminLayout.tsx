@@ -210,23 +210,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="profile-menu ml-3 relative cursor-pointer">
                   <Avatar>
                     {user?.profilePicture ? (
-                      <>
-                        {console.log("Using profile picture in header:", user.profilePicture)}
-                        <AvatarImage 
-                          src={user.profilePicture} 
-                          alt={user?.name || user?.username || 'User'} 
-                          onError={(e) => {
-                            console.error("Error loading profile picture in header:", e);
+                      <AvatarImage 
+                        src={user.profilePicture} 
+                        alt={user?.name || user?.username || 'User'} 
+                        onError={(e) => {
+                          try {
                             // Fallback to generated avatar on error
-                            e.currentTarget.src = `https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`;
-                          }}
-                        />
-                      </>
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.src = `https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`;
+                          } catch (error) {
+                            console.error("Error in image fallback:", error);
+                          }
+                        }}
+                      />
                     ) : (
-                      <>
-                        {console.log("No profile picture in header, using generated avatar")}
-                        <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
-                      </>
+                      <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
                     )}
                     <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
@@ -249,23 +247,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <div className="flex items-center">
                     <Avatar className="h-8 w-8 mr-2">
                       {user?.profilePicture ? (
-                        <>
-                          {console.log("Using profile picture in mobile menu:", user.profilePicture)}
-                          <AvatarImage 
-                            src={user.profilePicture} 
-                            alt={user?.name || user?.username || 'User'} 
-                            onError={(e) => {
-                              console.error("Error loading profile picture in mobile menu:", e);
+                        <AvatarImage 
+                          src={user.profilePicture} 
+                          alt={user?.name || user?.username || 'User'} 
+                          onError={(e) => {
+                            try {
                               // Fallback to generated avatar on error
-                              e.currentTarget.src = `https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`;
-                            }}
-                          />
-                        </>
+                              const target = e.currentTarget as HTMLImageElement;
+                              target.src = `https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`;
+                            } catch (error) {
+                              console.error("Error in image fallback:", error);
+                            }
+                          }}
+                        />
                       ) : (
-                        <>
-                          {console.log("No profile picture in mobile menu, using generated avatar")}
-                          <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
-                        </>
+                        <AvatarImage src={`https://avatars.dicebear.com/api/initials/${user?.name || user?.username || 'U'}.svg`} alt={user?.name || user?.username || 'User'} />
                       )}
                       <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
                     </Avatar>

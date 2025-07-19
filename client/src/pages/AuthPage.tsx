@@ -107,9 +107,7 @@ export default function AuthPage() {
                   <div className="mt-6">
                     <Alert className="bg-muted/50">
                       <InfoIcon className="h-4 w-4 mr-2" />
-                      <AlertDescription>
-                        Need an account? Please contact a system creator to register as a new user.
-                      </AlertDescription>
+                      <AlertDescription>Need an account? Please contact us</AlertDescription>
                     </Alert>
                   </div>
                 </CardContent>
@@ -117,7 +115,6 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
-      
       {/* Right side - Hero */}
       <div className="hidden md:flex md:w-1/2 bg-primary-50 dark:bg-primary-950 flex-col justify-center p-12 relative">
         <div className="max-w-md mx-auto space-y-6">

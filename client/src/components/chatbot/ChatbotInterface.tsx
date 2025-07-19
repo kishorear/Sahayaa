@@ -23,6 +23,30 @@ type Message = {
   };
 };
 
+// Helper function to check if user wants to create a ticket
+function shouldShowCreateTicketButton(messages: Message[]): boolean {
+  if (messages.length === 0) return false;
+  
+  // Get the last few user messages to check for ticket creation intent
+  const recentUserMessages = messages
+    .filter(msg => msg.sender === 'user')
+    .slice(-3) // Check last 3 user messages
+    .map(msg => msg.content.toLowerCase());
+  
+  const ticketKeywords = [
+    'create ticket', 'create a ticket', 'make a ticket', 'make ticket',
+    'open ticket', 'open a ticket', 'new ticket', 'ticket please',
+    'submit ticket', 'file ticket', 'report issue', 'log issue',
+    'escalate', 'escalate this', 'need help with', 'having trouble',
+    'not working', "doesn't work", 'broken', 'error', 'problem',
+    'issue with', 'bug', 'support ticket', 'technical support'
+  ];
+  
+  return recentUserMessages.some(message => 
+    ticketKeywords.some(keyword => message.includes(keyword))
+  );
+}
+
 export default function ChatbotInterface() {
   // Basic state with sessionStorage persistence
   const [isChatOpen, setIsChatOpen] = useState(() => {
@@ -740,8 +764,8 @@ export default function ChatbotInterface() {
               </div>
             )}
 
-            {/* Create Ticket Button */}
-            {messages.filter(msg => msg.sender === 'user').length > 0 && (
+            {/* Create Ticket Button - Only show when user indicates they want to create a ticket */}
+            {shouldShowCreateTicketButton(messages) && (
               <div className="border-t border-gray-200 px-4 py-2 bg-blue-50/50">
                 <Button
                   variant="outline"

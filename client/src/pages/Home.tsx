@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import LogoIcon from "@/components/LogoIcon";
 
 export default function Home() {
   const { user, logoutMutation } = useAuth();
@@ -206,7 +207,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold text-white">Sahayaa AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>

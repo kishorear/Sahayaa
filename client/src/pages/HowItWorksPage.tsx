@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import LogoIcon from "@/components/LogoIcon";
 
 export default function HowItWorksPage() {
   document.title = "How It Works | AI Support Platform";
@@ -13,7 +14,7 @@ export default function HowItWorksPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold">Sahayaa AI</span>
               </div>
             </Link>
@@ -234,12 +235,12 @@ export default function HowItWorksPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="flex items-center">
-              <img src="/logo.svg" alt="Support AI Logo" className="w-6 h-6" />
-              <span className="ml-2 text-lg font-bold">Support AI</span>
+              <LogoIcon className="w-6 h-6" />
+              <span className="ml-2 text-lg font-bold">Sahayaa AI</span>
             </div>
             
             <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} Support AI. All rights reserved.
+              &copy; {new Date().getFullYear()} Sahayaa AI. All rights reserved.
             </div>
           </div>
         </div>

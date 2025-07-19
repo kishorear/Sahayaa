@@ -6,6 +6,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'wouter';
+import LogoIcon from '@/components/LogoIcon';
 
 import {
   Card,
@@ -99,7 +100,7 @@ export default function ContactUsPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold">Sahayaa AI</span>
               </div>
             </Link>
@@ -273,7 +274,7 @@ export default function ContactUsPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold text-white">Sahayaa AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>

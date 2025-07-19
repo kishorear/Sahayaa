@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
 import { ArrowRight, Check } from "lucide-react";
+import LogoIcon from "@/components/LogoIcon";
 
 interface PricingPlan {
   name: string;
@@ -74,7 +75,7 @@ export default function PricingPage() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <img src="/logo.svg" alt="Sahayaa AI Logo" className="w-8 h-8" />
+                <LogoIcon className="w-8 h-8" />
                 <span className="ml-2 text-xl font-bold">Sahayaa AI</span>
               </div>
             </Link>
@@ -267,8 +268,8 @@ export default function PricingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
               <div className="flex items-center">
-                <img src="/logo.svg" alt="Support AI Logo" className="w-8 h-8" />
-                <span className="ml-2 text-xl font-bold text-white">Support AI</span>
+                <LogoIcon className="w-8 h-8" />
+                <span className="ml-2 text-xl font-bold text-white">Sahayaa AI</span>
               </div>
               <p className="mt-2 text-sm">AI-powered customer support solution</p>
             </div>
@@ -294,7 +295,7 @@ export default function PricingPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} Support AI. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Sahayaa AI. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -151,9 +151,10 @@ export function registerEmailSupportRoutes(app: Express) {
         console.warn('Email service not configured. Processing contact form without sending emails.');
         
         return res.status(200).json({
-          message: 'Contact form submitted successfully, but email delivery is not configured',
+          message: 'Thank you for contacting us! Your message has been received and our team will respond within 24-48 hours.',
           emailSent: false,
-          emailConfigured: false
+          emailConfigured: false,
+          confirmationMessage: `Dear ${name}, thank you for contacting Sahayaa AI regarding "${subject}". We have received your message and will respond shortly.`
         });
       }
       
@@ -179,16 +180,28 @@ export function registerEmailSupportRoutes(app: Express) {
       // Send confirmation to the customer
       await emailService.sendEmail(
         email,
-        `We received your message: ${subject}`,
-        `<p>Dear ${name},</p>
-        <p>Thank you for contacting us. We have received your message and will get back to you shortly.</p>
-        <p>Best regards,<br>The Support Team</p>`
+        `Thank you for contacting Sahayaa AI - ${subject}`,
+        `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2563eb; margin-bottom: 20px;">Thank you for contacting Sahayaa AI</h2>
+          <p>Dear ${name},</p>
+          <p>We have successfully received your message regarding "<strong>${subject}</strong>" and appreciate you taking the time to reach out to us.</p>
+          <p>Our support team will review your inquiry and respond within 24-48 hours during business days. If your matter is urgent, please don't hesitate to follow up with us.</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Your message:</strong></p>
+            <p style="margin: 10px 0 0 0; font-style: italic;">"${message}"</p>
+          </div>
+          <p>Thank you for choosing Sahayaa AI for your customer support needs.</p>
+          <p style="margin-top: 30px;">Best regards,<br>
+          <strong>The Sahayaa AI Support Team</strong><br>
+          <a href="mailto:support@sahayaa.ai" style="color: #2563eb;">support@sahayaa.ai</a></p>
+        </div>`
       );
       
       return res.status(200).json({
-        message: 'Contact form submitted successfully',
+        message: 'Thank you for contacting us! Your message has been received and our team will respond within 24-48 hours.',
         emailSent: true,
-        emailConfigured: true
+        emailConfigured: true,
+        confirmationMessage: `Dear ${name}, thank you for contacting Sahayaa AI regarding "${subject}". We have received your message and a confirmation email has been sent to ${email}.`
       });
       
     } catch (error: any) {

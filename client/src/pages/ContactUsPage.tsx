@@ -75,8 +75,8 @@ export default function ContactUsPage() {
       const response = await apiRequest("POST", "/api/contact", data);
       
       toast({
-        title: "Message sent!",
-        description: "Thank you for contacting us. We'll get back to you soon.",
+        title: "Message Received",
+        description: response.confirmationMessage || "Thank you for contacting Sahayaa AI. We have received your message and our team will respond within 24-48 hours.",
       });
       
       contactForm.reset();

@@ -957,53 +957,105 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
     return "Documentation: Usage Instructions";
   }
   
+  // Enhanced title extraction that converts user messages into professional titles
+  const extractProfessionalTitle = (message: string, component: string): string => {
+    // Clean and normalize the message
+    const cleanMessage = message.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Extract issue type and problem area
+    if (/login|sign in|authentication|access/.test(cleanMessage)) {
+      if (/failed|not working|can't|unable/.test(cleanMessage)) {
+        return "Authentication: Login Access Failed";
+      }
+      if (/password|reset/.test(cleanMessage)) {
+        return "Authentication: Password Reset Issue";
+      }
+      if (/error|problem/.test(cleanMessage)) {
+        return "Authentication: Account Access Error";
+      }
+      return "Authentication: Login System Issue";
+    }
+    
+    if (/payment|billing|charge/.test(cleanMessage)) {
+      if (/failed|declined/.test(cleanMessage)) {
+        return "Billing: Payment Processing Failed";
+      }
+      return "Billing: Payment Account Issue";
+    }
+    
+    if (/api|integration/.test(cleanMessage)) {
+      if (/error|fail/.test(cleanMessage)) {
+        return "API: Integration Error";
+      }
+      return "API: Technical Support Request";
+    }
+    
+    if (/bug|error|broken|not working/.test(cleanMessage)) {
+      // Try to identify what's broken
+      const featureMatch = cleanMessage.match(/(dashboard|profile|settings|upload|download|search|navigation|form)/);
+      if (featureMatch) {
+        return `System Error: ${featureMatch[1].charAt(0).toUpperCase() + featureMatch[1].slice(1)} Feature Issue`;
+      }
+      return "System Error: Technical Malfunction";
+    }
+    
+    if (/help|how to|tutorial|guide/.test(cleanMessage)) {
+      return "Support: Usage Assistance Request";
+    }
+    
+    // For specific technical terms, create contextual titles
+    if (/upload|file/.test(cleanMessage)) {
+      return "File Management: Upload Issue";
+    }
+    
+    if (/email|notification/.test(cleanMessage)) {
+      return "Communication: Email System Issue";
+    }
+    
+    // If no specific pattern matches, create a generic but professional title
+    const words = cleanMessage.split(/\s+/).slice(0, 4);
+    const titleWords = words
+      .filter(word => word.length > 2)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .slice(0, 3);
+    
+    if (titleWords.length >= 2) {
+      return `${component}: ${titleWords.join(' ')} Issue`;
+    }
+    
+    return `${component}: User Support Request`;
+  };
+  
   // Try to extract a meaningful title from the first message
-  if (firstMessage.length > 5 && firstMessage.length < 60) {
-    // Process the first message into a title format
+  if (firstMessage.length > 5) {
     const firstSentence = firstMessage.split(/[.!?]/)[0].trim();
     if (firstSentence && firstSentence.length > 8) {
-      const wordLimit = 8;
       const component = identifyComponent(firstSentence);
-      const words = firstSentence.split(/\s+/).slice(0, wordLimit);
-      
-      const processedTitle = words
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
-        
-      return `${component}: ${processedTitle}`;
+      return extractProfessionalTitle(firstSentence, component);
     }
   }
   
   // Try the last message if first message wasn't suitable
-  if (lastMessage.length > 5 && lastMessage.length < 60) {
+  if (lastMessage.length > 5 && lastMessage !== firstMessage) {
     const lastSentence = lastMessage.split(/[.!?]/)[0].trim();
     if (lastSentence && lastSentence.length > 8) {
-      const wordLimit = 8;
       const component = identifyComponent(lastSentence);
-      const words = lastSentence.split(/\s+/).slice(0, wordLimit);
-      
-      const processedTitle = words
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
-        
-      return `${component}: ${processedTitle}`;
+      return extractProfessionalTitle(lastSentence, component);
     }
   }
   
-  // Create a composite title using both messages if they're different
-  if (firstMessage !== lastMessage && 
-      firstMessage.length < 30 && 
-      lastMessage.length < 30) {
-    const component = identifyComponent(firstMessage + " " + lastMessage);
-    return `${component}: ${firstMessage.substring(0, 20).trim()} - ${lastMessage.substring(0, 20).trim()}`;
+  // Final fallback - analyze all user messages together
+  const combinedText = allUserMessages.map(msg => msg.content).join(' ').trim();
+  if (combinedText.length > 0) {
+    const component = identifyComponent(combinedText);
+    return extractProfessionalTitle(combinedText, component);
   }
   
-  // Final fallback for when all else fails
-  const mostValuableMessage = lastMessage.length > firstMessage.length ? lastMessage : firstMessage;
-  const component = identifyComponent(mostValuableMessage);
-  return `${component}: ${mostValuableMessage.length > 40 
-    ? mostValuableMessage.substring(0, 37) + '...'
-    : mostValuableMessage}`;
+  // Ultimate fallback
+  return "Support: General Assistance Request";
 }
 
 export async function summarizeConversation(messages: ChatMessage[], tenantId?: number): Promise<string> {

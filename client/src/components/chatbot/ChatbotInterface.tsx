@@ -23,28 +23,45 @@ type Message = {
   };
 };
 
-// Helper function to check if user wants to create a ticket
+// Helper function to check if AI has completed diagnosis and ticket creation should be offered
 function shouldShowCreateTicketButton(messages: Message[]): boolean {
-  if (messages.length === 0) return false;
+  if (messages.length < 2) return false; // Need at least user message and AI response
   
-  // Get the last few user messages to check for ticket creation intent
-  const recentUserMessages = messages
+  // Check if user has expressed an issue or problem
+  const userMessages = messages
     .filter(msg => msg.sender === 'user')
-    .slice(-3) // Check last 3 user messages
     .map(msg => msg.content.toLowerCase());
   
-  const ticketKeywords = [
-    'create ticket', 'create a ticket', 'make a ticket', 'make ticket',
-    'open ticket', 'open a ticket', 'new ticket', 'ticket please',
-    'submit ticket', 'file ticket', 'report issue', 'log issue',
-    'escalate', 'escalate this', 'need help with', 'having trouble',
-    'not working', "doesn't work", 'broken', 'error', 'problem',
-    'issue with', 'bug', 'support ticket', 'technical support'
+  const issueKeywords = [
+    'problem', 'issue', 'error', 'broken', 'not working', "doesn't work",
+    'help', 'trouble', 'bug', 'wrong', 'failed', 'crash', 'stuck'
   ];
   
-  return recentUserMessages.some(message => 
-    ticketKeywords.some(keyword => message.includes(keyword))
+  const hasIssue = userMessages.some(message => 
+    issueKeywords.some(keyword => message.includes(keyword))
   );
+  
+  if (!hasIssue) return false;
+  
+  // Check if AI has provided diagnostic response with information gathering
+  const aiMessages = messages
+    .filter(msg => msg.sender === 'ai')
+    .map(msg => msg.content.toLowerCase());
+  
+  const diagnosticKeywords = [
+    'can you provide more details', 'could you tell me more', 'what specific',
+    'when did this start', 'what steps did you take', 'what browser',
+    'what device', 'error message', 'screenshot', 'reproduce the issue',
+    'understand your issue', 'help me understand', 'more information',
+    'additional details', 'specific steps', 'troubleshooting'
+  ];
+  
+  const aiHasDiagnosed = aiMessages.some(message => 
+    diagnosticKeywords.some(keyword => message.includes(keyword))
+  );
+  
+  // Only show button if user has an issue AND AI has started diagnostic process
+  return hasIssue && aiHasDiagnosed && messages.length >= 4; // At least 2 exchanges
 }
 
 export default function ChatbotInterface() {

@@ -136,7 +136,7 @@ export const insertUserSchema = createInsertSchema(users)
 export const updateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").optional(),
   email: z.string().email("Please enter a valid email").optional(),
-  company: z.string().min(2, "Company name must be at least 2 characters").optional(),
+  company: z.string().optional(),
   profilePicture: z.string().nullable().optional(),
 });
 

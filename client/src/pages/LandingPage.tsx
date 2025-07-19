@@ -138,11 +138,11 @@ export default function LandingPage() {
                   <div className="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center z-10">
                     <span className="text-xl font-bold">2</span>
                   </div>
-                  <h3 className="text-xl font-bold ml-4">AI Agent Processing</h3>
+                  <h3 className="text-xl font-bold ml-4">AI Solution Analysis</h3>
                 </div>
                 <div className="ml-20">
                   <p className="text-gray-600">
-                    Multiple AI agents work together: Chat Processor analyzes the message, Instruction Lookup searches knowledge bases, Ticket Lookup finds similar cases, and Formatter structures the response.
+                    For known issues, the AI verifies previously occurred tickets and searches predefined documentation to provide instant solutions based on successful past resolutions.
                   </p>
                 </div>
               </div>
@@ -152,11 +152,11 @@ export default function LandingPage() {
                   <div className="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center z-10">
                     <span className="text-xl font-bold">3</span>
                   </div>
-                  <h3 className="text-xl font-bold ml-4">MCP Solution Suggestions or Routing</h3>
+                  <h3 className="text-xl font-bold ml-4">Smart Ticket Creation & Routing</h3>
                 </div>
                 <div className="ml-20">
                   <p className="text-gray-600">
-                    For known issues, AI agents provide MCP-powered solution suggestions based on previous resolutions. Complex or new tickets are routed to the appropriate team with enhanced context.
+                    When a ticket is created, it is automatically routed to the designated departments based on issue type, priority, and complexity, ensuring the right team handles each case.
                   </p>
                 </div>
               </div>

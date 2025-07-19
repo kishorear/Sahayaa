@@ -227,14 +227,6 @@ export default function LandingPage() {
             Get started today and see how AI can revolutionize your customer service experience.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth">
-              <Button 
-                size="lg" 
-                className="bg-primary text-white hover:bg-primary/90"
-              >
-                Sign Up Now
-              </Button>
-            </Link>
             <Link href="/pricing">
               <Button 
                 size="lg" 

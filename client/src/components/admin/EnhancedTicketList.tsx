@@ -84,12 +84,20 @@ export default function EnhancedTicketList() {
   const { data: tickets, isLoading } = useQuery<Ticket[]>({
     queryKey: ['/api/tickets', selectedTenantId],
     queryFn: async () => {
-      const tenantParam = selectedTenantId ? `?tenantId=${selectedTenantId}` : '';
-      const response = await fetch(`/api/tickets${tenantParam}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch tickets');
+      try {
+        const tenantParam = selectedTenantId ? `?tenantId=${selectedTenantId}` : '';
+        const response = await fetch(`/api/tickets${tenantParam}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch tickets');
+        }
+        return response.json();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log('Tickets fetch aborted during navigation');
+          return [];
+        }
+        throw error;
       }
-      return response.json();
     }
   });
 

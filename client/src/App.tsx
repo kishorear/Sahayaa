@@ -88,6 +88,8 @@ function App() {
     // Global handler for unhandled promise rejections
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.error('Unhandled promise rejection caught:', event.reason);
+      console.error('Promise rejection stack:', event.reason?.stack);
+      console.error('Promise rejection type:', typeof event.reason);
       
       // Prevent the default browser warning
       event.preventDefault();

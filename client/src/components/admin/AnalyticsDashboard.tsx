@@ -29,24 +29,40 @@ export default function AnalyticsDashboard() {
   }>({
     queryKey: ['/api/metrics/summary', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
-      const response = await fetch(`/api/metrics/summary?timePeriod=${timePeriod}${tenantParam}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch metrics summary');
+      try {
+        const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+        const response = await fetch(`/api/metrics/summary?timePeriod=${timePeriod}${tenantParam}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch metrics summary');
+        }
+        return response.json();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log('Summary metrics fetch aborted during navigation');
+          return null;
+        }
+        throw error;
       }
-      return response.json();
     }
   });
 
   const { data: categoryData, isLoading: categoryLoading } = useQuery<TicketCategoryDistribution[]>({
     queryKey: ['/api/metrics/categories', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
-      const response = await fetch(`/api/metrics/categories?timePeriod=${timePeriod}${tenantParam}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch category metrics');
+      try {
+        const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+        const response = await fetch(`/api/metrics/categories?timePeriod=${timePeriod}${tenantParam}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch category metrics');
+        }
+        return response.json();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log('Category metrics fetch aborted during navigation');
+          return [];
+        }
+        throw error;
       }
-      return response.json();
     }
   });
 
@@ -54,12 +70,20 @@ export default function AnalyticsDashboard() {
   const { data: responseTimeData = [], isLoading: responseTimeLoading } = useQuery<{name: string, avg: number}[]>({
     queryKey: ['/api/metrics/response-time', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
-      const response = await fetch(`/api/metrics/response-time?timePeriod=${timePeriod}${tenantParam}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch response time metrics');
+      try {
+        const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+        const response = await fetch(`/api/metrics/response-time?timePeriod=${timePeriod}${tenantParam}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch response time metrics');
+        }
+        return response.json();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log('Response time metrics fetch aborted during navigation');
+          return [];
+        }
+        throw error;
       }
-      return response.json();
     }
   });
 
@@ -67,12 +91,20 @@ export default function AnalyticsDashboard() {
   const { data: ticketVolumeData = [], isLoading: volumeLoading } = useQuery<{name: string, volume: number}[]>({
     queryKey: ['/api/metrics/ticket-volume', timePeriod, selectedTenantId],
     queryFn: async () => {
-      const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
-      const response = await fetch(`/api/metrics/ticket-volume?timePeriod=${timePeriod}${tenantParam}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch ticket volume metrics');
+      try {
+        const tenantParam = selectedTenantId ? `&tenantId=${selectedTenantId}` : '';
+        const response = await fetch(`/api/metrics/ticket-volume?timePeriod=${timePeriod}${tenantParam}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch ticket volume metrics');
+        }
+        return response.json();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log('Ticket volume metrics fetch aborted during navigation');
+          return [];
+        }
+        throw error;
       }
-      return response.json();
     }
   });
 

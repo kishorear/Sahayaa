@@ -18,7 +18,7 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../shared/schema';
 
 // Test credentials provided by user
-const TEST_EMAIL = 'testsahaaya@gmail.com';
+const TEST_EMAIL = 'support@sahayaa.ai';
 const TEST_PASSWORD = 'sahaaya@123';
 const TEST_TENANT_ID = 1; // Default tenant
 

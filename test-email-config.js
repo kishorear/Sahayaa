@@ -14,7 +14,7 @@ async function testEmailConfiguration() {
   console.log('🔍 Starting Email Configuration Test');
   console.log('------------------------------------------');
 
-  const TEST_EMAIL = 'testsahaaya@gmail.com';
+  const TEST_EMAIL = 'support@sahayaa.ai';
   const TEST_PASSWORD = 'sahaaya@123';
 
   try {

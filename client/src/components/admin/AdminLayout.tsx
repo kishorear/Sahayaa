@@ -159,7 +159,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
               ))}
               <button 
-                onClick={() => logoutMutation.mutate()}
+                onClick={() => {
+                  try {
+                    logoutMutation.mutate();
+                  } catch (error) {
+                    console.error('Logout button error:', error);
+                  }
+                }}
                 className="flex w-full items-center px-2 py-2 mt-8 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
               >
                 <LogOut className="w-6 h-6 mr-3 text-gray-400" />
@@ -292,7 +298,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
               ))}
               <button 
-                onClick={() => logoutMutation.mutate()}
+                onClick={() => {
+                  try {
+                    logoutMutation.mutate();
+                  } catch (error) {
+                    console.error('Logout button error:', error);
+                  }
+                }}
                 className="flex w-full items-center px-2 py-2 mt-4 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
               >
                 <LogOut className="w-6 h-6 mr-3 text-gray-400" />

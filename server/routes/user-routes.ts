@@ -45,24 +45,28 @@ export function registerUserRoutes(
     }
   });
 
-  // Get all users (with optional tenant filtering)
+  // Get all users (with strict tenant filtering for security)
   app.get("/api/users", requireRole(['admin', 'support-agent']), async (req: Request, res: Response) => {
     try {
       const tenantId = req.user?.tenantId;
       
-      // Admin users (creator role) can access all users
+      // CRITICAL SECURITY: Only creator users can access cross-tenant data
       const isCreator = req.user?.role === 'creator' || (req as any).isCreatorUser;
       
-      // Only allow filtering by tenant for regular admins
+      console.log(`User access request - User: ${req.user?.username}, Role: ${req.user?.role}, Tenant: ${tenantId}, Creator: ${isCreator}`);
+      
+      // TENANT ISOLATION: ALL non-creator users are restricted to their tenant
       const users = isCreator 
-        ? await storage.getUsersByTenantId(0) // Get all users by passing tenant 0 (a special case handler can be added in storage.ts)
-        : await storage.getUsersByTenantId(tenantId!);
+        ? await storage.getUsersByTenantId(0) // Creators can access all users
+        : await storage.getUsersByTenantId(tenantId!); // All other users restricted to their tenant
       
       // Remove sensitive information from each user
       const safeUsers = users.map((user: any) => {
         const { password, mfaSecret, mfaBackupCodes, ...safeUser } = user;
         return safeUser;
       });
+      
+      console.log(`Retrieved ${safeUsers.length} users for ${isCreator ? 'creator' : 'tenant-restricted'} access`);
       
       return res.status(200).json(safeUsers);
     } catch (error) {

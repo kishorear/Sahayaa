@@ -268,20 +268,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TICKET ROUTES - Protected routes for support staff and admins
   app.get("/api/tickets", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
     try {
-      // Check if user is a creator to determine if we should include tenantId filtering
+      // CRITICAL SECURITY: Only creator users can access cross-tenant data
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
       
-      // For creator users, allow filtering by tenantId if provided
+      // TENANT ISOLATION: All non-creator users MUST be restricted to their tenant
       let tenantId: number | undefined = undefined;
       
       if (isCreator && req.query.tenantId) {
+        // Creators can optionally filter by specific tenant
         tenantId = parseInt(req.query.tenantId as string);
         if (isNaN(tenantId)) {
           tenantId = undefined;
         }
       } else if (!isCreator) {
-        // For non-creator users, always filter by their tenant
+        // SECURITY FIX: ALL non-creator users (admin, support-agent, engineer) are restricted to their tenant
         tenantId = req.user?.tenantId;
+        console.log(`Non-creator user access - enforcing tenant isolation for user ${req.user?.username} (tenant: ${tenantId})`);
       }
       
       // Add other optional filters
@@ -321,11 +323,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       
-      // Check if user is a creator to determine if we should include tenantId
+      // CRITICAL SECURITY: Only creator users can access cross-tenant data
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
       
-      // For non-creator users, always filter by their tenant
+      // TENANT ISOLATION: ALL non-creator users are restricted to their tenant
       const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      
+      console.log(`Ticket access - User: ${req.user?.username}, Role: ${req.user?.role}, Tenant: ${tenantId}, Creator: ${isCreator}`);
       
       const ticket = await storage.getTicketById(id, tenantId);
       

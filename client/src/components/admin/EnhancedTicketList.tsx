@@ -157,10 +157,10 @@ export default function EnhancedTicketList() {
   });
 
   // Create a list of unique categories for filtering
-  const categories = Array.from(new Set(tickets?.map(ticket => ticket.category || '') || []));
+  const categories = Array.from(new Set(tickets?.map(ticket => ticket.category).filter(Boolean) || []));
   
   // Create a list of unique assignees for filtering
-  const assignees = Array.from(new Set(tickets?.map(ticket => ticket.assignedTo || '') || []));
+  const assignees = Array.from(new Set(tickets?.map(ticket => ticket.assignedTo).filter(Boolean) || []));
 
   // Handle ticket status change
   const handleStatusChange = (ticketId: number, newStatus: string) => {

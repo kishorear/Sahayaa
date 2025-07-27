@@ -10,12 +10,19 @@ export class BedrockProvider implements AIProviderInterface {
   constructor(config: AIProviderConfig) {
     this.region = (config.settings?.region as string) || 'us-east-1';
     
-    // Initialize AWS Bedrock client
+    // Initialize AWS Bedrock client - require credentials in settings
+    const accessKeyId = config.settings?.accessKeyId as string;
+    const secretAccessKey = config.settings?.secretAccessKey as string;
+    
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error('AWS credentials (accessKeyId and secretAccessKey) are required in provider settings');
+    }
+    
     this.client = new BedrockRuntimeClient({
       region: this.region,
       credentials: {
-        accessKeyId: (config.settings?.accessKeyId as string) || process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: (config.settings?.secretAccessKey as string) || process.env.AWS_SECRET_ACCESS_KEY || ''
+        accessKeyId,
+        secretAccessKey
       }
     });
     

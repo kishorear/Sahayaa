@@ -2,11 +2,19 @@ import OpenAI from "openai";
 import agentService from "./ai/agent-service";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-// Initialize OpenAI client directly with the environment variable (fallback only)
-// The SDK will automatically look for the OPENAI_API_KEY environment variable
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Legacy OpenAI service - only used for fallback scenarios when no tenant-specific provider is available
+// This should be phased out in favor of tenant-specific AI providers
+let openai: OpenAI | null = null;
+
+// Only initialize if environment key exists (for backward compatibility)
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
+  console.warn("Legacy OpenAI service initialized - consider migrating to tenant-specific AI providers");
+} else {
+  console.log("No legacy OpenAI key found - strict tenant provider mode");
+}
 
 export type OpenAIMessage = {
   role: 'user' | 'assistant' | 'system';
@@ -60,6 +68,10 @@ function identifyComponent(text: string): string {
  * Classifies a support ticket using OpenAI
  */
 export async function classifyTicketWithAI(title: string, description: string, knowledgeContext: string = '') {
+  if (!openai) {
+    throw new Error('OpenAI client not available - no API key configured');
+  }
+  
   try {
     let prompt = `
     You are an AI support ticket classifier that accurately categorizes customer issues. 
@@ -169,6 +181,10 @@ export async function attemptAutoResolveWithAI(
   previousMessages: OpenAIMessage[] = [],
   knowledgeContext: string = ''
 ) {
+  if (!openai) {
+    throw new Error('OpenAI client not available - no API key configured');
+  }
+  
   try {
     // Build system content with knowledge context if available
     let systemContent = `You are an AI support assistant for a SaaS product. 
@@ -233,6 +249,10 @@ export async function generateChatResponseWithAI(
   userMessage: string,
   knowledgeContext: string = ''
 ): Promise<string> {
+  if (!openai) {
+    throw new Error('OpenAI client not available - no API key configured');
+  }
+  
   try {
     // Create a system message with ticket context and knowledge context if available
     let systemContent = `You are a support assistant helping quality analysts and software testers with ticket "${ticketContext.title}" in the "${ticketContext.category}" category.
@@ -292,6 +312,10 @@ export async function generateChatResponseWithAI(
  * with enhanced reliability and consistent formatting
  */
 export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Promise<string> {
+  if (!openai) {
+    throw new Error('OpenAI client not available - no API key configured');
+  }
+  
   const MAX_ATTEMPTS = 2; // Number of attempts to get a good title
   const API_TIMEOUT = 15000; // 15 second timeout for API call
   
@@ -588,6 +612,10 @@ export async function generateTicketTitleWithAI(messages: OpenAIMessage[]): Prom
  * Summarizes a conversation using OpenAI
  */
 export async function summarizeConversationWithAI(messages: OpenAIMessage[]): Promise<string> {
+  if (!openai) {
+    throw new Error('OpenAI client not available - no API key configured');
+  }
+  
   try {
     // Check if there's a system message (knowledge context) at the beginning
     let systemMessage: OpenAIMessage | null = null;

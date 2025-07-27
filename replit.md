@@ -145,6 +145,16 @@ The system leverages advanced vector search capabilities:
 
 ## Changelog
 
+- July 27, 2025: **Critical Security: Hardcoded API Key Vulnerabilities Fixed COMPLETED**
+  - **COMPLETED**: Eliminated all hardcoded API key fallbacks to environment variables in AI provider constructors
+  - **COMPLETED**: Fixed OpenAI, Anthropic, and AWS Bedrock providers to require API keys through user settings only
+  - **COMPLETED**: Removed development environment fallback logic that bypassed tenant-specific provider settings
+  - **COMPLETED**: Enhanced legacy OpenAI service with proper null checks for strict tenant isolation
+  - **COMPLETED**: Fixed XSS vulnerability in sahayaa-chat-widget.js by replacing innerHTML with safe DOM methods
+  - **COMPLETED**: Implemented strict tenant-scoped AI provider enforcement with no environment variable fallbacks
+  - **VERIFIED**: All AI providers now throw explicit errors when API keys are not provided through user settings
+  - **PRODUCTION READY**: System now enforces secure API key management through database settings only
+
 - July 19, 2025: **Comprehensive Unhandled Promise Rejection Fix COMPLETED**
   - **COMPLETED**: Fixed all remaining unhandled promise rejection warnings during menu navigation
   - **COMPLETED**: Added proper DOMException handling to all fetch operations in AnalyticsDashboard and EnhancedTicketList

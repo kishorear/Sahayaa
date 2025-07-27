@@ -8,9 +8,13 @@ export class OpenAIProvider implements AIProviderInterface {
   private model: string;
   
   constructor(config: AIProviderConfig) {
-    // Create OpenAI client with the provided API key
+    // Create OpenAI client with the provided API key - no environment fallback
+    if (!config.apiKey) {
+      throw new Error('OpenAI API key is required');
+    }
+    
     this.client = new OpenAI({
-      apiKey: config.apiKey || process.env.OPENAI_API_KEY
+      apiKey: config.apiKey
     });
     
     // Use the specified model or default to gpt-4o

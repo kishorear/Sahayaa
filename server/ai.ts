@@ -20,14 +20,10 @@ async function shouldUseAIProvider(tenantId?: number): Promise<boolean> {
   return provider !== null;
 }
 
-// For backward compatibility, we keep the fallback only for development
-const FALLBACK_TO_OPENAI = process.env.NODE_ENV === 'development' && 
-                         typeof process.env.OPENAI_API_KEY === 'string' && 
-                         process.env.OPENAI_API_KEY.startsWith('sk-');
+// Strict tenant-scoped AI providers enforced - no environment fallbacks
+const FALLBACK_TO_OPENAI = false;
 
-console.log(FALLBACK_TO_OPENAI ? 
-  "OpenAI fallback available for development" : 
-  "Strict tenant-scoped AI providers enforced");
+console.log("Strict tenant-scoped AI providers enforced - no environment fallbacks");
 
 export type ChatMessage = {
   role: 'user' | 'assistant' | 'system';

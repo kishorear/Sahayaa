@@ -7,9 +7,13 @@ export class AnthropicProvider implements AIProviderInterface {
   private model: string;
   
   constructor(config: AIProviderConfig) {
-    // Create Anthropic client with the provided API key
+    // Create Anthropic client with the provided API key - no environment fallback
+    if (!config.apiKey) {
+      throw new Error('Anthropic API key is required');
+    }
+    
     this.client = new Anthropic({
-      apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY || ''
+      apiKey: config.apiKey
     });
     
     // Use the specified model or default to claude-3-opus-20240229

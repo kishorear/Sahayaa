@@ -46,26 +46,8 @@ export default function TicketList() {
 
   // Function to get tenant-specific ticket number
   const getTenantTicketNumber = (ticket: Ticket) => {
-    if (!tickets) return '?';
-    
-    // Get all tickets from the same tenant
-    const tenantTickets = tickets.filter(t => t.tenantId === ticket.tenantId);
-    
-    // Sort them by creation date (oldest first)
-    const sortedTenantTickets = [...tenantTickets].sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      
-      // If dates are the same, use ID as secondary sort
-      if (dateA === dateB) {
-        return a.id - b.id;
-      }
-      return dateA - dateB;
-    });
-    
-    // Find position of this ticket in the sorted array
-    const index = sortedTenantTickets.findIndex(t => t.id === ticket.id);
-    return index + 1;
+    // Use the new tenantTicketId field if available, otherwise fall back to global ID
+    return ticket.tenantTicketId || ticket.id;
   };
 
   return (

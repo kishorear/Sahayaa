@@ -1338,12 +1338,19 @@ export class MemStorage implements IStorage {
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
     const id = this.ticketIdCounter++;
     const now = new Date();
+    const tenantId = insertTicket.tenantId || 1;
+    
+    // Calculate the next tenant-specific ticket ID
+    const existingTicketsForTenant = Array.from(this.tickets.values())
+      .filter(ticket => ticket.tenantId === tenantId);
+    const nextTenantTicketId = Math.max(0, ...existingTicketsForTenant.map(t => t.tenantTicketId || 0)) + 1;
     
     // Ensure all required properties have values
     const ticket = {
       ...insertTicket,
       id,
-      tenantId: insertTicket.tenantId || 1, // Default to tenant ID 1 if not specified
+      tenantId: tenantId,
+      tenantTicketId: nextTenantTicketId, // Per-tenant sequential ID
       status: insertTicket.status || "new",
       aiResolved: insertTicket.aiResolved || false,
       complexity: insertTicket.complexity || "medium",
@@ -4627,7 +4634,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
-    const [ticket] = await db.insert(tickets).values(insertTicket).returning();
+    // Calculate the next tenant-specific ticket ID
+    const tenantId = insertTicket.tenantId || 1;
+    
+    // Get the next tenant ticket ID by finding max + 1 for this tenant
+    const maxTenantTicketIdResult = await db
+      .select({ maxTenantTicketId: sql<number>`COALESCE(MAX("tenantTicketId"), 0)` })
+      .from(tickets)
+      .where(eq(tickets.tenantId, tenantId));
+    
+    const nextTenantTicketId = (maxTenantTicketIdResult[0]?.maxTenantTicketId || 0) + 1;
+    
+    // Insert ticket with calculated tenant ticket ID
+    const ticketWithTenantId = {
+      ...insertTicket,
+      tenantTicketId: nextTenantTicketId
+    };
+    
+    const [ticket] = await db.insert(tickets).values(ticketWithTenantId).returning();
+    
+    console.log(`Created ticket with tenant-specific ID: ${nextTenantTicketId} (Global ID: ${ticket.id}) for tenant ${tenantId}`);
+    
     return ticket;
   }
 

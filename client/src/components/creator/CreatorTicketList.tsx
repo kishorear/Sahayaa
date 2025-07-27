@@ -275,7 +275,7 @@ export default function CreatorTicketList() {
                     <TableBody>
                       {filteredTickets.map((ticket) => (
                         <TableRow key={ticket.id}>
-                          <TableCell className="font-medium">#{ticket.id}</TableCell>
+                          <TableCell className="font-medium">#{ticket.tenantTicketId || ticket.id}</TableCell>
                           <TableCell>
                             <Link href={`/admin/tickets/${ticket.id}`}>
                               <span className="hover:underline cursor-pointer">{ticket.title}</span>

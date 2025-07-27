@@ -88,6 +88,8 @@ export interface IStorage {
   deleteTeam(id: number, tenantId?: number): Promise<boolean>;
   getTeamMembers(teamId: number, tenantId?: number): Promise<User[]>;
   getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]>;
+  getTeamMemberWorkload(teamId: number, tenantId?: number): Promise<Array<{user: User, ticketCount: number}>>;
+  assignTicketToLeastBusyMember(teamId: number, tenantId?: number): Promise<User | null>;
   
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -1018,6 +1020,48 @@ export class MemStorage implements IStorage {
     } else {
       return tickets.filter(ticket => ticket.teamId === teamId);
     }
+  }
+
+  async getTeamMemberWorkload(teamId: number, tenantId?: number): Promise<Array<{user: User, ticketCount: number}>> {
+    // Get all team members
+    const teamMembers = await this.getTeamMembers(teamId, tenantId);
+    
+    if (teamMembers.length === 0) {
+      return [];
+    }
+    
+    // Get all tickets for counting workload (only open/in_progress tickets)
+    const allTickets = Array.from(this.tickets.values());
+    
+    // Calculate workload for each team member
+    const workload = teamMembers.map(user => {
+      // Count tickets assigned to this user that are still active (not resolved)
+      const ticketCount = allTickets.filter(ticket => 
+        ticket.assignedTo === user.id.toString() && 
+        ticket.status !== 'resolved' &&
+        (tenantId ? ticket.tenantId === tenantId : true)
+      ).length;
+      
+      return {
+        user,
+        ticketCount
+      };
+    });
+    
+    // Sort by ticket count (ascending - least busy first)
+    return workload.sort((a, b) => a.ticketCount - b.ticketCount);
+  }
+
+  async assignTicketToLeastBusyMember(teamId: number, tenantId?: number): Promise<User | null> {
+    const workload = await this.getTeamMemberWorkload(teamId, tenantId);
+    
+    if (workload.length === 0) {
+      return null;
+    }
+    
+    // Return the user with the lowest ticket count
+    // If there are multiple users with the same count, the first one is returned (first in, first served)
+    return workload[0].user;
   }
   
   // User operations
@@ -3659,6 +3703,65 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getTeamMemberWorkload(teamId: number, tenantId?: number): Promise<Array<{user: User, ticketCount: number}>> {
+    try {
+      // Get all team members
+      const teamMembers = await this.getTeamMembers(teamId, tenantId);
+      
+      if (teamMembers.length === 0) {
+        return [];
+      }
+      
+      // Calculate workload for each team member
+      const workload = await Promise.all(
+        teamMembers.map(async (user) => {
+          // Count tickets assigned to this user that are still active (not resolved)
+          const ticketCountQuery = db
+            .select({ count: sql<number>`count(*)` })
+            .from(tickets)
+            .where(
+              and(
+                eq(tickets.assignedTo, user.id.toString()),
+                sql`${tickets.status} != 'resolved'`,
+                tenantId ? eq(tickets.tenantId, tenantId) : sql`1=1`
+              )
+            );
+          
+          const [result] = await ticketCountQuery;
+          const ticketCount = Number(result?.count || 0);
+          
+          return {
+            user,
+            ticketCount
+          };
+        })
+      );
+      
+      // Sort by ticket count (ascending - least busy first)
+      return workload.sort((a, b) => a.ticketCount - b.ticketCount);
+    } catch (error) {
+      console.error(`Error in getTeamMemberWorkload(${teamId}):`, error);
+      return [];
+    }
+  }
+
+  async assignTicketToLeastBusyMember(teamId: number, tenantId?: number): Promise<User | null> {
+    try {
+      const workload = await this.getTeamMemberWorkload(teamId, tenantId);
+      
+      if (workload.length === 0) {
+        return null;
+      }
+      
+      // Return the user with the lowest ticket count
+      // If there are multiple users with the same count, the first one is returned (first in, first served)
+      return workload[0].user;
+    } catch (error) {
+      console.error(`Error in assignTicketToLeastBusyMember(${teamId}):`, error);
+      return null;
+    }
+  }
+
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     // Check memory cache first
@@ -5613,6 +5716,24 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.getTicketsByTeamId(teamId, tenantId);
     } catch (error) {
       console.error(`Error in getTicketsByTeamId(${teamId}):`, error);
+      throw error;
+    }
+  }
+
+  async getTeamMemberWorkload(teamId: number, tenantId?: number): Promise<Array<{user: User, ticketCount: number}>> {
+    try {
+      return await this.storageImpl.getTeamMemberWorkload(teamId, tenantId);
+    } catch (error) {
+      console.error(`Error in getTeamMemberWorkload(${teamId}):`, error);
+      throw error;
+    }
+  }
+
+  async assignTicketToLeastBusyMember(teamId: number, tenantId?: number): Promise<User | null> {
+    try {
+      return await this.storageImpl.assignTicketToLeastBusyMember(teamId, tenantId);
+    } catch (error) {
+      console.error(`Error in assignTicketToLeastBusyMember(${teamId}):`, error);
       throw error;
     }
   }

@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TicketCategoryDistribution } from '@shared/schema';
 import TenantSelector from "@/components/TenantSelector";
 import { useAuth } from "@/hooks/use-auth";
+import TeamWorkload from "@/components/admin/TeamWorkload";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -293,6 +294,7 @@ export default function AnalyticsDashboard() {
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="volume">Ticket Volume</TabsTrigger>
           <TabsTrigger value="response">Response Time</TabsTrigger>
+          <TabsTrigger value="workload">Team Workload</TabsTrigger>
         </TabsList>
         
         <TabsContent value="categories" className="space-y-4">
@@ -399,6 +401,10 @@ export default function AnalyticsDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="workload" className="space-y-4">
+          <TeamWorkload />
         </TabsContent>
       </Tabs>
     </div>

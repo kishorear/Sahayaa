@@ -341,6 +341,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team workload route
+  app.get("/api/teams/:teamId/workload", requireAuth, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const tenantId = req.user?.tenantId;
+      
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+      
+      const workload = await storage.getTeamMemberWorkload(teamId, tenantId);
+      res.status(200).json(workload);
+    } catch (error) {
+      console.error("Error fetching team workload:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // This route needs no auth since it can be created by the chatbot
   app.post("/api/tickets", async (req, res) => {
     try {
@@ -361,12 +379,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const classification = await classifyTicket(ticketData.title, ticketData.description, tenantId);
       
+      // Determine team assignment based on ticket data or default team
+      let assignedUserId = classification.assignedTo;
+      let teamId = ticketData.teamId;
+      
+      // If no team is specified, try to get the default team for the tenant
+      if (!teamId && tenantId) {
+        const defaultTeam = await storage.getTeamByName("Default Team", tenantId);
+        if (defaultTeam) {
+          teamId = defaultTeam.id;
+        }
+      }
+      
+      // If we have a team, assign to the least busy team member
+      if (teamId) {
+        try {
+          const assignedUser = await storage.assignTicketToLeastBusyMember(teamId, tenantId);
+          if (assignedUser) {
+            assignedUserId = assignedUser.id.toString();
+            console.log(`Ticket assigned to team member: ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) with lowest workload in team ${teamId}`);
+          } else {
+            console.log(`No team members available in team ${teamId}, using AI classification assignment: ${classification.assignedTo}`);
+          }
+        } catch (error) {
+          console.error(`Error assigning ticket to team member:`, error);
+          console.log(`Falling back to AI classification assignment: ${classification.assignedTo}`);
+        }
+      }
+      
       const newTicket: InsertTicket = {
         ...ticketData,
         category: classification.category,
         complexity: classification.complexity,
-        assignedTo: classification.assignedTo,
+        assignedTo: assignedUserId,
         aiNotes: classification.aiNotes,
+        teamId: teamId,
         // Ensure the ticket is associated with the correct tenant
         tenantId: tenantId || ticketData.tenantId
       };

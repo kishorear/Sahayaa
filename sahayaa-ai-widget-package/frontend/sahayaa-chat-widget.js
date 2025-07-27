@@ -510,13 +510,26 @@
 
         const statusColor = step.status === 'complete' ? '#10b981' : step.status === 'found' ? '#3b82f6' : '#f59e0b';
         
-        stepHeader.innerHTML = `
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="width: 8px; height: 8px; background: ${statusColor}; border-radius: 50%;"></span>
-            <span style="font-weight: 500; font-size: 12px;">${step.step}</span>
-          </div>
-          <span style="font-size: 10px; color: #64748b;">${step.duration}ms</span>
-        `;
+        // Create elements safely using DOM methods instead of innerHTML
+        const leftDiv = document.createElement('div');
+        leftDiv.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+        
+        const statusSpan = document.createElement('span');
+        statusSpan.style.cssText = `width: 8px; height: 8px; background: ${statusColor}; border-radius: 50%;`;
+        
+        const stepSpan = document.createElement('span');
+        stepSpan.style.cssText = 'font-weight: 500; font-size: 12px;';
+        stepSpan.textContent = step.step; // Safe text assignment
+        
+        leftDiv.appendChild(statusSpan);
+        leftDiv.appendChild(stepSpan);
+        
+        const durationSpan = document.createElement('span');
+        durationSpan.style.cssText = 'font-size: 10px; color: #64748b;';
+        durationSpan.textContent = `${step.duration}ms`; // Safe text assignment
+        
+        stepHeader.appendChild(leftDiv);
+        stepHeader.appendChild(durationSpan);
 
         const stepDetails = document.createElement('div');
         stepDetails.style.cssText = `

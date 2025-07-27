@@ -48,28 +48,28 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       roles: ["administrator", "support_engineer", "creator"] // Users don't need the dashboard
     },
     { 
-      path: "/admin/tickets", 
-      label: "Tickets", 
-      icon: TicketCheck,
-      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All roles need tickets
-    },
-    { 
       path: "/admin/team", 
       label: "Team", 
       icon: Users,
       roles: ["administrator", "creator", "engineer"] // Admins and creators manage team, engineers have read-only access
     },
     { 
-      path: "/admin/registration", 
-      label: "Registration", 
-      icon: UserPlus,
-      roles: ["creator"] // Only creators can access the registration page
+      path: "/admin/tickets", 
+      label: "Tickets", 
+      icon: TicketCheck,
+      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All roles need tickets
     },
     { 
       path: "/admin/agent-resources", 
       label: "Agent Resources", 
       icon: FileText,
       roles: ["administrator", "support_engineer", "creator"] // Support engineers and creators need agent resources access
+    },
+    { 
+      path: "/admin/registration", 
+      label: "Registration", 
+      icon: UserPlus,
+      roles: ["creator"] // Only creators can access the registration page
     },
     { 
       path: "/admin/integrations", 

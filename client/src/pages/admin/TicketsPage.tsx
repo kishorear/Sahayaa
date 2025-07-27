@@ -1,10 +1,10 @@
 import AdminLayout from "@/components/admin/AdminLayout";
-import TicketList from "@/components/admin/TicketList";
+import EnhancedTicketList from "@/components/admin/EnhancedTicketList";
 
 export default function TicketsPage() {
   return (
     <AdminLayout>
-      <TicketList />
+      <EnhancedTicketList />
     </AdminLayout>
   );
 }

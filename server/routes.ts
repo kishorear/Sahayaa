@@ -583,6 +583,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign ticket to team member (admin only)
+  app.patch("/api/tickets/:id/assign", requireRole(['admin', 'administrator', 'creator']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { assignedTo } = req.body;
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ticket ID" });
+      }
+      
+      // Get the ticket first to ensure it exists and check tenant access
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      const ticket = await storage.getTicketById(id, tenantId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // For non-creator users, ensure they can only assign within their tenant
+      if (!isCreator && ticket.tenantId !== req.user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      console.log(`Admin assignment - Ticket ${id} to: ${assignedTo || 'unassigned'}`);
+      
+      // Update the ticket assignment
+      const updatedTicket = await storage.updateTicket(id, { assignedTo }, tenantId);
+      res.status(200).json(updatedTicket);
+    } catch (error) {
+      console.error('Error assigning ticket:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // MESSAGE ROUTES
   app.get("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
     try {

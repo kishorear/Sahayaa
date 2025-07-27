@@ -23,7 +23,8 @@ import {
   AlertCircle, 
   Clock, 
   UserX,
-  MessageSquare 
+  MessageSquare,
+  Users
 } from "lucide-react";
 
 // Ticket status component with appropriate colors
@@ -79,6 +80,7 @@ export default function EnhancedTicketList() {
   
   // Only creator role users should have access to tenant filtering
   const isCreator = user?.role?.toLowerCase() === 'creator';
+  const isAdmin = user?.role?.toLowerCase() === 'administrator' || user?.role?.toLowerCase() === 'admin';
 
   // Fetch tickets with tenant filter for creator role
   const { data: tickets, isLoading } = useQuery<Ticket[]>({
@@ -101,6 +103,26 @@ export default function EnhancedTicketList() {
     }
   });
 
+  // Fetch team members for assignment dropdown (admin only)
+  const { data: teamMembers } = useQuery<any[]>({
+    queryKey: ['/api/team-members', selectedTenantId],
+    queryFn: async () => {
+      if (!isAdmin && !isCreator) return [];
+      try {
+        const tenantParam = selectedTenantId ? `?tenantId=${selectedTenantId}` : '';
+        const response = await fetch(`/api/team-members${tenantParam}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch team members');
+        }
+        return response.json();
+      } catch (error) {
+        console.error('Failed to fetch team members:', error);
+        return [];
+      }
+    },
+    enabled: isAdmin || isCreator
+  });
+
   // Update ticket status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
@@ -117,6 +139,27 @@ export default function EnhancedTicketList() {
       toast({
         title: "Error",
         description: `Failed to update ticket status: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Assign ticket mutation (admin only)
+  const assignTicketMutation = useMutation({
+    mutationFn: async ({ id, assignedTo }: { id: number; assignedTo: string | null }) => {
+      return await apiRequest('PATCH', `/api/tickets/${id}/assign`, { assignedTo });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tickets'] });
+      toast({
+        title: "Assignment Updated",
+        description: "Ticket assignment has been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to assign ticket: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -165,6 +208,12 @@ export default function EnhancedTicketList() {
   // Handle ticket status change
   const handleStatusChange = (ticketId: number, newStatus: string) => {
     updateStatusMutation.mutate({ id: ticketId, status: newStatus });
+  };
+
+  // Handle ticket assignment change (admin only)
+  const handleAssignmentChange = (ticketId: number, assignedTo: string) => {
+    const finalAssignedTo = assignedTo === 'unassigned' ? null : assignedTo;
+    assignTicketMutation.mutate({ id: ticketId, assignedTo: finalAssignedTo });
   };
 
   return (
@@ -293,28 +342,50 @@ export default function EnhancedTicketList() {
                             <StatusBadge status={ticket.status} />
                           </TableCell>
                           <TableCell>
-                            {ticket.assignedTo ? 
-                              ticket.assignedTo.charAt(0).toUpperCase() + ticket.assignedTo.slice(1) :
-                              "Unassigned"}
+                            {(isAdmin || isCreator) ? (
+                              <Select
+                                value={ticket.assignedTo || 'unassigned'}
+                                onValueChange={(value) => handleAssignmentChange(ticket.id, value)}
+                              >
+                                <SelectTrigger className="h-8 w-[140px]">
+                                  <Users className="mr-2 h-4 w-4" />
+                                  <SelectValue placeholder="Assign To" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                                  {teamMembers?.map((member) => (
+                                    <SelectItem key={member.id} value={member.username}>
+                                      {member.name || member.username}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              ticket.assignedTo ? 
+                                ticket.assignedTo.charAt(0).toUpperCase() + ticket.assignedTo.slice(1) :
+                                "Unassigned"
+                            )}
                           </TableCell>
                           <TableCell>
                             {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Select
-                              value={ticket.status}
-                              onValueChange={(value) => handleStatusChange(ticket.id, value)}
-                            >
-                              <SelectTrigger className="h-8 w-[130px]">
-                                <SelectValue placeholder="Change Status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="new">Open</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
-                                <SelectItem value="resolved">Resolved</SelectItem>
-                                <SelectItem value="closed">Closed</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="flex gap-2 justify-end">
+                              <Select
+                                value={ticket.status}
+                                onValueChange={(value) => handleStatusChange(ticket.id, value)}
+                              >
+                                <SelectTrigger className="h-8 w-[130px]">
+                                  <SelectValue placeholder="Change Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="new">Open</SelectItem>
+                                  <SelectItem value="in_progress">In Progress</SelectItem>
+                                  <SelectItem value="resolved">Resolved</SelectItem>
+                                  <SelectItem value="closed">Closed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

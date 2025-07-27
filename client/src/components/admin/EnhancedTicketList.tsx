@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -160,7 +160,7 @@ export default function EnhancedTicketList() {
   const categories = Array.from(new Set(tickets?.map(ticket => ticket.category).filter(Boolean) || []));
   
   // Create a list of unique assignees for filtering
-  const assignees = Array.from(new Set(tickets?.map(ticket => ticket.assignedTo).filter(Boolean) || []));
+  const assignees = Array.from(new Set(tickets?.map(ticket => ticket.assignedTo).filter((assignee): assignee is string => Boolean(assignee)) || []));
 
   // Handle ticket status change
   const handleStatusChange = (ticketId: number, newStatus: string) => {
@@ -170,7 +170,6 @@ export default function EnhancedTicketList() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-3xl font-bold tracking-tight">Ticket Management</h2>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {/* Tenant Selector - Only visible for creator role */}
           {isCreator && (
@@ -193,7 +192,10 @@ export default function EnhancedTicketList() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Support Tickets</CardTitle>
+          <CardTitle>Ticket Management</CardTitle>
+          <CardDescription>
+            View and manage support tickets with automatic workload-based assignment
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={currentView} onValueChange={setCurrentView} className="w-full">

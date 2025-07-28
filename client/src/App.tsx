@@ -28,6 +28,7 @@ import MCPTestPage from "@/pages/MCP-Test-Page"; // MCP Testing Page
 import WidgetTestPage from "@/pages/WidgetTestPage"; // Widget Testing Page
 import KnowledgeSync from "@/pages/KnowledgeSync"; // Knowledge Repository Sync Page
 import MonitoringDashboard from "@/pages/monitoring-dashboard"; // System Monitoring Dashboard
+import ToursPage from "@/pages/admin/ToursPage"; // Interactive Tours Page
 import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
 import CreatorLoginPage from "@/pages/creator/CreatorLoginPage"; // Creator login page
@@ -36,6 +37,10 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CreatorProtectedRoute } from "@/lib/creator-protected-route"; // Creator route protection
 import RegistrationPage from "@/pages/admin/RegistrationPage"; // Registration page
+import { TourProvider } from "@/components/tour/TourProvider";
+import { TourProgress } from "@/components/tour/ContextualHelp";
+import { TourLauncher } from "@/components/tour/TourLauncher";
+import { NewUserTourTrigger } from "@/components/tour/NewUserTourTrigger";
 // ChatbotProvider removed as we're using simpler implementation
 
 function Router() {
@@ -75,6 +80,7 @@ function Router() {
       <ProtectedRoute path="/admin/agent-test" component={AgentTestPage} />
       <ProtectedRoute path="/admin/knowledge-sync" component={KnowledgeSync} />
       <ProtectedRoute path="/admin/monitoring" component={MonitoringDashboard} />
+      <ProtectedRoute path="/admin/tours" component={ToursPage} />
       <CreatorProtectedRoute path="/admin/registration" component={RegistrationPage} />
       
       {/* 404 Route */}
@@ -115,9 +121,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <ProtectedChatbot />
-        <Toaster />
+        <TourProvider>
+          <Router />
+          <ProtectedChatbot />
+          <Toaster />
+          <TourProgress />
+          <TourLauncher variant="floating" />
+          <NewUserTourTrigger />
+        </TourProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

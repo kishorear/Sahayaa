@@ -17,7 +17,8 @@ import {
   MessageSquare,
   UserPlus,
   Brain,
-  Activity
+  Activity,
+  HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoIcon from "@/components/LogoIcon";
@@ -45,7 +46,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin", 
       label: "Dashboard", 
       icon: LayoutDashboard,
-      roles: ["administrator", "support_engineer", "creator"] // Users don't need the dashboard
+      roles: ["administrator", "support_engineer", "creator"], // Users don't need the dashboard
+      tourId: "dashboard"
     },
     { 
       path: "/admin/team", 
@@ -57,7 +59,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/tickets", 
       label: "Tickets", 
       icon: TicketCheck,
-      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All roles need tickets
+      roles: ["administrator", "support_engineer", "user", "creator", "engineer"], // All roles need tickets
+      tourId: "tickets"
     },
     { 
       path: "/admin/agent-resources", 
@@ -99,7 +102,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/settings", 
       label: "Settings", 
       icon: Settings,
-      roles: ["administrator", "creator"] // Only admins and creators can change system settings
+      roles: ["administrator", "creator"], // Only admins and creators can change system settings
+      tourId: "settings"
     },
     { 
       path: "/admin/widget", 
@@ -112,6 +116,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       label: "Monitoring", 
       icon: Activity,
       roles: ["administrator", "creator"] // Only admins and creators can access monitoring
+    },
+    { 
+      path: "/admin/tours", 
+      label: "Interactive Tours", 
+      icon: HelpCircle,
+      roles: ["administrator", "support_engineer", "user", "creator", "engineer"], // All users can access tours
+      tourId: "tours"
     },
   ];
   
@@ -152,6 +163,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         ? "text-white bg-gray-900"
                         : "text-gray-300 hover:bg-gray-700 hover:text-white"
                     )}
+                    data-tour={(route as any).tourId || route.path.replace('/admin/', '')}
                   >
                     <route.icon className="w-6 h-6 mr-3 text-gray-300" />
                     {route.label}
@@ -311,7 +323,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         )}
 
         {/* Page content */}
-        <main className="admin-dashboard flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
+        <main className="admin-dashboard flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6" data-tour="main-content">
           {children}
         </main>
       </div>

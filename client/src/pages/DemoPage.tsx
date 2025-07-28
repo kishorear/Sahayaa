@@ -3,8 +3,9 @@ import { Link } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, MessageSquare, Video, ArrowRight, Zap, Shield, Brain } from 'lucide-react';
+import { Play, MessageSquare, Video, ArrowRight, Zap, Shield, Brain, Search, Database, FileText } from 'lucide-react';
 import DemoChatInterface from '@/components/chatbot/DemoChatInterface';
+import FastMCPDemo from '@/components/demo/FastMCPDemo';
 import LogoIcon from '@/components/LogoIcon';
 
 export default function DemoPage() {
@@ -57,10 +58,14 @@ export default function DemoPage() {
       <div className="flex-grow py-16 bg-white dark:bg-gray-900">
         <div className="container mx-auto px-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="max-w-6xl mx-auto">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 Try the Chat
+              </TabsTrigger>
+              <TabsTrigger value="fastmcp" className="flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                FastMCP Demo
               </TabsTrigger>
               <TabsTrigger value="walkthrough" className="flex items-center gap-2">
                 <Video className="w-4 h-4" />
@@ -174,6 +179,10 @@ export default function DemoPage() {
                   </Card>
                 </div>
               </div>
+            </TabsContent>
+            
+            <TabsContent value="fastmcp" className="mt-8">
+              <FastMCPDemo />
             </TabsContent>
             
             <TabsContent value="walkthrough" className="mt-8">

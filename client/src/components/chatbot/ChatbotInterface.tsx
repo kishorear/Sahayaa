@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, X, Video, Image, Camera, Paperclip, RefreshCcw, Ticket, AlertTriangle, GripVertical, HelpCircle } from "lucide-react";
+import { MessageSquare, X, Video, Image, Camera, Paperclip, RefreshCcw, Ticket, AlertTriangle, GripVertical } from "lucide-react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import ChatMessages from "./ChatMessages";
 import ScreenRecorder from "./ScreenRecorder";
@@ -673,7 +673,7 @@ export default function ChatbotInterface() {
             onClick={toggleChat}
             className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             size="icon"
-            data-tour="chat"
+
           >
             <MessageSquare className="w-8 h-8 text-white" />
           </Button>

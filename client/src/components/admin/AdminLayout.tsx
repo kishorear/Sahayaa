@@ -18,7 +18,7 @@ import {
   UserPlus,
   Brain,
   Activity,
-  HelpCircle
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoIcon from "@/components/LogoIcon";
@@ -117,13 +117,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: Activity,
       roles: ["administrator", "creator"] // Only admins and creators can access monitoring
     },
-    { 
-      path: "/admin/tours", 
-      label: "Interactive Tours", 
-      icon: HelpCircle,
-      roles: ["administrator", "support_engineer", "user", "creator", "engineer"], // All users can access tours
-      tourId: "tours"
-    },
+
   ];
   
   // Filter routes based on user role
@@ -163,7 +157,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         ? "text-white bg-gray-900"
                         : "text-gray-300 hover:bg-gray-700 hover:text-white"
                     )}
-                    data-tour={(route as any).tourId || route.path.replace('/admin/', '')}
+
                   >
                     <route.icon className="w-6 h-6 mr-3 text-gray-300" />
                     {route.label}
@@ -323,7 +317,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         )}
 
         {/* Page content */}
-        <main className="admin-dashboard flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6" data-tour="main-content">
+        <main className="admin-dashboard flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
           {children}
         </main>
       </div>

@@ -5,6 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { testDbConnection, reconnectDb } from "./db";
 import { validateEnvironmentAtStartup } from "./environment-validator";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
+import { fastMcpOrchestrator } from "./fastmcp_orchestrator";
 import path from "path";
 
 // Process-level unhandled rejection handler to prevent crashes
@@ -122,6 +123,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize FastMCP orchestrator
+  console.log("Initializing FastMCP orchestrator...");
+  try {
+    await fastMcpOrchestrator.startService();
+    console.log("FastMCP orchestrator started successfully");
+  } catch (error) {
+    console.warn("FastMCP orchestrator failed to start:", error);
+    console.log("Continuing with fallback mode...");
+  }
+
   const server = await registerRoutes(app);
 
   // Add API database health check middleware

@@ -69,6 +69,8 @@ import { registerKnowledgeSyncRoutes } from "./routes/knowledge-sync-routes";
 import { tenantRoutes } from "./routes/tenant-routes";
 // Import MCP database routes for multi-database support
 import { registerMcpDatabaseRoutes } from "./routes/mcp-database-routes";
+// Import FastMCP routes for agent communication
+import fastMcpRoutes from "./routes/fastmcp-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
@@ -161,6 +163,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/readiness', readinessHandler);
   app.get('/live', livenessHandler);
   app.get('/liveness', livenessHandler);
+
+  // Register FastMCP routes (before auth middleware for health checks)
+  app.use('/api', fastMcpRoutes);
   
   // Add monitoring endpoints for system performance and health
   app.use('/api/monitoring', monitoringRoutes);

@@ -222,16 +222,16 @@ export default function DocumentationPage() {
                   <div className="space-y-4">
                     <div className="text-center">
                       <p className="text-sm text-gray-600 mb-2">
-                        <a href="/architecture-diagram.svg" target="_blank" className="text-blue-500 underline">
+                        <a href="/architecture-diagram-new.svg" target="_blank" className="text-blue-500 underline">
                           View Full Architecture Diagram (opens in new tab)
                         </a>
                       </p>
                     </div>
                     <img 
-                      src="/architecture-diagram.svg" 
+                      src="/architecture-diagram-new.svg" 
                       alt="AI Support Platform Architecture Diagram" 
                       className="w-full h-auto max-w-none"
-                      style={{ minWidth: '1200px' }}
+                      style={{ minWidth: '1000px' }}
                       onError={(e) => {
                         console.error('Failed to load architecture diagram:', e);
                         const target = e.target as HTMLImageElement;
@@ -241,7 +241,7 @@ export default function DocumentationPage() {
                         errorDiv.innerHTML = `
                           <p>Unable to load architecture diagram inline</p>
                           <p class="text-sm mt-2">Try viewing it directly:</p>
-                          <a href="/architecture-diagram.svg" target="_blank" class="text-blue-500 underline">Open Architecture Diagram</a>
+                          <a href="/architecture-diagram-new.svg" target="_blank" class="text-blue-500 underline">Open Architecture Diagram</a>
                         `;
                         target.parentNode?.appendChild(errorDiv);
                       }}

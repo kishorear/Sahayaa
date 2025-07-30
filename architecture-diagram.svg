@@ -61,7 +61,7 @@
     <rect x="520" y="130" width="200" height="80" fill="#ffffff20" rx="5"/>
     <text x="620" y="155" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">Creator Portal</text>
     <text x="620" y="175" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Multi-tenant</text>
-    <text x="620" y="190" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Dashboard & Auth</text>
+    <text x="620" y="190" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Dashboard &amp; Auth</text>
     
     <rect x="740" y="130" width="200" height="80" fill="#ffffff20" rx="5"/>
     <text x="840" y="155" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">Chat Widget</text>
@@ -116,7 +116,7 @@
     <text x="970" y="400" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Circuit Breaker</text>
     
     <rect x="1080" y="330" width="180" height="100" fill="#ffffff20" rx="5"/>
-    <text x="1170" y="350" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">Health & Monitoring</text>
+    <text x="1170" y="350" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">Health &amp; Monitoring</text>
     <text x="1170" y="370" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Health Checks</text>
     <text x="1170" y="385" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Resilience Service</text>
     <text x="1170" y="400" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Cache Service</text>

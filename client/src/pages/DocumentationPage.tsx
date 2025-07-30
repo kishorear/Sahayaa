@@ -219,12 +219,37 @@ export default function DocumentationPage() {
               
               <div className="w-full flex justify-center">
                 <div className="max-w-full overflow-auto border rounded-lg bg-white p-4">
-                  <img 
-                    src="/architecture-diagram.svg" 
-                    alt="AI Support Platform Architecture Diagram" 
-                    className="w-full h-auto max-w-none"
-                    style={{ minWidth: '1200px' }}
-                  />
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-2">
+                        <a href="/architecture-diagram.svg" target="_blank" className="text-blue-500 underline">
+                          View Full Architecture Diagram (opens in new tab)
+                        </a>
+                      </p>
+                    </div>
+                    <img 
+                      src="/architecture-diagram.svg" 
+                      alt="AI Support Platform Architecture Diagram" 
+                      className="w-full h-auto max-w-none"
+                      style={{ minWidth: '1200px' }}
+                      onError={(e) => {
+                        console.error('Failed to load architecture diagram:', e);
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'text-red-500 p-4 text-center';
+                        errorDiv.innerHTML = `
+                          <p>Unable to load architecture diagram inline</p>
+                          <p class="text-sm mt-2">Try viewing it directly:</p>
+                          <a href="/architecture-diagram.svg" target="_blank" class="text-blue-500 underline">Open Architecture Diagram</a>
+                        `;
+                        target.parentNode?.appendChild(errorDiv);
+                      }}
+                      onLoad={() => {
+                        console.log('Architecture diagram loaded successfully');
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
               

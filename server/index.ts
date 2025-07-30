@@ -59,6 +59,11 @@ const clientDir = path.join(process.cwd(), 'client');
 app.use('/debug', express.static(clientDir));
 console.log(`Serving debug tools from: ${clientDir}`);
 
+// Serve static assets from client/public directory
+const publicDir = path.join(process.cwd(), 'client', 'public');
+app.use(express.static(publicDir));
+console.log(`Serving static assets from: ${publicDir}`);
+
 // Enhanced JSON body parser with better error handling
 app.use(express.json({
   limit: '1gb',

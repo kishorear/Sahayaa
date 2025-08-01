@@ -1035,17 +1035,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get AI response
           const aiResponse = await provider.generateChatResponse(allMessages, knowledgeContext, systemPrompt);
           
+          // Ensure aiResponse is a string
+          const responseText = typeof aiResponse === 'string' ? aiResponse : aiResponse?.message || aiResponse?.response || String(aiResponse);
+          
           // For complex issues not automatically handled in the chat flow, suggest creating a ticket
-          const needsTicket = aiResponse.toLowerCase().includes("support ticket") || 
-                             aiResponse.toLowerCase().includes("contact support") ||
-                             aiResponse.toLowerCase().includes("create a ticket");
+          const needsTicket = responseText.toLowerCase().includes("support ticket") || 
+                             responseText.toLowerCase().includes("contact support") ||
+                             responseText.toLowerCase().includes("create a ticket");
           
           if (needsTicket) {
             // Classify message to get appropriate category/complexity
             const classification = await classifyTicket("New chat request", message, tenantId);
             
             return res.status(200).json({
-              message: aiResponse,
+              message: responseText,
               action: {
                 type: 'suggest_ticket',
                 data: {
@@ -1063,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Standard response with no action
           return res.status(200).json({
-            message: aiResponse,
+            message: responseText,
             action: undefined
           });
         } catch (error) {
@@ -1224,16 +1227,19 @@ Your goal is to quickly gather issue details and create comprehensive support ti
           { role: 'user', content: message }
         ], knowledgeContext, systemPrompt);
         
+        // Ensure aiResponse is a string
+        const responseText = typeof aiResponse === 'string' ? aiResponse : aiResponse?.message || aiResponse?.response || String(aiResponse);
+        
         // Only suggest ticket creation if the AI explicitly mentions it
-        const shouldSuggestTicket = aiResponse.toLowerCase().includes("create a ticket") || 
-                                  aiResponse.toLowerCase().includes("support ticket") ||
-                                  aiResponse.toLowerCase().includes("escalate") ||
-                                  aiResponse.toLowerCase().includes("human support");
+        const shouldSuggestTicket = responseText.toLowerCase().includes("create a ticket") || 
+                                  responseText.toLowerCase().includes("support ticket") ||
+                                  responseText.toLowerCase().includes("escalate") ||
+                                  responseText.toLowerCase().includes("human support");
         
         if (shouldSuggestTicket) {
           const classification = await classifyTicket("User inquiry", message, tenantId);
           response = {
-            message: aiResponse,
+            message: responseText,
             action: {
               type: 'suggest_ticket',
               data: {
@@ -1249,7 +1255,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
           };
         } else {
           response = {
-            message: aiResponse,
+            message: responseText,
             action: undefined
           };
         }

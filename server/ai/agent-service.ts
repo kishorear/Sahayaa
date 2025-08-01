@@ -374,7 +374,7 @@ export class AgentService {
     try {
       console.log(`Agent Service: Generating chat response for message: ${request.userMessage.substring(0, 30)}...`);
       
-      const response: AxiosResponse<string> = await axios.post(
+      const response = await axios.post(
         `${this.baseUrl}/chat-response`,
         request,
         {
@@ -386,7 +386,16 @@ export class AgentService {
       );
 
       console.log(`Agent Service: Chat response generated successfully`);
-      return response.data;
+      
+      // Extract the response text from the FastMCP service response
+      if (response.data && typeof response.data === 'object' && response.data.response) {
+        return response.data.response;
+      } else if (typeof response.data === 'string') {
+        return response.data;
+      } else {
+        console.warn('Agent Service: Unexpected response format:', response.data);
+        return String(response.data);
+      }
 
     } catch (error) {
       console.error('Agent Service: Chat response generation failed:', error);

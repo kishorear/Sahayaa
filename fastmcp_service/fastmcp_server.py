@@ -354,16 +354,41 @@ async def _generate_chat_response(
 ) -> str:
     """Generate chat response using available context."""
     
-    # Simple response generation based on context
-    if context.strip():
-        response = f"Based on the available information, here's what I can help you with:\n\n"
-        response += f"{context[:500]}..." if len(context) > 500 else context
-        response += f"\n\nIs there anything specific about '{user_message}' that you'd like me to clarify?"
-    else:
-        # Default helpful response when no context is available
-        response = f"I understand you're asking about: {user_message}\n\n"
-        response += "Let me help you with this. Could you provide a bit more detail about what specific issue you're experiencing? "
-        response += "This will help me give you the most accurate assistance."
+    # Analyze the user message to determine if it's a greeting or simple response
+    message_lower = user_message.lower().strip()
+    simple_greetings = ['hi', 'hello', 'hey', 'hiya', 'whoa', 'wow', 'ok', 'okay', 'thanks', 'thank you']
+    
+    if message_lower in simple_greetings:
+        # Respond to greetings conversationally without forcing knowledge base content
+        if message_lower in ['hi', 'hello', 'hey', 'hiya']:
+            return "Hello! I'm your AI support assistant. How can I help you today? Feel free to describe any issues you're experiencing or questions you have."
+        elif message_lower in ['whoa', 'wow']:
+            return "I hope that information was helpful! Is there anything specific you'd like me to explain further, or do you have any other questions I can assist with?"
+        elif message_lower in ['ok', 'okay']:
+            return "Great! Is there anything else I can help you with today?"
+        elif message_lower in ['thanks', 'thank you']:
+            return "You're welcome! Feel free to reach out if you need any additional assistance."
+    
+    # For substantive questions, use context if relevant
+    if context.strip() and len(user_message.split()) > 2:
+        # Check if the context is actually relevant to the user's message
+        user_words = set(user_message.lower().split())
+        context_words = set(context.lower().split())
+        common_words = user_words.intersection(context_words)
+        
+        # Only use knowledge base context if there's actual relevance
+        if len(common_words) > 1 or any(word in context.lower() for word in ['authentication', 'login', 'password', 'network', 'api', 'error'] if word in user_message.lower()):
+            response = f"I can help you with that. Here's what I found:\n\n"
+            # Use first paragraph of context only to keep responses focused
+            context_lines = context.split('\n')
+            relevant_context = context_lines[0] if context_lines else context[:200]
+            response += relevant_context
+            response += f"\n\nWould you like me to help you create a support ticket for this, or do you have any specific questions about this information?"
+            return response
+    
+    # Default conversational response for other cases
+    response = f"I'd be happy to help you with that. Could you tell me more about what you're trying to do or what specific issue you're experiencing? "
+    response += "This will help me provide you with the most relevant assistance."
     
     return response
 

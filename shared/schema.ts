@@ -170,7 +170,7 @@ export const tickets = pgTable("tickets", {
 });
 
 export const insertTicketSchema = createInsertSchema(tickets)
-  .omit({ id: true, createdAt: true, updatedAt: true, resolvedAt: true });
+  .omit({ id: true, createdAt: true, updatedAt: true, resolvedAt: true, tenantTicketId: true });
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),

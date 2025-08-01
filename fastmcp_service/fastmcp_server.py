@@ -52,6 +52,12 @@ class AgentRequest(BaseModel):
     context: Optional[Dict[str, Any]] = None
     tenant_id: Optional[int] = 1
 
+class ChatResponseRequest(BaseModel):
+    ticketContext: Dict[str, Any]
+    messageHistory: List[Dict[str, str]]
+    userMessage: str
+    knowledgeContext: Optional[str] = ""
+
 # Create FastAPI app
 app = FastAPI(
     title="FastMCP Service",
@@ -157,8 +163,8 @@ async def search_documents(request: SearchRequest):
         # Search vector storage
         results = await vector_storage.search_similar(
             query=cleaned_query,
-            top_k=request.top_k,
-            filter_metadata=request.filter_metadata
+            top_k=request.top_k or 5,
+            filter_metadata=request.filter_metadata or {}
         )
         
         # Record metrics
@@ -193,7 +199,7 @@ async def process_agent_request(request: AgentRequest):
             raise HTTPException(status_code=400, detail="Invalid query content")
         
         # Route to appropriate agent
-        result = await _route_to_agent(request.agent_type, cleaned_query, request.context)
+        result = await _route_to_agent(request.agent_type, cleaned_query, request.context or {})
         
         # Record metrics
         processing_time = (datetime.utcnow() - start_time).total_seconds()
@@ -212,6 +218,60 @@ async def process_agent_request(request: AgentRequest):
     except Exception as e:
         logger.error(f"Failed to process agent request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat-response")
+async def generate_chat_response(request: ChatResponseRequest):
+    """Generate AI chat response using multi-agent workflow."""
+    try:
+        start_time = datetime.utcnow()
+        
+        # Clean PII from user message
+        cleaned_message = pii_handler.clean_pii(request.userMessage)
+        
+        # Validate message
+        if not pii_handler.validate_prompt(cleaned_message):
+            raise HTTPException(status_code=400, detail="Invalid message content")
+        
+        # Search for relevant knowledge
+        search_results = await vector_storage.search_similar(
+            query=cleaned_message,
+            top_k=3,
+            filter_metadata={"tenant_id": request.ticketContext.get("tenantId", 1)}
+        )
+        
+        # Extract context from search results
+        knowledge_context = "\n".join([result.get("content", "") for result in search_results[:2]])
+        if not knowledge_context:
+            knowledge_context = request.knowledgeContext or ""
+        
+        # Generate response using available knowledge
+        response = await _generate_chat_response(
+            user_message=cleaned_message,
+            context=knowledge_context,
+            message_history=request.messageHistory,
+            ticket_context=request.ticketContext
+        )
+        
+        # Record metrics
+        processing_time = (datetime.utcnow() - start_time).total_seconds()
+        metrics.record_agent_request("chat_response", processing_time)
+        
+        return {
+            "success": True,
+            "response": response,
+            "knowledge_used": len(search_results),
+            "processing_time_seconds": round(processing_time, 3)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate chat response: {e}")
+        return {
+            "success": False,
+            "response": "I apologize, but I'm experiencing difficulties processing your request right now. A support representative will assist you shortly.",
+            "error": str(e)
+        }
 
 @app.get("/stats")
 async def get_stats():
@@ -283,9 +343,43 @@ async def _chat_processor_agent(query: str, context: Dict[str, Any]) -> Dict[str
         "normalized_query": query.lower().strip(),
         "word_count": len(words),
         "detected_intent": "support_request",  # Simple classification
-        "urgency": "medium",  # Simple classification
-        "category": "general"  # Simple classification
+        "entities": _extract_entities(query)
     }
+
+async def _generate_chat_response(
+    user_message: str,
+    context: str,
+    message_history: List[Dict[str, str]],
+    ticket_context: Dict[str, Any]
+) -> str:
+    """Generate chat response using available context."""
+    
+    # Simple response generation based on context
+    if context.strip():
+        response = f"Based on the available information, here's what I can help you with:\n\n"
+        response += f"{context[:500]}..." if len(context) > 500 else context
+        response += f"\n\nIs there anything specific about '{user_message}' that you'd like me to clarify?"
+    else:
+        # Default helpful response when no context is available
+        response = f"I understand you're asking about: {user_message}\n\n"
+        response += "Let me help you with this. Could you provide a bit more detail about what specific issue you're experiencing? "
+        response += "This will help me give you the most accurate assistance."
+    
+    return response
+
+def _extract_entities(text: str) -> List[str]:
+    """Simple entity extraction."""
+    # Basic keyword extraction for demo purposes
+    keywords = []
+    common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'i', 'you', 'we', 'they', 'my', 'your', 'our', 'their'}
+    
+    words = text.lower().split()
+    for word in words:
+        word = word.strip('.,!?;:"()[]{}')
+        if len(word) > 3 and word not in common_words:
+            keywords.append(word)
+    
+    return keywords[:5]  # Return top 5 keywords
 
 async def _prune_if_needed():
     """Background task to prune vectors if storage is getting full."""

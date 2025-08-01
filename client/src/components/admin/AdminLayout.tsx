@@ -17,8 +17,7 @@ import {
   MessageSquare,
   UserPlus,
   Brain,
-  Activity,
-
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoIcon from "@/components/LogoIcon";
@@ -46,8 +45,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin", 
       label: "Dashboard", 
       icon: LayoutDashboard,
-      roles: ["administrator", "support_engineer", "creator"], // Users don't need the dashboard
-      tourId: "dashboard"
+      roles: ["administrator", "support_engineer", "creator"] // Users don't need the dashboard
     },
     { 
       path: "/admin/team", 
@@ -59,8 +57,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/tickets", 
       label: "Tickets", 
       icon: TicketCheck,
-      roles: ["administrator", "support_engineer", "user", "creator", "engineer"], // All roles need tickets
-      tourId: "tickets"
+      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All roles need tickets
     },
     { 
       path: "/admin/agent-resources", 
@@ -102,8 +99,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/settings", 
       label: "Settings", 
       icon: Settings,
-      roles: ["administrator", "creator"], // Only admins and creators can change system settings
-      tourId: "settings"
+      roles: ["administrator", "creator"] // Only admins and creators can change system settings
     },
     { 
       path: "/admin/widget", 
@@ -117,7 +113,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: Activity,
       roles: ["administrator", "creator"] // Only admins and creators can access monitoring
     },
-
   ];
   
   // Filter routes based on user role
@@ -157,7 +152,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         ? "text-white bg-gray-900"
                         : "text-gray-300 hover:bg-gray-700 hover:text-white"
                     )}
-
                   >
                     <route.icon className="w-6 h-6 mr-3 text-gray-300" />
                     {route.label}

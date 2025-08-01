@@ -673,7 +673,6 @@ export default function ChatbotInterface() {
             onClick={toggleChat}
             className="w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             size="icon"
-
           >
             <MessageSquare className="w-8 h-8 text-white" />
           </Button>

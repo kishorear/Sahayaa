@@ -5,7 +5,6 @@ import { setupVite, serveStatic, log } from "./vite";
 import { testDbConnection, reconnectDb } from "./db";
 import { validateEnvironmentAtStartup } from "./environment-validator";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
-import { fastMcpOrchestrator } from "./fastmcp_orchestrator";
 import path from "path";
 
 // Process-level unhandled rejection handler to prevent crashes
@@ -58,11 +57,6 @@ console.log(`Serving static files from: ${uploadsDir}`);
 const clientDir = path.join(process.cwd(), 'client');
 app.use('/debug', express.static(clientDir));
 console.log(`Serving debug tools from: ${clientDir}`);
-
-// Serve static assets from client/public directory
-const publicDir = path.join(process.cwd(), 'client', 'public');
-app.use(express.static(publicDir));
-console.log(`Serving static assets from: ${publicDir}`);
 
 // Enhanced JSON body parser with better error handling
 app.use(express.json({
@@ -128,16 +122,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize FastMCP orchestrator
-  console.log("Initializing FastMCP orchestrator...");
-  try {
-    await fastMcpOrchestrator.startService();
-    console.log("FastMCP orchestrator started successfully");
-  } catch (error) {
-    console.warn("FastMCP orchestrator failed to start:", error);
-    console.log("Continuing with fallback mode...");
-  }
-
   const server = await registerRoutes(app);
 
   // Add API database health check middleware

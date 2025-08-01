@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, Code, MessageSquare, Puzzle, Key, CloudLightning, Server, GitMerge, HelpCircle, Network } from "lucide-react";
+import { BookOpen, Code, MessageSquare, Puzzle, Key, CloudLightning, Server, GitMerge, HelpCircle } from "lucide-react";
 import { Link } from "wouter";
 
 export default function DocumentationPage() {
@@ -31,12 +31,6 @@ export default function DocumentationPage() {
             <div className="flex items-center">
               <HelpCircle className="mr-2 h-4 w-4" />
               How It Works
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="architecture">
-            <div className="flex items-center">
-              <Network className="mr-2 h-4 w-4" />
-              Architecture
             </div>
           </TabsTrigger>
           <TabsTrigger value="features">
@@ -195,158 +189,6 @@ export default function DocumentationPage() {
                   <li><strong>Authentication Options</strong> - MFA and SSO integration</li>
                   <li><strong>Audit Logging</strong> - Comprehensive logging of all system activities</li>
                   <li><strong>Data Encryption</strong> - Both at rest and in transit</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="architecture" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Architecture</CardTitle>
-              <CardDescription>
-                Comprehensive overview of the AI Support Platform architecture and technical components.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="prose max-w-none">
-                <h3>Architecture Overview</h3>
-                <p>
-                  The AI Support Platform is built on a modern, scalable microservices architecture designed to handle enterprise-level support operations. The system consists of multiple interconnected layers working together to provide intelligent, automated customer support.
-                </p>
-              </div>
-              
-              <div className="w-full flex justify-center">
-                <div className="max-w-full overflow-auto border rounded-lg bg-white p-4">
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-2">
-                        <a href="/architecture-diagram-new.svg" target="_blank" className="text-blue-500 underline">
-                          View Full Architecture Diagram (opens in new tab)
-                        </a>
-                      </p>
-                    </div>
-                    <img 
-                      src="/architecture-diagram-new.svg" 
-                      alt="AI Support Platform Architecture Diagram" 
-                      className="w-full h-auto max-w-none"
-                      style={{ minWidth: '1000px' }}
-                      onError={(e) => {
-                        console.error('Failed to load architecture diagram:', e);
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'text-red-500 p-4 text-center';
-                        errorDiv.innerHTML = `
-                          <p>Unable to load architecture diagram inline</p>
-                          <p class="text-sm mt-2">Try viewing it directly:</p>
-                          <a href="/architecture-diagram-new.svg" target="_blank" class="text-blue-500 underline">Open Architecture Diagram</a>
-                        `;
-                        target.parentNode?.appendChild(errorDiv);
-                      }}
-                      onLoad={() => {
-                        console.log('Architecture diagram loaded successfully');
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="prose max-w-none">
-                <h3>System Components</h3>
-                
-                <h4>Frontend Layer (React + TypeScript)</h4>
-                <p>
-                  The client-side application provides multiple interfaces for different user types:
-                </p>
-                <ul>
-                  <li><strong>Public Pages</strong> - Landing, pricing, demo, and documentation pages</li>
-                  <li><strong>Admin Dashboard</strong> - Comprehensive management interface for tickets, teams, and system configuration</li>
-                  <li><strong>Creator Portal</strong> - Multi-tenant dashboard for organization creators</li>
-                  <li><strong>Chat Widget</strong> - Embeddable widget with cross-origin support for customer websites</li>
-                  <li><strong>Monitoring Dashboard</strong> - Real-time system health and performance metrics</li>
-                  <li><strong>Authentication System</strong> - Advanced security with RBAC, MFA, and SSO support</li>
-                </ul>
-
-                <h4>Backend API Layer (Node.js + Express - Port 5000)</h4>
-                <p>
-                  The server-side application handles all business logic and API operations:
-                </p>
-                <ul>
-                  <li><strong>Core Routes</strong> - RESTful APIs for tickets, users, teams, and authentication</li>
-                  <li><strong>AI Services</strong> - Multi-provider AI integration with intelligent agent orchestration</li>
-                  <li><strong>Security Layer</strong> - Enterprise-grade encryption, rate limiting, and audit logging</li>
-                  <li><strong>Integrations</strong> - Third-party connectors for Jira, Zendesk, and email services</li>
-                  <li><strong>Data Processing</strong> - Document parsing, parallel processing, and circuit breaker patterns</li>
-                  <li><strong>Health Monitoring</strong> - Comprehensive health checks and resilience services</li>
-                </ul>
-
-                <h4>FastMCP Service (Python FastAPI - Port 8001)</h4>
-                <p>
-                  Specialized microservice for Model Context Protocol and vector operations:
-                </p>
-                <ul>
-                  <li><strong>Vector Storage</strong> - Local file-based storage with OpenAI embeddings (under 1GB limit)</li>
-                  <li><strong>PII Handler</strong> - Advanced privacy protection masking sensitive data</li>
-                  <li><strong>Ingestion Scheduler</strong> - Automated document processing with size management</li>
-                  <li><strong>Metrics Collection</strong> - Performance monitoring and health status reporting</li>
-                </ul>
-
-                <h4>AI Agent System (Multi-Provider)</h4>
-                <p>
-                  Intelligent agent orchestration system for processing customer inquiries:
-                </p>
-                <ul>
-                  <li><strong>Chat Processor Agent</strong> - Analyzes and extracts key information from messages</li>
-                  <li><strong>Instruction Lookup Agent</strong> - Searches knowledge base using vector similarity</li>
-                  <li><strong>Ticket Lookup Agent</strong> - Finds similar historical tickets with successful resolutions</li>
-                  <li><strong>Ticket Formatter Agent</strong> - Structures solutions into actionable steps with priority scoring</li>
-                  <li><strong>Support Team Orchestrator</strong> - Coordinates all agents and manages workflow</li>
-                </ul>
-
-                <h4>Database Layer (PostgreSQL)</h4>
-                <p>
-                  Multi-tenant database architecture with complete data isolation:
-                </p>
-                <ul>
-                  <li><strong>Core Tables</strong> - Users, tickets, messages, teams with tenant isolation</li>
-                  <li><strong>Multi-Tenant Support</strong> - Tenant settings, branding, and API key management</li>
-                  <li><strong>AI Provider Configuration</strong> - Support for OpenAI, Anthropic, Gemini, and AWS Bedrock</li>
-                  <li><strong>Document Storage</strong> - Knowledge base and agent resource management</li>
-                  <li><strong>Analytics & Security</strong> - Widget analytics, performance metrics, and audit logs</li>
-                </ul>
-
-                <h4>External Services</h4>
-                <p>
-                  Integration with third-party services and APIs:
-                </p>
-                <ul>
-                  <li><strong>AI Providers</strong> - OpenAI, Anthropic, Google Gemini, AWS Bedrock APIs</li>
-                  <li><strong>Email Service</strong> - SendGrid for automated notifications and support communications</li>
-                  <li><strong>Third-party Integrations</strong> - Jira, Zendesk, and custom webhook support</li>
-                </ul>
-
-                <h3>Data Flow & Processing</h3>
-                <p>
-                  The architecture follows a clear data flow pattern:
-                </p>
-                <ol>
-                  <li><strong>Request Processing</strong> - Frontend sends HTTP/REST API requests to the backend</li>
-                  <li><strong>AI Processing</strong> - Backend coordinates with AI agents through the MCP protocol</li>
-                  <li><strong>Vector Operations</strong> - FastMCP service handles document search and similarity matching</li>
-                  <li><strong>Data Persistence</strong> - Backend uses Drizzle ORM to interact with PostgreSQL database</li>
-                  <li><strong>External Integration</strong> - API calls to third-party services as needed</li>
-                </ol>
-
-                <h3>Key Architectural Features</h3>
-                <ul>
-                  <li><strong>Multi-tenant Architecture</strong> - Complete data isolation between organizations</li>
-                  <li><strong>Microservices Design</strong> - Loosely coupled services with independent scaling</li>
-                  <li><strong>Multi-provider AI System</strong> - Flexibility and redundancy across AI providers</li>
-                  <li><strong>Production-ready Security</strong> - RBAC, MFA, encryption, and comprehensive monitoring</li>
-                  <li><strong>Embeddable Components</strong> - Cross-origin chat widget with real-time processing</li>
-                  <li><strong>Intelligent Agent Orchestration</strong> - MCP-powered workflow coordination</li>
                 </ul>
               </div>
             </CardContent>

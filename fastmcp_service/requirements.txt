@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-openai
-python-dotenv
-aiofiles
-tenacity
-pydantic
-schedule
-requests

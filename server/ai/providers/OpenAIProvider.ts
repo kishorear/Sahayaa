@@ -169,6 +169,8 @@ Provide helpful, non-technical guidance that leads to ticket creation.`;
         const response = await this.client.chat.completions.create({
           model: this.model,
           messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 1000,
           response_format: { type: "json_object" }
         });
 

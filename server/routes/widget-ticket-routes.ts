@@ -143,11 +143,22 @@ export function registerWidgetTicketRoutes(app: Express): void {
           try {
             // Convert base64 to buffer and save
             const buffer = Buffer.from(attachment.data, 'base64');
-            // In a real implementation, you'd save to file system or cloud storage
-            // For now, we'll log the attachment info
-            console.log(`Widget Ticket: Attachment ${attachment.filename} (${attachment.mimeType}) - ${buffer.length} bytes`);
+            console.log(`Widget Ticket: Processing attachment ${attachment.filename} (${attachment.mimeType}) - ${buffer.length} bytes`);
+            
+            // Create attachment in database
+            const attachmentData = {
+              ticketId: ticket.id,
+              type: attachment.mimeType.startsWith('image/') ? 'image' : 'file',
+              filename: attachment.filename,
+              contentType: attachment.mimeType,
+              data: attachment.data // Store base64 data directly
+            };
+            
+            const savedAttachment = await storage.createAttachment(attachmentData);
+            console.log(`Widget Ticket: Successfully saved attachment ${savedAttachment.id} for ticket ${ticket.id}`);
             
             attachmentResults.push({
+              id: savedAttachment.id,
               filename: attachment.filename,
               mimeType: attachment.mimeType,
               size: buffer.length,

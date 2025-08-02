@@ -27,11 +27,25 @@ type Message = {
 function shouldShowCreateTicketButton(messages: Message[]): boolean {
   if (messages.length < 2) return false; // Need at least user message and AI response
   
-  // Check if user has expressed an issue or problem
+  // Check if user has explicitly requested ticket creation
   const userMessages = messages
     .filter(msg => msg.sender === 'user')
     .map(msg => msg.content.toLowerCase());
   
+  const explicitTicketKeywords = [
+    'create a ticket', 'create ticket', 'open a ticket', 'open ticket',
+    'make a ticket', 'submit a ticket', 'file a ticket', 'ticket please',
+    'create support ticket', 'i need a ticket', 'can you create a ticket'
+  ];
+  
+  const hasExplicitRequest = userMessages.some(message => 
+    explicitTicketKeywords.some(keyword => message.includes(keyword))
+  );
+  
+  // If user explicitly requested a ticket, show button immediately
+  if (hasExplicitRequest) return true;
+  
+  // Check if user has expressed an issue or problem
   const issueKeywords = [
     'problem', 'issue', 'error', 'broken', 'not working', "doesn't work",
     'help', 'trouble', 'bug', 'wrong', 'failed', 'crash', 'stuck'

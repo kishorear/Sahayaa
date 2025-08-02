@@ -1015,11 +1015,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const systemPrompt = 
             `You are a helpful customer support agent. Engage conversationally to solve issues.
              Gather basic details and try to give a first-hand resolution to solve the issue.
-             Only suggest creating a ticket if you cannot solve the problem directly.
+             
+             IMPORTANT: You CANNOT create tickets directly. When a user asks you to create a ticket or when you need to escalate an issue:
+             - Respond with phrases like "I can help you create a support ticket" or "Let me help you submit a ticket for this issue"
+             - NEVER say "I have created a ticket" or "The ticket has been created" 
+             - NEVER claim that a ticket is already created when it isn't
+             - The user will see a button to confirm ticket creation after your response
+             
              Be friendly, professional, and empathetic in your responses.
              When appropriate, ask if they would like to upload a screenshot or image to help explain their issue.
-             Never make up information. If you don't know something, be honest about it.
-             After creating a ticket, ALWAYS ask if the user needs more assistance with anything else. If they say no or indicate they're done, respond by saying you're ending the chat session and they can return anytime they need further help.`;
+             Never make up information. If you don't know something, be honest about it.`;
           
           // Add the current message to the history
           const allMessages = [
@@ -1030,10 +1035,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get AI response
           const aiResponse = await provider.generateChatResponse(allMessages, knowledgeContext, systemPrompt);
           
-          // For complex issues not automatically handled in the chat flow, suggest creating a ticket
-          const needsTicket = aiResponse.toLowerCase().includes("support ticket") || 
-                             aiResponse.toLowerCase().includes("contact support") ||
-                             aiResponse.toLowerCase().includes("create a ticket");
+          // Check if AI suggests creating a ticket or user explicitly requested one
+          const lowerMessage = message.toLowerCase();
+          const lowerResponse = aiResponse.toLowerCase();
+          
+          const userRequestedTicket = /\b(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage) ||
+                                     /\bi\s+(want|need|would\s+like)\s+(to\s+)?(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage) ||
+                                     /\bplease\s+(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage) ||
+                                     /\bcan\s+you\s+(create|make|open|start|submit|file|raise)\s+(a\s+)?(ticket|support\s+ticket|case|request)\b/.test(lowerMessage);
+          
+          const aiSuggestsTicket = lowerResponse.includes("support ticket") || 
+                                  lowerResponse.includes("contact support") ||
+                                  lowerResponse.includes("help you create") ||
+                                  lowerResponse.includes("submit a ticket") ||
+                                  lowerResponse.includes("escalate") ||
+                                  lowerResponse.includes("ticket for this");
+          
+          const needsTicket = userRequestedTicket || aiSuggestsTicket;
           
           if (needsTicket) {
             // Classify message to get appropriate category/complexity

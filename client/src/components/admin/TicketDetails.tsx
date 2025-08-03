@@ -341,7 +341,6 @@ export default function TicketDetails() {
                       <AttachmentPreview 
                         key={attachment.id} 
                         attachment={attachment} 
-                        onView={setSelectedAttachment}
                       />
                     ))}
                   </div>
@@ -350,135 +349,66 @@ export default function TicketDetails() {
             </div>
           </CardContent>
         </Card>
-        </div>
-        
-        {/* Sidebar */}
-        <div>
-          <Card>
-            <CardHeader className="px-6 py-4 border-b border-gray-200">
-              <CardTitle className="text-base font-medium">Ticket Information</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
-                  <Select value={selectedStatus || ticket.status} onValueChange={handleStatusChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      </div>
 
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Priority</h3>
-                  <p className="text-sm font-medium text-gray-900 capitalize">{ticket.priority}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Category</h3>
-                  <p className="text-sm font-medium text-gray-900">{formatCategory(ticket.category)}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Complexity</h3>
-                  <ComplexityBadge complexity={ticket.complexity} />
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Source</h3>
-                  <SourceBadge source={ticket.source} />
-                </div>
-
-                {ticket.resolutionTime && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">
-                      <CircleCheck className="h-4 w-4 inline mr-1" />
-                      Resolution Time
-                    </h3>
-                    <p className="text-sm text-gray-700">{ticket.resolutionTime}</p>
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    <Clock className="h-4 w-4 inline mr-1" />
-                    Created
-                  </h3>
-                  <p className="text-sm text-gray-700">
-                    {formatDistance(new Date(ticket.createdAt), new Date(), { addSuffix: true })}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    <Calendar className="h-4 w-4 inline mr-1" />
-                    Last Updated
-                  </h3>
-                  <p className="text-sm text-gray-700">
-                    {formatDistance(new Date(ticket.updatedAt), new Date(), { addSuffix: true })}
-                  </p>
-                </div>
-
-                {ticket.aiNotes && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">AI Notes</h3>
-                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-sm text-gray-700">
-                      <p className="whitespace-pre-wrap leading-relaxed">{ticket.aiNotes}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Attachments Section */}
-                {ticket.attachments && ticket.attachments.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2 flex items-center">
-                      <Paperclip className="h-4 w-4 mr-2" />
-                      Attachments ({ticket.attachments.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {ticket.attachments.map((attachment) => (
-                        <AttachmentPreview 
-                          key={attachment.id} 
-                          attachment={attachment} 
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-6 border-t border-gray-200">
-                  <form onSubmit={handleSendMessage} className="space-y-4">
-                    <div>
-                      <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                        Add Reply
-                      </label>
-                      <Textarea
-                        id="message"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your reply..."
-                        rows={4}
-                        className="w-full"
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      disabled={!newMessage.trim() || createMessageMutation.isPending}
-                      className="w-full"
-                    >
-                      {createMessageMutation.isPending ? "Sending..." : "Send Reply"}
-                    </Button>
-                  </form>
+      {/* Sidebar */}
+      <div>
+        <Card>
+          <CardHeader className="px-6 py-4 border-b border-gray-200">
+            <CardTitle className="text-lg font-medium text-gray-900">Ticket Details</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
+                <Select
+                  value={selectedStatus || ticket.status}
+                  onValueChange={handleStatusChange}
+                  disabled={updateTicketMutation.isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {/* Animated Ticket Status Progress Bar */}
+                <div className="mt-3">
+                  <TicketStatusProgress status={selectedStatus || ticket.status} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Category</h3>
+                <Badge className="capitalize">{formatCategory(ticket.category)}</Badge>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Assigned To</h3>
+                <div className="flex items-center">
+                  <Avatar className="h-6 w-6 mr-2">
+                    <AvatarFallback className="text-xs bg-gray-200">S</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-gray-700">Support Team</span>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Complexity</h3>
+                <ComplexityBadge complexity={ticket.complexity} />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Source</h3>
+                <SourceBadge source={ticket.source} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -346,16 +346,9 @@ export default function ChatbotInterface() {
         actionButtons: {
           type: 'ticket_creation' as const,
           onYes: () => {
-            // Create the ticket with the suggested data
-            const ticketData: InsertTicket = {
-              title: action.data.title,
-              description: action.data.description,
-              category: action.data.category || 'general',
-              status: 'new',
-              source: 'chat'
-            };
-            
-            createTicketMutation.mutate(ticketData);
+            // Use the widget ticket creation (with AI processing) instead of regular ticket creation
+            setIsCreatingTicket(true);
+            createWidgetTicketMutation.mutate();
           },
           onNo: () => {
             // Continue with chat

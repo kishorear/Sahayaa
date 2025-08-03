@@ -32,6 +32,13 @@ Preferred communication style: Simple, everyday language.
     - Enhanced ChatbotInterface to mark attachment messages with [ATTACHMENT] prefix for filtering
   - **Verified Attachment Storage**: Successfully added test attachment to ticket 109, confirmed proper database storage
   - **Tested Title Generation**: Verified AI title generation ("Login System: Page Not Loading") excludes attachment content
+- **August 3, 2025**: Fixed quality gap between sample tickets and chat-generated tickets
+  - **Root Cause**: Chat tickets were using old `/api/tickets` endpoint without AI title generation
+  - **Solution**: Enhanced both chat flows to use proper AI title generation
+    - Modified `handleAIAction` in ChatbotInterface to use widget ticket creation (with AI processing)
+    - Added AI title enhancement to `/api/tickets` route for backward compatibility
+    - Implemented quality detection: if description is longer than title, generate AI title
+  - **Result**: All ticket creation paths now generate professional titles like "Login System Access Issues" instead of raw user messages
 
 ## System Architecture
 

@@ -379,7 +379,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue with request even if provider reload fails
       }
       
-      const classification = await classifyTicket(ticketData.title, ticketData.description, tenantId);
+      // ENHANCEMENT: Generate proper AI title if the current title appears to be a raw user message
+      let enhancedTitle = ticketData.title;
+      if (ticketData.description && ticketData.description.length > ticketData.title.length) {
+        // If description is longer than title, it suggests title might be a poor quality user input
+        // Generate a better title using AI
+        try {
+          const titleMessages: ChatMessage[] = [
+            { role: 'user', content: ticketData.description }
+          ];
+          const aiGeneratedTitle = await generateTicketTitle(titleMessages, tenantId || 1);
+          if (aiGeneratedTitle && aiGeneratedTitle.length > 5 && aiGeneratedTitle !== 'Support Request') {
+            enhancedTitle = aiGeneratedTitle;
+            console.log(`Enhanced ticket title from "${ticketData.title}" to "${enhancedTitle}"`);
+          }
+        } catch (titleError) {
+          console.warn('Failed to generate enhanced title, using original:', titleError);
+        }
+      }
+      
+      const classification = await classifyTicket(enhancedTitle, ticketData.description, tenantId);
       
       // Determine team assignment based on ticket data or default team
       let assignedUserId = classification.assignedTo;
@@ -418,6 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const newTicket: InsertTicket = {
         ...ticketData,
+        title: enhancedTitle, // Use the AI-enhanced title
         category: classification.category,
         complexity: classification.complexity,
         assignedTo: assignedUserId,

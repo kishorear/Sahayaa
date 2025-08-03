@@ -351,65 +351,7 @@ export default function TicketDetails() {
         </Card>
       </div>
 
-      {/* Sidebar */}
-      <div>
-        <Card>
-          <CardHeader className="px-6 py-4 border-b border-gray-200">
-            <CardTitle className="text-lg font-medium text-gray-900">Ticket Details</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
-                <Select
-                  value={selectedStatus || ticket.status}
-                  onValueChange={handleStatusChange}
-                  disabled={updateTicketMutation.isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                {/* Animated Ticket Status Progress Bar */}
-                <div className="mt-3">
-                  <TicketStatusProgress status={selectedStatus || ticket.status} />
-                </div>
-              </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Category</h3>
-                <Badge className="capitalize">{formatCategory(ticket.category)}</Badge>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Assigned To</h3>
-                <div className="flex items-center">
-                  <Avatar className="h-6 w-6 mr-2">
-                    <AvatarFallback className="text-xs bg-gray-200">S</AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm text-gray-700">Support Team</span>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Complexity</h3>
-                <ComplexityBadge complexity={ticket.complexity} />
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Source</h3>
-                <SourceBadge source={ticket.source} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

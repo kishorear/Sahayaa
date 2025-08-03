@@ -67,8 +67,6 @@ import aiProvidersRoutes from "./routes/ai-providers-routes";
 import { registerKnowledgeSyncRoutes } from "./routes/knowledge-sync-routes";
 // Import tenant routes for creator role
 import { tenantRoutes } from "./routes/tenant-routes";
-// Import MCP database routes for multi-database support
-import { registerMcpDatabaseRoutes } from "./routes/mcp-database-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
@@ -404,46 +402,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`Ticket assigned to team member: ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) with lowest workload in team ${teamId}`);
           } else {
             console.log(`No team members available in team ${teamId}, falling back to department-based random assignment`);
-            // Fallback to random assignment within appropriate department
-            const randomAssignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
-            if (randomAssignedUser) {
-              assignedUserId = randomAssignedUser.id.toString();
-              console.log(`Ticket randomly assigned to department member: ${randomAssignedUser.name || randomAssignedUser.username} (ID: ${randomAssignedUser.id}) for category ${classification.category}`);
-            } else {
-              console.log(`No eligible users found for department assignment, using AI classification assignment: ${classification.assignedTo}`);
-            }
+            // Fallback to using AI classification assignment
+            console.log(`Using AI classification assignment: ${classification.assignedTo}`);
           }
         } catch (error) {
           console.error(`Error assigning ticket to team member:`, error);
           console.log(`Falling back to department-based random assignment`);
-          // Fallback to random assignment within appropriate department
-          try {
-            const randomAssignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
-            if (randomAssignedUser) {
-              assignedUserId = randomAssignedUser.id.toString();
-              console.log(`Ticket randomly assigned to department member: ${randomAssignedUser.name || randomAssignedUser.username} (ID: ${randomAssignedUser.id}) for category ${classification.category}`);
-            } else {
-              console.log(`No eligible users found for department assignment, using AI classification assignment: ${classification.assignedTo}`);
-            }
-          } catch (departmentError) {
-            console.error(`Error in department-based assignment:`, departmentError);
-            console.log(`Using AI classification assignment: ${classification.assignedTo}`);
-          }
-        }
-      } else {
-        // No team specified, use department-based random assignment
-        try {
-          const randomAssignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
-          if (randomAssignedUser) {
-            assignedUserId = randomAssignedUser.id.toString();
-            console.log(`Ticket randomly assigned to department member: ${randomAssignedUser.name || randomAssignedUser.username} (ID: ${randomAssignedUser.id}) for category ${classification.category}`);
-          } else {
-            console.log(`No eligible users found for department assignment, using AI classification assignment: ${classification.assignedTo}`);
-          }
-        } catch (error) {
-          console.error(`Error in department-based assignment:`, error);
+          // Fallback to using AI classification assignment
           console.log(`Using AI classification assignment: ${classification.assignedTo}`);
         }
+      } else {
+        // No team specified, use AI classification assignment
+        console.log(`Using AI classification assignment: ${classification.assignedTo}`);
       }
       
       const newTicket: InsertTicket = {
@@ -1278,6 +1248,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
                                   aiResponse.toLowerCase().includes("escalate") ||
                                   aiResponse.toLowerCase().includes("human support");
         
+        let response;
         if (shouldSuggestTicket) {
           const classification = await classifyTicket("User inquiry", message, tenantId);
           response = {

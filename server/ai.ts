@@ -662,8 +662,11 @@ export async function generateTicketTitle(messages: ChatMessage[], tenantId?: nu
     const useAI = await shouldUseAIProvider(tenantId) || FALLBACK_TO_OPENAI;
     
     if (useAI) {
-      // Get all message contents for context building
-      const allText = messages.map(m => m.content).join(' ');
+      // Get all message contents for context building, excluding attachment mentions
+      const allText = messages
+        .map(m => m.content)
+        .filter(content => !content.includes('[ATTACHMENT]') && !content.includes('I\'ve shared') && !content.includes('attachment') && !content.includes('file:'))
+        .join(' ');
       
       // Create a robust system prompt for ticket title generation
       const baseSystemPrompt = `

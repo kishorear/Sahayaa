@@ -54,12 +54,22 @@ export function registerWidgetTicketRoutes(app: Express): void {
       console.log(`Widget Ticket: Creating ticket for tenant ${tenantId} with ${conversation.length} messages`);
       
       // Step 1: Generate sophisticated ticket title using the AI title generation service
-      const conversationForTitle: ChatMessage[] = conversation.map(msg => ({
+      // Filter out attachment messages from conversation for AI title generation
+      const conversationForTitle: ChatMessage[] = conversation
+        .filter(msg => 
+          !msg.content.includes('[ATTACHMENT]') && 
+          !msg.content.includes('I\'ve shared') && 
+          !msg.content.includes('attachment')
+        )
+        .map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        }));
+      
+      const ticketTitle = await generateTicketTitle(conversationForTitle.length > 0 ? conversationForTitle : conversation.map(msg => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content
-      }));
-      
-      const ticketTitle = await generateTicketTitle(conversationForTitle, tenantId);
+      })), tenantId);
       
       // Step 2: Generate comprehensive ticket description from conversation using LLM
       const conversationText = conversation.map(msg => 

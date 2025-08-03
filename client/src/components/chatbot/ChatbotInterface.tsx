@@ -492,7 +492,7 @@ export default function ChatbotInterface() {
         ...prev,
         {
           id: `user-${Date.now()}`,
-          content: `I've shared ${fileType === 'image' ? 'an image' : fileType === 'video' ? 'a video' : 'a file'}: ${file.name}`,
+          content: `[ATTACHMENT] I've shared ${fileType === 'image' ? 'an image' : fileType === 'video' ? 'a video' : 'a file'}: ${file.name}`,
           sender: "user",
           timestamp: new Date(),
         },

@@ -467,6 +467,10 @@ export default function ChatbotInterface() {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    // Determine file type
+    const fileType = file.type.startsWith('image/') ? 'image' : 
+                    file.type.startsWith('video/') ? 'video' : 'file';
+    
     // Convert file to base64 for storage
     const reader = new FileReader();
     reader.onload = () => {
@@ -483,12 +487,12 @@ export default function ChatbotInterface() {
         }
       ]);
       
-      // Create a new user message with the image
+      // Create a new user message with the file
       setMessages(prev => [
         ...prev,
         {
           id: `user-${Date.now()}`,
-          content: `I've shared an image: ${file.name}`,
+          content: `I've shared ${fileType === 'image' ? 'an image' : fileType === 'video' ? 'a video' : 'a file'}: ${file.name}`,
           sender: "user",
           timestamp: new Date(),
         },
@@ -497,14 +501,14 @@ export default function ChatbotInterface() {
       // Show typing indicator
       setIsTyping(true);
       
-      // Add AI response acknowledging the image
+      // Add AI response acknowledging the file
       setTimeout(() => {
         setIsTyping(false);
         setMessages(prev => [
           ...prev,
           {
             id: `ai-${Date.now()}`,
-            content: "I've received your image. This will help us better understand your situation. Is there anything else you'd like to tell me about this issue?",
+            content: `I've received your ${fileType === 'image' ? 'image' : fileType === 'video' ? 'video' : 'file'}. This will help us better understand your situation. Is there anything else you'd like to tell me about this issue?`,
             sender: "ai",
             timestamp: new Date(),
           },
@@ -764,7 +768,7 @@ export default function ChatbotInterface() {
                     className="flex flex-col items-center gap-1 py-2 h-auto"
                   >
                     <Image className="w-4 h-4" />
-                    <span className="text-xs">Upload Image</span>
+                    <span className="text-xs">Upload File</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -789,7 +793,7 @@ export default function ChatbotInterface() {
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  accept="image/*"
+                  accept="image/*,video/*,.pdf,.doc,.docx,.txt"
                   className="hidden"
                 />
               </div>

@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { useState } from "react";
 import { formatDistance, format } from "date-fns";
-import { Ticket, Message, InsertMessage, User as UserSchema } from "@shared/schema";
+import { Ticket, Message, InsertMessage, User as UserSchema, Attachment } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,9 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Bot, CircleCheck, Clock, Calendar, Mail } from "lucide-react";
+import { User, Bot, CircleCheck, Clock, Calendar, Mail, Paperclip, Download, Eye, X } from "lucide-react";
 import { TicketStatusProgress } from "@/components/admin/TicketStatusProgress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function TicketDetails() {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +29,8 @@ export default function TicketDetails() {
   const [newMessage, setNewMessage] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
 
-  const { data: ticket, isLoading: ticketLoading } = useQuery<Ticket & { messages: Message[] }>({
+
+  const { data: ticket, isLoading: ticketLoading } = useQuery<Ticket & { messages: Message[]; attachments: Attachment[] }>({
     queryKey: [`/api/tickets/${ticketId}`],
   });
 
@@ -326,12 +328,275 @@ export default function TicketDetails() {
                   </div>
                 </div>
               )}
+
+              {/* Attachments Section */}
+              {ticket.attachments && ticket.attachments.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2 flex items-center">
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Attachments ({ticket.attachments.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {ticket.attachments.map((attachment) => (
+                      <AttachmentPreview 
+                        key={attachment.id} 
+                        attachment={attachment} 
+                        onView={setSelectedAttachment}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
+        </div>
+        
+        {/* Sidebar */}
+        <div>
+          <Card>
+            <CardHeader className="px-6 py-4 border-b border-gray-200">
+              <CardTitle className="text-base font-medium">Ticket Information</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
+                  <Select value={selectedStatus || ticket.status} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Priority</h3>
+                  <p className="text-sm font-medium text-gray-900 capitalize">{ticket.priority}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Category</h3>
+                  <p className="text-sm font-medium text-gray-900">{formatCategory(ticket.category)}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Complexity</h3>
+                  <ComplexityBadge complexity={ticket.complexity} />
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Source</h3>
+                  <SourceBadge source={ticket.source} />
+                </div>
+
+                {ticket.resolutionTime && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">
+                      <CircleCheck className="h-4 w-4 inline mr-1" />
+                      Resolution Time
+                    </h3>
+                    <p className="text-sm text-gray-700">{ticket.resolutionTime}</p>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">
+                    <Clock className="h-4 w-4 inline mr-1" />
+                    Created
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    {formatDistance(new Date(ticket.createdAt), new Date(), { addSuffix: true })}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">
+                    <Calendar className="h-4 w-4 inline mr-1" />
+                    Last Updated
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    {formatDistance(new Date(ticket.updatedAt), new Date(), { addSuffix: true })}
+                  </p>
+                </div>
+
+                {ticket.aiNotes && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">AI Notes</h3>
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-sm text-gray-700">
+                      <p className="whitespace-pre-wrap leading-relaxed">{ticket.aiNotes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Attachments Section */}
+                {ticket.attachments && ticket.attachments.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2 flex items-center">
+                      <Paperclip className="h-4 w-4 mr-2" />
+                      Attachments ({ticket.attachments.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {ticket.attachments.map((attachment) => (
+                        <AttachmentPreview 
+                          key={attachment.id} 
+                          attachment={attachment} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-6 border-t border-gray-200">
+                  <form onSubmit={handleSendMessage} className="space-y-4">
+                    <div>
+                      <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                        Add Reply
+                      </label>
+                      <Textarea
+                        id="message"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Type your reply..."
+                        rows={4}
+                        className="w-full"
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      disabled={!newMessage.trim() || createMessageMutation.isPending}
+                      className="w-full"
+                    >
+                      {createMessageMutation.isPending ? "Sending..." : "Send Reply"}
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
+}
+
+// Attachment Preview Component
+function AttachmentPreview({ attachment }: { attachment: Attachment }) {
+  const handleDownload = () => {
+    const blob = new Blob([Uint8Array.from(atob(attachment.data), c => c.charCodeAt(0))], {
+      type: attachment.contentType
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = attachment.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const isImage = attachment.contentType.startsWith('image/');
+  const isVideo = attachment.contentType.startsWith('video/');
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors">
+      <div className="flex items-center min-w-0 flex-1">
+        <div className="flex-shrink-0 mr-3">
+          {isImage ? (
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <Eye className="h-6 w-6 text-green-600" />
+            </div>
+          ) : isVideo ? (
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Eye className="h-6 w-6 text-purple-600" />
+            </div>
+          ) : (
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Paperclip className="h-6 w-6 text-blue-600" />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-gray-900 truncate">{attachment.filename}</p>
+          <p className="text-xs text-gray-500">
+            {attachment.contentType} • {formatFileSize(attachment.data.length * 0.75)} {/* Approximate size from base64 */}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center space-x-2 ml-4">
+        {(isImage || isVideo) && (
+          <Button variant="outline" size="sm" onClick={() => {
+            const dataUrl = `data:${attachment.contentType};base64,${attachment.data}`;
+            window.open(dataUrl, '_blank');
+          }}>
+            <Eye className="h-4 w-4 mr-1" />
+            View
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={handleDownload}>
+          <Download className="h-4 w-4 mr-1" />
+          Download
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Attachment Viewer Component
+function AttachmentViewer({ attachment }: { attachment: Attachment }) {
+  const dataUrl = `data:${attachment.contentType};base64,${attachment.data}`;
+  const isImage = attachment.contentType.startsWith('image/');
+  const isVideo = attachment.contentType.startsWith('video/');
+
+  if (isImage) {
+    return (
+      <div className="flex justify-center">
+        <img 
+          src={dataUrl} 
+          alt={attachment.filename}
+          className="max-w-full max-h-[70vh] object-contain rounded-lg"
+        />
+      </div>
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <div className="flex justify-center">
+        <video 
+          src={dataUrl} 
+          controls
+          className="max-w-full max-h-[70vh] rounded-lg"
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center p-8">
+      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+        <Paperclip className="h-8 w-8 text-gray-600" />
+      </div>
+      <p className="text-gray-600">Preview not available for this file type</p>
+      <p className="text-sm text-gray-500 mt-2">{attachment.contentType}</p>
+    </div>
+  );
+}
+
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -395,8 +660,8 @@ function SourceBadge({ source }: { source: string | undefined | null }) {
 function TicketDetailsSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-2">
-        <Card>
+        <div className="md:col-span-2">
+          <Card>
           <CardHeader className="px-6 py-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <Skeleton className="h-6 w-48" />

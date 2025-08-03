@@ -105,8 +105,8 @@ export class AgentService {
       
       // TEMPORARY FIX: Use direct ticket creation instead of the problematic orchestrator
       // This ensures tickets are created in the database properly
-      const { storage } = await import('../../storage.js');
-      const { classifyTicket } = await import('../../ai.js');
+      const { storage } = await import('../storage');
+      const { classifyTicket } = await import('../ai');
       
       const startTime = Date.now();
       

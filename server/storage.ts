@@ -90,6 +90,7 @@ export interface IStorage {
   getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]>;
   getTeamMemberWorkload(teamId: number, tenantId?: number): Promise<Array<{user: User, ticketCount: number}>>;
   assignTicketToLeastBusyMember(teamId: number, tenantId?: number): Promise<User | null>;
+  assignTicketRandomlyInDepartment(category: string, tenantId?: number): Promise<User | null>;
   
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -216,7 +217,6 @@ export class MemStorage implements IStorage {
   private tenantIdCounter: number;
   private teamIdCounter: number;
   private userIdCounter: number;
-  private ticketIdCounter: number;
   private messageIdCounter: number;
   private attachmentIdCounter: number;
   private dataSourceIdCounter: number;
@@ -261,7 +261,6 @@ export class MemStorage implements IStorage {
     this.tenantIdCounter = 1;
     this.teamIdCounter = 1;
     this.userIdCounter = 1;
-    this.ticketIdCounter = 1;
     this.messageIdCounter = 1;
     this.attachmentIdCounter = 1;
     this.dataSourceIdCounter = 1;
@@ -1059,9 +1058,77 @@ export class MemStorage implements IStorage {
       return null;
     }
     
-    // Return the user with the lowest ticket count
-    // If there are multiple users with the same count, the first one is returned (first in, first served)
-    return workload[0].user;
+    // Find the minimum ticket count
+    const minTicketCount = workload[0].ticketCount;
+    
+    // Get all users with the minimum ticket count
+    const leastBusyMembers = workload.filter(w => w.ticketCount === minTicketCount);
+    
+    // If multiple users have the same (lowest) workload, randomly assign to one of them
+    if (leastBusyMembers.length > 1) {
+      const randomIndex = Math.floor(Math.random() * leastBusyMembers.length);
+      return leastBusyMembers[randomIndex].user;
+    }
+    
+    // Return the single least busy user
+    return leastBusyMembers[0].user;
+  }
+
+  async assignTicketRandomlyInDepartment(category: string, tenantId?: number): Promise<User | null> {
+    // Get all users in the tenant
+    const tenantUsers = Array.from(this.users.values())
+      .filter(user => tenantId ? user.tenantId === tenantId : true);
+    
+    if (tenantUsers.length === 0) {
+      return null;
+    }
+    
+    // Filter users by role based on ticket category
+    let eligibleUsers: User[] = [];
+    
+    switch (category.toLowerCase()) {
+      case 'technical':
+      case 'integration':
+      case 'api':
+      case 'bug':
+        eligibleUsers = tenantUsers.filter(user => 
+          user.role === 'support_engineer' || user.role === 'administrator'
+        );
+        break;
+      case 'billing':
+      case 'payment':
+      case 'subscription':
+        eligibleUsers = tenantUsers.filter(user => 
+          user.role === 'administrator' || user.role === 'member'
+        );
+        break;
+      case 'authentication':
+      case 'security':
+        eligibleUsers = tenantUsers.filter(user => 
+          user.role === 'administrator' || user.role === 'support_engineer'
+        );
+        break;
+      default:
+        // For general inquiries, any support role can handle
+        eligibleUsers = tenantUsers.filter(user => 
+          user.role !== 'creator' // Creators typically don't handle support tickets
+        );
+        break;
+    }
+    
+    // If no specific role users found, fall back to all non-creator users
+    if (eligibleUsers.length === 0) {
+      eligibleUsers = tenantUsers.filter(user => user.role !== 'creator');
+    }
+    
+    // If still no users, return null
+    if (eligibleUsers.length === 0) {
+      return null;
+    }
+    
+    // Randomly select from eligible users
+    const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
+    return eligibleUsers[randomIndex];
   }
   
   // User operations
@@ -1336,14 +1403,17 @@ export class MemStorage implements IStorage {
   }
   
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
-    const id = this.ticketIdCounter++;
-    const now = new Date();
     const tenantId = insertTicket.tenantId || 1;
+    const now = new Date();
     
     // Calculate the next tenant-specific ticket ID
     const existingTicketsForTenant = Array.from(this.tickets.values())
       .filter(ticket => ticket.tenantId === tenantId);
     const nextTenantTicketId = Math.max(0, ...existingTicketsForTenant.map(t => t.tenantTicketId || 0)) + 1;
+    
+    // Generate tenant-isolated global ID using tenant prefix and timestamp
+    const maxExistingId = Array.from(this.tickets.keys()).reduce((max, id) => Math.max(max, id), 0);
+    const id = maxExistingId + 1;
     
     // Ensure all required properties have values
     const ticket = {

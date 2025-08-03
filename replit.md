@@ -7,6 +7,17 @@ Sahayaa AI is a comprehensive, AI-powered support ticket management system desig
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **August 3, 2025**: Fixed critical security breach and enhanced ticket assignment system
+  - **CRITICAL SECURITY FIX**: Resolved global ticket ID counter issue that caused cross-tenant data leakage
+    - Removed global `ticketIdCounter` that was generating sequential IDs across all tenants (53, 54, 55... jumping to 98+)
+    - Implemented proper tenant-isolated ID generation ensuring data privacy between companies
+    - Fixed potential data breach where companies could see sequential ticket numbers from other tenants
+  - **Enhanced Auto-Assignment System**: Improved ticket assignment with smart department-based distribution
+    - Enhanced `assignTicketToLeastBusyMember` with random selection among equally busy team members
+    - Added `assignTicketRandomlyInDepartment` for proper department-based random assignment
+    - Implemented role-based assignment logic (technical issues → support engineers, billing → administrators)
+    - Added comprehensive fallback system: team-based → department-based → AI classification
+  - **System Architecture Improvement**: Strengthened multi-tenant isolation and assignment reliability
 - **August 3, 2025**: Successfully enhanced attachment system with comprehensive display functionality
   - Fixed critical frontend gap where attachments were stored but not visible to users
   - Enhanced TicketDetails component with attachment preview, view, and download capabilities

@@ -403,11 +403,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
             assignedUserId = assignedUser.id.toString();
             console.log(`Ticket assigned to team member: ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) with lowest workload in team ${teamId}`);
           } else {
-            console.log(`No team members available in team ${teamId}, using AI classification assignment: ${classification.assignedTo}`);
+            console.log(`No team members available in team ${teamId}, falling back to department-based random assignment`);
+            // Fallback to random assignment within appropriate department
+            const randomAssignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
+            if (randomAssignedUser) {
+              assignedUserId = randomAssignedUser.id.toString();
+              console.log(`Ticket randomly assigned to department member: ${randomAssignedUser.name || randomAssignedUser.username} (ID: ${randomAssignedUser.id}) for category ${classification.category}`);
+            } else {
+              console.log(`No eligible users found for department assignment, using AI classification assignment: ${classification.assignedTo}`);
+            }
           }
         } catch (error) {
           console.error(`Error assigning ticket to team member:`, error);
-          console.log(`Falling back to AI classification assignment: ${classification.assignedTo}`);
+          console.log(`Falling back to department-based random assignment`);
+          // Fallback to random assignment within appropriate department
+          try {
+            const randomAssignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
+            if (randomAssignedUser) {
+              assignedUserId = randomAssignedUser.id.toString();
+              console.log(`Ticket randomly assigned to department member: ${randomAssignedUser.name || randomAssignedUser.username} (ID: ${randomAssignedUser.id}) for category ${classification.category}`);
+            } else {
+              console.log(`No eligible users found for department assignment, using AI classification assignment: ${classification.assignedTo}`);
+            }
+          } catch (departmentError) {
+            console.error(`Error in department-based assignment:`, departmentError);
+            console.log(`Using AI classification assignment: ${classification.assignedTo}`);
+          }
+        }
+      } else {
+        // No team specified, use department-based random assignment
+        try {
+          const randomAssignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
+          if (randomAssignedUser) {
+            assignedUserId = randomAssignedUser.id.toString();
+            console.log(`Ticket randomly assigned to department member: ${randomAssignedUser.name || randomAssignedUser.username} (ID: ${randomAssignedUser.id}) for category ${classification.category}`);
+          } else {
+            console.log(`No eligible users found for department assignment, using AI classification assignment: ${classification.assignedTo}`);
+          }
+        } catch (error) {
+          console.error(`Error in department-based assignment:`, error);
+          console.log(`Using AI classification assignment: ${classification.assignedTo}`);
         }
       }
       

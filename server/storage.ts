@@ -91,6 +91,7 @@ export interface IStorage {
   getTeamMemberWorkload(teamId: number, tenantId?: number): Promise<Array<{user: User, ticketCount: number}>>;
   assignTicketToLeastBusyMember(teamId: number, tenantId?: number): Promise<User | null>;
   assignTicketRandomlyInDepartment(category: string, tenantId?: number): Promise<User | null>;
+  resetTicketIdsForTenantIsolation(): Promise<void>;
   
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -276,6 +277,13 @@ export class MemStorage implements IStorage {
     
     // Initialize sample documents in the constructor
     this.initSampleSupportDocuments();
+    
+    // Fix existing ticket IDs for proper tenant isolation (run once on startup)
+    setTimeout(() => {
+      this.resetTicketIdsForTenantIsolation().catch(error => {
+        console.error("Failed to reset ticket IDs on startup:", error);
+      });
+    }, 2000); // Delay to allow other initialization to complete
     
     // Initialize memory session store
     const MemoryStore = createMemoryStore(session);
@@ -1130,6 +1138,52 @@ export class MemStorage implements IStorage {
     const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
     return eligibleUsers[randomIndex];
   }
+
+  async resetTicketIdsForTenantIsolation(): Promise<void> {
+    console.log("Starting ticket ID reset for proper tenant isolation...");
+    
+    // Group tickets by tenant
+    const ticketsByTenant = new Map<number, Ticket[]>();
+    
+    for (const ticket of this.tickets.values()) {
+      const tenantId = ticket.tenantId || 1;
+      if (!ticketsByTenant.has(tenantId)) {
+        ticketsByTenant.set(tenantId, []);
+      }
+      ticketsByTenant.get(tenantId)!.push(ticket);
+    }
+    
+    // Clear current tickets map
+    this.tickets.clear();
+    
+    // Reassign IDs with proper tenant isolation
+    for (const [tenantId, tickets] of ticketsByTenant.entries()) {
+      // Sort tickets by creation date to maintain order
+      tickets.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      
+      let tenantTicketId = 1;
+      const tenantPrefix = tenantId * 1000000; // Tenant-specific prefix
+      
+      for (let i = 0; i < tickets.length; i++) {
+        const ticket = tickets[i];
+        const newGlobalId = tenantPrefix + i + 1;
+        
+        // Update ticket with new IDs
+        const updatedTicket: Ticket = {
+          ...ticket,
+          id: newGlobalId,
+          tenantTicketId: tenantTicketId++
+        };
+        
+        // Store with new ID
+        this.tickets.set(newGlobalId, updatedTicket);
+        
+        console.log(`Reset ticket: Old ID ${ticket.id} -> New ID ${newGlobalId} (Tenant ${tenantId}, Ticket #${updatedTicket.tenantTicketId})`);
+      }
+    }
+    
+    console.log(`Ticket ID reset completed. Processed ${this.tickets.size} tickets across ${ticketsByTenant.size} tenants.`);
+  }
   
   // User operations
   async getUser(id: number): Promise<User | undefined> {
@@ -1406,14 +1460,17 @@ export class MemStorage implements IStorage {
     const tenantId = insertTicket.tenantId || 1;
     const now = new Date();
     
-    // Calculate the next tenant-specific ticket ID
+    // Calculate the next tenant-specific ticket ID (this is what the user sees)
     const existingTicketsForTenant = Array.from(this.tickets.values())
       .filter(ticket => ticket.tenantId === tenantId);
     const nextTenantTicketId = Math.max(0, ...existingTicketsForTenant.map(t => t.tenantTicketId || 0)) + 1;
     
-    // Generate tenant-isolated global ID using tenant prefix and timestamp
-    const maxExistingId = Array.from(this.tickets.keys()).reduce((max, id) => Math.max(max, id), 0);
-    const id = maxExistingId + 1;
+    // Generate tenant-isolated global ID using tenant-specific prefix
+    // This ensures each tenant has completely separate ID sequences
+    const tenantPrefix = tenantId * 1000000; // Tenant 1: 1000000+, Tenant 2: 2000000+, etc.
+    const maxTenantSpecificId = Math.max(0, ...existingTicketsForTenant.map(t => t.id || 0));
+    const nextTenantSpecificGlobalId = maxTenantSpecificId > tenantPrefix ? maxTenantSpecificId + 1 : tenantPrefix + 1;
+    const id = nextTenantSpecificGlobalId;
     
     // Ensure all required properties have values
     const ticket = {

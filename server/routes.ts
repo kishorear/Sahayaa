@@ -2044,6 +2044,23 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   
   // Register enhanced agent routes with MCP integration
   app.use('/api/agents', agentRoutes);
+
+  // Admin-only endpoint to reset ticket IDs for proper tenant isolation
+  app.post("/api/admin/reset-ticket-ids", requireAuth, requireRole(['admin']), async (req, res) => {
+    try {
+      await storage.resetTicketIdsForTenantIsolation();
+      res.json({
+        status: "success",
+        message: "Ticket IDs have been reset for proper tenant isolation"
+      });
+    } catch (error) {
+      console.error("Error resetting ticket IDs:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to reset ticket IDs"
+      });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;

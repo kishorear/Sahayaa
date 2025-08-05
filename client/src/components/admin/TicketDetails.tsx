@@ -376,8 +376,9 @@ function AttachmentPreview({ attachment }: { attachment: Attachment }) {
   const isVideo = attachment.contentType.startsWith('video/');
 
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors">
-      <div className="flex items-center min-w-0 flex-1 mr-4">
+    <div className="p-4 bg-gray-50 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors">
+      {/* File Info Section */}
+      <div className="flex items-center mb-3">
         <div className="flex-shrink-0 mr-3">
           {isImage ? (
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -400,7 +401,9 @@ function AttachmentPreview({ attachment }: { attachment: Attachment }) {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      
+      {/* Action Buttons Section */}
+      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
         {(isImage || isVideo) && (
           <Button variant="outline" size="sm" onClick={() => {
             const dataUrl = `data:${attachment.contentType};base64,${attachment.data}`;

@@ -7,6 +7,19 @@ Sahayaa AI is a comprehensive, AI-powered support ticket management system desig
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **August 5, 2025**: Successfully resolved ticket ID sequence and tenant isolation issues
+  - **Fixed Ticket ID Sequence Error**: Resolved "NaN" parsing issue in agent service and widget routes
+    - Enhanced agent service to validate user IDs before parseInt() to prevent NaN values
+    - Updated widget routes to pass proper user ID instead of session strings
+    - Confirmed tickets now create with proper sequential tenant IDs (#24, #25, #26, #27 for tenant 2)
+  - **Fixed Chat Ticket Creation Tenant Context**: Updated to use logged-in user's actual tenant ID
+    - Added user query to ChatbotInterface to get current user's tenant context
+    - Changed widget ticket creation from hardcoded tenant 1 to user's actual tenant (user?.tenantId || 1)
+    - Tickets now appear in the correct tenant's ticket list instead of wrong tenant
+  - **Enhanced Attachment Display UI**: Improved attachment box layout for better user experience
+    - Separated file information (icon, filename, type, size) from action buttons
+    - Moved View/Download buttons to bottom with proper spacing and border separator
+    - Expanded attachment box to prevent cramped display and button overlapping
 - **August 3, 2025**: Fixed critical security breach and enhanced ticket assignment system
   - **CRITICAL SECURITY FIX**: Resolved global ticket ID counter issue that caused cross-tenant data leakage
     - Removed global `ticketIdCounter` that was generating sequential IDs across all tenants (53, 54, 55... jumping to 98+)

@@ -9,27 +9,29 @@ export type IntegrationConfig =
   | { type: 'jira'; config: JiraConfig };
 
 /**
- * Main integration service that manages all third-party integrations
+ * Main integration service that manages all third-party integrations per tenant
  */
 export class IntegrationService {
+  private tenantId: number;
   private zendeskService: ZendeskService | null = null;
   private jiraService: JiraService | null = null;
 
-  constructor() {
-    // Services will be set up later via configuration
+  constructor(tenantId: number) {
+    this.tenantId = tenantId;
+    console.log(`IntegrationService: Creating service instance for tenant ${tenantId}`);
   }
 
   /**
-   * Load and setup integrations from database for a specific tenant
+   * Load and setup integrations from database for this tenant
    */
-  async setupIntegrationsFromDatabase(tenantId: number): Promise<void> {
+  async setupIntegrationsFromDatabase(): Promise<void> {
     try {
-      console.log(`Loading integration configurations for tenant ${tenantId} from database`);
+      console.log(`Loading integration configurations for tenant ${this.tenantId} from database`);
       
-      const configurations = await integrationSettingsService.loadIntegrationConfigurations(tenantId);
+      const configurations = await integrationSettingsService.loadIntegrationConfigurations(this.tenantId);
       
       if (configurations.length === 0) {
-        console.log(`No integration configurations found for tenant ${tenantId}`);
+        console.log(`No integration configurations found for tenant ${this.tenantId}`);
         return;
       }
       
@@ -56,31 +58,31 @@ export class IntegrationService {
       }
       
       if (integrationConfigs.length > 0) {
-        console.log(`Setting up ${integrationConfigs.length} integration configurations for tenant ${tenantId}`);
+        console.log(`Setting up ${integrationConfigs.length} integration configurations for tenant ${this.tenantId}`);
         this.setupIntegrations(integrationConfigs);
       } else {
-        console.log(`No valid integration configurations found for tenant ${tenantId}`);
+        console.log(`No valid integration configurations found for tenant ${this.tenantId}`);
       }
     } catch (error) {
-      console.error(`Error loading integration configurations for tenant ${tenantId}:`, error);
+      console.error(`Error loading integration configurations for tenant ${this.tenantId}:`, error);
     }
   }
 
   /**
-   * Save integration settings to database
+   * Save integration settings to database for this tenant
    */
-  async saveIntegrationSettings(tenantId: number, serviceType: string, configuration: any, isEnabled: boolean = true): Promise<void> {
+  async saveIntegrationSettings(serviceType: string, configuration: any, isEnabled: boolean = true): Promise<void> {
     try {
-      console.log(`Saving ${serviceType} integration settings for tenant ${tenantId}`);
+      console.log(`Saving ${serviceType} integration settings for tenant ${this.tenantId}`);
       
-      await integrationSettingsService.saveIntegrationSettings(tenantId, serviceType, configuration, isEnabled);
+      await integrationSettingsService.saveIntegrationSettings(this.tenantId, serviceType, configuration, isEnabled);
       
       // Reload integrations after saving
-      await this.setupIntegrationsFromDatabase(tenantId);
+      await this.setupIntegrationsFromDatabase();
       
-      console.log(`Successfully saved and reloaded ${serviceType} integration for tenant ${tenantId}`);
+      console.log(`Successfully saved and reloaded ${serviceType} integration for tenant ${this.tenantId}`);
     } catch (error) {
-      console.error(`Error saving ${serviceType} integration settings for tenant ${tenantId}:`, error);
+      console.error(`Error saving ${serviceType} integration settings for tenant ${this.tenantId}:`, error);
       throw error;
     }
   }
@@ -432,19 +434,44 @@ export class IntegrationService {
   }
 }
 
-// Singleton instance
-let integrationService: IntegrationService | null = null;
+// Tenant-specific integration service manager
+class IntegrationServiceManager {
+  private services: Map<number, IntegrationService> = new Map();
 
-export function setupIntegrationService(): IntegrationService {
-  if (!integrationService) {
-    integrationService = new IntegrationService();
+  /**
+   * Get or create an integration service for a specific tenant
+   */
+  getServiceForTenant(tenantId: number): IntegrationService {
+    if (!this.services.has(tenantId)) {
+      console.log(`Creating new IntegrationService instance for tenant ${tenantId}`);
+      const service = new IntegrationService(tenantId);
+      this.services.set(tenantId, service);
+    }
+    return this.services.get(tenantId)!;
   }
-  return integrationService;
+
+  /**
+   * Initialize integrations for a tenant (loads from database)
+   */
+  async initializeIntegrationsForTenant(tenantId: number): Promise<void> {
+    const service = this.getServiceForTenant(tenantId);
+    await service.setupIntegrationsFromDatabase();
+  }
+
+  /**
+   * Clear cached service for a tenant (forces reload)
+   */
+  clearTenantCache(tenantId: number): void {
+    this.services.delete(tenantId);
+    console.log(`Cleared integration service cache for tenant ${tenantId}`);
+  }
 }
 
-export function getIntegrationService(): IntegrationService {
-  if (!integrationService) {
-    integrationService = setupIntegrationService();
-  }
-  return integrationService;
-}
+// Global tenant-specific integration service manager
+export const integrationServiceManager = new IntegrationServiceManager();
+
+// Convenience function for backward compatibility
+export const getIntegrationService = (tenantId: number) => integrationServiceManager.getServiceForTenant(tenantId);
+
+// Function to initialize integrations for a tenant
+export const initializeIntegrationsForTenant = (tenantId: number) => integrationServiceManager.initializeIntegrationsForTenant(tenantId);

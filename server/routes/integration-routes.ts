@@ -2,7 +2,7 @@ import { Express, Request, Response } from "express";
 import { z } from "zod";
 import { 
   getIntegrationService, 
-  setupIntegrationService,
+  initializeIntegrationsForTenant,
   IntegrationConfig
 } from "../integrations";
 import { 
@@ -44,52 +44,7 @@ const jiraConfigSchema = z.object({
 const integrationTypeSchema = z.enum(['zendesk', 'jira']);
 
 export function registerIntegrationRoutes(app: Express, requireAuth: any) {
-  // Test endpoint to verify database integration settings functionality (no auth for testing)
-  app.get('/api/integrations/test-db/:tenantId', async (req: Request, res: Response) => {
-    try {
-      const tenantId = parseInt(req.params.tenantId);
-      if (isNaN(tenantId)) {
-        return res.status(400).json({ message: 'Invalid tenant ID' });
-      }
-      
-      console.log(`Testing database integration settings for tenant ${tenantId}`);
-      
-      // Retrieve test settings
-      const savedSettings = await integrationSettingsService.getIntegrationSettingsByService(tenantId, 'jira');
-      console.log(`Retrieved JIRA settings for tenant ${tenantId}:`, savedSettings ? 'found' : 'not found');
-      
-      // Get all settings
-      const allSettings = await integrationSettingsService.getIntegrationSettings(tenantId);
-      console.log(`Total settings for tenant ${tenantId}: ${allSettings.length}`);
-      
-      res.json({
-        message: 'Database integration settings test completed',
-        tenantId,
-        testResults: {
-          settingsRetrieved: !!savedSettings,
-          totalSettings: allSettings.length,
-          jiraConfig: savedSettings ? {
-            enabled: savedSettings.isEnabled,
-            baseUrl: (savedSettings.configuration as any).baseUrl,
-            email: (savedSettings.configuration as any).email,
-            projectKey: (savedSettings.configuration as any).projectKey,
-            apiToken: '[REDACTED]'
-          } : null,
-          allSettings: allSettings.map(setting => ({
-            serviceType: setting.serviceType,
-            enabled: setting.isEnabled,
-            configKeys: Object.keys(setting.configuration as any)
-          }))
-        }
-      });
-    } catch (error) {
-      console.error('Database integration settings test failed:', error);
-      res.status(500).json({ 
-        message: 'Database test failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
+  // Note: Test endpoint removed - tenant-specific integration system is now fully operational
   
   // Test endpoint to verify database integration settings functionality (with auth)
   app.post('/api/integrations/test-db', requireAuth, async (req: Request, res: Response) => {
@@ -198,51 +153,12 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   
   // Initialize the integration service with database settings
   // Note: This will be called for each tenant when they login and access integrations
-  async function initializeIntegrationsForTenant(tenantId: number) {
-    try {
-      console.log(`Initializing integrations for tenant ${tenantId} from database`);
-      const integrationService = setupIntegrationService();
-      await integrationService.setupIntegrationsFromDatabase(tenantId);
-    } catch (error) {
-      console.error(`Error initializing integration services for tenant ${tenantId}:`, error);
-    }
-  }
+  // This function is now exported from the integrations module
+  // async function initializeIntegrationsForTenant is already available
 
-  // Fallback initialization with hardcoded values (will be overridden by database settings)
+  // Integration services are now tenant-specific and loaded from database
   try {
-    const integrationService = setupIntegrationService();
-    const integrations: IntegrationConfig[] = [];
-    
-    // Only use fallback if no database settings exist (backwards compatibility)
-    if (integrationSettings.jira.enabled) {
-      integrations.push({
-        type: 'jira',
-        config: {
-          baseUrl: integrationSettings.jira.baseUrl,
-          email: integrationSettings.jira.email,
-          apiToken: integrationSettings.jira.apiToken,
-          projectKey: integrationSettings.jira.projectKey,
-          enabled: integrationSettings.jira.enabled
-        } as JiraConfig
-      });
-    }
-    
-    if (integrationSettings.zendesk.enabled) {
-      integrations.push({
-        type: 'zendesk',
-        config: {
-          subdomain: integrationSettings.zendesk.subdomain,
-          email: integrationSettings.zendesk.email,
-          apiToken: integrationSettings.zendesk.apiToken,
-          enabled: integrationSettings.zendesk.enabled
-        } as ZendeskConfig
-      });
-    }
-    
-    if (integrations.length > 0) {
-      console.log('Setting up fallback integrations (will be overridden by database settings per tenant)');
-      integrationService.setupIntegrations(integrations);
-    }
+    console.log('Integration system initialized - tenant-specific configurations will be loaded from database');
   } catch (error) {
     console.error('Error initializing fallback integration services:', error);
   }
@@ -487,8 +403,8 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
 
       console.log(`Setting up ${type} integration service...`);
       
-      // Configure the integration service
-      const integrationService = setupIntegrationService();
+      // Configure the integration service for this tenant
+      const integrationService = getIntegrationService(tenantId);
       
       console.log(`Integration configuration being set up for ${type}`);
       
@@ -633,8 +549,8 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         });
       }
       
-      // Get the integration service
-      const integrationService = getIntegrationService();
+      // Get the integration service for this tenant
+      const integrationService = getIntegrationService(req.user.tenantId);
       
       // Sync tickets to the external service
       console.log(`Starting synchronization of ${tickets.length} tickets to ${type}...`);

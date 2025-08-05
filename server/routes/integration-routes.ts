@@ -1084,4 +1084,185 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       });
     }
   });
+
+  // Upload attachment to existing Zendesk ticket
+  app.post('/api/integrations/zendesk/upload-attachment/:ticketId', requireAuth, upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { role } = req.user;
+      if (!isCreatorOrAdminRole(role) && role !== 'support' && role !== 'user') {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+
+      const { ticketId } = req.params;
+      const file = req.file;
+      const tenantId = req.user.tenantId;
+
+      if (!file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      if (!ticketId) {
+        return res.status(400).json({ message: 'Zendesk ticket ID is required' });
+      }
+
+      console.log(`Uploading attachment to Zendesk ticket ${ticketId} for tenant ${tenantId}`);
+
+      // Get Zendesk service for this tenant
+      const integrationService = getIntegrationService(tenantId);
+      if (!integrationService) {
+        return res.status(500).json({ message: 'Integration service not available' });
+      }
+
+      const zendeskService = integrationService.getZendeskService();
+      if (!zendeskService || !zendeskService.isEnabled()) {
+        return res.status(400).json({ message: 'Zendesk integration not configured or disabled' });
+      }
+
+      // Upload attachment to Zendesk
+      const success = await zendeskService.addAttachment(parseInt(ticketId), file.path, file.originalname);
+
+      if (success) {
+        // Clean up local file after successful upload
+        try {
+          await fs.unlink(file.path);
+        } catch (cleanupError) {
+          console.warn(`Failed to clean up uploaded file: ${file.path}`, cleanupError);
+        }
+
+        res.json({
+          message: 'Attachment uploaded successfully to Zendesk',
+          ticketId,
+          filename: file.originalname,
+          success: true
+        });
+      } else {
+        res.status(500).json({
+          message: 'Failed to upload attachment to Zendesk',
+          ticketId,
+          filename: file.originalname,
+          success: false
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading attachment to Zendesk:', error);
+      res.status(500).json({
+        message: 'Internal server error during attachment upload',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Sync ticket attachments to Zendesk
+  app.post('/api/integrations/zendesk/sync-attachments/:ticketId', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { role } = req.user;
+      if (!isCreatorOrAdminRole(role) && role !== 'support') {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+
+      const { ticketId } = req.params;
+      const tenantId = req.user.tenantId;
+
+      console.log(`Syncing ticket attachments to Zendesk for ticket ${ticketId}, tenant ${tenantId}`);
+
+      // Get ticket with attachments
+      const ticket = await storage.getTicket(parseInt(ticketId));
+      if (!ticket) {
+        return res.status(404).json({ message: 'Ticket not found' });
+      }
+
+      // Verify tenant isolation
+      if (ticket.tenantId !== tenantId) {
+        return res.status(403).json({ message: 'Access denied - ticket does not belong to your tenant' });
+      }
+
+      // Check if ticket has Zendesk integration
+      const externalIntegrations = ticket.externalIntegrations as any;
+      if (!externalIntegrations?.zendesk) {
+        return res.status(400).json({ message: 'Ticket is not linked to a Zendesk ticket' });
+      }
+
+      const zendeskTicketId = externalIntegrations.zendesk;
+
+      // Get Zendesk service
+      const integrationService = getIntegrationService(tenantId);
+      if (!integrationService) {
+        return res.status(500).json({ message: 'Integration service not available' });
+      }
+
+      const zendeskService = integrationService.getZendeskService();
+      if (!zendeskService || !zendeskService.isEnabled()) {
+        return res.status(400).json({ message: 'Zendesk integration not configured or disabled' });
+      }
+
+      // Get ticket attachments from our custom schema
+      const messages = await storage.getMessagesByTicketId(parseInt(ticketId));
+      const attachments: any[] = [];
+      
+      // Find messages with attachments
+      for (const message of messages) {
+        if (message.attachments && message.attachments.length > 0) {
+          attachments.push(...message.attachments);
+        }
+      }
+
+      if (attachments.length === 0) {
+        return res.json({
+          message: 'No attachments found for this ticket',
+          ticketId,
+          zendeskTicketId,
+          uploadedCount: 0
+        });
+      }
+
+      // Upload attachments to Zendesk
+      let uploadedCount = 0;
+      for (const attachment of attachments) {
+        try {
+          // Create temporary file from base64 data
+          const buffer = Buffer.from(attachment.data, 'base64');
+          const tempPath = `/tmp/${Date.now()}-${attachment.filename}`;
+          await fs.writeFile(tempPath, buffer);
+          
+          const success = await zendeskService.addAttachment(parseInt(zendeskTicketId), tempPath, attachment.filename);
+          if (success) {
+            uploadedCount++;
+          }
+          
+          // Clean up temp file
+          try {
+            await fs.unlink(tempPath);
+          } catch (cleanupError) {
+            console.warn(`Failed to clean up temp file: ${tempPath}`, cleanupError);
+          }
+        } catch (attachmentError) {
+          console.error(`Error uploading attachment ${attachment.filename}:`, attachmentError);
+        }
+      }
+
+      res.json({
+        message: `Successfully uploaded ${uploadedCount}/${attachments.length} attachments to Zendesk ticket ${zendeskTicketId}`,
+        ticketId,
+        zendeskTicketId,
+        totalAttachments: attachments.length,
+        uploadedCount,
+        success: uploadedCount > 0
+      });
+
+    } catch (error) {
+      console.error('Error syncing attachments to Zendesk:', error);
+      res.status(500).json({
+        message: 'Internal server error during attachment sync',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 }

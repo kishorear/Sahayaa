@@ -512,19 +512,7 @@ export default function IntegrationsSettings() {
             Test Connection
           </Button>
           
-          {/* Only show sync button if integration is enabled */}
-          {((activeTab === "zendesk" && integrations?.zendesk?.enabled) || 
-            (activeTab === "jira" && integrations?.jira?.enabled)) && (
-            <Button 
-              type="button" 
-              variant="secondary"
-              onClick={syncCurrentIntegration}
-              disabled={syncingTickets}
-            >
-              {syncingTickets && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sync Tickets
-            </Button>
-          )}
+          
         </div>
         <Button 
           type="submit" 

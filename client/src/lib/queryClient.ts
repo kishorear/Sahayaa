@@ -1,4 +1,4 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient, QueryFunction, MutationCache, QueryCache } from "@tanstack/react-query";
 
 // Custom error class to handle database connection issues
 class DatabaseConnectionError extends Error {
@@ -138,4 +138,23 @@ export const queryClient = new QueryClient({
       retryDelay: (attemptIndex) => Math.min(1000 * (2 ** attemptIndex), 30000), // exponential backoff
     },
   },
+  // Add global error handler to suppress abort errors during navigation
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      // Suppress AbortError logs as they're expected during navigation
+      if (error?.name === 'AbortError') {
+        return;
+      }
+      console.error('Mutation error:', error);
+    },
+  }),
+  queryCache: new QueryCache({
+    onError: (error) => {
+      // Suppress AbortError logs as they're expected during navigation
+      if (error?.name === 'AbortError') {
+        return;
+      }
+      console.error('Query error:', error);
+    },
+  }),
 });

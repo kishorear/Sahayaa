@@ -27,6 +27,19 @@ import {
   Users
 } from "lucide-react";
 
+// Component to fetch and display creator name
+function CreatorName({ createdBy }: { createdBy: number | null | undefined }) {
+  const { data: user, isLoading } = useQuery<{id: number, name?: string, username: string}>({
+    queryKey: [`/api/users/${createdBy}`],
+    enabled: !!createdBy,
+  });
+
+  if (isLoading) return <Skeleton className="h-4 w-20" />;
+  if (!user) return <span className="text-gray-500">Unknown</span>;
+  
+  return <span className="text-gray-700">{user.name || user.username}</span>;
+}
+
 // Ticket status component with appropriate colors
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -322,6 +335,7 @@ export default function EnhancedTicketList() {
                         <TableHead>Category</TableHead>
                         <TableHead>Complexity</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Created By</TableHead>
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -340,6 +354,9 @@ export default function EnhancedTicketList() {
                           <TableCell><ComplexityBadge complexity={ticket.complexity || ''} /></TableCell>
                           <TableCell>
                             <StatusBadge status={ticket.status} />
+                          </TableCell>
+                          <TableCell>
+                            <CreatorName createdBy={ticket.createdBy} />
                           </TableCell>
                           <TableCell>
                             {(isAdmin || isCreator) ? (

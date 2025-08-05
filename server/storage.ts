@@ -5548,34 +5548,103 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Agent resource operations - simple in-memory implementation for now
-  async getAgentResources(agentType: string, tenantId: number): Promise<any[]> {
-    // For now, return empty array - this would need a proper database table
-    return [];
+  async getAgentResources(agentType: string, tenantId: number): Promise<AgentResource[]> {
+    try {
+      return await db.select()
+        .from(agentResources)
+        .where(
+          and(
+            eq(agentResources.agentType, agentType),
+            eq(agentResources.tenantId, tenantId)
+          )
+        )
+        .orderBy(desc(agentResources.uploadDate));
+    } catch (error) {
+      console.error(`Error fetching agent resources for ${agentType} (tenant ${tenantId}):`, error);
+      return [];
+    }
   }
 
-  async createAgentResource(resourceData: any): Promise<any> {
-    // For now, just return the data with an ID - this would need a proper database table
-    return {
-      id: Math.floor(Math.random() * 1000000),
-      ...resourceData,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+  async createAgentResource(resourceData: InsertAgentResource): Promise<AgentResource> {
+    try {
+      const [newResource] = await db.insert(agentResources)
+        .values({
+          agentType: resourceData.agentType,
+          filename: resourceData.filename,
+          originalName: resourceData.originalName,
+          fileSize: resourceData.fileSize,  
+          fileType: resourceData.fileType,
+          filePath: resourceData.filePath,
+          tenantId: resourceData.tenantId,
+          uploadedBy: resourceData.uploadedBy,
+          metadata: resourceData.metadata || {}
+        })
+        .returning();
+      
+      console.log(`Created agent resource ${newResource.id} for tenant ${resourceData.tenantId}`);
+      return newResource;
+    } catch (error) {
+      console.error('Error creating agent resource:', error);
+      throw error;
+    }
   }
 
   async deleteAgentResource(id: number, tenantId: number): Promise<boolean> {
-    // For now, always return true - this would need a proper database table
-    return true;
+    try {
+      // First verify the resource exists and belongs to the tenant
+      const resource = await this.getAgentResource(id, tenantId);
+      if (!resource) {
+        console.warn(`Agent resource ${id} not found or does not belong to tenant ${tenantId}`);
+        return false;
+      }
+      
+      const result = await db.delete(agentResources)
+        .where(
+          and(
+            eq(agentResources.id, id),
+            eq(agentResources.tenantId, tenantId)
+          )
+        );
+      
+      const deleted = result.rowCount && result.rowCount > 0;
+      console.log(`Agent resource ${id} deletion result: ${deleted ? 'success' : 'failed'} (tenant ${tenantId})`);
+      return deleted;
+    } catch (error) {
+      console.error(`Error deleting agent resource ${id} (tenant ${tenantId}):`, error);
+      return false;
+    }
   }
 
   async getAgentResource(id: number, tenantId: number): Promise<AgentResource | undefined> {
-    // For now, return undefined - this would need a proper database table
-    return undefined;
+    try {
+      const [resource] = await db.select()
+        .from(agentResources)
+        .where(
+          and(
+            eq(agentResources.id, id),
+            eq(agentResources.tenantId, tenantId)
+          )
+        )
+        .limit(1);
+      
+      return resource;
+    } catch (error) {
+      console.error(`Error fetching agent resource ${id} (tenant ${tenantId}):`, error);
+      return undefined;
+    }
   }
 
   async getAgentResourcesByType(agentType: string): Promise<AgentResource[]> {
-    // For now, return empty array - this would need a proper database table
-    return [];
+    try {
+      // NOTE: This method does not filter by tenant - used for admin purposes only
+      return await db.select()
+        .from(agentResources)
+        .where(eq(agentResources.agentType, agentType))
+        .orderBy(desc(agentResources.uploadDate));
+    } catch (error) {
+      console.error(`Error fetching agent resources by type ${agentType}:`, error);
+      return [];
+    }
   }
 
   // MCP Database Connection operations - simple in-memory implementation for now

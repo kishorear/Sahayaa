@@ -45,11 +45,12 @@ const AGENT_CONFIGS = {
 // Configure multer for file uploads with agent-specific directories
 const storage_config = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const agentType = req.params.agentType || req.query.agentType;
+    const agentType = (req.params.agentType || req.query.agentType) as string;
     const tenantId = req.user?.tenantId || 1;
     
     // Create agent-specific directory structure
-    const uploadDir = path.join(process.cwd(), 'uploads', 'agent-resources', `tenant-${tenantId}`, agentType);
+    const safeTenantId = tenantId || 1; // Default to tenant 1 if undefined
+    const uploadDir = path.join(process.cwd(), 'uploads', 'agent-resources', `tenant-${safeTenantId}`, agentType);
     
     try {
       await fs.mkdir(uploadDir, { recursive: true });

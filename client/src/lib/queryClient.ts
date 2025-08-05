@@ -142,7 +142,8 @@ export const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error) => {
       // Suppress AbortError logs as they're expected during navigation
-      if (error?.name === 'AbortError') {
+      if (error?.name === 'AbortError' || 
+          (error?.message && error.message.includes('signal is aborted'))) {
         return;
       }
       console.error('Mutation error:', error);
@@ -151,7 +152,8 @@ export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error) => {
       // Suppress AbortError logs as they're expected during navigation
-      if (error?.name === 'AbortError') {
+      if (error?.name === 'AbortError' || 
+          (error?.message && error.message.includes('signal is aborted'))) {
         return;
       }
       console.error('Query error:', error);

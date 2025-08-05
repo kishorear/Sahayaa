@@ -104,7 +104,7 @@ export function registerWidgetTicketRoutes(app: Express): void {
             userAgent: context?.userAgent || "Widget User"
           },
           tenant_id: tenantId,
-          user_id: sessionId || `widget_${Date.now()}`
+          user_id: "1" // Default to user ID 1 for widget users
         };
 
         const orchestratorResult = await agentService.processWorkflow(workflowInput);

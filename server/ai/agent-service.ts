@@ -130,7 +130,7 @@ export class AgentService {
         aiNotes: `Agent workflow processed. ${classification.aiNotes}`,
         aiResolved: classification.canAutoResolve,
         tenantId: request.tenant_id || 1,
-        createdBy: request.user_id ? parseInt(request.user_id) : 1,
+        createdBy: request.user_id && !isNaN(parseInt(request.user_id)) ? parseInt(request.user_id) : 1,
         source: 'agent_workflow'
       };
       

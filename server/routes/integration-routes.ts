@@ -84,7 +84,7 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
     },
     jira: {
       enabled: true,
-      baseUrl: 'https://your-jira-instance.atlassian.net/rest/api/3',
+      baseUrl: 'https://your-jira-instance.atlassian.net',
       email: 'test@example.com',
       apiToken: 'dummy-token-for-testing',
       maskedToken: '********',

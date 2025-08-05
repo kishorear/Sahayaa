@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { generateChatResponse, generateTicketTitle } from "../ai";
 import type { ChatMessage } from "../ai";
 import agentService from "../ai/agent-service";
+import { getIntegrationService } from "../integrations";
 
 /**
  * Widget ticket creation request validation schema
@@ -228,7 +229,46 @@ export function registerWidgetTicketRoutes(app: Express): void {
         }
       }
       
-      // Step 6: Generate ulterior suggestions
+      // Step 6: Automatically create ticket in JIRA if integration is enabled
+      try {
+        const integrationService = getIntegrationService();
+        const jiraService = integrationService?.getService('jira');
+        
+        if (jiraService && jiraService.isEnabled()) {
+          console.log(`Widget Ticket: Creating JIRA issue for ticket #${ticket.id}...`);
+          
+          const jiraResult = await jiraService.createIssue({
+            title: ticketTitle,
+            description: descriptionResponse.trim(),
+            category: ticket.category,
+            complexity: ticket.complexity,
+            assignedTo: ticket.assignedTo,
+            aiNotes: agentInsights?.aiNotes || '',
+            tenantId: ticket.tenantId
+          });
+          
+          if (jiraResult && !jiraResult.error) {
+            console.log(`Widget Ticket: Successfully created JIRA issue ${jiraResult.key} for ticket #${ticket.id}`);
+            
+            // Update the ticket with JIRA reference
+            await storage.updateTicket(ticket.id, {
+              externalIntegrations: JSON.stringify({
+                jira: jiraResult.key,
+                jiraUrl: jiraResult.url
+              })
+            });
+          } else {
+            console.error(`Widget Ticket: Failed to create JIRA issue for ticket #${ticket.id}:`, jiraResult?.error);
+          }
+        } else {
+          console.log(`Widget Ticket: JIRA integration not enabled or configured, skipping JIRA issue creation`);
+        }
+      } catch (jiraError) {
+        console.error(`Widget Ticket: Error during JIRA integration for ticket #${ticket.id}:`, jiraError);
+        // Continue without failing the entire ticket creation
+      }
+      
+      // Step 7: Generate ulterior suggestions
       const latestUserMessageForSuggestions = conversation.filter(msg => msg.role === 'user').pop()?.content || '';
       const suggestions = generateUlteriorSuggestions(latestUserMessageForSuggestions, agentInsights, ticket);
       

@@ -25,6 +25,7 @@ import { registerEmailRoutes } from "./routes/email-routes";
 import { registerEmailSupportRoutes } from "./routes/email-support-routes";
 import { registerIntegrationRoutes } from "./routes/integration-routes";
 import { registerDataSourceRoutes } from "./routes/data-source-routes";
+import { getIntegrationService } from "./integrations";
 import { registerMfaRoutes } from "./routes/mfa-routes";
 import { registerSsoRoutes } from "./routes/sso-routes";
 import { registerWidgetAnalyticsRoutes } from "./routes/widget-analytics-routes";

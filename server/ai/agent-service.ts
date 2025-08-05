@@ -65,7 +65,7 @@ interface AgentWorkflowRequest {
 
 interface AgentWorkflowResponse {
   success: boolean;
-  ticket_id?: number;
+  ticket_id?: number; // Optional - only set if ticket is actually created
   ticket_title: string;
   status: string;
   category: string;
@@ -97,15 +97,14 @@ export class AgentService {
   }
 
   /**
-   * Main workflow endpoint - processes user message and returns complete ticket
+   * Main workflow endpoint - processes user message and returns analysis WITHOUT creating tickets
+   * Tickets should only be created through explicit user actions via widget ticket routes
    */
   async processWorkflow(request: AgentWorkflowRequest): Promise<AgentWorkflowResponse> {
     try {
-      console.log('AgentService: Processing workflow request:', request.user_message?.substring(0, 50) + '...');
+      console.log('AgentService: Processing workflow analysis for:', request.user_message?.substring(0, 50) + '...');
       
-      // TEMPORARY FIX: Use direct ticket creation instead of the problematic orchestrator
-      // This ensures tickets are created in the database properly
-      const { storage } = await import('../storage');
+      // Import AI classification service for analysis only
       const { classifyTicket } = await import('../ai');
       
       const startTime = Date.now();
@@ -113,50 +112,30 @@ export class AgentService {
       // Create a proper title from the user message
       const title = this.extractTitleFromMessage(request.user_message);
       
-      // Classify the ticket
+      // Classify the ticket for analysis purposes only
       const classification = await classifyTicket(title, request.user_message, request.tenant_id || 1);
       
-      // Create comprehensive description
-      const description = `**User Request:**\n${request.user_message}\n\n**Processing Method:** Agent Workflow\n\n**AI Classification:**\n- Category: ${classification.category}\n- Complexity: ${classification.complexity}\n- Assigned To: ${classification.assignedTo}\n- Can Auto-Resolve: ${classification.canAutoResolve}\n\n**AI Notes:**\n${classification.aiNotes}`;
-      
-      // Create the ticket data
-      const ticketData = {
-        title: title,
-        description: description,
-        category: classification.category,
-        complexity: classification.complexity,
-        status: classification.canAutoResolve ? 'resolved' : 'new',
-        assignedTo: classification.assignedTo,
-        aiNotes: `Agent workflow processed. ${classification.aiNotes}`,
-        aiResolved: classification.canAutoResolve,
-        tenantId: request.tenant_id || 1,
-        createdBy: request.user_id && !isNaN(parseInt(request.user_id)) ? parseInt(request.user_id) : 1,
-        source: 'agent_workflow'
-      };
-      
-      // Create the actual ticket in the database
-      const createdTicket = await storage.createTicket(ticketData);
-      
-      // Generate resolution steps
+      // Generate resolution steps for insights
       const resolutionSteps = this.generateResolutionSteps(request.user_message, classification);
       
       const processingTime = Date.now() - startTime;
       
-      console.log(`AgentService: Successfully created ticket #${createdTicket.id} in ${processingTime}ms`);
+      console.log(`AgentService: Analysis completed - Category: ${classification.category}, Complexity: ${classification.complexity} in ${processingTime}ms`);
       
+      // Return analysis without creating any tickets
       return {
         success: true,
-        ticket_id: createdTicket.id,
-        ticket_title: createdTicket.title,
-        status: createdTicket.status,
-        category: createdTicket.category,
+        ticket_id: undefined, // No ticket created
+        ticket_title: title,
+        status: classification.canAutoResolve ? 'can_auto_resolve' : 'needs_attention',
+        category: classification.category,
         urgency: this.mapComplexityToUrgency(classification.complexity),
         resolution_steps: resolutionSteps,
         resolution_steps_count: resolutionSteps.length,
         confidence_score: classification.canAutoResolve ? 0.8 : 0.6,
         processing_time_ms: processingTime,
-        created_at: createdTicket.createdAt,
-        source: 'agent_workflow_fixed'
+        created_at: new Date().toISOString(),
+        source: 'agent_analysis_only'
       };
       
     } catch (error) {

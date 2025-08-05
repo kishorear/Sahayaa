@@ -7,7 +7,21 @@ Sahayaa AI is a comprehensive, AI-powered support ticket management system desig
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
-- **August 5, 2025**: Successfully resolved ticket ID sequence and tenant isolation issues
+- **August 5, 2025**: Successfully resolved critical duplicate ticket creation bug and console errors
+  - **CRITICAL FIX - Eliminated Duplicate Ticket Creation**: Resolved issue where single user action created two tickets
+    - Root cause: AI agent service was automatically creating tickets for every message analysis
+    - Modified agent service to provide analysis only without creating tickets in database
+    - Tickets now only created through explicit user actions via widget ticket routes
+    - Eliminated garbage tickets (like #129) with raw user input as titles
+    - Preserved quality ticket creation with proper AI-enhanced titles and descriptions
+  - **Fixed React Query AbortError**: Resolved "signal is aborted without reason" console errors
+    - Added global error handlers to suppress expected navigation abort errors
+    - Fixed deprecated mediaSource property in screen capture API
+    - Enhanced React Query configuration to handle navigation gracefully
+  - **Enhanced Attachment Display UI**: Improved attachment box layout for better user experience
+    - Separated file information (icon, filename, type, size) from action buttons
+    - Moved View/Download buttons to bottom with proper spacing and border separator
+    - Expanded attachment box to prevent cramped display and button overlapping
   - **Fixed Ticket ID Sequence Error**: Resolved "NaN" parsing issue in agent service and widget routes
     - Enhanced agent service to validate user IDs before parseInt() to prevent NaN values
     - Updated widget routes to pass proper user ID instead of session strings
@@ -16,10 +30,6 @@ Preferred communication style: Simple, everyday language.
     - Added user query to ChatbotInterface to get current user's tenant context
     - Changed widget ticket creation from hardcoded tenant 1 to user's actual tenant (user?.tenantId || 1)
     - Tickets now appear in the correct tenant's ticket list instead of wrong tenant
-  - **Enhanced Attachment Display UI**: Improved attachment box layout for better user experience
-    - Separated file information (icon, filename, type, size) from action buttons
-    - Moved View/Download buttons to bottom with proper spacing and border separator
-    - Expanded attachment box to prevent cramped display and button overlapping
 - **August 3, 2025**: Fixed critical security breach and enhanced ticket assignment system
   - **CRITICAL SECURITY FIX**: Resolved global ticket ID counter issue that caused cross-tenant data leakage
     - Removed global `ticketIdCounter` that was generating sequential IDs across all tenants (53, 54, 55... jumping to 98+)

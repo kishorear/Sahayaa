@@ -16,6 +16,7 @@ import {
   mcpDatabaseConnections,
   mcpQueryTemplates,
   mcpQueryLogs,
+  integrationSettings,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -49,7 +50,9 @@ import {
   type McpQueryTemplate,
   type InsertMcpQueryTemplate,
   type McpQueryLog,
-  type InsertMcpQueryLog
+  type InsertMcpQueryLog,
+  type IntegrationSettings,
+  type InsertIntegrationSettings
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -193,6 +196,13 @@ export interface IStorage {
   getMcpQueryLogs(tenantId: number, limit?: number): Promise<McpQueryLog[]>;
   createMcpQueryLog(log: InsertMcpQueryLog): Promise<McpQueryLog>;
   getMcpQueryLogsByTemplate(templateId: number, tenantId?: number): Promise<McpQueryLog[]>;
+  
+  // Integration Settings operations
+  getIntegrationSettings(tenantId: number): Promise<IntegrationSettings[]>;
+  getIntegrationSettingsByService(tenantId: number, serviceType: string): Promise<IntegrationSettings | undefined>;
+  createIntegrationSettings(settings: InsertIntegrationSettings): Promise<IntegrationSettings>;
+  updateIntegrationSettings(tenantId: number, serviceType: string, updates: Partial<IntegrationSettings>): Promise<IntegrationSettings>;
+  deleteIntegrationSettings(tenantId: number, serviceType: string): Promise<boolean>;
   
   // Session management
   sessionStore: session.Store;
@@ -6622,6 +6632,52 @@ class StorageWrapper implements IStorage {
     } catch (error) {
       console.error(`Error in getMcpQueryLogsByTemplate(${templateId}, ${tenantId}):`, error);
       return [];
+    }
+  }
+  
+  // Integration Settings operations
+  async getIntegrationSettings(tenantId: number): Promise<IntegrationSettings[]> {
+    try {
+      return await this.storageImpl.getIntegrationSettings(tenantId);
+    } catch (error) {
+      console.error(`Error in getIntegrationSettings(${tenantId}):`, error);
+      return [];
+    }
+  }
+  
+  async getIntegrationSettingsByService(tenantId: number, serviceType: string): Promise<IntegrationSettings | undefined> {
+    try {
+      return await this.storageImpl.getIntegrationSettingsByService(tenantId, serviceType);
+    } catch (error) {
+      console.error(`Error in getIntegrationSettingsByService(${tenantId}, ${serviceType}):`, error);
+      return undefined;
+    }
+  }
+  
+  async createIntegrationSettings(settings: InsertIntegrationSettings): Promise<IntegrationSettings> {
+    try {
+      return await this.storageImpl.createIntegrationSettings(settings);
+    } catch (error) {
+      console.error(`Error in createIntegrationSettings:`, error);
+      throw error;
+    }
+  }
+  
+  async updateIntegrationSettings(tenantId: number, serviceType: string, updates: Partial<IntegrationSettings>): Promise<IntegrationSettings> {
+    try {
+      return await this.storageImpl.updateIntegrationSettings(tenantId, serviceType, updates);
+    } catch (error) {
+      console.error(`Error in updateIntegrationSettings(${tenantId}, ${serviceType}):`, error);
+      throw error;
+    }
+  }
+  
+  async deleteIntegrationSettings(tenantId: number, serviceType: string): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteIntegrationSettings(tenantId, serviceType);
+    } catch (error) {
+      console.error(`Error in deleteIntegrationSettings(${tenantId}, ${serviceType}):`, error);
+      return false;
     }
   }
 }

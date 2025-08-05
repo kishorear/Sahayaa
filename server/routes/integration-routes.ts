@@ -14,6 +14,7 @@ import {
   JiraService
 } from "../integrations/jira";
 import { isCreatorOrAdminRole } from "../utils";
+import { integrationSettingsService } from "../integration-settings-service";
 
 // Validation schemas for integration configurations
 const zendeskConfigSchema = z.object({
@@ -43,6 +44,109 @@ const jiraConfigSchema = z.object({
 const integrationTypeSchema = z.enum(['zendesk', 'jira']);
 
 export function registerIntegrationRoutes(app: Express, requireAuth: any) {
+  // Test endpoint to verify database integration settings functionality (no auth for testing)
+  app.get('/api/integrations/test-db/:tenantId', async (req: Request, res: Response) => {
+    try {
+      const tenantId = parseInt(req.params.tenantId);
+      if (isNaN(tenantId)) {
+        return res.status(400).json({ message: 'Invalid tenant ID' });
+      }
+      
+      console.log(`Testing database integration settings for tenant ${tenantId}`);
+      
+      // Retrieve test settings
+      const savedSettings = await integrationSettingsService.getIntegrationSettingsByService(tenantId, 'jira');
+      console.log(`Retrieved JIRA settings for tenant ${tenantId}:`, savedSettings ? 'found' : 'not found');
+      
+      // Get all settings
+      const allSettings = await integrationSettingsService.getIntegrationSettings(tenantId);
+      console.log(`Total settings for tenant ${tenantId}: ${allSettings.length}`);
+      
+      res.json({
+        message: 'Database integration settings test completed',
+        tenantId,
+        testResults: {
+          settingsRetrieved: !!savedSettings,
+          totalSettings: allSettings.length,
+          jiraConfig: savedSettings ? {
+            enabled: savedSettings.isEnabled,
+            baseUrl: (savedSettings.configuration as any).baseUrl,
+            email: (savedSettings.configuration as any).email,
+            projectKey: (savedSettings.configuration as any).projectKey,
+            apiToken: '[REDACTED]'
+          } : null,
+          allSettings: allSettings.map(setting => ({
+            serviceType: setting.serviceType,
+            enabled: setting.isEnabled,
+            configKeys: Object.keys(setting.configuration as any)
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('Database integration settings test failed:', error);
+      res.status(500).json({ 
+        message: 'Database test failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Test endpoint to verify database integration settings functionality (with auth)
+  app.post('/api/integrations/test-db', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const tenantId = req.user.tenantId;
+      console.log(`Testing database integration settings for tenant ${tenantId}`);
+      
+      // Test saving a JIRA configuration
+      const testJiraConfig = {
+        baseUrl: 'https://test-tenant.atlassian.net',
+        email: 'test@tenant.com',
+        apiToken: 'test-token-123',
+        projectKey: 'TEST',
+        enabled: true
+      };
+      
+      // Save test settings
+      await integrationSettingsService.saveIntegrationSettings(tenantId, 'jira', testJiraConfig, true);
+      console.log(`Saved test JIRA settings for tenant ${tenantId}`);
+      
+      // Retrieve test settings
+      const savedSettings = await integrationSettingsService.getIntegrationSettingsByService(tenantId, 'jira');
+      console.log(`Retrieved JIRA settings for tenant ${tenantId}:`, savedSettings ? 'found' : 'not found');
+      
+      // Get all settings
+      const allSettings = await integrationSettingsService.getIntegrationSettings(tenantId);
+      console.log(`Total settings for tenant ${tenantId}: ${allSettings.length}`);
+      
+      res.json({
+        message: 'Database integration settings test completed',
+        tenantId,
+        testResults: {
+          settingsSaved: true,
+          settingsRetrieved: !!savedSettings,
+          totalSettings: allSettings.length,
+          jiraConfig: savedSettings ? {
+            enabled: savedSettings.isEnabled,
+            baseUrl: (savedSettings.configuration as any).baseUrl,
+            email: (savedSettings.configuration as any).email,
+            projectKey: (savedSettings.configuration as any).projectKey,
+            apiToken: '[REDACTED]'
+          } : null
+        }
+      });
+    } catch (error) {
+      console.error('Database integration settings test failed:', error);
+      res.status(500).json({ 
+        message: 'Database test failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Special debug endpoint to validate request body handling
   app.post('/api/integrations/debug', requireAuth, (req: Request, res: Response) => {
     console.log('Integration debug endpoint hit with:', {
@@ -92,11 +196,24 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
     }
   };
   
-  // Initialize the integration service with any saved settings on startup
+  // Initialize the integration service with database settings
+  // Note: This will be called for each tenant when they login and access integrations
+  async function initializeIntegrationsForTenant(tenantId: number) {
+    try {
+      console.log(`Initializing integrations for tenant ${tenantId} from database`);
+      const integrationService = setupIntegrationService();
+      await integrationService.setupIntegrationsFromDatabase(tenantId);
+    } catch (error) {
+      console.error(`Error initializing integration services for tenant ${tenantId}:`, error);
+    }
+  }
+
+  // Fallback initialization with hardcoded values (will be overridden by database settings)
   try {
     const integrationService = setupIntegrationService();
     const integrations: IntegrationConfig[] = [];
     
+    // Only use fallback if no database settings exist (backwards compatibility)
     if (integrationSettings.jira.enabled) {
       integrations.push({
         type: 'jira',
@@ -123,34 +240,78 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
     }
     
     if (integrations.length > 0) {
+      console.log('Setting up fallback integrations (will be overridden by database settings per tenant)');
       integrationService.setupIntegrations(integrations);
     }
   } catch (error) {
-    console.error('Error initializing integration services:', error);
+    console.error('Error initializing fallback integration services:', error);
   }
   
-  // Get all integration configurations
-  app.get('/api/integrations', requireAuth, (req: Request, res: Response) => {
+  // Get all integration configurations from database
+  app.get('/api/integrations', requireAuth, async (req: Request, res: Response) => {
     try {
-      // Return the settings with masked API tokens
-      res.status(200).json({
+      // Check if user has permissions to view integrations
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const tenantId = req.user.tenantId;
+      console.log(`Loading integration settings from database for tenant ${tenantId}`);
+      
+      // Initialize integrations for this tenant from database
+      await initializeIntegrationsForTenant(tenantId);
+      
+      // Load settings from database
+      const settings = await integrationSettingsService.getIntegrationSettings(tenantId);
+      
+      const response: any = {
         zendesk: {
-          enabled: integrationSettings.zendesk.enabled,
-          subdomain: integrationSettings.zendesk.subdomain,
-          email: integrationSettings.zendesk.email,
-          apiToken: integrationSettings.zendesk.maskedToken
+          enabled: false,
+          subdomain: '',
+          email: '',
+          apiToken: '********'
         },
         jira: {
-          enabled: integrationSettings.jira.enabled,
-          baseUrl: integrationSettings.jira.baseUrl,
-          email: integrationSettings.jira.email,
-          apiToken: integrationSettings.jira.maskedToken,
-          projectKey: integrationSettings.jira.projectKey
+          enabled: false,
+          baseUrl: '',
+          email: '',
+          apiToken: '********',
+          projectKey: ''
         }
-      });
+      };
+      
+      // Process settings and mask sensitive data
+      for (const setting of settings) {
+        if (setting.serviceType === 'jira') {
+          const config = setting.configuration as any;
+          response.jira = {
+            enabled: setting.isEnabled,
+            baseUrl: config.baseUrl || '',
+            email: config.email || '',
+            projectKey: config.projectKey || '',
+            apiToken: '********' // Always mask for security
+          };
+        } else if (setting.serviceType === 'zendesk') {
+          const config = setting.configuration as any;
+          response.zendesk = {
+            enabled: setting.isEnabled,
+            subdomain: config.subdomain || '',
+            email: config.email || '',
+            apiToken: '********' // Always mask for security
+          };
+        }
+      }
+      
+      console.log(`Loaded ${settings.length} integration settings from database for tenant ${tenantId} and initialized services`);
+      
+      // Return the settings with masked API tokens
+      res.status(200).json(response);
     } catch (error) {
-      console.error('Error fetching integration settings:', error);
-      res.status(500).json({ message: 'Error fetching integration settings' });
+      console.error('Error fetching integration settings from database:', error);
+      res.status(500).json({ 
+        message: 'Error fetching integration settings',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -262,43 +423,65 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         });
       }
 
-      // Create a deep copy of the configuration to avoid reference issues
-      // Save the configuration in memory
-      if (type === 'jira') {
-        const jiraConfig = config as JiraConfig;
-        integrationSettings.jira = {
-          enabled: jiraConfig.enabled,
-          baseUrl: jiraConfig.baseUrl.trim(),
-          email: jiraConfig.email.trim(),
-          apiToken: jiraConfig.apiToken,
-          maskedToken: '********',
-          projectKey: jiraConfig.projectKey.trim()
-        };
+      // Save the configuration to database with tenant isolation
+      const tenantId = req.user.tenantId;
+      console.log(`Saving ${type} integration configuration to database for tenant ${tenantId}`);
+      
+      try {
+        // Save to database using the integration settings service
+        await integrationSettingsService.saveIntegrationSettings(
+          tenantId,
+          type,
+          config,
+          config.enabled
+        );
         
-        // Log the saved configuration (without sensitive data)
-        console.log('Saved Jira configuration:', {
-          enabled: integrationSettings.jira.enabled,
-          baseUrl: integrationSettings.jira.baseUrl,
-          email: integrationSettings.jira.email,
-          projectKey: integrationSettings.jira.projectKey,
-          apiToken: '[REDACTED]'
-        });
-      } else if (type === 'zendesk') {
-        const zendeskConfig = config as ZendeskConfig;
-        integrationSettings.zendesk = {
-          enabled: zendeskConfig.enabled,
-          subdomain: zendeskConfig.subdomain.trim(),
-          email: zendeskConfig.email.trim(),
-          apiToken: zendeskConfig.apiToken,
-          maskedToken: '********'
-        };
+        console.log(`Successfully saved ${type} configuration to database for tenant ${tenantId}`);
         
-        // Log the saved configuration (without sensitive data)
-        console.log('Saved Zendesk configuration:', {
-          enabled: integrationSettings.zendesk.enabled,
-          subdomain: integrationSettings.zendesk.subdomain,
-          email: integrationSettings.zendesk.email,
-          apiToken: '[REDACTED]'
+        // Also maintain backwards compatibility with in-memory storage
+        if (type === 'jira') {
+          const jiraConfig = config as JiraConfig;
+          integrationSettings.jira = {
+            enabled: jiraConfig.enabled,
+            baseUrl: jiraConfig.baseUrl.trim(),
+            email: jiraConfig.email.trim(),
+            apiToken: jiraConfig.apiToken,
+            maskedToken: '********',
+            projectKey: jiraConfig.projectKey.trim()
+          };
+          
+          // Log the saved configuration (without sensitive data)
+          console.log('Saved Jira configuration to database:', {
+            enabled: integrationSettings.jira.enabled,
+            baseUrl: integrationSettings.jira.baseUrl,
+            email: integrationSettings.jira.email,
+            projectKey: integrationSettings.jira.projectKey,
+            apiToken: '[REDACTED]'
+          });
+        } else if (type === 'zendesk') {
+          const zendeskConfig = config as ZendeskConfig;
+          integrationSettings.zendesk = {
+            enabled: zendeskConfig.enabled,
+            subdomain: zendeskConfig.subdomain.trim(),
+            email: zendeskConfig.email.trim(),
+            apiToken: zendeskConfig.apiToken,
+            maskedToken: '********'
+          };
+          
+          // Log the saved configuration (without sensitive data)
+          console.log('Saved Zendesk configuration to database:', {
+            enabled: integrationSettings.zendesk.enabled,
+            subdomain: integrationSettings.zendesk.subdomain,
+            email: integrationSettings.zendesk.email,
+            apiToken: '[REDACTED]'
+          });
+        }
+      } catch (dbError) {
+        console.error(`Error saving ${type} integration settings to database:`, dbError);
+        // Continue with in-memory fallback but inform user
+        return res.status(500).json({ 
+          message: `Failed to save ${type} integration settings to persistent storage: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`,
+          fallbackToMemory: true
         });
       }
 

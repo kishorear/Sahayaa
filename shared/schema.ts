@@ -317,6 +317,36 @@ export const insertWidgetAnalyticsSchema = createInsertSchema(widgetAnalytics)
 export type WidgetAnalytics = typeof widgetAnalytics.$inferSelect;
 export type InsertWidgetAnalytics = z.infer<typeof insertWidgetAnalyticsSchema>;
 
+// Integration Settings Table for persistent storage of JIRA/Zendesk configurations
+export const integrationSettings = pgTable("integration_settings", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  serviceType: text("serviceType").notNull(), // 'jira', 'zendesk', etc.
+  isEnabled: boolean("isEnabled").default(false).notNull(),
+  configuration: json("configuration").notNull(), // Store all config including credentials
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Ensure each tenant can only have one configuration per service type
+    serviceTypePerTenant: uniqueIndex("integration_service_type_tenant_unique").on(table.serviceType, table.tenantId),
+  };
+});
+
+export const insertIntegrationSettingsSchema = createInsertSchema(integrationSettings)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+export type IntegrationSettings = typeof integrationSettings.$inferSelect;
+export type InsertIntegrationSettings = z.infer<typeof insertIntegrationSettingsSchema>;
+
+// Integration Settings Relations
+export const integrationSettingsRelations = relations(integrationSettings, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [integrationSettings.tenantId],
+    references: [tenants.id]
+  }),
+}));
+
 // Widget API Keys for secure access to the widget API
 export const widgetApiKeys = pgTable("widget_api_keys", {
   id: serial("id").primaryKey(),

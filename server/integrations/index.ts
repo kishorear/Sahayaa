@@ -1,6 +1,7 @@
 import { ZendeskService, ZendeskConfig, setupZendeskService, getZendeskService } from './zendesk';
 import { JiraService, JiraConfig, setupJiraService, getJiraService } from './jira';
 import { InsertTicket, InsertMessage } from '@shared/schema';
+import { integrationSettingsService } from '../integration-settings-service';
 
 // Interface for any third-party ticket system configuration
 export type IntegrationConfig = 
@@ -16,6 +17,72 @@ export class IntegrationService {
 
   constructor() {
     // Services will be set up later via configuration
+  }
+
+  /**
+   * Load and setup integrations from database for a specific tenant
+   */
+  async setupIntegrationsFromDatabase(tenantId: number): Promise<void> {
+    try {
+      console.log(`Loading integration configurations for tenant ${tenantId} from database`);
+      
+      const configurations = await integrationSettingsService.loadIntegrationConfigurations(tenantId);
+      
+      if (configurations.length === 0) {
+        console.log(`No integration configurations found for tenant ${tenantId}`);
+        return;
+      }
+      
+      const integrationConfigs: IntegrationConfig[] = [];
+      
+      for (const config of configurations) {
+        if (config.type === 'jira') {
+          integrationConfigs.push({
+            type: 'jira',
+            config: {
+              ...config.config,
+              enabled: config.config.enabled
+            } as JiraConfig
+          });
+        } else if (config.type === 'zendesk') {
+          integrationConfigs.push({
+            type: 'zendesk',
+            config: {
+              ...config.config,
+              enabled: config.config.enabled
+            } as ZendeskConfig
+          });
+        }
+      }
+      
+      if (integrationConfigs.length > 0) {
+        console.log(`Setting up ${integrationConfigs.length} integration configurations for tenant ${tenantId}`);
+        this.setupIntegrations(integrationConfigs);
+      } else {
+        console.log(`No valid integration configurations found for tenant ${tenantId}`);
+      }
+    } catch (error) {
+      console.error(`Error loading integration configurations for tenant ${tenantId}:`, error);
+    }
+  }
+
+  /**
+   * Save integration settings to database
+   */
+  async saveIntegrationSettings(tenantId: number, serviceType: string, configuration: any, isEnabled: boolean = true): Promise<void> {
+    try {
+      console.log(`Saving ${serviceType} integration settings for tenant ${tenantId}`);
+      
+      await integrationSettingsService.saveIntegrationSettings(tenantId, serviceType, configuration, isEnabled);
+      
+      // Reload integrations after saving
+      await this.setupIntegrationsFromDatabase(tenantId);
+      
+      console.log(`Successfully saved and reloaded ${serviceType} integration for tenant ${tenantId}`);
+    } catch (error) {
+      console.error(`Error saving ${serviceType} integration settings for tenant ${tenantId}:`, error);
+      throw error;
+    }
   }
 
   /**

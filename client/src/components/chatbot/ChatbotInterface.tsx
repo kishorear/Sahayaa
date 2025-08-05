@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,11 @@ export default function ChatbotInterface() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
+  // Get current user for tenant context
+  const { data: user } = useQuery({
+    queryKey: ["/api/user"]
+  });
+  
   // Initialize with welcome message if no messages exist
   useEffect(() => {
     if (messages.length === 0) {
@@ -228,7 +233,7 @@ export default function ChatbotInterface() {
       console.log('Creating ticket with attachments:', attachments.length);
       
       return await apiRequest("POST", "/api/widget/create-ticket", {
-        tenantId: 1, // Default tenant
+        tenantId: user?.tenantId || 1, // Use user's actual tenant ID
         sessionId: `chat_${Date.now()}`,
         conversation: conversation,
         attachments: attachments.length > 0 ? attachments : undefined,

@@ -15,6 +15,9 @@ import {
 } from "../integrations/jira";
 import { isCreatorOrAdminRole } from "../utils";
 import { integrationSettingsService } from "../integration-settings-service";
+import { storage } from '../storage';
+import multer from 'multer';
+import fs from 'fs/promises';
 
 // Validation schemas for integration configurations
 const zendeskConfigSchema = z.object({
@@ -42,6 +45,14 @@ const jiraConfigSchema = z.object({
 });
 
 const integrationTypeSchema = z.enum(['zendesk', 'jira']);
+
+// Multer configuration for file uploads
+const upload = multer({
+  dest: '/tmp/', // Temporary directory for uploads
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 export function registerIntegrationRoutes(app: Express, requireAuth: any) {
   // Note: Test endpoint removed - tenant-specific integration system is now fully operational
@@ -889,6 +900,187 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       res.status(500).json({ 
         message: 'Error testing integration connection',
         details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Upload attachment to existing JIRA issue
+  app.post('/api/integrations/jira/upload-attachment/:issueKey', requireAuth, upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { role } = req.user;
+      if (!isCreatorOrAdminRole(role) && role !== 'support' && role !== 'user') {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+
+      const { issueKey } = req.params;
+      const file = req.file;
+      const tenantId = req.user.tenantId;
+
+      if (!file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      if (!issueKey) {
+        return res.status(400).json({ message: 'JIRA issue key is required' });
+      }
+
+      console.log(`Uploading attachment to JIRA issue ${issueKey} for tenant ${tenantId}`);
+
+      // Get JIRA service for this tenant
+      const integrationService = getIntegrationService(tenantId);
+      if (!integrationService) {
+        return res.status(500).json({ message: 'Integration service not available' });
+      }
+
+      const jiraService = integrationService.getJiraService();
+      if (!jiraService || !jiraService.isEnabled()) {
+        return res.status(400).json({ message: 'JIRA integration not configured or disabled' });
+      }
+
+      // Upload attachment to JIRA
+      const success = await jiraService.addAttachment(issueKey, file.path, file.originalname);
+
+      if (success) {
+        // Clean up local file after successful upload
+        try {
+          await fs.unlink(file.path);
+        } catch (cleanupError) {
+          console.warn(`Failed to clean up uploaded file: ${file.path}`, cleanupError);
+        }
+
+        res.json({
+          message: 'Attachment uploaded successfully to JIRA',
+          issueKey,
+          filename: file.originalname,
+          success: true
+        });
+      } else {
+        res.status(500).json({
+          message: 'Failed to upload attachment to JIRA',
+          issueKey,
+          filename: file.originalname,
+          success: false
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading attachment to JIRA:', error);
+      res.status(500).json({
+        message: 'Internal server error during attachment upload',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Sync ticket attachments to JIRA
+  app.post('/api/integrations/jira/sync-attachments/:ticketId', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { role } = req.user;
+      if (!isCreatorOrAdminRole(role) && role !== 'support') {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+
+      const { ticketId } = req.params;
+      const tenantId = req.user.tenantId;
+
+      console.log(`Syncing ticket attachments to JIRA for ticket ${ticketId}, tenant ${tenantId}`);
+
+      // Get ticket with attachments
+      const ticket = await storage.getTicket(parseInt(ticketId));
+      if (!ticket) {
+        return res.status(404).json({ message: 'Ticket not found' });
+      }
+
+      // Verify tenant isolation
+      if (ticket.tenantId !== tenantId) {
+        return res.status(403).json({ message: 'Access denied - ticket does not belong to your tenant' });
+      }
+
+      // Check if ticket has JIRA integration
+      const externalIntegrations = ticket.externalIntegrations as any;
+      if (!externalIntegrations?.jira) {
+        return res.status(400).json({ message: 'Ticket is not linked to a JIRA issue' });
+      }
+
+      const jiraIssueKey = externalIntegrations.jira;
+
+      // Get JIRA service
+      const integrationService = getIntegrationService(tenantId);
+      if (!integrationService) {
+        return res.status(500).json({ message: 'Integration service not available' });
+      }
+
+      const jiraService = integrationService.getJiraService();
+      if (!jiraService || !jiraService.isEnabled()) {
+        return res.status(400).json({ message: 'JIRA integration not configured or disabled' });
+      }
+
+      // Get ticket attachments from our custom schema
+      const messages = await storage.getMessagesByTicketId(parseInt(ticketId));
+      const attachments: any[] = [];
+      
+      // Find messages with attachments
+      for (const message of messages) {
+        if (message.attachments && message.attachments.length > 0) {
+          attachments.push(...message.attachments);
+        }
+      }
+
+      if (attachments.length === 0) {
+        return res.json({
+          message: 'No attachments found for this ticket',
+          ticketId,
+          jiraIssueKey,
+          uploadedCount: 0
+        });
+      }
+
+      // Upload attachments to JIRA
+      let uploadedCount = 0;
+      for (const attachment of attachments) {
+        try {
+          // Create temporary file from base64 data
+          const buffer = Buffer.from(attachment.data, 'base64');
+          const tempPath = `/tmp/${Date.now()}-${attachment.filename}`;
+          await fs.writeFile(tempPath, buffer);
+          
+          const success = await jiraService.addAttachment(jiraIssueKey, tempPath, attachment.filename);
+          if (success) {
+            uploadedCount++;
+          }
+          
+          // Clean up temp file
+          try {
+            await fs.unlink(tempPath);
+          } catch (cleanupError) {
+            console.warn(`Failed to clean up temp file: ${tempPath}`, cleanupError);
+          }
+        } catch (attachmentError) {
+          console.error(`Error uploading attachment ${attachment.filename}:`, attachmentError);
+        }
+      }
+
+      res.json({
+        message: `Successfully uploaded ${uploadedCount}/${attachments.length} attachments to JIRA issue ${jiraIssueKey}`,
+        ticketId,
+        jiraIssueKey,
+        totalAttachments: attachments.length,
+        uploadedCount,
+        success: uploadedCount > 0
+      });
+
+    } catch (error) {
+      console.error('Error syncing attachments to JIRA:', error);
+      res.status(500).json({
+        message: 'Internal server error during attachment sync',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });

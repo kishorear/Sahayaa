@@ -1,5 +1,8 @@
 import { InsertTicket, InsertMessage } from "@shared/schema";
 import axios from "axios";
+import FormData from "form-data";
+import fs from "fs";
+import path from "path";
 
 // Extended InsertMessage type for integration purposes
 interface ExtendedInsertMessage extends InsertMessage {
@@ -450,6 +453,17 @@ export class JiraService {
                   });
                 }
               }
+
+              // Sync attachments if available and issue was created successfully (no error)
+              if (ticket.attachments && ticket.attachments.length > 0) {
+                console.log(`Syncing ${ticket.attachments.length} attachments for ticket #${ticket.id}`);
+                const attachmentPaths = ticket.attachments.map((attachment: any) => ({
+                  filePath: attachment.filePath || `/tmp/${attachment.filename}`, // Path to stored file
+                  filename: attachment.filename
+                }));
+                const uploadedCount = await this.addMultipleAttachments(jiraIssue.key, attachmentPaths);
+                console.log(`Successfully uploaded ${uploadedCount}/${ticket.attachments.length} attachments to JIRA issue ${jiraIssue.key}`);
+              }
             } else {
               console.error(`Failed to create Jira issue for ticket #${ticket.id}: ${jiraIssue.error}`);
             }
@@ -564,6 +578,135 @@ export class JiraService {
       
       return false;
     }
+  }
+
+  /**
+   * Add attachment to a Jira issue
+   * @param issueKey The Jira issue key (e.g., 'PROJ-123')
+   * @param filePath Full path to the file to attach
+   * @param filename Original filename (optional)
+   * @returns Promise<boolean> true if successful
+   */
+  async addAttachment(issueKey: string, filePath: string, filename?: string): Promise<boolean> {
+    if (!this.enabled) {
+      console.log('JIRA service not enabled, skipping attachment upload');
+      return false;
+    }
+
+    try {
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`File not found: ${filePath}`);
+        return false;
+      }
+
+      console.log(`Adding attachment to JIRA issue ${issueKey}: ${filePath}`);
+      
+      // Create form data for file upload
+      const form = new FormData();
+      const fileStream = fs.createReadStream(filePath);
+      const attachmentName = filename || path.basename(filePath);
+      
+      form.append('file', fileStream, {
+        filename: attachmentName,
+        contentType: this.getMimeType(filePath)
+      });
+
+      // Upload attachment to JIRA
+      const response = await axios.post(
+        `${this.apiUrl}/issue/${issueKey}/attachments`,
+        form,
+        {
+          auth: this.auth,
+          headers: {
+            ...form.getHeaders(),
+            'Accept': 'application/json',
+            'X-Atlassian-Token': 'no-check' // Required for JIRA attachment uploads
+          }
+        }
+      );
+
+      if (response.data && response.data.length > 0) {
+        console.log(`Successfully uploaded attachment to JIRA issue ${issueKey}:`, response.data[0].filename);
+        return true;
+      } else {
+        console.error('Unexpected response from JIRA attachment upload:', response.data);
+        return false;
+      }
+    } catch (error: any) {
+      console.error(`Error adding attachment to JIRA issue ${issueKey}:`, error);
+      if (error.response) {
+        console.error('JIRA attachment upload error details:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Add multiple attachments to a Jira issue
+   * @param issueKey The Jira issue key (e.g., 'PROJ-123')
+   * @param attachments Array of {filePath, filename} objects
+   * @returns Promise<number> Number of successfully uploaded attachments
+   */
+  async addMultipleAttachments(issueKey: string, attachments: Array<{filePath: string, filename?: string}>): Promise<number> {
+    if (!this.enabled) return 0;
+
+    let successCount = 0;
+    console.log(`Adding ${attachments.length} attachments to JIRA issue ${issueKey}`);
+
+    for (const attachment of attachments) {
+      const success = await this.addAttachment(issueKey, attachment.filePath, attachment.filename);
+      if (success) {
+        successCount++;
+      }
+      
+      // Small delay between uploads to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    console.log(`Successfully uploaded ${successCount}/${attachments.length} attachments to JIRA issue ${issueKey}`);
+    return successCount;
+  }
+
+  /**
+   * Get MIME type for file extension
+   * @param filePath Path to the file
+   * @returns MIME type string
+   */
+  private getMimeType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes: { [key: string]: string } = {
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.ppt': 'application/vnd.ms-powerpoint',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.txt': 'text/plain',
+      '.md': 'text/markdown',
+      '.html': 'text/html',
+      '.json': 'application/json',
+      '.xml': 'application/xml',
+      '.csv': 'text/csv',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.bmp': 'image/bmp',
+      '.svg': 'image/svg+xml',
+      '.zip': 'application/zip',
+      '.rar': 'application/x-rar-compressed',
+      '.7z': 'application/x-7z-compressed',
+      '.tar': 'application/x-tar',
+      '.gz': 'application/gzip'
+    };
+    
+    return mimeTypes[ext] || 'application/octet-stream';
   }
 
   /**

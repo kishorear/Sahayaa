@@ -124,12 +124,6 @@ interface AgentSystemStatus {
     ai_providers: string[];
   };
   capabilities: string[];
-  infrastructure?: {
-    database: string;
-    server: string;
-    storage: string;
-    authentication: string;
-  };
 }
 
 interface InstructionTestResult {
@@ -1449,28 +1443,7 @@ export default function AgentTestPage() {
                     </div>
                   </div>
 
-                  {/* Infrastructure Status */}
-                  {systemStatus.infrastructure && (
-                    <>
-                      <Separator />
-                      <div className="space-y-3">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <Server className="h-4 w-4" />
-                          Infrastructure Status
-                        </h4>
-                        <div className="grid grid-cols-2 gap-3">
-                          {Object.entries(systemStatus.infrastructure).map(([component, status]) => (
-                            <div key={component} className="flex items-center justify-between p-3 border rounded-lg">
-                              <span className="text-sm capitalize">{component.replace(/_/g, ' ')}</span>
-                              <Badge variant="default" className="bg-green-500">
-                                {String(status)}
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
+
                 </div>
               ) : (
                 <div className="text-center text-muted-foreground py-8">

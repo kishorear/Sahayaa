@@ -282,13 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'postgresql_storage',
           'session_management',
           'rbac_security'
-        ],
-        infrastructure: {
-          database: 'PostgreSQL (Connected)',
-          server: 'Node.js Express (Running)',
-          storage: 'Local File System',
-          authentication: 'Session-based RBAC'
-        }
+        ]
       };
       
       res.json(systemStatus);

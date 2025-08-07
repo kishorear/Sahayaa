@@ -13,8 +13,9 @@ import {
   Brain, MessageSquare, Shield, TrendingUp, Clock, CheckCircle2, AlertTriangle, Users, 
   Search, Database, FileText, Settings, RefreshCw, Play, Pause, Timer, Activity,
   Bot, Target, Zap, CheckSquare, GitBranch, Layers, Network, ArrowRight,
-  Eye, Code, PlayCircle, StopCircle
+  Eye, Code, PlayCircle, StopCircle, Ticket, Server
 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface PreprocessorResult {
@@ -123,6 +124,12 @@ interface AgentSystemStatus {
     ai_providers: string[];
   };
   capabilities: string[];
+  infrastructure?: {
+    database: string;
+    server: string;
+    storage: string;
+    authentication: string;
+  };
 }
 
 interface InstructionTestResult {
@@ -215,6 +222,8 @@ export default function AgentTestPage() {
   const [activeTab, setActiveTab] = useState("workflow");
   const [isRealTimeMode, setIsRealTimeMode] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [showStepDetails, setShowStepDetails] = useState(false);
+  const [selectedStepDetails, setSelectedStepDetails] = useState<ProcessingStep | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -698,11 +707,25 @@ export default function AgentTestPage() {
                           )}
                           
                           {step.data && (
-                            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                              <pre className="whitespace-pre-wrap">
-                                {JSON.stringify(step.data, null, 2).substring(0, 200)}
-                                {JSON.stringify(step.data, null, 2).length > 200 && '...'}
-                              </pre>
+                            <div className="space-y-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedStepDetails(step);
+                                  setShowStepDetails(true);
+                                }}
+                                className="text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Inspect Agent Results
+                              </Button>
+                              <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                                <pre className="whitespace-pre-wrap">
+                                  {JSON.stringify(step.data, null, 2).substring(0, 200)}
+                                  {JSON.stringify(step.data, null, 2).length > 200 && '...'}
+                                </pre>
+                              </div>
                             </div>
                           )}
                           
@@ -834,14 +857,76 @@ export default function AgentTestPage() {
                   </div>
                 </div>
 
-                {workflowResult.ticket_title && (
-                  <div className="mt-4">
-                    <Label className="text-xs">Generated Ticket Title</Label>
-                    <div className="p-3 bg-muted rounded-md mt-1">
-                      <span className="text-sm font-medium">{workflowResult.ticket_title}</span>
+                {/* Generated Ticket Display */}
+                <Separator className="my-6" />
+                <div className="space-y-4">
+                  <h4 className="font-medium text-lg flex items-center gap-2">
+                    <Ticket className="h-5 w-5" />
+                    Generated Ticket Preview
+                  </h4>
+                  
+                  <div className="border rounded-lg p-6 bg-white">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-semibold">
+                          #{workflowResult.ticket_id || 'PENDING'}
+                        </span>
+                        <Badge variant="outline">{workflowResult.category}</Badge>
+                        <Badge className={`${getUrgencyColor(workflowResult.urgency)} text-white`}>
+                          {workflowResult.urgency}
+                        </Badge>
+                      </div>
+                      <Badge variant={workflowResult.status === 'open' ? 'default' : 'secondary'}>
+                        {workflowResult.status}
+                      </Badge>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Title</Label>
+                        <h3 className="text-lg font-medium mt-1">
+                          {workflowResult.ticket_title || 'Processing...'}
+                        </h3>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Original Message</Label>
+                        <div className="mt-1 p-3 bg-gray-50 rounded border">
+                          <p className="text-gray-800 italic">"{message}"</p>
+                        </div>
+                      </div>
+                      
+                      {workflowResult.resolution_steps && workflowResult.resolution_steps.length > 0 && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">
+                            AI-Generated Resolution Steps ({workflowResult.resolution_steps.length})
+                          </Label>
+                          <div className="mt-2 space-y-2">
+                            {workflowResult.resolution_steps.map((step, index) => (
+                              <div key={index} className="flex items-start gap-3 p-2 bg-green-50 rounded">
+                                <div className="flex-shrink-0 w-6 h-6 bg-green-500 text-white rounded-full text-xs flex items-center justify-center font-medium">
+                                  {index + 1}
+                                </div>
+                                <span className="text-sm text-gray-800">{step}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4 pt-4 border-t text-sm">
+                        <div>
+                          <Label className="text-xs font-medium text-gray-500">Created</Label>
+                          <p className="text-gray-700">{workflowResult.created_at ? new Date(workflowResult.created_at).toLocaleString() : 'Just now'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium text-gray-500">AI Confidence</Label>
+                          <p className="text-gray-700">{workflowResult.confidence_score}%</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -1234,7 +1319,7 @@ export default function AgentTestPage() {
                         {['preprocessing', 'instruction_lookup', 'ticket_lookup', 'llm_resolution', 'formatting'].map((step, index) => (
                           <div key={step} className="flex items-center space-x-2 min-w-fit">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                              workflowResult.workflow_steps?.[step] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                              workflowResult.workflow_steps?.[step as keyof typeof workflowResult.workflow_steps] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
                             }`}>
                               {index + 1}
                             </div>
@@ -1363,6 +1448,29 @@ export default function AgentTestPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Infrastructure Status */}
+                  {systemStatus.infrastructure && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Server className="h-4 w-4" />
+                          Infrastructure Status
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          {Object.entries(systemStatus.infrastructure).map(([component, status]) => (
+                            <div key={component} className="flex items-center justify-between p-3 border rounded-lg">
+                              <span className="text-sm capitalize">{component.replace(/_/g, ' ')}</span>
+                              <Badge variant="default" className="bg-green-500">
+                                {String(status)}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
@@ -1378,6 +1486,78 @@ export default function AgentTestPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Agent Step Details Dialog */}
+      <Dialog open={showStepDetails} onOpenChange={setShowStepDetails}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Agent Step Details: {selectedStepDetails?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Detailed inspection of agent processing results and data analysis.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedStepDetails && (
+            <div className="space-y-6">
+              {/* Step Overview */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 border rounded-lg">
+                  <div className="text-lg font-semibold flex items-center justify-center gap-2">
+                    {getStepIcon(selectedStepDetails.status)}
+                    {selectedStepDetails.status.toUpperCase()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Status</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className="text-lg font-semibold">
+                    {calculateStepDuration(selectedStepDetails)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Duration</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className="text-lg font-semibold">
+                    {selectedStepDetails.startTime ? new Date(selectedStepDetails.startTime).toLocaleTimeString() : 'N/A'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Started At</div>
+                </div>
+              </div>
+
+              {/* Agent Output Data */}
+              {selectedStepDetails.data && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    <h4 className="font-medium">Agent Processing Results</h4>
+                  </div>
+                  
+                  <div className="bg-muted p-4 rounded-lg">
+                    <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+                      {JSON.stringify(selectedStepDetails.data, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Details */}
+              {selectedStepDetails.error && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                    <h4 className="font-medium text-red-700">Error Details</h4>
+                  </div>
+                  
+                  <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+                    <p className="text-red-800">{selectedStepDetails.error}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

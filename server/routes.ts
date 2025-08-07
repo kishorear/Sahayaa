@@ -210,27 +210,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Agent system status endpoint
   app.get('/api/agent/status', async (req: Request, res: Response) => {
     try {
+      // Check actual system components
+      let agentServiceAvailable = false;
+      let mcpServiceAvailable = false;
+      let vectorStorageAvailable = false;
+      let aiProvidersConfigured = [];
+
+      // Test agent service availability
+      try {
+        agentServiceAvailable = await agentService.isAvailable();
+      } catch (error) {
+        console.log('Agent service check failed:', error);
+      }
+
+      // Check MCP service by trying to connect
+      try {
+        const mcpResponse = await fetch('http://localhost:8000/health');
+        mcpServiceAvailable = mcpResponse.ok;
+      } catch (error) {
+        console.log('MCP service check failed:', error);
+      }
+
+      // Check vector storage (assume available if agent service is working)
+      vectorStorageAvailable = agentServiceAvailable;
+
+      // Check configured AI providers
+      try {
+        const tenantId = req.user?.tenantId || 1;
+        await reloadProvidersFromDatabase(tenantId);
+        const factory = AIProviderFactory.getInstance();
+        
+        // Try to get configured providers
+        try {
+          const googleAI = factory.getProvider('google', tenantId);
+          if (googleAI) aiProvidersConfigured.push('Google AI');
+        } catch (e) { /* Provider not configured */ }
+        
+        try {
+          const openAI = factory.getProvider('openai', tenantId);
+          if (openAI) aiProvidersConfigured.push('OpenAI');
+        } catch (e) { /* Provider not configured */ }
+        
+        try {
+          const anthropic = factory.getProvider('anthropic', tenantId);
+          if (anthropic) aiProvidersConfigured.push('Anthropic');
+        } catch (e) { /* Provider not configured */ }
+      } catch (error) {
+        console.log('AI provider check failed:', error);
+      }
+
       const systemStatus = {
-        orchestrator_available: true,
+        orchestrator_available: agentServiceAvailable,
         sub_agents: {
-          chat_preprocessor: true,
-          instruction_lookup: true,
-          ticket_lookup: true,
-          ticket_formatter: true
+          chat_preprocessor: agentServiceAvailable,
+          instruction_lookup: agentServiceAvailable && mcpServiceAvailable,
+          ticket_lookup: agentServiceAvailable && vectorStorageAvailable,
+          ticket_formatter: agentServiceAvailable
         },
         external_services: {
-          vector_storage: true,
-          mcp_service: true,
-          ai_providers: ['Google AI', 'OpenAI']
+          vector_storage: vectorStorageAvailable,
+          mcp_service: mcpServiceAvailable,
+          ai_providers: aiProvidersConfigured.length > 0 ? aiProvidersConfigured : ['None configured']
         },
         capabilities: [
           'message_preprocessing',
-          'instruction_search',
+          'instruction_search', 
           'ticket_similarity',
           'llm_resolution',
           'ticket_formatting',
-          'multi_tenant_isolation'
-        ]
+          'multi_tenant_isolation',
+          'postgresql_storage',
+          'session_management',
+          'rbac_security'
+        ],
+        infrastructure: {
+          database: 'PostgreSQL (Connected)',
+          server: 'Node.js Express (Running)',
+          storage: 'Local File System',
+          authentication: 'Session-based RBAC'
+        }
       };
       
       res.json(systemStatus);

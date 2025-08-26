@@ -47,7 +47,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, UserCog, Key, Shield, ExternalLink, Trash2, ImageIcon } from "lucide-react";
+import { Loader2, UserCog, Key, Shield, ExternalLink, Trash2, ImageIcon, Edit2, Check, X } from "lucide-react";
 
 // Schema for profile updates
 const profileFormSchema = z.object({
@@ -77,6 +77,8 @@ export default function ProfilePage() {
   const [isMfaDialogOpen, setIsMfaDialogOpen] = useState(false);
   const [isSsoDialogOpen, setIsSsoDialogOpen] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState('');
   
   // Initialize onboarding tour
   const { startTour, resetTour, hasTourCompleted } = useOnboardingTour(user?.role || 'administrator');
@@ -196,6 +198,58 @@ export default function ProfilePage() {
   const handleSsoSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
     queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+  };
+
+  // Inline name editing mutation
+  const updateNameMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const response = await apiRequest('PATCH', '/api/profile', { name });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update name');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      setIsEditingName(false);
+      setEditingName('');
+      toast({
+        title: "Name updated",
+        description: "Your name has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Inline name editing handlers
+  const startEditingName = () => {
+    setEditingName(profile?.name || profile?.username || '');
+    setIsEditingName(true);
+  };
+
+  const cancelEditingName = () => {
+    setIsEditingName(false);
+    setEditingName('');
+  };
+
+  const saveEditedName = () => {
+    if (editingName.trim() && editingName.trim().length >= 2) {
+      updateNameMutation.mutate(editingName.trim());
+    } else {
+      toast({
+        title: "Invalid name",
+        description: "Name must be at least 2 characters long.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Upload profile picture mutation
@@ -368,7 +422,57 @@ export default function ProfilePage() {
                   disabled={uploadingPicture}
                 />
               </div>
-              <h3 className="text-xl font-bold">{profile?.name || profile?.username}</h3>
+              {isEditingName ? (
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    className="text-xl font-bold text-center"
+                    placeholder="Enter your name"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        saveEditedName();
+                      } else if (e.key === 'Escape') {
+                        cancelEditingName();
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={saveEditedName}
+                    disabled={updateNameMutation.isPending || !editingName.trim() || editingName.trim().length < 2}
+                    className="p-1 h-8 w-8"
+                  >
+                    {updateNameMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={cancelEditingName}
+                    disabled={updateNameMutation.isPending}
+                    className="p-1 h-8 w-8"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group">
+                  <h3 className="text-xl font-bold">{profile?.name || profile?.username}</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={startEditingName}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-6 w-6"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
               <p className="text-sm text-muted-foreground">{profile?.email}</p>
               {profile?.company && (
                 <p className="text-sm text-muted-foreground mb-2">{profile.company}</p>

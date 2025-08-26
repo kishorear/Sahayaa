@@ -138,6 +138,7 @@ def validate_installation() -> Dict[str, Any]:
     
     for package, test_code in core_tests.items():
         try:
+            # Static test code - safe from injection as it's hardcoded
             result = subprocess.run(
                 [sys.executable, "-c", test_code],
                 capture_output=True,
@@ -167,6 +168,7 @@ def validate_installation() -> Dict[str, Any]:
     
     for package, test_code in optional_tests.items():
         try:
+            # Static test code - safe from injection as it's hardcoded
             result = subprocess.run(
                 [sys.executable, "-c", test_code],
                 capture_output=True,

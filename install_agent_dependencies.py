@@ -8,19 +8,32 @@ import subprocess
 import sys
 import os
 import logging
-from typing import List, Dict, Any
+import re
+from typing import List, Dict, Any, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def install_package_with_fallback(package: str, alternatives: List[str] = None) -> bool:
+def validate_package_name(package_name: str) -> bool:
+    """Validate package name to prevent command injection"""
+    # Allow alphanumeric, hyphens, underscores, dots, brackets, and version specifiers
+    # This covers standard PyPI package naming conventions
+    pattern = r'^[a-zA-Z0-9][a-zA-Z0-9._\-\[\]>=<,~!=:; ]*$'
+    return bool(re.match(pattern, package_name)) and len(package_name) <= 100
+
+def install_package_with_fallback(package: str, alternatives: Optional[List[str]] = None) -> bool:
     """Install package with fallback alternatives"""
     packages_to_try = [package] + (alternatives or [])
     
     for pkg in packages_to_try:
         try:
             logger.info(f"Attempting to install {pkg}...")
+            
+            # Validate package name to prevent command injection
+            if not validate_package_name(pkg):
+                logger.error(f"❌ Invalid package name: {pkg}")
+                continue
             
             # Try pip install first
             result = subprocess.run(

@@ -253,15 +253,17 @@ async def list_tickets(
                     conditions.append('category = %s')
                     params.append(category)
                 
-                where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-                params.extend([limit, offset])
+                query_parts = ['SELECT * FROM tickets']
                 
-                cur.execute(f"""
-                    SELECT * FROM tickets 
-                    {where_clause}
-                    ORDER BY "createdAt" DESC 
-                    LIMIT %s OFFSET %s
-                """, params)
+                if conditions:
+                    where_clause = "WHERE " + " AND ".join(conditions)
+                    query_parts.append(where_clause)
+                
+                query_parts.append('ORDER BY "createdAt" DESC LIMIT %s OFFSET %s')
+                query = ' '.join(query_parts)
+                
+                params.extend([limit, offset])
+                cur.execute(query, params)
                 
                 tickets = cur.fetchall()
                 return [TicketResponse(**dict(ticket)) for ticket in tickets]

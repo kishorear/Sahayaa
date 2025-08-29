@@ -1,21 +1,66 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, Code, MessageSquare, Puzzle, Key, CloudLightning, Server, GitMerge, HelpCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BookOpen, Code, MessageSquare, Puzzle, Key, CloudLightning, Server, GitMerge, HelpCircle, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function DocumentationPage() {
-  document.title = "Documentation | AI Support Platform";
+  document.title = "Documentation | Sahayaa AI Support Platform";
+
+  const downloadPDF = async () => {
+    try {
+      const element = document.getElementById('documentation-content');
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save('Sahayaa-AI-Documentation.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
+  };
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8 max-w-7xl">
+      <div id="documentation-content">
       <div className="flex flex-col space-y-4 mb-8">
-        <div className="flex items-center space-x-2">
-          <BookOpen className="h-6 w-6" />
-          <h1 className="text-3xl font-bold">Documentation</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <BookOpen className="h-6 w-6" />
+            <h1 className="text-3xl font-bold">Documentation</h1>
+          </div>
+          <Button onClick={downloadPDF} variant="outline" className="flex items-center space-x-2">
+            <Download className="h-4 w-4" />
+            <span>Download PDF</span>
+          </Button>
         </div>
         <p className="text-muted-foreground text-lg">
-          Comprehensive guides and documentation for the AI Support Platform
+          Comprehensive guides and documentation for the Sahayaa AI Support Platform
         </p>
       </div>
 
@@ -63,18 +108,19 @@ export default function DocumentationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="prose max-w-none">
-                <h3>What is AI Support Platform?</h3>
+                <h3>What is Sahayaa AI?</h3>
                 <p>
-                  AI Support Platform is an advanced support ticket management system powered by artificial intelligence. It leverages cutting-edge technology to automate and enhance customer support workflows, reducing resolution times and improving customer satisfaction.
+                  Sahayaa AI is an advanced multi-agent support ticket management system powered by artificial intelligence. Built with a microservices architecture, it employs Model Context Protocol (MCP) integration, vector-based similarity search, and intelligent AI orchestration to provide comprehensive customer support automation.
                 </p>
                 
                 <h3>Key Benefits</h3>
                 <ul>
-                  <li><strong>Automated Ticket Classification</strong> - AI automatically categorizes support tickets based on content, ensuring they are routed to the right department.</li>
-                  <li><strong>Instant Resolutions</strong> - Simple issues are resolved automatically without human intervention.</li>
-                  <li><strong>Context Enrichment</strong> - Complex tickets are enhanced with relevant information before reaching human agents.</li>
-                  <li><strong>Reduced Response Time</strong> - AI-powered responses and suggestions help agents respond faster.</li>
-                  <li><strong>Multi-Channel Support</strong> - Handle support tickets from chat, email, and other channels in one place.</li>
+                  <li><strong>Multi-Agent AI Orchestration</strong> - Specialized AI agents (Chat Processor, Instruction Lookup, Ticket Lookup, Ticket Formatter) work together for comprehensive ticket processing.</li>
+                  <li><strong>Vector-Based Similarity Search</strong> - ChromaDB integration provides intelligent similarity matching for historical tickets and knowledge base articles.</li>
+                  <li><strong>Multi-Tenant Architecture</strong> - Complete data isolation and tenant-specific customization with enterprise-grade security.</li>
+                  <li><strong>Multiple AI Provider Support</strong> - Integrated support for OpenAI, Google AI, Anthropic, and AWS Bedrock with automatic failover.</li>
+                  <li><strong>Microservices Architecture</strong> - Loosely coupled services including Node.js main application, Python Agent Orchestrator, Data Service, and Vector Storage.</li>
+                  <li><strong>Real-Time Monitoring</strong> - Comprehensive health checks, circuit breaker patterns, and performance monitoring.</li>
                 </ul>
 
                 <h3>Quick Start Guide</h3>
@@ -100,83 +146,100 @@ export default function DocumentationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="prose max-w-none">
-                <h3>Platform Architecture Overview</h3>
+                <h3>Microservices Architecture Overview</h3>
                 <p>
-                  The AI Support Platform is built on a modern, scalable architecture designed to handle enterprise support operations efficiently. It consists of several interconnected components working together:
+                  Sahayaa AI is built on a sophisticated microservices architecture with MCP (Model Context Protocol) integration, designed for scalability, reliability, and intelligent multi-agent processing:
                 </p>
                 <ul>
-                  <li><strong>Multi-Tenant Database</strong> - Securely stores data for multiple organizations with complete isolation</li>
-                  <li><strong>AI Processing Pipeline</strong> - Analyzes and processes customer inquiries using multiple AI providers</li>
-                  <li><strong>Integration Layer</strong> - Connects with third-party systems like Jira and Zendesk</li>
-                  <li><strong>Web Application</strong> - Provides administrative interface and dashboards</li>
-                  <li><strong>Embeddable Chat Widget</strong> - Customer-facing component that can be integrated into any website</li>
+                  <li><strong>Node.js Main Application (Port 5000)</strong> - Frontend, authentication, session management, and API gateway</li>
+                  <li><strong>Agent Orchestrator Service (Port 8001)</strong> - Python FastAPI service for AI workflow coordination and LLM integration</li>
+                  <li><strong>Data Service (Port 8000)</strong> - PostgreSQL database operations and JSON API responses</li>
+                  <li><strong>Vector Storage Service</strong> - ChromaDB with Google AI embeddings for RAG and similarity search</li>
+                  <li><strong>Chat Widget Package</strong> - Embeddable JavaScript component with multi-agent workflow visualization</li>
                 </ul>
 
-                <h3>Multi-AI Provider System</h3>
+                <h3>Multi-Agent MCP Processing System</h3>
                 <p>
-                  The platform uses a sophisticated multi-AI provider architecture that enables organizations to leverage different AI technologies simultaneously:
+                  The platform employs a sophisticated Model Context Protocol (MCP) integration with specialized AI agents working in coordination:
                 </p>
                 <ul>
-                  <li><strong>Primary Provider Selection</strong> - Configure one primary AI provider (OpenAI, Anthropic, Google Gemini, or AWS Bedrock)</li>
-                  <li><strong>Provider Failover</strong> - Automatic fallback to secondary providers if the primary is unavailable</li>
-                  <li><strong>Operation-Specific Routing</strong> - Different operations (chat, ticket classification, auto-resolution) can use different AI providers</li>
-                  <li><strong>Custom Provider Integration</strong> - Support for custom AI providers through standardized REST API interface</li>
+                  <li><strong>Chat Processor Agent</strong> - Analyzes and preprocesses user messages for intent and category classification</li>
+                  <li><strong>Instruction Lookup Agent</strong> - Searches knowledge base using vector embeddings for relevant instructions</li>
+                  <li><strong>Ticket Lookup Agent</strong> - Finds similar historical tickets using MCP-powered similarity search</li>
+                  <li><strong>Ticket Formatter Agent</strong> - Structures responses and automates ticket creation with AI-enhanced context</li>
+                  <li><strong>Support Team Orchestrator</strong> - Master coordinator managing all sub-agents for optimal workflow</li>
+                </ul>
+                
+                <h3>Multi-AI Provider Integration</h3>
+                <p>
+                  Enterprise-grade AI provider support with tenant-specific configurations:
+                </p>
+                <ul>
+                  <li><strong>Primary Providers</strong> - OpenAI, Google AI (Gemini), Anthropic (Claude), AWS Bedrock</li>
+                  <li><strong>Tenant Isolation</strong> - Each tenant can configure different AI providers with strict data isolation</li>
+                  <li><strong>Automatic Failover</strong> - Circuit breaker patterns with graceful degradation</li>
+                  <li><strong>Operation-Specific Routing</strong> - Different AI providers for embeddings, chat, and ticket processing</li>
                 </ul>
 
-                <h3>End-to-End Support Workflow</h3>
+                <h3>MCP-Powered Agent Workflow</h3>
                 <p>
-                  When a customer interacts with the support system, the following process takes place:
+                  When a customer interacts with the support system, the following MCP-coordinated multi-agent process occurs:
                 </p>
                 
-                <h4>1. Initial Contact</h4>
+                <h4>1. Ticket Creation & Initial Processing</h4>
                 <p>
-                  Customer initiates contact through one of several channels:
+                  Customer message triggers the agent orchestration pipeline:
                 </p>
                 <ul>
-                  <li><strong>Chat Widget</strong> - Embedded in your website or application</li>
-                  <li><strong>Email</strong> - Sent to your configured support email address</li>
-                  <li><strong>API</strong> - Via direct API call from your other systems</li>
+                  <li><strong>Chat Widget Integration</strong> - Real-time message capture with session management</li>
+                  <li><strong>Multi-Agent Orchestration</strong> - Support Team Agent coordinates specialized sub-agents</li>
+                  <li><strong>Context Enrichment</strong> - Page context, user agent, and metadata collection</li>
+                  <li><strong>Tenant Isolation</strong> - All processing respects multi-tenant data boundaries</li>
                 </ul>
 
-                <h4>2. AI Analysis & Classification</h4>
+                <h4>2. MCP Multi-Agent Processing</h4>
                 <p>
-                  The system processes the inquiry using AI capabilities:
+                  Specialized agents work in sequence using Model Context Protocol:
                 </p>
                 <ul>
-                  <li><strong>NLP Processing</strong> - Natural language processing extracts key details</li>
-                  <li><strong>Knowledge Base Lookup</strong> - Relevant documentation is retrieved from your knowledge base</li>
-                  <li><strong>Classification</strong> - Ticket is categorized and assigned complexity level</li>
-                  <li><strong>Auto-Resolution Assessment</strong> - System determines if the issue can be automatically resolved</li>
+                  <li><strong>Chat Processor</strong> - Analyzes message intent, extracts entities, determines category and urgency</li>
+                  <li><strong>Instruction Lookup</strong> - Vector search through knowledge base using ChromaDB embeddings</li>
+                  <li><strong>Ticket Lookup</strong> - MCP-powered similarity search through historical tickets</li>
+                  <li><strong>LLM Processing</strong> - Context-aware response generation with relevant knowledge integration</li>
+                  <li><strong>Ticket Formatter</strong> - Structures final response and creates database entries</li>
                 </ul>
 
-                <h4>3. Resolution Pathways</h4>
+                <h4>3. Intelligent Resolution & Response</h4>
                 <p>
-                  Based on the analysis, the ticket follows one of these paths:
+                  The MCP orchestrator determines optimal resolution strategy:
                 </p>
                 <ul>
-                  <li><strong>Path A: Automatic Resolution</strong> - Simple issues are resolved by the AI without human intervention</li>
-                  <li><strong>Path B: Guided Self-Service</strong> - AI suggests knowledge base articles that may resolve the issue</li>
-                  <li><strong>Path C: Human Agent</strong> - Complex issues are routed to appropriate human agents with AI-enhanced context</li>
+                  <li><strong>Automatic Resolution</strong> - High-confidence solutions delivered instantly with step-by-step instructions</li>
+                  <li><strong>Knowledge-Enhanced Responses</strong> - Vector-searched knowledge base articles integrated into personalized responses</li>
+                  <li><strong>Human Escalation</strong> - Complex issues routed to agents with full AI-generated context and suggested solutions</li>
+                  <li><strong>Confidence Scoring</strong> - Each response includes confidence metrics and processing transparency</li>
                 </ul>
 
-                <h4>4. Integration Actions</h4>
+                <h4>4. Integration & Persistence</h4>
                 <p>
-                  For tickets requiring human attention, the platform automatically:
+                  All interactions are automatically processed through the microservices architecture:
                 </p>
                 <ul>
-                  <li><strong>Creates Tickets</strong> - In both the platform database and any connected third-party systems (e.g., Jira, Zendesk)</li>
-                  <li><strong>Synchronizes Updates</strong> - Changes made in either system are reflected in both places</li>
-                  <li><strong>Attaches Context</strong> - AI-generated notes and relevant knowledge are included</li>
+                  <li><strong>Database Persistence</strong> - Tickets, messages, and interactions stored in PostgreSQL with full audit trail</li>
+                  <li><strong>Vector Storage</strong> - ChromaDB stores embeddings for future similarity search and learning</li>
+                  <li><strong>Third-Party Integration</strong> - Automatic synchronization with Jira, Zendesk, and custom systems</li>
+                  <li><strong>Real-Time Monitoring</strong> - Circuit breaker patterns and health checks ensure system reliability</li>
                 </ul>
 
-                <h4>5. Analytics & Learning</h4>
+                <h4>5. Analytics & Continuous Learning</h4>
                 <p>
-                  Throughout the process, the system:
+                  The platform continuously learns and improves through comprehensive monitoring:
                 </p>
                 <ul>
-                  <li><strong>Collects Performance Data</strong> - Tracks resolution times, customer satisfaction, and AI accuracy</li>
-                  <li><strong>Generates Reports</strong> - Creates actionable insights for continuous improvement</li>
-                  <li><strong>Suggests Knowledge Base Updates</strong> - Identifies gaps in documentation based on customer inquiries</li>
+                  <li><strong>Agent Performance Metrics</strong> - Tracks processing times, confidence scores, and resolution success rates</li>
+                  <li><strong>Multi-Tenant Analytics</strong> - Isolated reporting and insights for each tenant organization</li>
+                  <li><strong>Vector Search Optimization</strong> - Embeddings and similarity search improve with usage patterns</li>
+                  <li><strong>MCP Workflow Analytics</strong> - Detailed breakdown of agent coordination and efficiency metrics</li>
                 </ul>
 
                 <h3>Security & Compliance Features</h3>
@@ -208,64 +271,64 @@ export default function DocumentationPage() {
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <MessageSquare className="h-5 w-5 text-primary" />
-                    <h3 className="font-medium">AI-Powered Chatbot</h3>
+                    <h3 className="font-medium">Multi-Agent AI Chat System</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Intelligent chatbot interface that handles customer inquiries and collects information for ticket creation.
+                    Sophisticated MCP-powered multi-agent system with transparent workflow visualization and intelligent processing.
                   </p>
                   <ul className="text-sm space-y-1 list-disc list-inside ml-4 text-muted-foreground">
-                    <li>Natural language understanding</li>
-                    <li>Context-aware responses</li>
-                    <li>Multilingual support</li>
-                    <li>Seamless human handoff</li>
+                    <li>Behind-the-scenes agent visualization</li>
+                    <li>Confidence scoring and processing transparency</li>
+                    <li>Multi-provider AI integration (OpenAI, Google, Anthropic, Bedrock)</li>
+                    <li>Real-time agent coordination and workflow</li>
                   </ul>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Server className="h-5 w-5 text-primary" />
-                    <h3 className="font-medium">Smart Ticket Management</h3>
+                    <h3 className="font-medium">MCP Agent Orchestration</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Automated classification, prioritization, and routing of support tickets.
+                    Model Context Protocol integration with specialized agents for comprehensive ticket processing and resolution.
                   </p>
                   <ul className="text-sm space-y-1 list-disc list-inside ml-4 text-muted-foreground">
-                    <li>AI-based categorization</li>
-                    <li>Complexity assessment</li>
-                    <li>Automated resolution for simple issues</li>
-                    <li>Intelligent assignment to agents</li>
+                    <li>Chat Processor Agent for intent analysis</li>
+                    <li>Instruction Lookup Agent with vector search</li>
+                    <li>Ticket Lookup Agent for similarity matching</li>
+                    <li>Support Team Orchestrator coordination</li>
                   </ul>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Key className="h-5 w-5 text-primary" />
-                    <h3 className="font-medium">Multi-Tenancy</h3>
+                    <h3 className="font-medium">Enterprise Multi-Tenancy</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Secure isolation of data and customization for different tenants on a single platform.
+                    Complete tenant isolation with enterprise-grade security and tenant-specific AI agent resources.
                   </p>
                   <ul className="text-sm space-y-1 list-disc list-inside ml-4 text-muted-foreground">
-                    <li>Per-tenant customization</li>
-                    <li>Custom branding</li>
-                    <li>Role-based access control</li>
-                    <li>Tenant-specific knowledge bases</li>
+                    <li>Tenant-isolated agent resources and knowledge bases</li>
+                    <li>Per-tenant AI provider configurations</li>
+                    <li>RBAC with SSO and MFA support</li>
+                    <li>Tenant-specific vector storage isolation</li>
                   </ul>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <GitMerge className="h-5 w-5 text-primary" />
-                    <h3 className="font-medium">Third-Party Integrations</h3>
+                    <h3 className="font-medium">Microservices Integration</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Seamless connections with popular ticketing systems and services.
+                    Loosely coupled microservices architecture with comprehensive third-party system integrations.
                   </p>
                   <ul className="text-sm space-y-1 list-disc list-inside ml-4 text-muted-foreground">
-                    <li>Zendesk integration</li>
-                    <li>Jira integration</li>
-                    <li>Email service connector</li>
-                    <li>Custom webhook support</li>
+                    <li>Agent Orchestrator Service (Python FastAPI)</li>
+                    <li>Data Service with PostgreSQL persistence</li>
+                    <li>Vector Storage Service with ChromaDB</li>
+                    <li>Real-time monitoring and circuit breaker patterns</li>
                   </ul>
                 </div>
               </div>
@@ -523,6 +586,7 @@ export default function DocumentationPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

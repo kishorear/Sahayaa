@@ -5,43 +5,76 @@ import { Button } from "@/components/ui/button";
 import { BookOpen, Code, MessageSquare, Puzzle, Key, CloudLightning, Server, GitMerge, HelpCircle, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 export default function DocumentationPage() {
   document.title = "Documentation | Sahayaa AI Support Platform";
 
   const downloadPDF = async () => {
     try {
-      const element = document.getElementById('documentation-content');
-      if (!element) return;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
+      // Create a simplified text-based PDF instead of using html2canvas
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      const pageWidth = 190;
+      const pageHeight = 270;
+      let currentY = 20;
+      
+      // Add title
+      pdf.setFontSize(24);
+      pdf.text('Sahayaa AI Documentation', 20, currentY);
+      currentY += 15;
+      
+      // Add sections
+      const sections = [
+        {
+          title: 'What is Sahayaa AI?',
+          content: 'Sahayaa AI is an advanced multi-agent support ticket management system powered by artificial intelligence. Built with a microservices architecture, it employs Model Context Protocol (MCP) integration, vector-based similarity search, and intelligent AI orchestration to provide comprehensive customer support automation.'
+        },
+        {
+          title: 'Microservices Architecture',
+          content: 'Node.js Main Application (Port 5000) - Frontend, authentication, session management, and API gateway\nAgent Orchestrator Service (Port 8001) - Python FastAPI service for AI workflow coordination\nData Service (Port 8000) - PostgreSQL database operations and JSON API responses\nVector Storage Service - ChromaDB with Google AI embeddings for RAG and similarity search'
+        },
+        {
+          title: 'Multi-Agent MCP Processing',
+          content: 'Chat Processor Agent - Analyzes and preprocesses user messages\nInstruction Lookup Agent - Searches knowledge base using vector embeddings\nTicket Lookup Agent - Finds similar historical tickets using MCP-powered similarity search\nTicket Formatter Agent - Structures responses and automates ticket creation\nSupport Team Orchestrator - Master coordinator managing all sub-agents'
+        },
+        {
+          title: 'Key Features',
+          content: 'Multi-Agent AI Chat System with MCP integration\nEnterprise Multi-Tenancy with complete isolation\nMicroservices Integration with real-time monitoring\nComprehensive third-party system integrations'
+        }
+      ];
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+      pdf.setFontSize(12);
+      
+      sections.forEach(section => {
+        // Check if we need a new page
+        if (currentY > pageHeight - 30) {
+          pdf.addPage();
+          currentY = 20;
+        }
+        
+        // Add section title
+        pdf.setFontSize(16);
+        pdf.text(section.title, 20, currentY);
+        currentY += 10;
+        
+        // Add section content
+        pdf.setFontSize(12);
+        const lines = pdf.splitTextToSize(section.content, pageWidth);
+        lines.forEach((line: string) => {
+          if (currentY > pageHeight - 10) {
+            pdf.addPage();
+            currentY = 20;
+          }
+          pdf.text(line, 20, currentY);
+          currentY += 7;
+        });
+        
+        currentY += 5; // Add space between sections
+      });
 
       pdf.save('Sahayaa-AI-Documentation.pdf');
     } catch (error) {
       console.error('Error generating PDF:', error);
+      alert('There was an error generating the PDF. Please try again.');
     }
   };
 

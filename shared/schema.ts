@@ -584,3 +584,48 @@ export const insertMcpQueryLogSchema = createInsertSchema(mcpQueryLogs)
 
 export type McpQueryLog = typeof mcpQueryLogs.$inferSelect;
 export type InsertMcpQueryLog = z.infer<typeof insertMcpQueryLogSchema>;
+
+// Email provider types enum
+export const EmailProviderTypeEnum = z.enum([
+  'smtp', // Traditional SMTP/IMAP
+  'sendgrid', // SendGrid API
+  'outlook', // Outlook/Microsoft 365
+]);
+
+// Email provider configurations
+export const emailProviders = pgTable("email_providers", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  providerType: text("provider_type").notNull(), // smtp, sendgrid, outlook
+  name: text("name").notNull(), // Display name
+  isActive: boolean("is_active").default(true).notNull(),
+  isPrimary: boolean("is_primary").default(false).notNull(), // Primary provider for sending
+  
+  // Provider-specific configuration (stored as JSON)
+  configuration: json("configuration").notNull(),
+  
+  // Email settings
+  fromName: text("from_name").notNull(),
+  fromEmail: text("from_email").notNull(),
+  ticketSubjectPrefix: text("ticket_subject_prefix").default("[Ticket #]").notNull(),
+  
+  // AI and monitoring settings
+  enableAiResponses: boolean("enable_ai_responses").default(true).notNull(),
+  checkInterval: integer("check_interval").default(60000).notNull(), // For IMAP polling (ms)
+  
+  createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  lastTested: timestamp("last_tested"),
+  testStatus: text("test_status").default("pending"), // pending, success, failed
+}, (table) => {
+  return {
+    providerNameUnique: uniqueIndex("email_provider_name_tenant_unique").on(table.name, table.tenantId),
+  };
+});
+
+export const insertEmailProviderSchema = createInsertSchema(emailProviders)
+  .omit({ id: true, createdAt: true, updatedAt: true, lastTested: true });
+
+export type EmailProvider = typeof emailProviders.$inferSelect;
+export type InsertEmailProvider = z.infer<typeof insertEmailProviderSchema>;

@@ -17,6 +17,7 @@ interface TicketResponse {
   success: boolean;
   ticket: {
     id: number;
+    tenantTicketId?: number;
     title: string;
     description: string;
     category: string;
@@ -214,7 +215,7 @@ export default function WidgetTestPage() {
                 {/* Ticket Details */}
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium">Ticket #{ticketResult.ticket.id}</h3>
+                    <h3 className="font-medium">Ticket #{ticketResult.ticket.tenantTicketId || ticketResult.ticket.id}</h3>
                     <Badge variant="outline">{ticketResult.ticket.status}</Badge>
                   </div>
                   

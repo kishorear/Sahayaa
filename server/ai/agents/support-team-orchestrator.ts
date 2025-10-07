@@ -373,6 +373,16 @@ export class SupportTeamOrchestrator {
 3. Based on the provided context and instructions
 4. Professional and helpful
 
+IMPORTANT PRIVACY AND SECURITY GUIDELINES:
+- DO NOT ask for personal information such as: zipcode/pincode, physical location, home address, phone numbers, social security numbers, or other sensitive personal data
+- DO NOT request credentials, passwords, or access tokens
+- If you need user-specific information, use generic placeholders or suggest they contact support
+- Respect user privacy at all times
+
+ESCALATION RULES:
+- If the initial solution steps might not resolve the issue, include "If the above steps don't resolve your issue, we recommend creating a support ticket for personalized assistance" as the last step
+- For complex or unclear issues, suggest ticket creation upfront
+
 Respond with only the numbered steps, no additional explanation.`;
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });

@@ -191,6 +191,16 @@ export async function attemptAutoResolveWithAI(
         Your goal is to provide helpful, accurate responses to user queries and resolve issues when possible.
         If you can fully resolve the issue, indicate this by including "[ISSUE RESOLVED]" at the end of your response.
         If the issue requires human intervention, indicate this by including "[REQUIRES HUMAN]" at the end of your response.
+        
+        IMPORTANT PRIVACY AND SECURITY GUIDELINES:
+        - DO NOT ask for personal information such as: zipcode/pincode, physical location, home address, phone numbers, social security numbers, or other sensitive personal data
+        - DO NOT request credentials, passwords, or access tokens
+        - If you need user-specific information, use generic placeholders or recommend creating a support ticket
+        - Always respect user privacy and data protection
+        
+        ESCALATION RULES:
+        - If the initial solution doesn't resolve the issue, recommend creating a support ticket for personalized assistance
+        - For complex or unclear issues, suggest ticket creation upfront
         `;
     
     // Add knowledge context if available
@@ -256,7 +266,7 @@ export async function generateChatResponseWithAI(
   try {
     // Create a system message with ticket context and knowledge context if available
     let systemContent = `You are a support assistant helping quality analysts and software testers with ticket "${ticketContext.title}" in the "${ticketContext.category}" category.
-      Ticket #${ticketContext.id}: "${ticketContext.title}"
+      Ticket #${ticketContext.tenantTicketId || ticketContext.id}: "${ticketContext.title}"
       Original description: "${ticketContext.description}"
       
       Format your responses for maximum readability:
@@ -271,6 +281,16 @@ export async function generateChatResponseWithAI(
       - Keep recommendations simple and non-technical
       - Don't provide code solutions or technical implementations
       - Focus on ticket resolution rather than complex troubleshooting
+      
+      IMPORTANT PRIVACY AND SECURITY GUIDELINES:
+      - DO NOT ask for personal information such as: zipcode/pincode, physical location, home address, phone numbers, social security numbers, or other sensitive personal data
+      - DO NOT request credentials, passwords, or access tokens
+      - If you need user-specific information, use generic placeholders or recommend contacting support
+      - Always respect user privacy and data protection
+      
+      ESCALATION RULES:
+      - If the initial solution doesn't resolve the issue, recommend escalating to a developer or support team
+      - For complex or unclear issues, suggest that additional investigation may be needed
       
       Provide helpful, non-technical guidance based on this ticket context. If you can provide a simple workaround, indicate this clearly.
       If the issue requires developer intervention, make that clear as well.`;

@@ -307,7 +307,7 @@ export default function ChatbotInterface() {
         ...prev,
         {
           id: `ai-ticket-${Date.now()}`,
-          content: `✅ I've created ticket #${ticket.id} for you: "${ticket.title}". You can track its progress in the tickets section. Is there anything else I can help you with?`,
+          content: `✅ I've created ticket #${ticket.tenantTicketId || ticket.id} for you: "${ticket.title}". You can track its progress in the tickets section. Is there anything else I can help you with?`,
           sender: "ai",
           timestamp: new Date(),
         },
@@ -315,7 +315,7 @@ export default function ChatbotInterface() {
       
       toast({
         title: "Ticket Created",
-        description: `Ticket #${ticket.id} has been created successfully.`,
+        description: `Ticket #${ticket.tenantTicketId || ticket.id} has been created successfully.`,
       });
     },
     onError: (error) => {

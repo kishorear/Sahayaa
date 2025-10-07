@@ -36,14 +36,22 @@ const basicAuthSchema = z.object({
 // Use basic auth schema directly since OAuth is removed
 const authConfigSchema = basicAuthSchema;
 
-// Main email configuration schema
+// Provider type selection
+const providerTypeSchema = z.enum(['smtp', 'sendgrid', 'outlook']);
+
+// Main email configuration schema with provider support
 const emailConfigSchema = z.object({
+  providerType: providerTypeSchema.default('smtp'),
   smtp: z.object({
-    host: z.string().min(1, "SMTP host is required"),
-    port: z.coerce.number().int().min(1, "Port must be a positive number"),
+    host: z.string().default(""),
+    port: z.coerce.number().int().min(1, "Port must be a positive number").default(587),
     secure: z.boolean().default(true),
-    auth: authConfigSchema,
-  }),
+    auth: z.object({
+      type: z.literal('basic'),
+      user: z.string().default(""),
+      pass: z.string().default(""),
+    }),
+  }).optional(),
   imap: z.object({
     // Make IMAP fields optional to support SMTP-only configuration
     host: z.string().default(""),
@@ -55,7 +63,19 @@ const emailConfigSchema = z.object({
       user: z.string().default(""),
       pass: z.string().default(""),
     }),
-  }),
+  }).optional(),
+  sendgrid: z.object({
+    apiKey: z.string().min(1, "SendGrid API key is required"),
+  }).optional(),
+  outlook: z.object({
+    host: z.string().default("smtp-mail.outlook.com"),
+    port: z.coerce.number().int().default(587),
+    auth: z.object({
+      type: z.literal('basic'),
+      user: z.string().min(1, "Email address is required"),
+      pass: z.string().min(1, "Password is required"),
+    }),
+  }).optional(),
   settings: z.object({
     fromName: z.string().min(1, "From name is required"),
     fromEmail: z.string().email("Invalid email address"),
@@ -153,6 +173,7 @@ export default function EmailSettings() {
   const configForm = useForm<EmailConfigValues>({
     resolver: zodResolver(emailConfigSchema),
     defaultValues: {
+      providerType: "smtp",
       smtp: {
         host: "",
         port: 587,
@@ -168,6 +189,18 @@ export default function EmailSettings() {
         port: 993,
         tls: true,
         authTimeout: 10000,
+        auth: {
+          type: "basic",
+          user: "",
+          pass: ""
+        },
+      },
+      sendgrid: {
+        apiKey: "",
+      },
+      outlook: {
+        host: "smtp-mail.outlook.com",
+        port: 587,
         auth: {
           type: "basic",
           user: "",
@@ -236,6 +269,7 @@ export default function EmailSettings() {
         // Only update the form if we have valid configuration
         if (parsedConfig && parsedConfig.smtp && parsedConfig.imap && parsedConfig.settings) {
           const config: EmailConfigValues = {
+            providerType: 'smtp', // Default to SMTP for backward compatibility
             smtp: {
               host: parsedConfig.smtp.host || "",
               port: parsedConfig.smtp.port || 587,

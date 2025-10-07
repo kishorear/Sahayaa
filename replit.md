@@ -46,3 +46,15 @@ The system employs a loosely coupled microservices pattern:
 - **Vector Storage**: Local file-based storage (ChromaDB/Milvus).
 - **Document Processing**: Built-in support for .txt, .pdf, .docx, .pptx, .xlsx files.
 - **Instruction Management**: Local processing and storage of instruction documents.
+
+## Email Integration
+
+### Supported Email Providers
+1. **SMTP/IMAP** (Traditional): Currently implemented with nodemailer
+2. **SendGrid** (API-based): Blueprint installed, integration in progress
+3. **Outlook** (Manual): User dismissed Replit connector; manual SMTP setup available
+
+### Integration Notes
+- **Outlook Connector**: The Replit Outlook connector (connector:ccfg_outlook_01K4BBCKRJKP82N3PYQPZQ6DAK) was dismissed by the user. For Outlook integration, users should configure it manually using SMTP settings (smtp-mail.outlook.com:587 with app passwords).
+- **SendGrid**: Blueprint integration (blueprint:javascript_sendgrid) installed successfully. Requires SENDGRID_API_KEY environment variable.
+- **Email Providers Table**: Database table created to support multiple email provider configurations per tenant.

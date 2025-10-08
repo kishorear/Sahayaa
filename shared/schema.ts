@@ -199,6 +199,21 @@ export const insertMessageSchema = createInsertSchema(messages)
 export const insertAttachmentSchema = createInsertSchema(attachments)
   .omit({ id: true, createdAt: true });
 
+// Chat logs table for admin audit trail
+export const chatLogs = pgTable("chat_logs", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull().default(1),
+  userId: integer("userId"), // User who sent the message (null for anonymous)
+  ticketId: integer("ticketId"), // Associated ticket if any
+  sender: text("sender").notNull(), // user, ai, support, system, etc.
+  content: text("content").notNull(),
+  metadata: json("metadata"), // Additional context (IP, user agent, etc.)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const insertChatLogSchema = createInsertSchema(chatLogs)
+  .omit({ id: true, createdAt: true });
+
 // Type definitions
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
@@ -220,6 +235,9 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
 export type Attachment = typeof attachments.$inferSelect;
 export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+
+export type ChatLog = typeof chatLogs.$inferSelect;
+export type InsertChatLog = z.infer<typeof insertChatLogSchema>;
 
 // API response types
 export type TicketWithMessages = Ticket & {

@@ -2225,6 +2225,63 @@ Your goal is to quickly gather issue details and create comprehensive support ti
       });
     }
   });
+
+  // Chat Log Routes (Admin-only)
+  
+  // Get chat logs for the authenticated admin's tenant
+  app.get("/api/admin/chat-logs", requireAuth, requireRole(['administrator']), async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user || !user.tenantId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000;
+      const logs = await storage.getChatLogs(user.tenantId, limit);
+      
+      res.json({
+        success: true,
+        logs,
+        count: logs.length
+      });
+    } catch (error) {
+      console.error("Error fetching chat logs:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch chat logs"
+      });
+    }
+  });
+
+  // Clear all chat logs for the authenticated admin's tenant
+  app.delete("/api/admin/chat-logs", requireAuth, requireRole(['administrator']), async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user || !user.tenantId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const success = await storage.clearChatLogs(user.tenantId);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: "Chat logs cleared successfully"
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "Failed to clear chat logs"
+        });
+      }
+    } catch (error) {
+      console.error("Error clearing chat logs:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to clear chat logs"
+      });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;

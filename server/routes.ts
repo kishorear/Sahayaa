@@ -864,6 +864,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create message in our system
       const newMessage = await storage.createMessage(messageData);
       
+      // Log the message to chat logs
+      try {
+        await storage.createChatLog({
+          tenantId: ticket.tenantId || 1,
+          userId: req.user?.id || null,
+          ticketId: ticket.id,
+          sender: messageData.sender,
+          content: messageData.content,
+          metadata: {
+            messageId: newMessage.id,
+            ticketCategory: ticket.category,
+            ticketStatus: ticket.status
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log ticket message:', logError);
+      }
+      
       // Sync message to external ticketing systems if they exist
       try {
         if (ticket.externalIntegrations) {
@@ -1142,6 +1160,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get tenant context from middleware or request
       const tenantId = req.tenant?.id || req.user?.tenantId || 1; // Default to tenant 1 if not specified
+      const userId = req.user?.id || null;
+      
+      // Log user message
+      try {
+        await storage.createChatLog({
+          tenantId,
+          userId,
+          ticketId: null,
+          sender: 'user',
+          content: message,
+          metadata: {
+            ip: req.ip,
+            userAgent: req.get('user-agent'),
+            messageHistoryLength: messageHistory.length
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log user message:', logError);
+        // Continue even if logging fails
+      }
+      
+      // Helper function to log AI responses
+      const logAIResponse = async (response: string, action?: any) => {
+        try {
+          await storage.createChatLog({
+            tenantId,
+            userId,
+            ticketId: null,
+            sender: 'ai',
+            content: response,
+            metadata: {
+              action: action?.type || null,
+              hasAction: !!action
+            }
+          });
+        } catch (logError) {
+          console.error('Failed to log AI response:', logError);
+        }
+      };
       
       // Pre-load the AI providers to ensure we're using the latest configuration
       try {
@@ -1162,8 +1219,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isSimpleGreeting = /^(hi|hello|hey|greetings|howdy|hola|what's up|sup|good (morning|afternoon|evening)|how are you|how's it going|how is it going|how are things)[\s\?\!\.]*$/i.test(lowerMessage);
       
       if (isSimpleGreeting && chatHistory.length === 0) {
+        const greetingMessage = "Hello! I'm your AI support assistant. How can I help you today?";
+        await logAIResponse(greetingMessage);
         return res.status(200).json({
-          message: "Hello! I'm your AI support assistant. How can I help you today?",
+          message: greetingMessage,
           action: undefined
         });
       }
@@ -1184,6 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           if (agentResponse && agentResponse.message) {
+            await logAIResponse(agentResponse.message, agentResponse.action);
             return res.status(200).json({
               message: agentResponse.message,
               action: agentResponse.action || undefined
@@ -1255,24 +1315,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Classify message to get appropriate category/complexity
             const classification = await classifyTicket("New chat request", message, tenantId);
             
+            const ticketAction = {
+              type: 'suggest_ticket',
+              data: {
+                title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+                description: message,
+                category: classification.category,
+                complexity: classification.complexity,
+                assignedTo: classification.assignedTo,
+                aiNotes: classification.aiNotes,
+                tenantId: tenantId
+              }
+            };
+            
+            await logAIResponse(aiResponse, ticketAction);
             return res.status(200).json({
               message: aiResponse,
-              action: {
-                type: 'suggest_ticket',
-                data: {
-                  title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
-                  description: message,
-                  category: classification.category,
-                  complexity: classification.complexity,
-                  assignedTo: classification.assignedTo,
-                  aiNotes: classification.aiNotes,
-                  tenantId: tenantId
-                }
-              }
+              action: ticketAction
             });
           }
           
           // Standard response with no action
+          await logAIResponse(aiResponse);
           return res.status(200).json({
             message: aiResponse,
             action: undefined

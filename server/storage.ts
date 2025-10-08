@@ -17,6 +17,7 @@ import {
   mcpQueryTemplates,
   mcpQueryLogs,
   integrationSettings,
+  chatLogs,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -52,7 +53,9 @@ import {
   type McpQueryLog,
   type InsertMcpQueryLog,
   type IntegrationSettings,
-  type InsertIntegrationSettings
+  type InsertIntegrationSettings,
+  type ChatLog,
+  type InsertChatLog
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -203,6 +206,11 @@ export interface IStorage {
   createIntegrationSettings(settings: InsertIntegrationSettings): Promise<IntegrationSettings>;
   updateIntegrationSettings(tenantId: number, serviceType: string, updates: Partial<IntegrationSettings>): Promise<IntegrationSettings>;
   deleteIntegrationSettings(tenantId: number, serviceType: string): Promise<boolean>;
+  
+  // Chat log operations (admin only)
+  getChatLogs(tenantId: number, limit?: number): Promise<ChatLog[]>;
+  createChatLog(log: InsertChatLog): Promise<ChatLog>;
+  clearChatLogs(tenantId: number): Promise<boolean>;
   
   // Session management
   sessionStore: session.Store;
@@ -2555,6 +2563,29 @@ export class MemStorage implements IStorage {
     logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     
     return logs;
+  }
+
+  // Chat log operations (admin only) - stub for in-memory storage
+  async getChatLogs(tenantId: number, limit?: number): Promise<ChatLog[]> {
+    // Stub implementation - not used in production
+    return [];
+  }
+
+  async createChatLog(log: InsertChatLog): Promise<ChatLog> {
+    // Stub implementation - not used in production
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      ...log,
+      userId: log.userId || null,
+      ticketId: log.ticketId || null,
+      metadata: log.metadata || {},
+      createdAt: new Date()
+    };
+  }
+
+  async clearChatLogs(tenantId: number): Promise<boolean> {
+    // Stub implementation - not used in production
+    return true;
   }
 }
 
@@ -5791,6 +5822,37 @@ export class DatabaseStorage implements IStorage {
     // For now, return empty array - this would need a proper database table
     return [];
   }
+
+  // Chat log operations (admin only)
+  async getChatLogs(tenantId: number, limit: number = 1000): Promise<ChatLog[]> {
+    const logs = await db
+      .select()
+      .from(chatLogs)
+      .where(eq(chatLogs.tenantId, tenantId))
+      .orderBy(desc(chatLogs.createdAt))
+      .limit(limit);
+    return logs;
+  }
+
+  async createChatLog(log: InsertChatLog): Promise<ChatLog> {
+    const [result] = await db
+      .insert(chatLogs)
+      .values(log)
+      .returning();
+    return result;
+  }
+
+  async clearChatLogs(tenantId: number): Promise<boolean> {
+    try {
+      await db
+        .delete(chatLogs)
+        .where(eq(chatLogs.tenantId, tenantId));
+      return true;
+    } catch (error) {
+      console.error('Error clearing chat logs:', error);
+      return false;
+    }
+  }
 }
 
 // Create a function to initialize storage with fallback to in-memory if database fails
@@ -6746,6 +6808,34 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.deleteIntegrationSettings(tenantId, serviceType);
     } catch (error) {
       console.error(`Error in deleteIntegrationSettings(${tenantId}, ${serviceType}):`, error);
+      return false;
+    }
+  }
+
+  // Chat log operations (admin only)
+  async getChatLogs(tenantId: number, limit?: number): Promise<ChatLog[]> {
+    try {
+      return await this.storageImpl.getChatLogs(tenantId, limit);
+    } catch (error) {
+      console.error(`Error in getChatLogs(${tenantId}):`, error);
+      return [];
+    }
+  }
+
+  async createChatLog(log: InsertChatLog): Promise<ChatLog> {
+    try {
+      return await this.storageImpl.createChatLog(log);
+    } catch (error) {
+      console.error('Error in createChatLog:', error);
+      throw error;
+    }
+  }
+
+  async clearChatLogs(tenantId: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.clearChatLogs(tenantId);
+    } catch (error) {
+      console.error(`Error in clearChatLogs(${tenantId}):`, error);
       return false;
     }
   }

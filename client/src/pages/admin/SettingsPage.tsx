@@ -3,6 +3,7 @@ import IntegrationSettings from "@/components/admin/IntegrationSettings";
 import DataSourcesSettings from "@/components/admin/DataSourcesSettings";
 import SsoSettings from "@/components/admin/SsoSettings";
 import EmailSettings from "@/components/admin/EmailSettings";
+import ChatLogsSettings from "@/components/admin/ChatLogsSettings";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -98,6 +99,7 @@ export default function SettingsPage() {
             <TabsTrigger value="email">Email Support</TabsTrigger>
             <TabsTrigger value="knowledge">Knowledge Sources</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            <TabsTrigger value="chatlogs">Chat Logs</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
 
@@ -475,6 +477,10 @@ export default function SettingsPage() {
 
           <TabsContent value="integrations">
             <IntegrationSettings />
+          </TabsContent>
+
+          <TabsContent value="chatlogs">
+            <ChatLogsSettings />
           </TabsContent>
 
           <TabsContent value="security">

@@ -29,7 +29,7 @@ import {
 
 // Component to fetch and display creator name
 function CreatorName({ createdBy }: { createdBy: number | null | undefined }) {
-  const { data: user, isLoading } = useQuery<{id: number, name?: string, username: string}>({
+  const { data: user, isLoading } = useQuery<{id: number, name?: string, username: string, company?: string}>({
     queryKey: [`/api/users/${createdBy}`],
     enabled: !!createdBy,
   });
@@ -38,6 +38,19 @@ function CreatorName({ createdBy }: { createdBy: number | null | undefined }) {
   if (!user) return <span className="text-gray-500">Unknown</span>;
   
   return <span className="text-gray-700">{user.name || user.username}</span>;
+}
+
+// Component to fetch and display company name
+function CompanyName({ createdBy }: { createdBy: number | null | undefined }) {
+  const { data: user, isLoading } = useQuery<{id: number, name?: string, username: string, company?: string}>({
+    queryKey: [`/api/users/${createdBy}`],
+    enabled: !!createdBy,
+  });
+
+  if (isLoading) return <Skeleton className="h-4 w-24" />;
+  if (!user) return <span className="text-gray-500">-</span>;
+  
+  return <span className="text-gray-700">{user.company || '-'}</span>;
 }
 
 // Ticket status component with appropriate colors
@@ -336,6 +349,7 @@ export default function EnhancedTicketList() {
                         <TableHead>Complexity</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Created By</TableHead>
+                        {isCreator && <TableHead>Company Name</TableHead>}
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -358,6 +372,11 @@ export default function EnhancedTicketList() {
                           <TableCell>
                             <CreatorName createdBy={ticket.createdBy} />
                           </TableCell>
+                          {isCreator && (
+                            <TableCell>
+                              <CompanyName createdBy={ticket.createdBy} />
+                            </TableCell>
+                          )}
                           <TableCell>
                             {(isAdmin || isCreator) ? (
                               <Select

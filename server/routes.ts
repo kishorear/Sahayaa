@@ -455,6 +455,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // SECURITY FIX: ALL non-creator users (admin, support-agent, engineer) are restricted to their tenant
         tenantId = req.user?.tenantId;
         console.log(`Non-creator user access - enforcing tenant isolation for user ${req.user?.username} (tenant: ${tenantId})`);
+        
+        // CRITICAL SECURITY CHECK: Reject if tenantId is null/undefined for non-creator users
+        if (!tenantId) {
+          console.error(`SECURITY VIOLATION: Non-creator user ${req.user?.username} (ID: ${req.user?.id}) has null tenantId - denying access`);
+          return res.status(403).json({ 
+            message: "Access denied: Invalid tenant configuration. Please contact administrator." 
+          });
+        }
       }
       
       // Add other optional filters
@@ -462,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const category = req.query.category as string | undefined;
       const assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
       
-      console.log(`Fetching tickets with filters - isCreator: ${isCreator}, tenantId: ${tenantId}, status: ${status}, category: ${category}, assignedTo: ${assignedTo}`);
+      console.log(`Fetching tickets - User: ${req.user?.username} (ID: ${req.user?.id}), Role: ${req.user?.role}, IsCreator: ${isCreator}, TenantId: ${tenantId}, Filters: {status: ${status}, category: ${category}, assignedTo: ${assignedTo}}`);
       
       // Get filtered tickets
       const tickets = await storage.getAllTickets(tenantId);

@@ -147,42 +147,19 @@ export function registerWidgetTicketRoutes(app: Express): void {
       
       const ticket = await storage.createTicket(ticketData);
       
-      // Step 4.5: Automatic ticket assignment after creation
+      // Step 4.5: Automatic ticket assignment after creation using department-based random assignment
       try {
-        let assignedUser = null;
+        // Use department-based random assignment for fair distribution
+        const assignedUser = await storage.assignTicketRandomlyInDepartment(ticket.category, tenantId);
         
-        // Try team-based assignment first if possible
-        const teamMembers = await storage.getUsersByTenantId(tenantId);
-        if (teamMembers.length > 0) {
-          // Get the first available team from the tenant users
-          const firstTeamId = teamMembers.find((user: any) => user.teamId)?.teamId;
-          if (firstTeamId) {
-            assignedUser = await storage.assignTicketToLeastBusyMember(firstTeamId, tenantId);
-            console.log(`Widget Ticket: Team-based assignment - Assigned ticket #${ticket.id} to team member ${assignedUser?.username}`);
-          }
-        }
-        
-        // Fallback to department-based assignment if team assignment failed
-        if (!assignedUser) {
-          // Use the existing method or create a simpler assignment
-          const allUsers = await storage.getUsersByTenantId(tenantId);
-          if (allUsers.length > 0) {
-            // Simple random assignment from tenant users
-            const randomIndex = Math.floor(Math.random() * allUsers.length);
-            assignedUser = allUsers[randomIndex];
-            console.log(`Widget Ticket: Random assignment - Assigned ticket #${ticket.id} to ${assignedUser?.username}`);
-          }
-        }
-        
-        // Update ticket with assignment if successful
         if (assignedUser) {
           const updatedTicket = await storage.updateTicket(ticket.id, {
             assignedTo: assignedUser.id.toString(),
             status: 'assigned'
           });
-          console.log(`Widget Ticket: Successfully assigned ticket #${ticket.id} to ${assignedUser.username} (ID: ${assignedUser.id})`);
+          console.log(`Widget Ticket: Randomly assigned ticket #${ticket.id} to ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) in ${ticket.category} department`);
         } else {
-          console.warn(`Widget Ticket: No suitable team member found for assignment of ticket #${ticket.id}`);
+          console.warn(`Widget Ticket: No users available in ${ticket.category} department for assignment of ticket #${ticket.id}`);
         }
       } catch (assignmentError) {
         console.error(`Widget Ticket: Assignment failed for ticket #${ticket.id}:`, assignmentError);

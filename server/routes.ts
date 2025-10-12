@@ -581,39 +581,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const classification = await classifyTicket(enhancedTitle, ticketData.description, tenantId);
       
-      // Determine team assignment based on ticket data or default team
-      let assignedUserId = classification.assignedTo;
+      // Use department-based random assignment for fair distribution
+      let assignedUserId: string | null = null;
       let teamId = ticketData.teamId;
       
-      // If no team is specified, try to get the default team for the tenant
-      if (!teamId && tenantId) {
-        const defaultTeam = await storage.getTeamByName("Default Team", tenantId);
-        if (defaultTeam) {
-          teamId = defaultTeam.id;
+      // Try to assign based on ticket category (department)
+      try {
+        const assignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
+        if (assignedUser) {
+          assignedUserId = assignedUser.id.toString();
+          console.log(`Ticket randomly assigned to ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) in ${classification.category} department`);
+        } else {
+          console.log(`No users available in ${classification.category} department for assignment`);
         }
-      }
-      
-      // If we have a team, assign to the least busy team member
-      if (teamId) {
-        try {
-          const assignedUser = await storage.assignTicketToLeastBusyMember(teamId, tenantId);
-          if (assignedUser) {
-            assignedUserId = assignedUser.id.toString();
-            console.log(`Ticket assigned to team member: ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) with lowest workload in team ${teamId}`);
-          } else {
-            console.log(`No team members available in team ${teamId}, falling back to department-based random assignment`);
-            // Fallback to using AI classification assignment
-            console.log(`Using AI classification assignment: ${classification.assignedTo}`);
-          }
-        } catch (error) {
-          console.error(`Error assigning ticket to team member:`, error);
-          console.log(`Falling back to department-based random assignment`);
-          // Fallback to using AI classification assignment
-          console.log(`Using AI classification assignment: ${classification.assignedTo}`);
-        }
-      } else {
-        // No team specified, use AI classification assignment
-        console.log(`Using AI classification assignment: ${classification.assignedTo}`);
+      } catch (error) {
+        console.error(`Error assigning ticket randomly:`, error);
       }
       
       const newTicket: InsertTicket = {

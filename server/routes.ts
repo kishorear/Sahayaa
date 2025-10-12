@@ -606,6 +606,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assignedTo: assignedUserId,
         aiNotes: classification.aiNotes,
         teamId: teamId,
+        // Ensure the ticket is created by the logged-in user
+        createdBy: req.user?.id || ticketData.createdBy || null,
         // Ensure the ticket is associated with the correct tenant
         tenantId: tenantId || ticketData.tenantId
       };

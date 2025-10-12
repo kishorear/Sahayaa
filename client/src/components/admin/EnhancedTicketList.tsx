@@ -358,7 +358,7 @@ export default function EnhancedTicketList() {
                     <TableBody>
                       {filteredTickets.map((ticket) => (
                         <TableRow key={ticket.id}>
-                          <TableCell className="font-medium">{ticket.id}</TableCell>
+                          <TableCell className="font-medium">{ticket.companyTicketId}</TableCell>
                           <TableCell>
                             <Link href={`/admin/tickets/${ticket.id}`}>
                               <span className="hover:underline text-blue-600 cursor-pointer">{ticket.title}</span>

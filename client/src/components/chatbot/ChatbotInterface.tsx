@@ -251,6 +251,7 @@ export default function ChatbotInterface() {
       
       if (data.success) {
         const ticketId = data.ticket.id;
+        const companyTicketId = data.ticket.companyTicketId || ticketId;
         setCreatedTickets(prev => new Set([...Array.from(prev), `ticket_${ticketId}`]));
         setTicketCreatedThisSession(true);
         
@@ -259,13 +260,13 @@ export default function ChatbotInterface() {
 
         toast({
           title: "Ticket Created Successfully",
-          description: `Ticket #${ticketId} has been created: ${data.ticket.title}`,
+          description: `Ticket #${companyTicketId} has been created: ${data.ticket.title}`,
         });
 
         // Add confirmation message to chat
         const confirmationMessage = {
           id: `ticket-confirmation-${Date.now()}`,
-          content: `I've created ticket #${ticketId} for you: "${data.ticket.title}". Our support team will review this and get back to you.`,
+          content: `I've created ticket #${companyTicketId} for you: "${data.ticket.title}". Our support team will review this and get back to you.`,
           sender: "ai" as const,
           timestamp: new Date(),
         };
@@ -307,7 +308,7 @@ export default function ChatbotInterface() {
         ...prev,
         {
           id: `ai-ticket-${Date.now()}`,
-          content: `✅ I've created ticket #${ticket.tenantTicketId || ticket.id} for you: "${ticket.title}". You can track its progress in the tickets section. Is there anything else I can help you with?`,
+          content: `✅ I've created ticket #${ticket.companyTicketId || ticket.id} for you: "${ticket.title}". You can track its progress in the tickets section. Is there anything else I can help you with?`,
           sender: "ai",
           timestamp: new Date(),
         },
@@ -315,7 +316,7 @@ export default function ChatbotInterface() {
       
       toast({
         title: "Ticket Created",
-        description: `Ticket #${ticket.tenantTicketId || ticket.id} has been created successfully.`,
+        description: `Ticket #${ticket.companyTicketId || ticket.id} has been created successfully.`,
       });
     },
     onError: (error) => {

@@ -59,8 +59,8 @@ export default function TicketList() {
 
   // Function to get tenant-specific ticket number
   const getTenantTicketNumber = (ticket: Ticket) => {
-    // Use the new tenantTicketId field if available, otherwise fall back to global ID
-    return ticket.tenantTicketId || ticket.id;
+    // Use the companyTicketId field if available, otherwise fall back to global ID
+    return ticket.companyTicketId || ticket.id;
   };
 
   return (

@@ -266,7 +266,7 @@ export async function generateChatResponseWithAI(
   try {
     // Create a system message with ticket context and knowledge context if available
     let systemContent = `You are a support assistant helping quality analysts and software testers with ticket "${ticketContext.title}" in the "${ticketContext.category}" category.
-      Ticket #${ticketContext.tenantTicketId || ticketContext.id}: "${ticketContext.title}"
+      Ticket #${ticketContext.companyTicketId || ticketContext.id}: "${ticketContext.title}"
       Original description: "${ticketContext.description}"
       
       Format your responses for maximum readability:

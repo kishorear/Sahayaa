@@ -1179,7 +1179,7 @@ export class MemStorage implements IStorage {
       // Sort tickets by creation date to maintain order
       tickets.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       
-      let tenantTicketId = 1;
+      let companyTicketId = 1;
       const tenantPrefix = tenantId * 1000000; // Tenant-specific prefix
       
       for (let i = 0; i < tickets.length; i++) {
@@ -1190,13 +1190,13 @@ export class MemStorage implements IStorage {
         const updatedTicket: Ticket = {
           ...ticket,
           id: newGlobalId,
-          tenantTicketId: tenantTicketId++
+          companyTicketId: companyTicketId++
         };
         
         // Store with new ID
         this.tickets.set(newGlobalId, updatedTicket);
         
-        console.log(`Reset ticket: Old ID ${ticket.id} -> New ID ${newGlobalId} (Tenant ${tenantId}, Ticket #${updatedTicket.tenantTicketId})`);
+        console.log(`Reset ticket: Old ID ${ticket.id} -> New ID ${newGlobalId} (Tenant ${tenantId}, Ticket #${updatedTicket.companyTicketId})`);
       }
     }
     
@@ -1478,10 +1478,10 @@ export class MemStorage implements IStorage {
     const tenantId = insertTicket.tenantId || 1;
     const now = new Date();
     
-    // Calculate the next tenant-specific ticket ID (this is what the user sees)
+    // Calculate the next company-specific ticket ID (this is what the user sees)
     const existingTicketsForTenant = Array.from(this.tickets.values())
       .filter(ticket => ticket.tenantId === tenantId);
-    const nextTenantTicketId = Math.max(0, ...existingTicketsForTenant.map(t => t.tenantTicketId || 0)) + 1;
+    const nextCompanyTicketId = Math.max(0, ...existingTicketsForTenant.map(t => t.companyTicketId || 0)) + 1;
     
     // Generate tenant-isolated global ID using tenant-specific prefix
     // This ensures each tenant has completely separate ID sequences
@@ -1495,7 +1495,7 @@ export class MemStorage implements IStorage {
       ...insertTicket,
       id,
       tenantId: tenantId,
-      tenantTicketId: nextTenantTicketId, // Per-tenant sequential ID
+      companyTicketId: nextCompanyTicketId, // Per-company sequential ID
       status: insertTicket.status || "new",
       aiResolved: insertTicket.aiResolved || false,
       complexity: insertTicket.complexity || "medium",
@@ -4802,26 +4802,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
-    // Calculate the next tenant-specific ticket ID
+    // Calculate the next company-specific ticket ID
     const tenantId = insertTicket.tenantId || 1;
     
-    // Get the next tenant ticket ID by finding max + 1 for this tenant
-    const maxTenantTicketIdResult = await db
-      .select({ maxTenantTicketId: sql<number>`COALESCE(MAX("tenantTicketId"), 0)` })
+    // Get the next company ticket ID by finding max + 1 for this tenant
+    const maxCompanyTicketIdResult = await db
+      .select({ maxCompanyTicketId: sql<number>`COALESCE(MAX("companyTicketId"), 0)` })
       .from(tickets)
       .where(eq(tickets.tenantId, tenantId));
     
-    const nextTenantTicketId = (maxTenantTicketIdResult[0]?.maxTenantTicketId || 0) + 1;
+    const nextCompanyTicketId = (maxCompanyTicketIdResult[0]?.maxCompanyTicketId || 0) + 1;
     
-    // Insert ticket with calculated tenant ticket ID
-    const ticketWithTenantId = {
+    // Insert ticket with calculated company ticket ID
+    const ticketWithCompanyId = {
       ...insertTicket,
-      tenantTicketId: nextTenantTicketId
+      companyTicketId: nextCompanyTicketId
     };
     
-    const [ticket] = await db.insert(tickets).values(ticketWithTenantId).returning();
+    const [ticket] = await db.insert(tickets).values(ticketWithCompanyId).returning();
     
-    console.log(`Created ticket with tenant-specific ID: ${nextTenantTicketId} (Global ID: ${ticket.id}) for tenant ${tenantId}`);
+    console.log(`Created ticket with company-specific ID: ${nextCompanyTicketId} (Global ID: ${ticket.id}) for tenant ${tenantId}`);
     
     return ticket;
   }

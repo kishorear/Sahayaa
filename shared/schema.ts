@@ -143,7 +143,7 @@ export const updateProfileSchema = z.object({
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
-  tenantTicketId: integer("tenantTicketId").notNull(), // Per-tenant sequential ticket ID (1, 2, 3, ...)
+  companyTicketId: integer("companyTicketId").notNull(), // Company-specific sequential ticket ID (1, 2, 3, ...)
   teamId: integer("teamId"), // Reference to the team the ticket belongs to
   createdBy: integer("createdBy"), // Reference to the user who created the ticket
   title: text("title").notNull(),
@@ -164,13 +164,13 @@ export const tickets = pgTable("tickets", {
   clientMetadata: json("clientMetadata"),
 }, (table) => {
   return {
-    // Create a unique index on tenantTicketId + tenantId to ensure per-tenant uniqueness
-    tenantTicketIdUnique: uniqueIndex("tenant_ticket_id_unique").on(table.tenantTicketId, table.tenantId),
+    // Create a unique index on companyTicketId + tenantId to ensure per-company uniqueness
+    companyTicketIdUnique: uniqueIndex("company_ticket_id_unique").on(table.companyTicketId, table.tenantId),
   };
 });
 
 export const insertTicketSchema = createInsertSchema(tickets)
-  .omit({ id: true, createdAt: true, updatedAt: true, resolvedAt: true, tenantTicketId: true });
+  .omit({ id: true, createdAt: true, updatedAt: true, resolvedAt: true, companyTicketId: true });
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),

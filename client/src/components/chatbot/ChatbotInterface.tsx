@@ -234,6 +234,7 @@ export default function ChatbotInterface() {
       
       return await apiRequest("POST", "/api/widget/create-ticket", {
         tenantId: user?.tenantId || 1, // Use user's actual tenant ID
+        userId: user?.id, // Include user ID for proper ticket attribution
         sessionId: `chat_${Date.now()}`,
         conversation: conversation,
         attachments: attachments.length > 0 ? attachments : undefined,

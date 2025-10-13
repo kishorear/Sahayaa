@@ -11,6 +11,7 @@ import { getIntegrationService } from "../integrations";
  */
 const widgetTicketSchema = z.object({
   tenantId: z.number(),
+  userId: z.number().optional(), // User ID for authenticated chatbot usage
   sessionId: z.string().optional(),
   conversation: z.array(z.object({
     role: z.enum(['user', 'assistant']),
@@ -50,7 +51,7 @@ export function registerWidgetTicketRoutes(app: Express): void {
         });
       }
       
-      const { tenantId, sessionId, conversation, attachments, context } = validationResult.data;
+      const { tenantId, userId, sessionId, conversation, attachments, context } = validationResult.data;
       
       console.log(`Widget Ticket: Creating ticket for tenant ${tenantId} with ${conversation.length} messages`);
       
@@ -132,7 +133,7 @@ export function registerWidgetTicketRoutes(app: Express): void {
         complexity: agentInsights?.urgency || 'medium', // Map urgency to complexity
         status: 'new',
         tenantId,
-        createdBy: 1, // Widget user - could be enhanced with proper user tracking
+        createdBy: userId || 1, // Use authenticated user ID or default to 1 for widget users
         source: 'widget',
         clientMetadata: {
           sessionId,

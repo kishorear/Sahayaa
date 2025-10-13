@@ -255,6 +255,7 @@ export function registerWidgetTicketRoutes(app: Express): void {
         success: true,
         ticket: {
           id: ticket.id,
+          companyTicketId: ticket.companyTicketId, // Include company-specific ticket ID
           title: ticketTitle,
           description: descriptionResponse.trim(),
           category: ticket.category,

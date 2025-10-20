@@ -163,24 +163,23 @@ export function registerCustomRolesRoutes(app: Express): void {
   // Get available industry types (creator only)
   app.get('/api/industry-types', requireCreatorRole, async (req: Request, res: Response) => {
     try {
-      // Predefined industry types
+      // Predefined industry types - return as simple string array
       const industryTypes = [
-        { value: 'none', label: 'None' },
-        { value: 'technology', label: 'Technology' },
-        { value: 'healthcare', label: 'Healthcare' },
-        { value: 'finance', label: 'Finance' },
-        { value: 'education', label: 'Education' },
-        { value: 'retail', label: 'Retail' },
-        { value: 'manufacturing', label: 'Manufacturing' },
-        { value: 'real_estate', label: 'Real Estate' },
-        { value: 'hospitality', label: 'Hospitality' },
-        { value: 'transportation', label: 'Transportation' },
-        { value: 'media', label: 'Media & Entertainment' },
-        { value: 'telecommunications', label: 'Telecommunications' },
-        { value: 'energy', label: 'Energy' },
-        { value: 'government', label: 'Government' },
-        { value: 'nonprofit', label: 'Non-profit' },
-        { value: 'other', label: 'Other' }
+        'technology',
+        'healthcare',
+        'finance',
+        'education',
+        'retail',
+        'manufacturing',
+        'real_estate',
+        'hospitality',
+        'transportation',
+        'media',
+        'telecommunications',
+        'energy',
+        'government',
+        'nonprofit',
+        'other'
       ];
       
       res.json(industryTypes);

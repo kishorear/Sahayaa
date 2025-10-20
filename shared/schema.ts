@@ -35,6 +35,7 @@ export const tenants = pgTable("tenants", {
   subdomain: text("subdomain").notNull().unique(),
   apiKey: text("apiKey").notNull().unique(),
   adminId: integer("adminId").default(1), // Reference to the admin user for this tenant
+  industryType: text("industryType").default("none").notNull(), // Industry category (creator-only edit)
   settings: json("settings").default({}).notNull(), // Tenant-specific settings
   branding: json("branding").default({
     primaryColor: '#4F46E5',
@@ -49,6 +50,42 @@ export const tenants = pgTable("tenants", {
 
 export const insertTenantSchema = createInsertSchema(tenants)
   .omit({ id: true, createdAt: true, updatedAt: true });
+
+// Custom user roles table (creator-only management)
+export const customUserRoles = pgTable("custom_user_roles", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  roleName: text("roleName").notNull(), // e.g., "Technical Support", "Sales Representative"
+  roleKey: text("roleKey").notNull(), // e.g., "technical_support", "sales_rep"
+  description: text("description"),
+  permissions: json("permissions").default({
+    canViewAllTickets: false,
+    canEditAllTickets: false,
+    canDeleteTickets: false,
+    canManageUsers: false,
+    canManageTeams: false,
+    canManageSettings: false
+  }).notNull(),
+  active: boolean("active").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Ensure unique role keys per tenant
+    roleKeyUnique: uniqueIndex("role_key_tenant_unique").on(table.roleKey, table.tenantId),
+  };
+});
+
+export const insertCustomUserRoleSchema = createInsertSchema(customUserRoles)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updateCustomUserRoleSchema = insertCustomUserRoleSchema
+  .partial()
+  .omit({ tenantId: true }); // Prevent updating tenantId for security
+
+export type InsertCustomUserRole = z.infer<typeof insertCustomUserRoleSchema>;
+export type UpdateCustomUserRole = z.infer<typeof updateCustomUserRoleSchema>;
+export type CustomUserRole = typeof customUserRoles.$inferSelect;
 
 // Teams table for organizing users and tickets
 export const teams = pgTable("teams", {

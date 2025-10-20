@@ -68,6 +68,8 @@ import aiProvidersRoutes from "./routes/ai-providers-routes";
 import { registerKnowledgeSyncRoutes } from "./routes/knowledge-sync-routes";
 // Import tenant routes for creator role
 import { tenantRoutes } from "./routes/tenant-routes";
+// Import custom roles and industry type routes
+import { registerCustomRolesRoutes } from "./routes/custom-roles-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
@@ -415,6 +417,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register tenant routes - access restricted to creator role users only
   app.use('/api', requireAuth, tenantRoutes);
+  
+  // Register custom user roles and industry type routes - creator only
+  registerCustomRolesRoutes(app);
   
   // Register MCP database routes for multi-database support
   registerMcpDatabaseRoutes(app, requireAuth, requireRole);

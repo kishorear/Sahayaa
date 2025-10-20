@@ -18,6 +18,7 @@ import {
   mcpQueryLogs,
   integrationSettings,
   chatLogs,
+  customUserRoles,
   type User, 
   type InsertUser, 
   type Ticket, 
@@ -55,7 +56,9 @@ import {
   type IntegrationSettings,
   type InsertIntegrationSettings,
   type ChatLog,
-  type InsertChatLog
+  type InsertChatLog,
+  type CustomUserRole,
+  type InsertCustomUserRole
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -211,6 +214,14 @@ export interface IStorage {
   getChatLogs(tenantId: number, limit?: number): Promise<ChatLog[]>;
   createChatLog(log: InsertChatLog): Promise<ChatLog>;
   clearChatLogs(tenantId: number): Promise<boolean>;
+  
+  // Custom user role operations (creator-only)
+  getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]>;
+  getCustomUserRoleById(id: number, tenantId?: number): Promise<CustomUserRole | undefined>;
+  getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined>;
+  createCustomUserRole(role: InsertCustomUserRole): Promise<CustomUserRole>;
+  updateCustomUserRole(id: number, updates: Partial<CustomUserRole>, tenantId?: number): Promise<CustomUserRole>;
+  deleteCustomUserRole(id: number, tenantId?: number): Promise<boolean>;
   
   // Session management
   sessionStore: session.Store;
@@ -2586,6 +2597,31 @@ export class MemStorage implements IStorage {
   async clearChatLogs(tenantId: number): Promise<boolean> {
     // Stub implementation - not used in production
     return true;
+  }
+
+  // Custom user role operations (creator-only) - stub implementation
+  async getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]> {
+    return [];
+  }
+
+  async getCustomUserRoleById(id: number, tenantId?: number): Promise<CustomUserRole | undefined> {
+    return undefined;
+  }
+
+  async getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined> {
+    return undefined;
+  }
+
+  async createCustomUserRole(role: InsertCustomUserRole): Promise<CustomUserRole> {
+    throw new Error('Not implemented in memory storage');
+  }
+
+  async updateCustomUserRole(id: number, updates: Partial<CustomUserRole>, tenantId?: number): Promise<CustomUserRole> {
+    throw new Error('Not implemented in memory storage');
+  }
+
+  async deleteCustomUserRole(id: number, tenantId?: number): Promise<boolean> {
+    return false;
   }
 }
 
@@ -5853,6 +5889,110 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+
+  // Custom user role operations (creator-only)
+  async getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]> {
+    try {
+      return await db
+        .select()
+        .from(customUserRoles)
+        .where(eq(customUserRoles.tenantId, tenantId))
+        .orderBy(customUserRoles.roleName);
+    } catch (error) {
+      console.error('Error getting custom user roles:', error);
+      return [];
+    }
+  }
+
+  async getCustomUserRoleById(id: number, tenantId?: number): Promise<CustomUserRole | undefined> {
+    try {
+      const conditions = tenantId
+        ? and(eq(customUserRoles.id, id), eq(customUserRoles.tenantId, tenantId))
+        : eq(customUserRoles.id, id);
+      
+      const result = await db
+        .select()
+        .from(customUserRoles)
+        .where(conditions)
+        .limit(1);
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error getting custom user role by ID:', error);
+      return undefined;
+    }
+  }
+
+  async getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined> {
+    try {
+      const result = await db
+        .select()
+        .from(customUserRoles)
+        .where(and(
+          eq(customUserRoles.roleKey, roleKey),
+          eq(customUserRoles.tenantId, tenantId)
+        ))
+        .limit(1);
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error getting custom user role by key:', error);
+      return undefined;
+    }
+  }
+
+  async createCustomUserRole(role: InsertCustomUserRole): Promise<CustomUserRole> {
+    try {
+      const result = await db
+        .insert(customUserRoles)
+        .values(role)
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error creating custom user role:', error);
+      throw error;
+    }
+  }
+
+  async updateCustomUserRole(id: number, updates: Partial<CustomUserRole>, tenantId?: number): Promise<CustomUserRole> {
+    try {
+      const conditions = tenantId
+        ? and(eq(customUserRoles.id, id), eq(customUserRoles.tenantId, tenantId))
+        : eq(customUserRoles.id, id);
+
+      // Security: Strip protected fields from updates to prevent cross-tenant mutation
+      const { id: _, tenantId: __, createdAt: ___, ...safeUpdates } = updates;
+
+      const result = await db
+        .update(customUserRoles)
+        .set({ ...safeUpdates, updatedAt: new Date() })
+        .where(conditions)
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error updating custom user role:', error);
+      throw error;
+    }
+  }
+
+  async deleteCustomUserRole(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      const conditions = tenantId
+        ? and(eq(customUserRoles.id, id), eq(customUserRoles.tenantId, tenantId))
+        : eq(customUserRoles.id, id);
+
+      await db
+        .delete(customUserRoles)
+        .where(conditions);
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting custom user role:', error);
+      return false;
+    }
+  }
 }
 
 // Create a function to initialize storage with fallback to in-memory if database fails
@@ -6836,6 +6976,61 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.clearChatLogs(tenantId);
     } catch (error) {
       console.error(`Error in clearChatLogs(${tenantId}):`, error);
+      return false;
+    }
+  }
+
+  // Custom user role operations (creator-only)
+  async getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]> {
+    try {
+      return await this.storageImpl.getCustomUserRoles(tenantId);
+    } catch (error) {
+      console.error(`Error in getCustomUserRoles(${tenantId}):`, error);
+      return [];
+    }
+  }
+
+  async getCustomUserRoleById(id: number, tenantId?: number): Promise<CustomUserRole | undefined> {
+    try {
+      return await this.storageImpl.getCustomUserRoleById(id, tenantId);
+    } catch (error) {
+      console.error(`Error in getCustomUserRoleById(${id}, ${tenantId}):`, error);
+      return undefined;
+    }
+  }
+
+  async getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined> {
+    try {
+      return await this.storageImpl.getCustomUserRoleByKey(roleKey, tenantId);
+    } catch (error) {
+      console.error(`Error in getCustomUserRoleByKey(${roleKey}, ${tenantId}):`, error);
+      return undefined;
+    }
+  }
+
+  async createCustomUserRole(role: InsertCustomUserRole): Promise<CustomUserRole> {
+    try {
+      return await this.storageImpl.createCustomUserRole(role);
+    } catch (error) {
+      console.error('Error in createCustomUserRole:', error);
+      throw error;
+    }
+  }
+
+  async updateCustomUserRole(id: number, updates: Partial<CustomUserRole>, tenantId?: number): Promise<CustomUserRole> {
+    try {
+      return await this.storageImpl.updateCustomUserRole(id, updates, tenantId);
+    } catch (error) {
+      console.error(`Error in updateCustomUserRole(${id}):`, error);
+      throw error;
+    }
+  }
+
+  async deleteCustomUserRole(id: number, tenantId?: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteCustomUserRole(id, tenantId);
+    } catch (error) {
+      console.error(`Error in deleteCustomUserRole(${id}):`, error);
       return false;
     }
   }

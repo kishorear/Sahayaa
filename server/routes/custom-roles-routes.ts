@@ -21,10 +21,10 @@ function requireCreatorRole(req: Request, res: Response, next: Function) {
 /**
  * Register routes for custom user roles and industry type management
  */
-export function registerCustomRolesRoutes(app: Express): void {
+export function registerCustomRolesRoutes(app: Express, requireAuth: Function): void {
   
   // Get all custom user roles for a tenant (creator only)
-  app.get('/api/custom-roles', requireCreatorRole, async (req: Request, res: Response) => {
+  app.get('/api/custom-roles', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const roles = await storage.getCustomUserRoles(tenantId);
@@ -36,7 +36,7 @@ export function registerCustomRolesRoutes(app: Express): void {
   });
   
   // Get a specific custom user role (creator only)
-  app.get('/api/custom-roles/:id', requireCreatorRole, async (req: Request, res: Response) => {
+  app.get('/api/custom-roles/:id', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const tenantId = req.user!.tenantId;
@@ -55,7 +55,7 @@ export function registerCustomRolesRoutes(app: Express): void {
   });
   
   // Create a new custom user role (creator only)
-  app.post('/api/custom-roles', requireCreatorRole, async (req: Request, res: Response) => {
+  app.post('/api/custom-roles', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       
@@ -87,7 +87,7 @@ export function registerCustomRolesRoutes(app: Express): void {
   });
   
   // Update a custom user role (creator only)
-  app.patch('/api/custom-roles/:id', requireCreatorRole, async (req: Request, res: Response) => {
+  app.patch('/api/custom-roles/:id', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const tenantId = req.user!.tenantId;
@@ -124,7 +124,7 @@ export function registerCustomRolesRoutes(app: Express): void {
   });
   
   // Delete a custom user role (creator only)
-  app.delete('/api/custom-roles/:id', requireCreatorRole, async (req: Request, res: Response) => {
+  app.delete('/api/custom-roles/:id', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const tenantId = req.user!.tenantId;
@@ -143,7 +143,7 @@ export function registerCustomRolesRoutes(app: Express): void {
   });
   
   // Update tenant industry type (creator only)
-  app.patch('/api/tenant/industry-type', requireCreatorRole, async (req: Request, res: Response) => {
+  app.patch('/api/tenant/industry-type', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { industryType } = req.body;
@@ -161,7 +161,7 @@ export function registerCustomRolesRoutes(app: Express): void {
   });
   
   // Get available industry types (creator only)
-  app.get('/api/industry-types', requireCreatorRole, async (req: Request, res: Response) => {
+  app.get('/api/industry-types', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     try {
       // Predefined industry types - return as simple string array
       const industryTypes = [

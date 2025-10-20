@@ -419,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api', requireAuth, tenantRoutes);
   
   // Register custom user roles and industry type routes - creator only
-  registerCustomRolesRoutes(app);
+  registerCustomRolesRoutes(app, requireAuth);
   
   // Register MCP database routes for multi-database support
   registerMcpDatabaseRoutes(app, requireAuth, requireRole);

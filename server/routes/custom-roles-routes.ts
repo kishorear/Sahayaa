@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, RequestHandler } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
 import { insertCustomUserRoleSchema, updateCustomUserRoleSchema } from "@shared/schema";
@@ -21,13 +21,15 @@ function requireCreatorRole(req: Request, res: Response, next: Function) {
 /**
  * Register routes for custom user roles and industry type management
  */
-export function registerCustomRolesRoutes(app: Express, requireAuth: Function): void {
+export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHandler): void {
   
   // Get all custom user roles for a tenant (creator only)
   app.get('/api/custom-roles', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
+    console.log('GET /api/custom-roles - Request from user:', req.user?.username);
     try {
       const tenantId = req.user!.tenantId;
       const roles = await storage.getCustomUserRoles(tenantId);
+      console.log('GET /api/custom-roles - Returning', roles.length, 'roles');
       res.json(roles);
     } catch (error) {
       console.error('Error getting custom roles:', error);
@@ -162,6 +164,7 @@ export function registerCustomRolesRoutes(app: Express, requireAuth: Function): 
   
   // Get available industry types (creator only)
   app.get('/api/industry-types', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
+    console.log('GET /api/industry-types - Request from user:', req.user?.username);
     try {
       // Predefined industry types - return as simple string array
       const industryTypes = [

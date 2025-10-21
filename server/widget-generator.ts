@@ -121,15 +121,17 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
  * Generates a README.md file with installation instructions
  */
 function generateReadmeContent(config: WidgetConfig): string {
-  return `# Support AI Chat Widget
+  return `# Sahayaa AI Chat Widget
 
-## Installation Instructions
+Enterprise-grade AI-powered support widget with multi-agent orchestration, vector search, and real-time communication.
+
+## 🚀 Quick Start
 
 ### Option 1: Standard Widget Integration
 Add the following script tag to your website's HTML, right before the closing \`</body>\` tag:
 
 \`\`\`html
-<!-- Support AI Chat Widget -->
+<!-- Sahayaa AI Chat Widget -->
 <script>
   window.supportAiConfig = {
     tenantId: ${config.tenantId},
@@ -140,7 +142,9 @@ Add the following script tag to your website's HTML, right before the closing \`
     autoOpen: ${config.autoOpen},
     branding: ${config.branding},
     reportData: ${config.reportData},
-    adminId: ${config.adminId}
+    adminId: ${config.adminId},
+    enableAttachments: true,
+    enableAIAgents: true
   };
 </script>
 <script src="supportai-widget.js" async></script>
@@ -150,7 +154,7 @@ Add the following script tag to your website's HTML, right before the closing \`
 For a seamless support experience that persists across your entire website:
 
 \`\`\`html
-<!-- Support AI Universal Integration -->
+<!-- Sahayaa AI Universal Integration -->
 <script src="supportai-universal.js" async></script>
 \`\`\`
 
@@ -159,6 +163,7 @@ The universal integration offers these powerful features:
 - **Non-intrusive design** - uses Shadow DOM for complete style isolation
 - **Cross-page awareness** - maintains context as users navigate your site
 - **Persistent chat state** - keeps conversations active during browsing
+- **AI-powered responses** - multi-agent system with vector search
 - **Lightweight implementation** - minimal impact on page performance
 - **Responsive design** - works great on all devices and screen sizes
 
@@ -168,16 +173,16 @@ For a live demonstration of these features, check out the included universal-sam
 Install the widget package using npm:
 
 \`\`\`bash
-npm install supportai-widget
+npm install sahayaa-ai-widget
 \`\`\`
 
 Then import and use it in your application:
 
 \`\`\`javascript
-import { SupportAIChat } from 'supportai-widget';
+import { SahayaaAIChat } from 'sahayaa-ai-widget';
 
 // Initialize the chat widget
-SupportAIChat.init({
+SahayaaAIChat.init({
   tenantId: ${config.tenantId},
   apiKey: "${config.apiKey}",
   primaryColor: "${config.primaryColor}",
@@ -186,28 +191,223 @@ SupportAIChat.init({
   autoOpen: ${config.autoOpen},
   branding: ${config.branding},
   reportData: ${config.reportData},
-  adminId: ${config.adminId}
+  adminId: ${config.adminId},
+  enableAttachments: true,
+  enableAIAgents: true
 });
 \`\`\`
 
 ### Option 4: For Windows Applications
-For Windows applications, you can use the included \`install-widget.bat\` script to add the widget to your application. Double-click the batch file and follow the on-screen instructions.
+For Windows applications, use the included \`install-widget.bat\` script. Double-click the batch file and follow the on-screen instructions.
 
-## Configuration Options
+## ✨ Key Features
 
-| Option | Description |
-|--------|-------------|
-| tenantId | Your Support AI tenant ID |
-| apiKey | Your API key for authentication |
-| primaryColor | The primary color of the widget |
-| position | Widget position (right, left, center) |
-| greetingMessage | Initial message displayed in the chat |
-| autoOpen | Whether to automatically open the chat widget |
-| branding | Whether to show Support AI branding |
-| reportData | Whether to send analytics data |
+### Multi-Agent AI System
+- **Chat Processor**: Analyzes incoming messages and extracts intent
+- **Instruction Lookup**: Searches knowledge base using vector similarity
+- **Ticket Lookup**: Finds similar historical tickets for context-aware solutions
+- **Ticket Formatter**: Structures responses with relevant information
 
-## Need Help?
-See the documentation.md file for more detailed documentation, or contact Support AI support for assistance.
+### Vector-Based Search
+- Powered by ChromaDB for intelligent similarity matching
+- Finds relevant solutions from knowledge base and historical tickets
+- Provides confidence scores and source attribution
+
+### File Attachments
+- Support for images (JPG, PNG, GIF, WebP)
+- Documents (PDF, DOCX, TXT, XLSX, PPTX)
+- Maximum file size: 10MB (configurable)
+- Secure tenant-specific storage
+
+### Real-Time Communication
+- WebSocket-based instant messaging
+- Typing indicators
+- Agent status updates
+- Multi-tenant isolation
+
+### Enterprise Security
+- Role-based access controls (RBAC)
+- End-to-end encryption
+- JWT authentication
+- Rate limiting and DDoS protection
+
+## ⚙️ Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| tenantId | number | Required | Your Sahayaa AI tenant ID |
+| apiKey | string | Required | Your API key for authentication |
+| primaryColor | string | #6366F1 | The primary color of the widget |
+| position | string | right | Widget position (right, left) |
+| greetingMessage | string | Custom | Initial message displayed in the chat |
+| autoOpen | boolean | false | Automatically open the chat widget |
+| branding | boolean | true | Show Sahayaa AI branding |
+| reportData | boolean | true | Send analytics data |
+| adminId | number | null | Your admin ID for tracking |
+| enableAttachments | boolean | true | Allow file uploads in chat |
+| enableAIAgents | boolean | true | Enable multi-agent AI processing |
+| maxFileSize | number | 10485760 | Max file size in bytes (10MB) |
+| allowedFileTypes | array | ['image/*', 'application/pdf', '.txt', '.docx'] | Allowed file types |
+
+## 📚 What's Included
+
+This package contains:
+
+- **supportai-widget.js** - Main widget JavaScript file
+- **supportai-widget.min.js** - Minified version for production
+- **supportai-universal.js** - Universal integration script
+- **supportai-widget.css** - Widget styling
+- **sample-implementation.html** - Basic implementation example
+- **universal-sample.html** - Universal integration example
+- **documentation.md** - Complete widget documentation
+- **api-documentation.md** - Detailed API reference
+- **agent-workflow-guide.md** - AI agent integration guide
+- **install-widget.bat** - Windows installation script
+- **README.md** - This file
+
+## 🔧 Advanced Usage
+
+### JavaScript API
+
+\`\`\`javascript
+// Open/close the chat window
+window.SahayaaAI.open();
+window.SahayaaAI.close();
+window.SahayaaAI.toggle();
+
+// Send a message programmatically
+window.SahayaaAI.sendMessage("I need help with my order");
+
+// Upload an attachment
+window.SahayaaAI.uploadFile(fileObject);
+
+// Get current session
+const session = window.SahayaaAI.getSession();
+
+// Update configuration
+window.SahayaaAI.updateConfig({
+  primaryColor: "#FF0000"
+});
+\`\`\`
+
+### Event Listeners
+
+\`\`\`javascript
+// Listen for widget events
+document.addEventListener('sahayaa:opened', () => {
+  console.log('Chat opened');
+});
+
+document.addEventListener('sahayaa:messageSent', (e) => {
+  console.log('Message:', e.detail.message);
+});
+
+document.addEventListener('sahayaa:agentProcessing', (e) => {
+  console.log('Agent:', e.detail.agent, 'Status:', e.detail.status);
+});
+\`\`\`
+
+### Customization
+
+\`\`\`css
+/* Custom CSS variables */
+:root {
+  --sahayaa-primary-color: #6366F1;
+  --sahayaa-text-color: #1F2937;
+  --sahayaa-background: #FFFFFF;
+  --sahayaa-border-radius: 12px;
+}
+\`\`\`
+
+## 🌐 Browser Support
+
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+- Opera 76+
+- Mobile browsers (iOS Safari 14+, Chrome Mobile 90+)
+
+## 🛡️ Security & Privacy
+
+- All communications encrypted with TLS 1.3
+- GDPR and CCPA compliant
+- Tenant-level data isolation
+- Role-based access controls
+- Optional end-to-end encryption
+
+## 📊 Analytics
+
+The widget automatically tracks:
+- Conversation metrics
+- Response times
+- User satisfaction scores
+- AI agent performance
+- File attachment usage
+
+Access analytics through your admin dashboard.
+
+## 🐛 Troubleshooting
+
+### Widget not appearing?
+- Verify tenantId and apiKey are correct
+- Check browser console for errors
+- Ensure script is loaded properly
+
+### Messages not sending?
+- Check API key permissions
+- Verify network connectivity
+- Review CORS configuration
+
+### Attachments failing?
+- Confirm file size is within limits
+- Check file type is allowed
+- Verify storage quota
+
+For debug mode:
+\`\`\`javascript
+window.supportAiConfig = {
+  // ...other config
+  debug: true,
+  logLevel: 'verbose'
+};
+\`\`\`
+
+## 📖 Documentation
+
+For detailed documentation, see the included files:
+- **documentation.md** - Complete feature documentation
+- **api-documentation.md** - REST API and WebSocket reference
+- **agent-workflow-guide.md** - AI agent system details
+
+## 🆘 Getting Help
+
+- **Documentation**: Refer to included documentation files
+- **Admin Dashboard**: Access help articles and submit tickets
+- **Email Support**: support@sahayaa-ai.com
+- **API Reference**: See api-documentation.md
+
+## 📝 Next Steps
+
+1. Test the widget on your website
+2. Customize styling to match your brand
+3. Configure AI agent workflows
+4. Set up analytics and monitoring
+5. Train your team on the admin interface
+
+## 🔄 Updates
+
+To update to the latest version:
+1. Download the new widget package
+2. Replace existing widget files
+3. Clear browser cache
+4. Test thoroughly before deployment
+
+---
+
+© 2025 Sahayaa AI. All rights reserved.
+
+For the latest updates and features, visit your admin dashboard.
 `;
 }
 

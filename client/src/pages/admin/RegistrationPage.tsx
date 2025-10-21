@@ -1265,7 +1265,7 @@ const RegistrationPage = () => {
         
         {/* Edit User Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Edit size={18} />
@@ -1277,8 +1277,8 @@ const RegistrationPage = () => {
             </DialogHeader>
             
             <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-6">
-                <div className="grid gap-4">
+              <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-6 flex flex-col flex-1 overflow-hidden">
+                <div className="grid gap-4 overflow-y-auto pr-2">
                   <div className="grid grid-cols-2 gap-4">
                     {/* Username field */}
                     <div className="space-y-2">

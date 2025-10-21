@@ -85,6 +85,7 @@ const registrationSchema = z.object({
   email: z.string().email("Invalid email").optional().nullable(),
   companyId: z.number().optional().nullable(),
   companyName: z.string().optional().nullable(),
+  companyIndustryType: z.string().optional(),
   companySSO: z.boolean().optional(),
   teamId: z.number().optional().nullable(),
   teamName: z.string().optional().nullable(),
@@ -131,13 +132,9 @@ type UsersResponse = {
   totalPages: number;
 };
 
-type TenantsResponse = {
-  tenants: Tenant[];
-};
+type TenantsResponse = Tenant[];
 
-type TeamsResponse = {
-  teams: Team[];
-};
+type TeamsResponse = Team[];
 
 const RegistrationPage = () => {
   const { user } = useAuth();
@@ -174,6 +171,7 @@ const RegistrationPage = () => {
       email: "",
       companyId: null,
       companyName: "",
+      companyIndustryType: "none",
       companySSO: false,
       teamId: null,
       teamName: "",
@@ -242,6 +240,14 @@ const RegistrationPage = () => {
     queryKey: ["/api/creators/teams"],
     queryFn: () => 
       apiRequest("GET", "/api/creators/teams")
+        .then(res => res.json()),
+  });
+  
+  // Fetch industry types
+  const { data: industryTypes = [] } = useQuery<string[]>({
+    queryKey: ["/api/industry-types"],
+    queryFn: () => 
+      apiRequest("GET", "/api/industry-types")
         .then(res => res.json()),
   });
   
@@ -963,6 +969,40 @@ const RegistrationPage = () => {
                           </FormControl>
                           <FormDescription>
                             Create a new company if not in the list above
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Industry Type (for new company) */}
+                    <FormField
+                      control={form.control}
+                      name="companyIndustryType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Industry Type (for new company)</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value}
+                            disabled={!!form.watch("companyId")}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select industry type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {industryTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Select the industry type for the new company
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

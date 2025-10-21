@@ -36,6 +36,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logoutMutation } = useAuth();
   const { data: permissions } = usePermissions();
+  
+  // Creator role has full access to everything
+  const isCreator = user?.role?.toLowerCase() === 'creator';
 
   const isActive = (path: string) => {
     return location === path;
@@ -122,11 +125,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     // If no user, don't show any routes
     if (!user) return false;
     
+    // Creator role has access to EVERYTHING - bypass all permission checks
+    if (isCreator) return true;
+    
     // Always show routes marked as alwaysShow
     if (route.alwaysShow) return true;
     
-    // Creator-only routes
-    if (route.creatorOnly && user.role !== 'creator') return false;
+    // Creator-only routes are blocked for non-creators
+    if (route.creatorOnly) return false;
     
     // Permission-based routes
     if (route.permission) {

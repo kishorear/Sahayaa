@@ -192,6 +192,7 @@ router.get("/tenants", requireCreatorRole, async (req: Request, res: Response) =
         id: tenants.id,
         name: tenants.name,
         subdomain: tenants.subdomain,
+        industryType: tenants.industryType,
         createdAt: tenants.createdAt
       })
       .from(tenants)
@@ -262,6 +263,45 @@ router.get("/teams", requireCreatorRole, async (req: Request, res: Response) => 
   } catch (error) {
     console.error("Error fetching teams:", error);
     return res.status(500).json({ message: "Failed to fetch teams" });
+  }
+});
+
+/**
+ * Update a company's industry type
+ * PATCH /api/creators/tenants/:id/industry
+ */
+router.patch("/tenants/:id/industry", requireCreatorRole, async (req: Request, res: Response) => {
+  try {
+    const tenantId = parseInt(req.params.id);
+    const { industryType } = req.body;
+    
+    if (!industryType) {
+      return res.status(400).json({ message: "Industry type is required" });
+    }
+    
+    // Update the tenant
+    const updatedTenant = await db
+      .update(tenants)
+      .set({ 
+        industryType,
+        updatedAt: new Date()
+      })
+      .where(eq(tenants.id, tenantId))
+      .returning();
+    
+    if (updatedTenant.length === 0) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+    
+    logCreatorAction(req.user!.id, "update_tenant_industry", {
+      tenantId,
+      industryType
+    });
+    
+    return res.status(200).json(updatedTenant[0]);
+  } catch (error) {
+    console.error("Error updating company industry type:", error);
+    return res.status(500).json({ message: "Failed to update company industry type" });
   }
 });
 

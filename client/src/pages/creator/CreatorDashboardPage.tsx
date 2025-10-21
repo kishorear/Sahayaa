@@ -229,10 +229,10 @@ export default function CreatorDashboardPage() {
   // Update tenant industry type mutation
   const updateTenantMutation = useMutation({
     mutationFn: async ({ tenantId, industryType }: { tenantId: number; industryType: string }) => {
-      const res = await apiRequest("PATCH", `/api/tenant/industry-type`, { tenantId, industryType });
+      const res = await apiRequest("PATCH", `/api/creators/tenants/${tenantId}/industry`, { industryType });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to update industry type");
+        throw new Error(errorData.message || "Failed to update industry type");
       }
       return await res.json();
     },
@@ -242,6 +242,7 @@ export default function CreatorDashboardPage() {
         description: "Company industry type has been updated successfully",
       });
       setIsEditTenantOpen(false);
+      setEditingTenant(null);
       queryClient.invalidateQueries({ queryKey: ['/api/creator/tenants'] });
     },
     onError: (error: Error) => {

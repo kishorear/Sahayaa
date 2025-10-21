@@ -147,17 +147,40 @@ export default function CreatorDashboardPage() {
     enabled: !!user,
   });
   
-  // Fetch industry types
-  const { data: industryTypes = [] } = useQuery<string[]>({
+  // Fetch industry types with error handling
+  const industryTypesQuery = useQuery<string[]>({
     queryKey: ['/api/industry-types'],
     enabled: !!user,
   });
   
-  // Fetch custom user roles
-  const { data: customRoles = [] } = useQuery<CustomRole[]>({
+  // Fetch custom user roles with error handling
+  const customRolesQuery = useQuery<CustomRole[]>({
     queryKey: ['/api/custom-roles'],
     enabled: !!user,
   });
+  
+  // Show errors in toast
+  useEffect(() => {
+    if (industryTypesQuery.error) {
+      console.error('Industry Types Error:', industryTypesQuery.error);
+      toast({
+        title: "Failed to load industry types",
+        description: String(industryTypesQuery.error),
+        variant: "destructive",
+      });
+    }
+    if (customRolesQuery.error) {
+      console.error('Custom Roles Error:', customRolesQuery.error);
+      toast({
+        title: "Failed to load custom roles",
+        description: String(customRolesQuery.error),
+        variant: "destructive",
+      });
+    }
+  }, [industryTypesQuery.error, customRolesQuery.error, toast]);
+  
+  const industryTypes = industryTypesQuery.data || [];
+  const customRoles = customRolesQuery.data || [];
 
   // Form setup
   const form = useForm<UserFormValues>({
@@ -632,7 +655,7 @@ export default function CreatorDashboardPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
                                 <SelectItem value="google">Google</SelectItem>
                                 <SelectItem value="microsoft">Microsoft</SelectItem>
                                 <SelectItem value="saml">SAML</SelectItem>

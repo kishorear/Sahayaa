@@ -203,9 +203,7 @@ router.get("/tenants", requireCreatorRole, async (req: Request, res: Response) =
       count: tenantResults.length
     });
     
-    return res.status(200).json({
-      tenants: tenantResults
-    });
+    return res.status(200).json(tenantResults);
   } catch (error) {
     console.error("Error fetching tenants:", error);
     return res.status(500).json({ message: "Failed to fetch tenants" });
@@ -260,9 +258,7 @@ router.get("/teams", requireCreatorRole, async (req: Request, res: Response) => 
       count: teamResults.length
     });
     
-    return res.status(200).json({
-      teams: enhancedTeams
-    });
+    return res.status(200).json(enhancedTeams);
   } catch (error) {
     console.error("Error fetching teams:", error);
     return res.status(500).json({ message: "Failed to fetch teams" });

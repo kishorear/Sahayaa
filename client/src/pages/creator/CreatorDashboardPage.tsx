@@ -814,12 +814,12 @@ export default function CreatorDashboardPage() {
                 <div>
                   <CardTitle>Custom User Roles</CardTitle>
                   <CardDescription>
-                    Define custom roles with specific permissions for your organization
+                    Manage industry-specific roles with granular permissions
                   </CardDescription>
                 </div>
-                <Button onClick={() => handleEditRole()} data-testid="button-create-role">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Role
+                <Button onClick={() => window.location.href = '/creator/roles'} data-testid="button-manage-roles">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Manage Roles
                 </Button>
               </div>
             </CardHeader>

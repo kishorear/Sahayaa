@@ -216,9 +216,9 @@ export interface IStorage {
   clearChatLogs(tenantId: number): Promise<boolean>;
   
   // Custom user role operations (creator-only)
-  getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]>;
+  getCustomUserRoles(tenantId: number, industryType?: string): Promise<CustomUserRole[]>;
   getCustomUserRoleById(id: number, tenantId?: number): Promise<CustomUserRole | undefined>;
-  getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined>;
+  getCustomUserRoleByKey(roleKey: string, tenantId: number, industryType?: string): Promise<CustomUserRole | undefined>;
   createCustomUserRole(role: InsertCustomUserRole): Promise<CustomUserRole>;
   updateCustomUserRole(id: number, updates: Partial<CustomUserRole>, tenantId?: number): Promise<CustomUserRole>;
   deleteCustomUserRole(id: number, tenantId?: number): Promise<boolean>;
@@ -2600,7 +2600,7 @@ export class MemStorage implements IStorage {
   }
 
   // Custom user role operations (creator-only) - stub implementation
-  async getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]> {
+  async getCustomUserRoles(tenantId: number, industryType?: string): Promise<CustomUserRole[]> {
     return [];
   }
 
@@ -2608,7 +2608,7 @@ export class MemStorage implements IStorage {
     return undefined;
   }
 
-  async getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined> {
+  async getCustomUserRoleByKey(roleKey: string, tenantId: number, industryType?: string): Promise<CustomUserRole | undefined> {
     return undefined;
   }
 
@@ -5891,12 +5891,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Custom user role operations (creator-only)
-  async getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]> {
+  async getCustomUserRoles(tenantId: number, industryType?: string): Promise<CustomUserRole[]> {
     try {
+      const conditions = industryType
+        ? and(eq(customUserRoles.tenantId, tenantId), eq(customUserRoles.industryType, industryType))
+        : eq(customUserRoles.tenantId, tenantId);
+      
       return await db
         .select()
         .from(customUserRoles)
-        .where(eq(customUserRoles.tenantId, tenantId))
+        .where(conditions)
         .orderBy(customUserRoles.roleName);
     } catch (error) {
       console.error('Error getting custom user roles:', error);
@@ -5923,15 +5927,23 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined> {
+  async getCustomUserRoleByKey(roleKey: string, tenantId: number, industryType?: string): Promise<CustomUserRole | undefined> {
     try {
+      const conditions = industryType
+        ? and(
+            eq(customUserRoles.roleKey, roleKey),
+            eq(customUserRoles.tenantId, tenantId),
+            eq(customUserRoles.industryType, industryType)
+          )
+        : and(
+            eq(customUserRoles.roleKey, roleKey),
+            eq(customUserRoles.tenantId, tenantId)
+          );
+      
       const result = await db
         .select()
         .from(customUserRoles)
-        .where(and(
-          eq(customUserRoles.roleKey, roleKey),
-          eq(customUserRoles.tenantId, tenantId)
-        ))
+        .where(conditions)
         .limit(1);
       
       return result[0];
@@ -6981,11 +6993,11 @@ class StorageWrapper implements IStorage {
   }
 
   // Custom user role operations (creator-only)
-  async getCustomUserRoles(tenantId: number): Promise<CustomUserRole[]> {
+  async getCustomUserRoles(tenantId: number, industryType?: string): Promise<CustomUserRole[]> {
     try {
-      return await this.storageImpl.getCustomUserRoles(tenantId);
+      return await this.storageImpl.getCustomUserRoles(tenantId, industryType);
     } catch (error) {
-      console.error(`Error in getCustomUserRoles(${tenantId}):`, error);
+      console.error(`Error in getCustomUserRoles(${tenantId}, ${industryType}):`, error);
       return [];
     }
   }
@@ -6999,11 +7011,11 @@ class StorageWrapper implements IStorage {
     }
   }
 
-  async getCustomUserRoleByKey(roleKey: string, tenantId: number): Promise<CustomUserRole | undefined> {
+  async getCustomUserRoleByKey(roleKey: string, tenantId: number, industryType?: string): Promise<CustomUserRole | undefined> {
     try {
-      return await this.storageImpl.getCustomUserRoleByKey(roleKey, tenantId);
+      return await this.storageImpl.getCustomUserRoleByKey(roleKey, tenantId, industryType);
     } catch (error) {
-      console.error(`Error in getCustomUserRoleByKey(${roleKey}, ${tenantId}):`, error);
+      console.error(`Error in getCustomUserRoleByKey(${roleKey}, ${tenantId}, ${industryType}):`, error);
       return undefined;
     }
   }

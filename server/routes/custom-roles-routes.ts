@@ -28,8 +28,9 @@ export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHand
     console.log('GET /api/custom-roles - Request from user:', req.user?.username);
     try {
       const tenantId = req.user!.tenantId;
-      const roles = await storage.getCustomUserRoles(tenantId);
-      console.log('GET /api/custom-roles - Returning', roles.length, 'roles');
+      const industryType = req.query.industryType as string | undefined;
+      const roles = await storage.getCustomUserRoles(tenantId, industryType);
+      console.log('GET /api/custom-roles - Returning', roles.length, 'roles for industry:', industryType || 'all');
       res.json(roles);
     } catch (error) {
       console.error('Error getting custom roles:', error);
@@ -74,10 +75,11 @@ export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHand
         });
       }
       
-      // Check if role key already exists
-      const existing = await storage.getCustomUserRoleByKey(validation.data.roleKey, tenantId);
+      // Check if role key already exists for this industry and tenant
+      const industryType = validation.data.industryType || 'none';
+      const existing = await storage.getCustomUserRoleByKey(validation.data.roleKey, tenantId, industryType);
       if (existing) {
-        return res.status(400).json({ error: 'A role with this key already exists' });
+        return res.status(400).json({ error: 'A role with this key already exists for this industry' });
       }
       
       const role = await storage.createCustomUserRole(validation.data);
@@ -109,11 +111,16 @@ export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHand
         });
       }
       
-      // If roleKey is being updated, check for conflicts
-      if (validation.data.roleKey && validation.data.roleKey !== existing.roleKey) {
-        const conflict = await storage.getCustomUserRoleByKey(validation.data.roleKey, tenantId);
-        if (conflict) {
-          return res.status(400).json({ error: 'A role with this key already exists' });
+      // Determine the industry type to check for conflicts
+      const targetIndustry = validation.data.industryType || existing.industryType;
+      const targetRoleKey = validation.data.roleKey || existing.roleKey;
+      
+      // Check for conflicts if roleKey or industryType is being changed
+      if ((validation.data.roleKey && validation.data.roleKey !== existing.roleKey) || 
+          (validation.data.industryType && validation.data.industryType !== existing.industryType)) {
+        const conflict = await storage.getCustomUserRoleByKey(targetRoleKey, tenantId, targetIndustry);
+        if (conflict && conflict.id !== id) {
+          return res.status(400).json({ error: 'A role with this key already exists for this industry' });
         }
       }
       

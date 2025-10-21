@@ -376,24 +376,19 @@ export const insertTenantSchema = createInsertSchema(tenants)
 export const customUserRoles = pgTable("custom_user_roles", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
+  industryType: text("industryType").notNull().default("none"), // Associate role with industry
   roleName: text("roleName").notNull(), // e.g., "Technical Support", "Sales Representative"
   roleKey: text("roleKey").notNull(), // e.g., "technical_support", "sales_rep"
   description: text("description"),
-  permissions: json("permissions").default({
-    canViewAllTickets: false,
-    canEditAllTickets: false,
-    canDeleteTickets: false,
-    canManageUsers: false,
-    canManageTeams: false,
-    canManageSettings: false
-  }).notNull(),
+  permissions: json("permissions").$type<RolePermissions>().notNull(), // Full permission object
+  isDefault: boolean("isDefault").default(false), // System default roles
   active: boolean("active").default(true),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (table) => {
   return {
-    // Ensure unique role keys per tenant
-    roleKeyUnique: uniqueIndex("role_key_tenant_unique").on(table.roleKey, table.tenantId),
+    // Ensure unique role keys per industry type per tenant
+    roleKeyUnique: uniqueIndex("role_key_industry_tenant_unique").on(table.roleKey, table.industryType, table.tenantId),
   };
 });
 

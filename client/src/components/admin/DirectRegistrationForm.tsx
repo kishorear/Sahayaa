@@ -371,11 +371,10 @@ export function DirectRegistrationForm() {
                   name="companyIndustryType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Industry Type (for new company)</FormLabel>
+                      <FormLabel>Industry Type</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
-                        disabled={!!form.watch("companyId")}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -392,7 +391,7 @@ export function DirectRegistrationForm() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Select the industry type for the new company
+                        Select the industry type for this company
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

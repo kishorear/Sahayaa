@@ -977,17 +977,16 @@ const RegistrationPage = () => {
                       )}
                     />
                     
-                    {/* Industry Type (for new company) */}
+                    {/* Industry Type */}
                     <FormField
                       control={form.control}
                       name="companyIndustryType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Industry Type (for new company)</FormLabel>
+                          <FormLabel>Industry Type</FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
                             value={field.value}
-                            disabled={!!form.watch("companyId")}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -1004,7 +1003,7 @@ const RegistrationPage = () => {
                             </SelectContent>
                           </Select>
                           <FormDescription>
-                            Select the industry type for the new company
+                            Select the industry type for this company
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -1445,11 +1444,10 @@ const RegistrationPage = () => {
                       name="companyIndustryType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Industry Type (for new company)</FormLabel>
+                          <FormLabel>Industry Type</FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
                             value={field.value}
-                            disabled={!!editForm.watch("companyId")}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -1466,7 +1464,7 @@ const RegistrationPage = () => {
                             </SelectContent>
                           </Select>
                           <FormDescription>
-                            Select the industry type for the new company
+                            Select the industry type for this company
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

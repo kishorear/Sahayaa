@@ -186,6 +186,7 @@ const RegistrationPage = () => {
     email: z.string().email("Invalid email").optional().nullable(),
     companyId: z.number().optional().nullable(),
     companyName: z.string().optional().nullable(),
+    companyIndustryType: z.string().default("none"),
     companySSO: z.boolean().optional(),
     teamId: z.number().optional().nullable(),
     teamName: z.string().optional().nullable(),
@@ -202,6 +203,7 @@ const RegistrationPage = () => {
       email: "",
       companyId: null,
       companyName: "",
+      companyIndustryType: "none",
       companySSO: false,
       teamId: null,
       teamName: "",
@@ -1172,7 +1174,7 @@ const RegistrationPage = () => {
                       className="font-mono pr-12 bg-white"
                     />
                     <Button
-                      variant={passwordCopied ? "success" : "outline"}
+                      variant={passwordCopied ? "default" : "outline"}
                       size="sm"
                       className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2"
                       onClick={copyPasswordToClipboard}
@@ -1429,6 +1431,42 @@ const RegistrationPage = () => {
                           </FormControl>
                           <FormDescription>
                             If the company doesn't exist, enter a new company name
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* Industry Type */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="companyIndustryType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Industry Type (for new company)</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value}
+                            disabled={!!editForm.watch("companyId")}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select industry type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {industryTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Select the industry type for the new company
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

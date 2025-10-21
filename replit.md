@@ -22,6 +22,7 @@ The system employs a loosely coupled microservices pattern:
 - **Production Monitoring**: Comprehensive health check endpoints, multi-layer caching, parallel processing, security service, circuit breaker patterns, and a real-time monitoring dashboard.
 - **AI Agent System with MCP Integration**: Processes customer interactions via specialized AI agents using MCP (Model Context Protocol) for workflow orchestration.
 - **Enhanced Security and RBAC System**: Enterprise-level security with Role-Based Access Control (RBAC), encryption, rate limiting, JWT authentication, and audit logging.
+- **Industry-Specific Permission System**: Granular permission system with 15+ permission types mapped to industry-specific roles (healthcare, technology, finance, etc.), enforcing access control at both frontend and backend levels.
 - **Vector Search and MCP Integration**: Leverages ChromaDB/Milvus for vector storage, integrates with MCP for enhanced AI responses, supports embedding generation, and ensures multi-tenant isolation.
 - **Attachment Functionality**: Comprehensive attachment upload capabilities for integrations like JIRA and Zendesk, supporting various file formats with MIME type detection and secure tenant-specific storage.
 - **Integration Settings Persistence**: Integration configurations are stored persistently in a PostgreSQL database with tenant isolation, loading automatically per tenant.
@@ -58,3 +59,36 @@ The system employs a loosely coupled microservices pattern:
 - **Outlook Connector**: The Replit Outlook connector (connector:ccfg_outlook_01K4BBCKRJKP82N3PYQPZQ6DAK) was dismissed by the user. For Outlook integration, users should configure it manually using SMTP settings (smtp-mail.outlook.com:587 with app passwords).
 - **SendGrid**: Blueprint integration (blueprint:javascript_sendgrid) installed successfully. Requires SENDGRID_API_KEY environment variable.
 - **Email Providers Table**: Database table created to support multiple email provider configurations per tenant.
+
+## Industry-Specific Permission System
+
+### Overview
+The system implements a comprehensive industry-specific permission model that maps roles to granular permissions based on the company's industry type. This allows for specialized access control tailored to each industry's unique requirements.
+
+### Supported Industries
+- Healthcare (chief_doctor, doctor, nurse)
+- Technology (cto, tech_lead, engineer)
+- Finance (cfo, financial_analyst, accountant)
+- Education (dean, professor, teaching_assistant)
+- Retail (store_manager, sales_lead, cashier)
+- Manufacturing, Legal, Government, Real Estate, Transportation, Hospitality, Media, Telecommunications, Energy, Nonprofit
+
+### Permission Structure
+Each role is mapped to 15+ granular permissions:
+- **User Management**: canManageUsers, canViewUsers, canEditUsers
+- **Ticket Management**: canViewAllTickets, canViewOwnTickets, canEditAllTickets, canEditOwnTickets, canAssignTickets, canDeleteTickets
+- **System Access**: canAccessAISettings, canAccessIntegrations, canAccessAnalytics, canAccessSettings
+- **Agent Resources**: canManageAgentResources
+
+### Healthcare Example
+- **Chief Doctor**: Full administrative access (canManageUsers, canAccessAISettings, canAccessIntegrations)
+- **Doctor**: Ticket management without admin access (canViewAllTickets, canEditOwnTickets, canAssignTickets)
+- **Nurse**: View-only access with comment capability (canViewOwnTickets only)
+
+### Implementation
+- **Backend**: Permission middleware (`requirePermission`, `requireAnyPermission`) protects all sensitive endpoints
+- **Frontend**: React hooks (`usePermissions`, `useHasPermission`) control UI element visibility
+- **Security**: All permission checks occur on both frontend and backend, with tenant isolation enforced
+- **API Routes**: 
+  - `/api/permissions/me` - Get current user's permissions
+  - `/api/permissions/available-roles?tenantId={id}` - Get industry-specific roles for a tenant

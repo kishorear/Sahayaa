@@ -60,13 +60,9 @@ type Team = {
   createdAt: string;
 };
 
-type TenantsResponse = {
-  tenants: Tenant[];
-};
+type TenantsResponse = Tenant[];
 
-type TeamsResponse = {
-  teams: Team[];
-};
+type TeamsResponse = Team[];
 
 export function DirectRegistrationForm() {
   const { toast } = useToast();
@@ -160,9 +156,9 @@ export function DirectRegistrationForm() {
   // Filter teams based on selected tenant
   const getFilteredTeams = () => {
     const companyId = form.watch("companyId");
-    if (!companyId || !teamsData?.teams) return [];
+    if (!companyId || !teamsData) return [];
     
-    return teamsData.teams.filter(team => team.tenantId === companyId);
+    return teamsData.filter(team => team.tenantId === companyId);
   };
 
   // Handle form submission  
@@ -313,7 +309,7 @@ export function DirectRegistrationForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {tenantsData?.tenants.map((tenant) => (
+                          {tenantsData?.map((tenant) => (
                             <SelectItem key={tenant.id} value={tenant.id.toString()}>
                               {tenant.name}
                             </SelectItem>

@@ -415,17 +415,17 @@ const RegistrationPage = () => {
   // Filter teams based on selected tenant for registration form
   const getFilteredTeams = () => {
     const companyId = form.watch("companyId");
-    if (!companyId || !teamsData?.teams) return [];
+    if (!companyId || !teamsData) return [];
     
-    return teamsData.teams.filter(team => team.tenantId === companyId);
+    return teamsData.filter(team => team.tenantId === companyId);
   };
   
   // Filter teams based on selected tenant for edit form
   const getFilteredTeamsForEdit = () => {
     const companyId = editForm.watch("companyId");
-    if (!companyId || !teamsData?.teams) return [];
+    if (!companyId || !teamsData) return [];
     
-    return teamsData.teams.filter(team => team.tenantId === companyId);
+    return teamsData.filter(team => team.tenantId === companyId);
   };
 
   return (
@@ -696,8 +696,8 @@ const RegistrationPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {tenantsData?.tenants && tenantsData.tenants.length > 0 ? (
-                            tenantsData.tenants.map((tenant) => (
+                          {tenantsData && tenantsData.length > 0 ? (
+                            tenantsData.map((tenant) => (
                               <TableRow key={tenant.id}>
                                 <TableCell className="font-medium">{tenant.name}</TableCell>
                                 <TableCell>{tenant.subdomain}</TableCell>
@@ -743,8 +743,8 @@ const RegistrationPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {teamsData?.teams && teamsData.teams.length > 0 ? (
-                            teamsData.teams.map((team) => (
+                          {teamsData && teamsData.length > 0 ? (
+                            teamsData.map((team) => (
                               <TableRow key={team.id}>
                                 <TableCell className="font-medium">{team.name}</TableCell>
                                 <TableCell>{team.tenantName}</TableCell>
@@ -924,7 +924,7 @@ const RegistrationPage = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {tenantsData?.tenants.map((tenant) => (
+                              {tenantsData?.map((tenant) => (
                                 <SelectItem key={tenant.id} value={tenant.id.toString()}>
                                   {tenant.name}
                                 </SelectItem>
@@ -1359,7 +1359,7 @@ const RegistrationPage = () => {
                                 <SelectValue placeholder="Select company" />
                               </SelectTrigger>
                               <SelectContent>
-                                {tenantsData?.tenants.map((tenant) => (
+                                {tenantsData?.map((tenant) => (
                                   <SelectItem key={tenant.id} value={tenant.id.toString()}>
                                     {tenant.name}
                                   </SelectItem>

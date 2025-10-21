@@ -117,6 +117,31 @@ export function DirectRegistrationForm() {
         .then(res => res.json()),
   });
 
+  // Fetch available roles for the selected company's industry
+  const selectedCompanyId = form.watch("companyId");
+  const selectedCompany = tenantsData?.find(t => t.id === selectedCompanyId);
+  
+  const { data: availableRoles = [] } = useQuery<Array<{ key: string; name: string; description: string }>>({
+    queryKey: ["/api/permissions/available-roles", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) {
+        // Return default roles for new companies
+        return [
+          { key: "admin", name: "Administrator", description: "Full administrative access" },
+          { key: "support_agent", name: "Support Agent", description: "Can manage tickets" },
+          { key: "engineer", name: "Engineer", description: "Can view tickets" },
+          { key: "user", name: "User", description: "Can create and view own tickets" }
+        ];
+      }
+      
+      // For existing companies, we would fetch based on industry
+      // For now, return default roles
+      const res = await apiRequest("GET", "/api/permissions/available-roles");
+      return res.json();
+    },
+    enabled: true
+  });
+
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: (userData: z.infer<typeof registrationSchema>) => 
@@ -284,14 +309,16 @@ export function DirectRegistrationForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="support_engineer">Support Engineer</SelectItem>
-                          <SelectItem value="administrator">Administrator</SelectItem>
+                          {availableRoles.map((role) => (
+                            <SelectItem key={role.key} value={role.key}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
                           <SelectItem value="creator">Creator</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        The user's role determines their permissions
+                        {availableRoles.find(r => r.key === field.value)?.description || "The user's role determines their permissions"}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

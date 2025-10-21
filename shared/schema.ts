@@ -28,6 +28,327 @@ export const ApiKeyPermissionEnum = z.object({
   webhook: z.boolean().default(false)
 });
 
+// Industry types
+export const IndustryTypes = [
+  'technology',
+  'healthcare',
+  'finance',
+  'education',
+  'retail',
+  'manufacturing',
+  'legal',
+  'government',
+  'real_estate',
+  'transportation',
+  'hospitality',
+  'media',
+  'telecommunications',
+  'energy',
+  'nonprofit',
+  'none'
+] as const;
+
+export type IndustryType = typeof IndustryTypes[number];
+
+// Permission flags for role-based access control
+export interface RolePermissions {
+  // Ticket permissions
+  canViewOwnTickets: boolean;
+  canViewAllTickets: boolean;
+  canCreateTickets: boolean;
+  canEditOwnTickets: boolean;
+  canEditAllTickets: boolean;
+  canAssignTickets: boolean;
+  canDeleteTickets: boolean;
+  canCommentOnTickets: boolean;
+  
+  // AI permissions
+  canAccessAISettings: boolean;
+  canAccessAIProviders: boolean;
+  canManageInstructions: boolean;
+  canManageAgentResources: boolean;
+  
+  // Integration permissions
+  canAccessIntegrations: boolean;
+  canManageIntegrations: boolean;
+  
+  // User management permissions
+  canViewUsers: boolean;
+  canManageUsers: boolean;
+  canManageTeams: boolean;
+  
+  // System permissions
+  canAccessSettings: boolean;
+  canManageSettings: boolean;
+  canAccessAnalytics: boolean;
+  canAccessChatLogs: boolean;
+}
+
+// Industry-specific role definitions
+export interface IndustryRoleDefinition {
+  key: string;
+  name: string;
+  description: string;
+  permissions: RolePermissions;
+}
+
+// Healthcare roles
+export const HealthcareRoles: Record<string, IndustryRoleDefinition> = {
+  chief_doctor: {
+    key: 'chief_doctor',
+    name: 'Chief Doctor',
+    description: 'Full administrative access to all system features',
+    permissions: {
+      canViewOwnTickets: true,
+      canViewAllTickets: true,
+      canCreateTickets: true,
+      canEditOwnTickets: true,
+      canEditAllTickets: true,
+      canAssignTickets: true,
+      canDeleteTickets: true,
+      canCommentOnTickets: true,
+      canAccessAISettings: true,
+      canAccessAIProviders: true,
+      canManageInstructions: true,
+      canManageAgentResources: true,
+      canAccessIntegrations: true,
+      canManageIntegrations: true,
+      canViewUsers: true,
+      canManageUsers: true,
+      canManageTeams: true,
+      canAccessSettings: true,
+      canManageSettings: true,
+      canAccessAnalytics: true,
+      canAccessChatLogs: true
+    }
+  },
+  doctor: {
+    key: 'doctor',
+    name: 'Doctor',
+    description: 'Can manage tickets and assign cases, but no AI/integration settings access',
+    permissions: {
+      canViewOwnTickets: true,
+      canViewAllTickets: true,
+      canCreateTickets: true,
+      canEditOwnTickets: true,
+      canEditAllTickets: true,
+      canAssignTickets: true,
+      canDeleteTickets: false,
+      canCommentOnTickets: true,
+      canAccessAISettings: false,
+      canAccessAIProviders: false,
+      canManageInstructions: false,
+      canManageAgentResources: false,
+      canAccessIntegrations: false,
+      canManageIntegrations: false,
+      canViewUsers: true,
+      canManageUsers: false,
+      canManageTeams: false,
+      canAccessSettings: false,
+      canManageSettings: false,
+      canAccessAnalytics: true,
+      canAccessChatLogs: false
+    }
+  },
+  nurse: {
+    key: 'nurse',
+    name: 'Nurse',
+    description: 'Can view tickets and add comments, but no editing or AI/integration access',
+    permissions: {
+      canViewOwnTickets: true,
+      canViewAllTickets: true,
+      canCreateTickets: true,
+      canEditOwnTickets: false,
+      canEditAllTickets: false,
+      canAssignTickets: false,
+      canDeleteTickets: false,
+      canCommentOnTickets: true,
+      canAccessAISettings: false,
+      canAccessAIProviders: false,
+      canManageInstructions: false,
+      canManageAgentResources: false,
+      canAccessIntegrations: false,
+      canManageIntegrations: false,
+      canViewUsers: true,
+      canManageUsers: false,
+      canManageTeams: false,
+      canAccessSettings: false,
+      canManageSettings: false,
+      canAccessAnalytics: false,
+      canAccessChatLogs: false
+    }
+  }
+};
+
+// Default roles for other industries (can be extended later)
+export const DefaultRoles: Record<string, IndustryRoleDefinition> = {
+  admin: {
+    key: 'admin',
+    name: 'Administrator',
+    description: 'Full administrative access to all system features',
+    permissions: {
+      canViewOwnTickets: true,
+      canViewAllTickets: true,
+      canCreateTickets: true,
+      canEditOwnTickets: true,
+      canEditAllTickets: true,
+      canAssignTickets: true,
+      canDeleteTickets: true,
+      canCommentOnTickets: true,
+      canAccessAISettings: true,
+      canAccessAIProviders: true,
+      canManageInstructions: true,
+      canManageAgentResources: true,
+      canAccessIntegrations: true,
+      canManageIntegrations: true,
+      canViewUsers: true,
+      canManageUsers: true,
+      canManageTeams: true,
+      canAccessSettings: true,
+      canManageSettings: true,
+      canAccessAnalytics: true,
+      canAccessChatLogs: true
+    }
+  },
+  support_agent: {
+    key: 'support_agent',
+    name: 'Support Agent',
+    description: 'Can manage tickets and view analytics',
+    permissions: {
+      canViewOwnTickets: true,
+      canViewAllTickets: true,
+      canCreateTickets: true,
+      canEditOwnTickets: true,
+      canEditAllTickets: true,
+      canAssignTickets: true,
+      canDeleteTickets: false,
+      canCommentOnTickets: true,
+      canAccessAISettings: false,
+      canAccessAIProviders: false,
+      canManageInstructions: true,
+      canManageAgentResources: false,
+      canAccessIntegrations: false,
+      canManageIntegrations: false,
+      canViewUsers: true,
+      canManageUsers: false,
+      canManageTeams: false,
+      canAccessSettings: false,
+      canManageSettings: false,
+      canAccessAnalytics: true,
+      canAccessChatLogs: false
+    }
+  },
+  engineer: {
+    key: 'engineer',
+    name: 'Engineer',
+    description: 'Can view tickets and analytics',
+    permissions: {
+      canViewOwnTickets: true,
+      canViewAllTickets: true,
+      canCreateTickets: true,
+      canEditOwnTickets: true,
+      canEditAllTickets: false,
+      canAssignTickets: false,
+      canDeleteTickets: false,
+      canCommentOnTickets: true,
+      canAccessAISettings: false,
+      canAccessAIProviders: false,
+      canManageInstructions: false,
+      canManageAgentResources: false,
+      canAccessIntegrations: false,
+      canManageIntegrations: false,
+      canViewUsers: false,
+      canManageUsers: false,
+      canManageTeams: false,
+      canAccessSettings: false,
+      canManageSettings: false,
+      canAccessAnalytics: true,
+      canAccessChatLogs: false
+    }
+  },
+  user: {
+    key: 'user',
+    name: 'User',
+    description: 'Can create and view own tickets',
+    permissions: {
+      canViewOwnTickets: true,
+      canViewAllTickets: false,
+      canCreateTickets: true,
+      canEditOwnTickets: true,
+      canEditAllTickets: false,
+      canAssignTickets: false,
+      canDeleteTickets: false,
+      canCommentOnTickets: true,
+      canAccessAISettings: false,
+      canAccessAIProviders: false,
+      canManageInstructions: false,
+      canManageAgentResources: false,
+      canAccessIntegrations: false,
+      canManageIntegrations: false,
+      canViewUsers: false,
+      canManageUsers: false,
+      canManageTeams: false,
+      canAccessSettings: false,
+      canManageSettings: false,
+      canAccessAnalytics: false,
+      canAccessChatLogs: false
+    }
+  }
+};
+
+// Get roles for a specific industry
+export function getIndustryRoles(industryType: IndustryType): Record<string, IndustryRoleDefinition> {
+  switch (industryType) {
+    case 'healthcare':
+      return HealthcareRoles;
+    // Add more industries here as needed
+    default:
+      return DefaultRoles;
+  }
+}
+
+// Get permissions for a specific role in an industry
+export function getRolePermissions(industryType: IndustryType, roleKey: string): RolePermissions | null {
+  const roles = getIndustryRoles(industryType);
+  const role = roles[roleKey];
+  
+  if (role) {
+    return role.permissions;
+  }
+  
+  // Fallback to default roles if not found in industry-specific roles
+  const defaultRole = DefaultRoles[roleKey];
+  if (defaultRole) {
+    return defaultRole.permissions;
+  }
+  
+  // Creator always has full permissions
+  if (roleKey === 'creator' || roleKey === 'administrator') {
+    return DefaultRoles.admin.permissions;
+  }
+  
+  return null;
+}
+
+// Check if user has specific permission
+export function hasPermission(
+  industryType: IndustryType,
+  roleKey: string,
+  permission: keyof RolePermissions
+): boolean {
+  // Creator always has all permissions
+  if (roleKey === 'creator' || roleKey === 'administrator') {
+    return true;
+  }
+  
+  const permissions = getRolePermissions(industryType, roleKey);
+  if (!permissions) {
+    return false;
+  }
+  
+  return permissions[permission];
+}
+
 // Tenant table for multi-tenant support
 export const tenants = pgTable("tenants", {
   id: serial("id").primaryKey(),

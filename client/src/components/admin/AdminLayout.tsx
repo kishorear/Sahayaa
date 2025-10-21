@@ -25,6 +25,7 @@ import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 
 type AdminLayoutProps = {
   children: React.ReactNode;
@@ -34,93 +35,108 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logoutMutation } = useAuth();
+  const { data: permissions } = usePermissions();
 
   const isActive = (path: string) => {
     return location === path;
   };
 
-  // Define all available routes with role-based access
+  // Define all available routes with permission-based access
   const allRoutes = [
     { 
       path: "/admin", 
       label: "Dashboard", 
       icon: LayoutDashboard,
-      roles: ["administrator", "support_engineer", "creator"] // Users don't need the dashboard
+      permission: "canAccessAnalytics"
     },
     { 
       path: "/admin/team", 
       label: "Team", 
       icon: Users,
-      roles: ["administrator", "creator", "engineer"] // Admins and creators manage team, engineers have read-only access
+      permission: "canViewUsers"
     },
     { 
       path: "/admin/tickets", 
       label: "Tickets", 
       icon: TicketCheck,
-      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All roles need tickets
+      permission: "canViewOwnTickets"
     },
     { 
       path: "/admin/agent-resources", 
       label: "Agent Resources", 
       icon: FileText,
-      roles: ["administrator", "support_engineer", "creator"] // Support engineers and creators need agent resources access
+      permission: "canManageAgentResources"
     },
     { 
       path: "/admin/registration", 
       label: "Registration", 
       icon: UserPlus,
-      roles: ["creator"] // Only creators can access the registration page
+      creatorOnly: true
     },
     { 
       path: "/admin/integrations", 
       label: "Integrations", 
       icon: Link2,
-      roles: ["administrator", "user", "creator"] // Users and creators can access integrations
+      permission: "canAccessIntegrations"
     },
     { 
       path: "/admin/ai-settings", 
       label: "AI Settings", 
       icon: Bot,
-      roles: ["administrator", "user", "creator"] // Users and creators can access AI settings
+      permission: "canAccessAISettings"
     },
     { 
       path: "/admin/agent-test", 
       label: "Agent Test", 
       icon: Brain,
-      roles: ["creator"] // Only creators can test agents
+      creatorOnly: true
     },
     { 
       path: "/admin/profile", 
       label: "My Profile", 
       icon: UserCog,
-      roles: ["administrator", "support_engineer", "user", "creator", "engineer"] // All users can manage their profile
+      alwaysShow: true
     },
     { 
       path: "/admin/settings", 
       label: "Settings", 
       icon: Settings,
-      roles: ["administrator", "creator"] // Only admins and creators can change system settings
+      permission: "canAccessSettings"
     },
     { 
       path: "/admin/widget", 
       label: "Chat Widget", 
       icon: MessageSquare,
-      roles: ["administrator", "creator"] // Only admins and creators manage widget
+      permission: "canManageSettings"
     },
     { 
       path: "/admin/monitoring", 
       label: "Monitoring", 
       icon: Activity,
-      roles: ["administrator", "creator"] // Only admins and creators can access monitoring
+      permission: "canAccessSettings"
     },
   ];
   
-  // Filter routes based on user role
+  // Filter routes based on user permissions
   const routes = allRoutes.filter(route => {
-    // If no user or no roles specified, don't show the route
-    if (!user || !route.roles) return false;
-    // Check if user's role is included in the route's allowed roles
-    return route.roles.includes(user.role.toLowerCase());
+    // If no user, don't show any routes
+    if (!user) return false;
+    
+    // Always show routes marked as alwaysShow
+    if (route.alwaysShow) return true;
+    
+    // Creator-only routes
+    if (route.creatorOnly && user.role !== 'creator') return false;
+    
+    // Permission-based routes
+    if (route.permission) {
+      // If permissions haven't loaded yet, show nothing (except alwaysShow)
+      if (!permissions) return false;
+      // Check if user has the required permission
+      return permissions[route.permission as keyof typeof permissions] === true;
+    }
+    
+    return false;
   });
 
   return (

@@ -70,6 +70,8 @@ import { registerKnowledgeSyncRoutes } from "./routes/knowledge-sync-routes";
 import { tenantRoutes } from "./routes/tenant-routes";
 // Import custom roles and industry type routes
 import { registerCustomRolesRoutes } from "./routes/custom-roles-routes";
+// Import permissions routes
+import permissionsRoutes from "./routes/permissions-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
@@ -398,6 +400,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register creator routes for multi-tenant management
   app.use('/api/creators', creatorRoutes);
+  
+  // Register permissions routes
+  app.use(permissionsRoutes);
   
   // Register profile routes
   registerProfileRoutes(app, requireAuth);

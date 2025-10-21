@@ -446,11 +446,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error("Failed to initialize AI providers cache:", error);
   }
 
-  // TICKET ROUTES - Protected routes for support staff and admins
-  app.get("/api/tickets", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+  // TICKET ROUTES - Protected routes with permission-based access control
+  app.get("/api/tickets", requireAuth, async (req, res) => {
     try {
       // CRITICAL SECURITY: Only creator users can access cross-tenant data
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      // Check if user has permission to view tickets
+      const { userHasPermission } = await import("./permissions");
+      const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
+      const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
+      
+      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to view tickets" 
+        });
+      }
       
       // TENANT ISOLATION: All non-creator users MUST be restricted to their tenant
       let tenantId: number | undefined = undefined;
@@ -480,10 +491,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const category = req.query.category as string | undefined;
       const assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
       
-      console.log(`Fetching tickets - User: ${req.user?.username} (ID: ${req.user?.id}), Role: ${req.user?.role}, IsCreator: ${isCreator}, TenantId: ${tenantId}, Filters: {status: ${status}, category: ${category}, assignedTo: ${assignedTo}}`);
+      console.log(`Fetching tickets - User: ${req.user?.username} (ID: ${req.user?.id}), Role: ${req.user?.role}, IsCreator: ${isCreator}, CanViewAll: ${canViewAllTickets}, TenantId: ${tenantId}, Filters: {status: ${status}, category: ${category}, assignedTo: ${assignedTo}}`);
       
       // Get filtered tickets
-      const tickets = await storage.getAllTickets(tenantId);
+      let tickets = await storage.getAllTickets(tenantId);
+      
+      // PERMISSION-BASED FILTERING: If user can't view all tickets, only show their own
+      if (!canViewAllTickets && !isCreator) {
+        tickets = tickets.filter(ticket => ticket.createdBy === req.user?.id);
+        console.log(`User can only view own tickets - filtered to ${tickets.length} tickets`);
+      }
       
       // Apply additional filters
       let filteredTickets = tickets;
@@ -762,12 +779,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+  app.patch("/api/tickets/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
-      // Check if user is a creator to determine tenant filtering
+      // Check if user has permission to edit tickets
+      const { userHasPermission } = await import("./permissions");
+      const canEditOwnTickets = await userHasPermission(req, 'canEditOwnTickets');
+      const canEditAllTickets = await userHasPermission(req, 'canEditAllTickets');
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      if (!canEditOwnTickets && !canEditAllTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to edit tickets" 
+        });
+      }
       
       // For non-creator users, always filter by their tenant
       const tenantId = !isCreator ? req.user?.tenantId : undefined;
@@ -779,6 +805,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
+      // If user can only edit own tickets, verify ownership
+      if (canEditOwnTickets && !canEditAllTickets && !isCreator) {
+        if (ticket.createdBy !== req.user?.id) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only edit your own tickets" 
+          });
+        }
+      }
+      
       // Update the ticket
       const updatedTicket = await storage.updateTicket(id, req.body, tenantId);
       res.status(200).json(updatedTicket);
@@ -787,8 +822,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Assign ticket to team member (admin only)
-  app.patch("/api/tickets/:id/assign", requireRole(['admin', 'administrator', 'creator']), async (req, res) => {
+  // Assign ticket to team member (permission-based)
+  app.patch("/api/tickets/:id/assign", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { assignedTo } = req.body;
@@ -797,8 +832,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid ticket ID" });
       }
       
-      // Get the ticket first to ensure it exists and check tenant access
+      // Check if user has permission to assign tickets
+      const { userHasPermission } = await import("./permissions");
+      const canAssignTickets = await userHasPermission(req, 'canAssignTickets');
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      if (!canAssignTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to assign tickets" 
+        });
+      }
+      
+      // Get the ticket first to ensure it exists and check tenant access
       const tenantId = !isCreator ? req.user?.tenantId : undefined;
       const ticket = await storage.getTicketById(id, tenantId);
       
@@ -811,7 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
       
-      console.log(`Admin assignment - Ticket ${id} to: ${assignedTo || 'unassigned'}`);
+      console.log(`Ticket assignment - Ticket ${id} to: ${assignedTo || 'unassigned'}`);
       
       // Update the ticket assignment
       const updatedTicket = await storage.updateTicket(id, { assignedTo }, tenantId);

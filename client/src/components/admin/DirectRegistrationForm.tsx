@@ -134,9 +134,9 @@ export function DirectRegistrationForm() {
         ];
       }
       
-      // For existing companies, we would fetch based on industry
-      // For now, return default roles
-      const res = await apiRequest("GET", "/api/permissions/available-roles");
+      // For existing companies, fetch roles based on their industry type
+      const url = `/api/permissions/available-roles?tenantId=${selectedCompanyId}`;
+      const res = await apiRequest("GET", url);
       return res.json();
     },
     enabled: true

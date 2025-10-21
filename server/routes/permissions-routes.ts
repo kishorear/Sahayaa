@@ -25,7 +25,8 @@ router.get("/api/permissions/me", async (req: Request, res: Response) => {
 });
 
 /**
- * Get available roles for current tenant's industry
+ * Get available roles for a tenant's industry
+ * Creators can optionally provide a tenantId to fetch roles for other tenants
  */
 router.get("/api/permissions/available-roles", async (req: Request, res: Response) => {
   if (!req.user) {
@@ -33,7 +34,18 @@ router.get("/api/permissions/available-roles", async (req: Request, res: Respons
   }
 
   try {
-    const roles = await getAvailableRolesForTenant(req.user.tenantId);
+    const isCreator = req.user.role === 'creator' || (req as any).isCreatorUser;
+    let tenantId = req.user.tenantId;
+    
+    // Allow creators to query roles for other tenants
+    if (isCreator && req.query.tenantId) {
+      const queryTenantId = parseInt(req.query.tenantId as string);
+      if (!isNaN(queryTenantId)) {
+        tenantId = queryTenantId;
+      }
+    }
+    
+    const roles = await getAvailableRolesForTenant(tenantId);
     res.json(roles);
   } catch (error) {
     console.error("Error fetching available roles:", error);

@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Ticket } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TenantSelector from "@/components/TenantSelector";
+import { usePermissions } from "@/hooks/use-permissions";
 import { 
   Search, 
   Filter, 
@@ -103,10 +104,13 @@ export default function EnhancedTicketList() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: permissions } = usePermissions();
   
-  // Only creator role users should have access to tenant filtering
+  // Permission-based access control
   const isCreator = user?.role?.toLowerCase() === 'creator';
-  const isAdmin = user?.role?.toLowerCase() === 'administrator' || user?.role?.toLowerCase() === 'admin';
+  const canAssignTickets = permissions?.canAssignTickets ?? false;
+  const canEditTickets = permissions?.canEditOwnTickets ?? false;
+  const canViewAllTickets = permissions?.canViewAllTickets ?? false;
 
   // Fetch tickets with tenant filter for creator role
   const { data: tickets, isLoading } = useQuery<Ticket[]>({
@@ -129,11 +133,11 @@ export default function EnhancedTicketList() {
     }
   });
 
-  // Fetch team members for assignment dropdown (admin only)
+  // Fetch team members for assignment dropdown (only if user can assign tickets)
   const { data: teamMembers } = useQuery<any[]>({
     queryKey: ['/api/team-members', selectedTenantId],
     queryFn: async () => {
-      if (!isAdmin && !isCreator) return [];
+      if (!canAssignTickets && !isCreator) return [];
       try {
         const tenantParam = selectedTenantId ? `?tenantId=${selectedTenantId}` : '';
         const response = await fetch(`/api/team-members${tenantParam}`);
@@ -146,7 +150,7 @@ export default function EnhancedTicketList() {
         return [];
       }
     },
-    enabled: isAdmin || isCreator
+    enabled: canAssignTickets || isCreator
   });
 
   // Update ticket status mutation
@@ -193,6 +197,14 @@ export default function EnhancedTicketList() {
 
   // Filter and search logic
   const filteredTickets = tickets?.filter(ticket => {
+    // Permission-based filtering: If user can't view all tickets, only show their own
+    if (!canViewAllTickets && !isCreator) {
+      // Only show tickets created by the current user
+      if (ticket.createdBy !== user?.id) {
+        return false;
+      }
+    }
+    
     // Filter by tab/view - this is the main status filter from the tabs
     if (currentView !== "all" && ticket.status !== currentView) {
       return false;
@@ -378,7 +390,7 @@ export default function EnhancedTicketList() {
                             </TableCell>
                           )}
                           <TableCell>
-                            {(isAdmin || isCreator) ? (
+                            {canAssignTickets ? (
                               <Select
                                 value={ticket.assignedTo || 'unassigned'}
                                 onValueChange={(value) => handleAssignmentChange(ticket.id, value)}
@@ -407,20 +419,24 @@ export default function EnhancedTicketList() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">
-                              <Select
-                                value={ticket.status}
-                                onValueChange={(value) => handleStatusChange(ticket.id, value)}
-                              >
-                                <SelectTrigger className="h-8 w-[130px]">
-                                  <SelectValue placeholder="Change Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="new">Open</SelectItem>
-                                  <SelectItem value="in_progress">In Progress</SelectItem>
-                                  <SelectItem value="resolved">Resolved</SelectItem>
-                                  <SelectItem value="closed">Closed</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              {canEditTickets ? (
+                                <Select
+                                  value={ticket.status}
+                                  onValueChange={(value) => handleStatusChange(ticket.id, value)}
+                                >
+                                  <SelectTrigger className="h-8 w-[130px]">
+                                    <SelectValue placeholder="Change Status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="new">Open</SelectItem>
+                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                    <SelectItem value="resolved">Resolved</SelectItem>
+                                    <SelectItem value="closed">Closed</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <StatusBadge status={ticket.status} />
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

@@ -321,6 +321,7 @@ const RegistrationPage = () => {
         variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/creators/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/creators/tenants"] });
       setEditDialogOpen(false);
       editForm.reset();
     },
@@ -437,12 +438,19 @@ const RegistrationPage = () => {
     return teamsData.filter(team => team.tenantId === companyId);
   };
   
-  // Helper function to get industry type for a user's company
+  // Helper function to get industry type for a user's company (formatted for display)
   const getIndustryType = (tenantId: number) => {
     if (!tenantsData) return '—';
     const tenant = tenantsData.find(t => t.id === tenantId);
     if (!tenant || !tenant.industryType || tenant.industryType === 'none') return '—';
     return tenant.industryType.charAt(0).toUpperCase() + tenant.industryType.slice(1).replace(/_/g, ' ');
+  };
+  
+  // Helper function to get raw industry type value for a user's company
+  const getIndustryTypeValue = (tenantId: number) => {
+    if (!tenantsData) return 'none';
+    const tenant = tenantsData.find(t => t.id === tenantId);
+    return tenant?.industryType || 'none';
   };
 
   return (
@@ -597,6 +605,7 @@ const RegistrationPage = () => {
                                       email: user.email || "",
                                       companyId: user.tenantId,
                                       companyName: "",
+                                      companyIndustryType: getIndustryTypeValue(user.tenantId),
                                       companySSO: false,
                                       teamId: user.teamId,
                                       teamName: "",

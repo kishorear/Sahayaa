@@ -691,6 +691,7 @@ router.patch("/users/:id", requireCreatorRole, async (req: Request, res: Respons
       email, 
       companyId, 
       companyName, 
+      companyIndustryType,
       teamId, 
       teamName,
       active
@@ -756,6 +757,7 @@ router.patch("/users/:id", requireCreatorRole, async (req: Request, res: Respons
             subdomain: companyName.toLowerCase().replace(/[^a-z0-9]/g, ""),
             apiKey: uuidv4(),
             active: true,
+            industryType: companyIndustryType || 'none',
             settings: {},
             branding: {}
           })
@@ -772,6 +774,14 @@ router.patch("/users/:id", requireCreatorRole, async (req: Request, res: Respons
         // Just update the company name field
         company = companyName;
       }
+    }
+    
+    // Update tenant's industry type if provided
+    if (companyIndustryType !== undefined && tenantId) {
+      await db
+        .update(tenants)
+        .set({ industryType: companyIndustryType })
+        .where(eq(tenants.id, tenantId));
     }
     
     // Determine team ID

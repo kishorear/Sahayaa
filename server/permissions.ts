@@ -15,7 +15,7 @@ export async function getUserPermissions(userId: number): Promise<RolePermission
     const user = await storage.getUser(userId);
     if (!user) return null;
 
-    const tenant = await storage.getTenant(user.tenantId);
+    const tenant = await storage.getTenantById(user.tenantId);
     if (!tenant) return null;
 
     const industryType = (tenant.industryType || 'none') as IndustryType;
@@ -36,7 +36,7 @@ export async function userHasPermission(
   if (!req.user) return false;
 
   try {
-    const tenant = await storage.getTenant(req.user.tenantId);
+    const tenant = await storage.getTenantById(req.user.tenantId);
     if (!tenant) return false;
 
     const industryType = (tenant.industryType || 'none') as IndustryType;
@@ -131,7 +131,7 @@ export function requireAllPermissions(permissions: Array<keyof RolePermissions>)
  */
 export async function getAvailableRolesForTenant(tenantId: number) {
   try {
-    const tenant = await storage.getTenant(tenantId);
+    const tenant = await storage.getTenantById(tenantId);
     if (!tenant) return [];
 
     const industryType = (tenant.industryType || 'none') as IndustryType;

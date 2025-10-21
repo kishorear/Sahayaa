@@ -96,6 +96,7 @@ type Tenant = {
   id: number;
   name: string;
   subdomain: string;
+  industryType: string | null;
   createdAt: string;
 };
 
@@ -435,6 +436,14 @@ const RegistrationPage = () => {
     
     return teamsData.filter(team => team.tenantId === companyId);
   };
+  
+  // Helper function to get industry type for a user's company
+  const getIndustryType = (tenantId: number) => {
+    if (!tenantsData) return '—';
+    const tenant = tenantsData.find(t => t.id === tenantId);
+    if (!tenant || !tenant.industryType || tenant.industryType === 'none') return '—';
+    return tenant.industryType.charAt(0).toUpperCase() + tenant.industryType.slice(1).replace(/_/g, ' ');
+  };
 
   return (
     <AdminLayout>
@@ -531,6 +540,7 @@ const RegistrationPage = () => {
                           <TableHead>User</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Company</TableHead>
+                          <TableHead>Industry Type</TableHead>
                           <TableHead>Team</TableHead>
                           <TableHead>Created</TableHead>
                           <TableHead>Status</TableHead>
@@ -554,6 +564,7 @@ const RegistrationPage = () => {
                                 </span>
                               </TableCell>
                               <TableCell>{user.tenantName}</TableCell>
+                              <TableCell>{getIndustryType(user.tenantId)}</TableCell>
                               <TableCell>{user.teamName || '—'}</TableCell>
                               <TableCell>
                                 <span title={new Date(user.createdAt).toLocaleString()}>
@@ -613,7 +624,7 @@ const RegistrationPage = () => {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                            <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                               {searchQuery ? "No users found matching your search criteria." : "No users found. Add your first user using the 'Register New User' button."}
                             </TableCell>
                           </TableRow>

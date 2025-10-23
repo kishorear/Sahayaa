@@ -128,24 +128,29 @@ export default function CreatorDashboardPage() {
   const [isEditTenantOpen, setIsEditTenantOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<CustomRole | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   
   // Fetch existing tenants (companies)
   const { data: tenants = [], isLoading: tenantsLoading } = useQuery<Tenant[]>({
-    queryKey: ['/api/creator/tenants'],
+    queryKey: ['/api/creators/tenants'],
     enabled: !!user,
   });
   
   // Fetch existing teams (optional)
   const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
-    queryKey: ['/api/creator/teams'],
+    queryKey: ['/api/creators/teams'],
     enabled: !!user,
   });
   
   // Fetch existing users
-  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
-    queryKey: ['/api/creator/users'],
+  const { data: usersResponse } = useQuery<{ users: User[] }>({
+    queryKey: ['/api/creators/users'],
     enabled: !!user,
   });
+  
+  const users = usersResponse?.users || [];
+  const usersLoading = !usersResponse;
   
   // Fetch industry types with error handling
   const industryTypesQuery = useQuery<string[]>({
@@ -198,10 +203,24 @@ export default function CreatorDashboardPage() {
     },
   });
   
+  // Fetch all available roles for the selected tenant (for role dropdown in registration)
+  const selectedTenantId = form.watch("companyId") || user?.tenantId;
+  const { data: availableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
+    queryKey: ['/api/permissions/available-roles', selectedTenantId],
+    enabled: !!selectedTenantId,
+  });
+  
+  // Fetch all available roles for the editing user's tenant (for edit dialog)
+  const editUserTenantId = editingUser?.tenantId;
+  const { data: editUserAvailableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
+    queryKey: ['/api/permissions/available-roles', editUserTenantId],
+    enabled: !!editUserTenantId,
+  });
+  
   // Register user mutation
   const registerMutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
-      const res = await apiRequest("POST", "/api/creator/register", values);
+      const res = await apiRequest("POST", "/api/creators/users", values);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to register user");
@@ -215,7 +234,7 @@ export default function CreatorDashboardPage() {
       });
       form.reset();
       // Refresh user list
-      queryClient.invalidateQueries({ queryKey: ['/api/creator/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creators/users'] });
     },
     onError: (error: Error) => {
       toast({
@@ -243,7 +262,35 @@ export default function CreatorDashboardPage() {
       });
       setIsEditTenantOpen(false);
       setEditingTenant(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/creator/tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creators/tenants'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Update user mutation
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, updates }: { userId: number; updates: { name?: string; role: string } }) => {
+      const res = await apiRequest("PATCH", `/api/creators/users/${userId}`, updates);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update user");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "User Updated",
+        description: "User information has been updated successfully",
+      });
+      setIsEditUserOpen(false);
+      setEditingUser(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/creators/users'] });
     },
     onError: (error: Error) => {
       toast({
@@ -347,6 +394,12 @@ export default function CreatorDashboardPage() {
   const handleEditTenant = (tenant: Tenant) => {
     setEditingTenant(tenant);
     setIsEditTenantOpen(true);
+  };
+  
+  // Handle edit user
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setIsEditUserOpen(true);
   };
   
   // Handle create/edit role
@@ -489,13 +542,10 @@ export default function CreatorDashboardPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="user" data-testid="role-option-user">User</SelectItem>
-                                <SelectItem value="support_engineer" data-testid="role-option-support">Support Engineer</SelectItem>
-                                <SelectItem value="administrator" data-testid="role-option-admin">Administrator</SelectItem>
                                 <SelectItem value="creator" data-testid="role-option-creator">Creator</SelectItem>
-                                {customRoles.map((role) => (
-                                  <SelectItem key={role.id} value={role.roleKey} data-testid={`role-option-custom-${role.roleKey}`}>
-                                    {role.roleName} (Custom)
+                                {availableRoles.map((role) => (
+                                  <SelectItem key={role.key} value={role.key} data-testid={`role-option-${role.key}`}>
+                                    {role.name} {role.isCustom ? '(Custom)' : '(System)'}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -914,7 +964,13 @@ export default function CreatorDashboardPage() {
                               {user.name || 'No name'} | Role: {user.role} | Company ID: {user.tenantId}
                             </p>
                           </div>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditUser(user)}
+                            data-testid={`button-edit-user-${user.id}`}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
                             Manage
                           </Button>
                         </div>
@@ -977,6 +1033,86 @@ export default function CreatorDashboardPage() {
               data-testid="button-save-industry"
             >
               {updateTenantMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit User Dialog */}
+      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+        <DialogContent data-testid="dialog-edit-user">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information and role assignment
+            </DialogDescription>
+          </DialogHeader>
+          {editingUser && (
+            <div className="space-y-4">
+              <div>
+                <Label>Username</Label>
+                <Input value={editingUser.username} disabled className="mt-1" />
+              </div>
+              <div>
+                <Label>Full Name</Label>
+                <Input 
+                  value={editingUser.name || ''} 
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  className="mt-1"
+                  placeholder="Full name"
+                  data-testid="input-edit-user-name"
+                />
+              </div>
+              <div>
+                <Label>Role</Label>
+                <Select
+                  value={editingUser.role}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-edit-user-role">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="creator" data-testid="role-option-creator">Creator</SelectItem>
+                    {editUserAvailableRoles
+                      .filter(role => role.key !== 'creator')
+                      .map((role) => (
+                        <SelectItem key={role.key} value={role.key} data-testid={`role-option-${role.key}`}>
+                          {role.name} {role.isCustom ? '(Custom)' : '(System)'}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (editingUser) {
+                  updateUserMutation.mutate({
+                    userId: editingUser.id,
+                    updates: {
+                      name: editingUser.name,
+                      role: editingUser.role
+                    }
+                  });
+                }
+              }}
+              disabled={updateUserMutation.isPending || !editingUser}
+              data-testid="button-save-user"
+            >
+              {updateUserMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...

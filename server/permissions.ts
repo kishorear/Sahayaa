@@ -157,7 +157,7 @@ export function requireAllPermissions(permissions: Array<keyof RolePermissions>)
 
 /**
  * Helper to get all available roles for a tenant's industry
- * Includes both custom roles from database and default hardcoded roles
+ * Returns roles from database (includes both system roles and custom roles)
  */
 export async function getAvailableRolesForTenant(tenantId: number) {
   try {
@@ -166,29 +166,24 @@ export async function getAvailableRolesForTenant(tenantId: number) {
 
     const industryType = (tenant.industryType || 'none') as IndustryType;
     
-    // Get hardcoded industry roles
-    const { getIndustryRoles } = await import("@shared/schema");
-    const defaultRoles = getIndustryRoles(industryType);
-    const hardcodedRoles = Object.values(defaultRoles).map(role => ({
-      key: role.key,
-      name: role.name,
-      description: role.description,
-      isCustom: false
-    }));
+    // Get all roles from database for this tenant:
+    // - System roles (industryType='none', isDefault=true)
+    // - Industry-specific custom roles (industryType=tenant.industryType, isDefault=false)
+    const systemRoles = await storage.getCustomUserRoles(tenantId, 'none');
+    const industryRoles = industryType !== 'none' 
+      ? await storage.getCustomUserRoles(tenantId, industryType)
+      : [];
     
-    // Get custom roles from database
-    const customRoles = await storage.getCustomUserRoles(tenantId, industryType);
-    const customRoleList = customRoles
+    const allRoles = [...systemRoles, ...industryRoles]
       .filter(role => role.active)
       .map(role => ({
         key: role.roleKey,
         name: role.roleName,
         description: role.description || '',
-        isCustom: true
+        isCustom: !role.isDefault  // System roles are not custom
       }));
     
-    // Combine both lists, custom roles first
-    return [...customRoleList, ...hardcodedRoles];
+    return allRoles;
   } catch (error) {
     console.error('Error getting available roles:', error);
     return [];

@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle, ChevronLeft } from "lucide-react";
+import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -106,8 +107,13 @@ export default function RoleManagementPage() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center gap-4">
+          <Link href="/creator/dashboard">
+            <Button variant="ghost" size="icon" data-testid="button-back">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold" data-testid="page-title">Role Management</h1>
             <p className="text-muted-foreground mt-2">
               Create and manage custom roles for different industries

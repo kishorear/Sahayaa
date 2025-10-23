@@ -896,7 +896,7 @@ export default function CreatorDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {usersLoading ? (
                 <div className="flex items-center justify-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin text-border" />
                 </div>

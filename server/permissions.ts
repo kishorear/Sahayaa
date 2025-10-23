@@ -28,11 +28,16 @@ export async function getUserPermissions(userId: number): Promise<RolePermission
 
     // First, check if this is a custom role from the database
     const customRole = await storage.getCustomUserRoleByKey(user.role, user.tenantId, industryType);
-    if (customRole && customRole.active) {
+    if (customRole) {
+      // If we found a database role, respect its active flag
+      // If inactive, deny permissions (return null for no permissions)
+      if (!customRole.active) {
+        return null;
+      }
       return customRole.permissions as RolePermissions;
     }
 
-    // Fall back to hardcoded industry roles
+    // Only fall back to hardcoded industry roles if no database role exists
     return getRolePermissions(industryType, user.role);
   } catch (error) {
     console.error('Error getting user permissions:', error);
@@ -63,7 +68,12 @@ export async function userHasPermission(
 
     // First, check if this is a custom role from the database
     const customRole = await storage.getCustomUserRoleByKey(req.user.role, req.user.tenantId, industryType);
-    if (customRole && customRole.active) {
+    if (customRole) {
+      // If we found a database role, respect its active flag
+      // If inactive, deny permission
+      if (!customRole.active) {
+        return false;
+      }
       const permissions = customRole.permissions as RolePermissions;
       return permissions[permission] || false;
     }
@@ -166,24 +176,40 @@ export async function getAvailableRolesForTenant(tenantId: number) {
 
     const industryType = (tenant.industryType || 'none') as IndustryType;
     
-    // Get all roles from database for this tenant:
-    // - System roles (industryType='none', isDefault=true)
-    // - Industry-specific custom roles (industryType=tenant.industryType, isDefault=false)
+    // Get all roles from database:
+    // 1. System roles (industryType='none', isDefault=true) - always included
+    // 2. Industry-specific custom roles (industryType=tenant.industryType, isDefault=false) - from ALL tenants with same industry
     const systemRoles = await storage.getCustomUserRoles(tenantId, 'none');
     const industryRoles = industryType !== 'none' 
       ? await storage.getCustomUserRoles(tenantId, industryType)
       : [];
     
-    const allRoles = [...systemRoles, ...industryRoles]
-      .filter(role => role.active)
-      .map(role => ({
+    // Combine and deduplicate by roleKey (system roles take precedence)
+    const roleMap = new Map<string, {key: string, name: string, description: string, isCustom: boolean}>();
+    
+    // Add system roles first
+    systemRoles.filter(role => role.active).forEach(role => {
+      roleMap.set(role.roleKey, {
         key: role.roleKey,
         name: role.roleName,
         description: role.description || '',
-        isCustom: !role.isDefault  // System roles are not custom
-      }));
+        isCustom: false
+      });
+    });
     
-    return allRoles;
+    // Add industry-specific roles (won't override system roles due to Map)
+    industryRoles.filter(role => role.active).forEach(role => {
+      if (!roleMap.has(role.roleKey)) {
+        roleMap.set(role.roleKey, {
+          key: role.roleKey,
+          name: role.roleName,
+          description: role.description || '',
+          isCustom: true
+        });
+      }
+    });
+    
+    return Array.from(roleMap.values());
   } catch (error) {
     console.error('Error getting available roles:', error);
     return [];

@@ -5893,8 +5893,32 @@ export class DatabaseStorage implements IStorage {
   // Custom user role operations (creator-only)
   async getCustomUserRoles(tenantId: number, industryType?: string): Promise<CustomUserRole[]> {
     try {
+      // If industryType is provided, fetch:
+      // 1. System roles (isDefault=true) for THIS specific tenant only
+      // 2. Industry-wide custom roles (isDefault=false) from ALL tenants with that industry
+      //    (except for 'none' which should remain tenant-specific)
+      // If no industryType, just fetch all roles for the specific tenant
       const conditions = industryType
-        ? and(eq(customUserRoles.tenantId, tenantId), eq(customUserRoles.industryType, industryType))
+        ? or(
+            // System roles for THIS tenant only (tenant-specific activation/deactivation)
+            and(
+              eq(customUserRoles.tenantId, tenantId), 
+              eq(customUserRoles.industryType, industryType), 
+              eq(customUserRoles.isDefault, true)
+            ),
+            // Custom roles with this industry type from ANY tenant (industry-wide sharing)
+            // BUT: 'none' industry custom roles remain tenant-specific
+            industryType !== 'none'
+              ? and(
+                  eq(customUserRoles.industryType, industryType), 
+                  eq(customUserRoles.isDefault, false)
+                )
+              : and(
+                  eq(customUserRoles.tenantId, tenantId),
+                  eq(customUserRoles.industryType, 'none'),
+                  eq(customUserRoles.isDefault, false)
+                )
+          )
         : eq(customUserRoles.tenantId, tenantId);
       
       return await db
@@ -5929,24 +5953,70 @@ export class DatabaseStorage implements IStorage {
 
   async getCustomUserRoleByKey(roleKey: string, tenantId: number, industryType?: string): Promise<CustomUserRole | undefined> {
     try {
-      const conditions = industryType
-        ? and(
-            eq(customUserRoles.roleKey, roleKey),
-            eq(customUserRoles.tenantId, tenantId),
-            eq(customUserRoles.industryType, industryType)
-          )
-        : and(
-            eq(customUserRoles.roleKey, roleKey),
-            eq(customUserRoles.tenantId, tenantId)
-          );
+      // Strategy: Try multiple lookups in priority order
+      // 1. Tenant-specific role with matching industryType (tenant custom role)
+      // 2. Tenant-specific system role (industryType='none', isDefault=true)
+      // 3. Industry-wide custom role (any tenant, matching industryType, isDefault=false)
       
-      const result = await db
+      // Try 1: Tenant-specific role with matching industryType
+      if (industryType) {
+        const tenantIndustryRole = await db
+          .select()
+          .from(customUserRoles)
+          .where(
+            and(
+              eq(customUserRoles.roleKey, roleKey),
+              eq(customUserRoles.tenantId, tenantId),
+              eq(customUserRoles.industryType, industryType)
+            )
+          )
+          .limit(1);
+        
+        if (tenantIndustryRole[0]) {
+          return tenantIndustryRole[0];
+        }
+      }
+      
+      // Try 2: Tenant-specific system role (industryType='none', isDefault=true)
+      const tenantSystemRole = await db
         .select()
         .from(customUserRoles)
-        .where(conditions)
+        .where(
+          and(
+            eq(customUserRoles.roleKey, roleKey),
+            eq(customUserRoles.tenantId, tenantId),
+            eq(customUserRoles.industryType, 'none'),
+            eq(customUserRoles.isDefault, true)
+          )
+        )
         .limit(1);
       
-      return result[0];
+      if (tenantSystemRole[0]) {
+        return tenantSystemRole[0];
+      }
+      
+      // Try 3: Industry-wide custom role (any tenant, matching industryType, isDefault=false)
+      // BUT: Only for real industries, NOT 'none' (those remain tenant-specific)
+      if (industryType && industryType !== 'none') {
+        const industryWideRole = await db
+          .select()
+          .from(customUserRoles)
+          .where(
+            and(
+              eq(customUserRoles.roleKey, roleKey),
+              eq(customUserRoles.industryType, industryType),
+              eq(customUserRoles.isDefault, false)
+            )
+          )
+          .limit(1);
+        
+        if (industryWideRole[0]) {
+          return industryWideRole[0];
+        }
+      }
+      
+      // Not found
+      return undefined;
     } catch (error) {
       console.error('Error getting custom user role by key:', error);
       return undefined;

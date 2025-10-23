@@ -17,7 +17,8 @@ import {
   MessageSquare,
   UserPlus,
   Brain,
-  Activity
+  Activity,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoIcon from "@/components/LogoIcon";
@@ -74,6 +75,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin/registration", 
       label: "Registration", 
       icon: UserPlus,
+      creatorOnly: true
+    },
+    { 
+      path: "/creator/roles", 
+      label: "Role Management", 
+      icon: ShieldCheck,
       creatorOnly: true
     },
     { 

@@ -41,15 +41,29 @@ export default function RoleManagementPage() {
     queryKey: ['/api/industry-types'],
   });
 
-  // Fetch roles for selected industry
+  // Fetch roles for selected industry (includes both industry-specific and system roles)
   const { data: roles = [], isLoading } = useQuery<CustomUserRole[]>({
     queryKey: ['/api/custom-roles', selectedIndustry],
     queryFn: async () => {
-      const response = await fetch(`/api/custom-roles?industryType=${selectedIndustry}`, {
-        credentials: 'include'
+      // Fetch both system roles (industryType='none') and industry-specific roles
+      const [systemRolesRes, industryRolesRes] = await Promise.all([
+        fetch(`/api/custom-roles?industryType=none`, { credentials: 'include' }),
+        fetch(`/api/custom-roles?industryType=${selectedIndustry}`, { credentials: 'include' })
+      ]);
+      
+      if (!systemRolesRes.ok || !industryRolesRes.ok) {
+        throw new Error('Failed to fetch roles');
+      }
+      
+      const systemRoles = await systemRolesRes.json();
+      const industryRoles = await industryRolesRes.json();
+      
+      // Combine and sort: system roles first, then custom roles
+      return [...systemRoles, ...industryRoles].sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return a.roleName.localeCompare(b.roleName);
       });
-      if (!response.ok) throw new Error('Failed to fetch roles');
-      return response.json();
     },
   });
 
@@ -161,7 +175,7 @@ export default function RoleManagementPage() {
             ) : roles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No custom roles found</h3>
+                <h3 className="text-lg font-semibold mb-2">No roles found</h3>
                 <p className="text-muted-foreground mb-4">
                   Create your first custom role for {selectedIndustry}
                 </p>
@@ -186,7 +200,7 @@ export default function RoleManagementPage() {
                             </Badge>
                             {role.isDefault && (
                               <Badge variant="secondary" data-testid={`role-default-badge-${role.id}`}>
-                                Default
+                                System Role
                               </Badge>
                             )}
                             {!role.active && (

@@ -55,9 +55,7 @@ export default function RoleManagementPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/custom-roles/${id}`, {
-        method: 'DELETE',
-      });
+      return apiRequest('DELETE', `/api/custom-roles/${id}`);
     },
     onSuccess: () => {
       toast({
@@ -325,7 +323,7 @@ function RoleFormPage({ industry, role, onBack }: { industry: string; role: Cust
       roleKey: role.roleKey,
       description: role.description || "",
       permissions: role.permissions as RolePermissions,
-      active: role.active,
+      active: role.active ?? true,
     } : {
       roleName: "",
       roleKey: "",
@@ -343,17 +341,9 @@ function RoleFormPage({ industry, role, onBack }: { industry: string; role: Cust
       };
 
       if (role) {
-        return apiRequest(`/api/custom-roles/${role.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return apiRequest('PATCH', `/api/custom-roles/${role.id}`, payload);
       } else {
-        return apiRequest('/api/custom-roles', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return apiRequest('POST', '/api/custom-roles', payload);
       }
     },
     onSuccess: () => {

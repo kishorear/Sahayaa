@@ -254,6 +254,16 @@ const RegistrationPage = () => {
         .then(res => res.json()),
   });
   
+  // Fetch available roles for the editing user's tenant
+  const editUserTenantId = editForm.watch("companyId");
+  const { data: editUserAvailableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
+    queryKey: [`/api/permissions/available-roles?tenantId=${editUserTenantId}`, editUserTenantId],
+    queryFn: () => 
+      apiRequest("GET", `/api/permissions/available-roles?tenantId=${editUserTenantId}`)
+        .then(res => res.json()),
+    enabled: !!editUserTenantId && editDialogOpen,
+  });
+  
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (data: z.infer<typeof registrationSchema>) => {
@@ -1337,10 +1347,44 @@ const RegistrationPage = () => {
                                   <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="user">User</SelectItem>
-                                  <SelectItem value="support_engineer">Support Engineer</SelectItem>
-                                  <SelectItem value="administrator">Administrator</SelectItem>
-                                  <SelectItem value="creator">Creator</SelectItem>
+                                  {editUserAvailableRoles.length > 0 ? (
+                                    <>
+                                      {/* System Roles */}
+                                      {editUserAvailableRoles.filter(role => !role.isCustom).length > 0 && (
+                                        <SelectGroup>
+                                          <SelectLabel>System Roles</SelectLabel>
+                                          {editUserAvailableRoles
+                                            .filter(role => !role.isCustom)
+                                            .map(role => (
+                                              <SelectItem key={role.key} value={role.key}>
+                                                {role.name}
+                                              </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                      )}
+                                      
+                                      {/* Custom Roles */}
+                                      {editUserAvailableRoles.filter(role => role.isCustom).length > 0 && (
+                                        <SelectGroup>
+                                          <SelectLabel>Custom Roles</SelectLabel>
+                                          {editUserAvailableRoles
+                                            .filter(role => role.isCustom)
+                                            .map(role => (
+                                              <SelectItem key={role.key} value={role.key}>
+                                                {role.name}
+                                              </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <SelectItem value="user">User</SelectItem>
+                                      <SelectItem value="support_engineer">Support Engineer</SelectItem>
+                                      <SelectItem value="administrator">Administrator</SelectItem>
+                                      <SelectItem value="creator">Creator</SelectItem>
+                                    </>
+                                  )}
                                 </SelectContent>
                               </Select>
                             </FormControl>

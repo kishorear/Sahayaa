@@ -206,14 +206,14 @@ export default function CreatorDashboardPage() {
   // Fetch all available roles for the selected tenant (for role dropdown in registration)
   const selectedTenantId = form.watch("companyId") || user?.tenantId;
   const { data: availableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
-    queryKey: ['/api/permissions/available-roles', selectedTenantId],
+    queryKey: [`/api/permissions/available-roles?tenantId=${selectedTenantId}`, selectedTenantId],
     enabled: !!selectedTenantId,
   });
   
   // Fetch all available roles for the editing user's tenant (for edit dialog)
   const editUserTenantId = editingUser?.tenantId;
   const { data: editUserAvailableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
-    queryKey: ['/api/permissions/available-roles', editUserTenantId],
+    queryKey: [`/api/permissions/available-roles?tenantId=${editUserTenantId}`, editUserTenantId],
     enabled: !!editUserTenantId,
   });
   

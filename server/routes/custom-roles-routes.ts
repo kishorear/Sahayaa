@@ -27,11 +27,27 @@ export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHand
   app.get('/api/custom-roles', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     console.log('GET /api/custom-roles - Request from user:', req.user?.username);
     try {
-      const tenantId = req.user!.tenantId;
       const industryType = req.query.industryType as string | undefined;
-      const roles = await storage.getCustomUserRoles(tenantId, industryType);
-      console.log('GET /api/custom-roles - Returning', roles.length, 'roles for industry:', industryType || 'all');
-      res.json(roles);
+      
+      // Get ALL roles from the database (not filtered by tenant)
+      const allRoles = await storage.getAllCustomUserRoles();
+      
+      // Filter by industryType if specified
+      let filteredRoles = allRoles;
+      if (industryType) {
+        filteredRoles = allRoles.filter(role => 
+          (role.isDefault && role.industryType === 'none') || // System roles
+          role.industryType === industryType // Industry-specific roles
+        );
+      }
+      
+      // Deduplicate by roleKey (keep first occurrence)
+      const uniqueRoles = Array.from(
+        new Map(filteredRoles.map(role => [role.roleKey, role])).values()
+      );
+      
+      console.log('GET /api/custom-roles - Returning', uniqueRoles.length, 'unique roles for industry:', industryType || 'all');
+      res.json(uniqueRoles);
     } catch (error) {
       console.error('Error getting custom roles:', error);
       res.status(500).json({ error: 'Failed to get custom roles' });

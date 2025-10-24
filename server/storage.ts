@@ -7085,6 +7085,15 @@ class StorageWrapper implements IStorage {
     }
   }
 
+  async getAllCustomUserRoles(): Promise<CustomUserRole[]> {
+    try {
+      return await this.storageImpl.getAllCustomUserRoles();
+    } catch (error) {
+      console.error('Error in getAllCustomUserRoles:', error);
+      return [];
+    }
+  }
+
   async getCustomUserRoleById(id: number, tenantId?: number): Promise<CustomUserRole | undefined> {
     try {
       return await this.storageImpl.getCustomUserRoleById(id, tenantId);

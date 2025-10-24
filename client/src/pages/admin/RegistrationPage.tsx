@@ -255,17 +255,23 @@ const RegistrationPage = () => {
         .then(res => res.json()),
   });
   
-  // Fetch available roles for the editing user's tenant
-  // Watch the current companyId in the form, but fallback to editingUserTenantId on initial load
-  const currentEditCompanyId = editForm.watch("companyId");
-  const roleQueryTenantId = currentEditCompanyId || editingUserTenantId;
-  
-  const { data: editUserAvailableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
-    queryKey: [`/api/permissions/available-roles?tenantId=${roleQueryTenantId}`, roleQueryTenantId],
-    queryFn: () => 
-      apiRequest("GET", `/api/permissions/available-roles?tenantId=${roleQueryTenantId}`)
-        .then(res => res.json()),
-    enabled: !!roleQueryTenantId && editDialogOpen,
+  // Fetch ALL available roles from custom-roles endpoint (system + custom from all industries)
+  const { data: editUserAvailableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean, roleKey: string, isDefault: boolean}>>({
+    queryKey: ['/api/custom-roles'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/custom-roles");
+      const roles = await response.json();
+      // Transform to match the expected format
+      return roles.map((role: any) => ({
+        key: role.roleKey,
+        name: role.roleName,
+        description: role.description,
+        isCustom: !role.isDefault,
+        roleKey: role.roleKey,
+        isDefault: role.isDefault
+      }));
+    },
+    enabled: editDialogOpen,
   });
   
   // Create user mutation

@@ -23,31 +23,43 @@ function requireCreatorRole(req: Request, res: Response, next: Function) {
  */
 export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHandler): void {
   
-  // Get all custom user roles for a tenant (creator only)
+  // Get all custom user roles - returns deduplicated role definitions (creator only)
+  // This endpoint returns role DEFINITIONS (roleKey, name, description, permissions) for dropdowns
+  // For role MANAGEMENT (edit/delete), roles are filtered by tenantId
   app.get('/api/custom-roles', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     console.log('GET /api/custom-roles - Request from user:', req.user?.username);
     try {
-      const industryType = req.query.industryType as string | undefined;
+      const { forManagement } = req.query;
+      const tenantId = req.user!.tenantId;
       
-      // Get ALL roles from the database (not filtered by tenant)
+      // Get ALL roles from the database
       const allRoles = await storage.getAllCustomUserRoles();
       
-      // Filter by industryType if specified
-      let filteredRoles = allRoles;
-      if (industryType) {
-        filteredRoles = allRoles.filter(role => 
-          (role.isDefault && role.industryType === 'none') || // System roles
-          role.industryType === industryType // Industry-specific roles
+      if (forManagement === 'true') {
+        // For role management (edit/delete), only return roles belonging to this tenant
+        const tenantRoles = allRoles.filter(role => role.tenantId === tenantId);
+        console.log('GET /api/custom-roles - Returning', tenantRoles.length, 'roles for tenant', tenantId, '(management mode)');
+        res.json(tenantRoles);
+      } else {
+        // For dropdowns (registration), return unique role DEFINITIONS only (deduplicated by roleKey)
+        // Project only the definition fields, not tenant-specific metadata
+        const roleDefinitions = Array.from(
+          new Map(allRoles.map(role => [
+            role.roleKey,
+            {
+              roleKey: role.roleKey,
+              roleName: role.roleName,
+              description: role.description,
+              isDefault: role.isDefault,
+              industryType: role.industryType,
+              permissions: role.permissions
+            }
+          ])).values()
         );
+        
+        console.log('GET /api/custom-roles - Returning', roleDefinitions.length, 'unique role definitions (dropdown mode)');
+        res.json(roleDefinitions);
       }
-      
-      // Deduplicate by roleKey (keep first occurrence)
-      const uniqueRoles = Array.from(
-        new Map(filteredRoles.map(role => [role.roleKey, role])).values()
-      );
-      
-      console.log('GET /api/custom-roles - Returning', uniqueRoles.length, 'unique roles for industry:', industryType || 'all');
-      res.json(uniqueRoles);
     } catch (error) {
       console.error('Error getting custom roles:', error);
       res.status(500).json({ error: 'Failed to get custom roles' });

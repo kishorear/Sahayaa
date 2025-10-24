@@ -159,8 +159,9 @@ export default function CreatorDashboardPage() {
   });
   
   // Fetch custom user roles with error handling
+  // Use forManagement=true to get only this tenant's roles for edit/delete operations
   const customRolesQuery = useQuery<CustomRole[]>({
-    queryKey: ['/api/custom-roles'],
+    queryKey: ['/api/custom-roles?forManagement=true'],
     enabled: !!user,
   });
   
@@ -203,19 +204,25 @@ export default function CreatorDashboardPage() {
     },
   });
   
-  // Fetch all available roles for the selected tenant (for role dropdown in registration)
-  const selectedTenantId = form.watch("companyId") || user?.tenantId;
+  // Fetch ALL available role definitions for registration dropdown (system + custom from all industries)
   const { data: availableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
-    queryKey: [`/api/permissions/available-roles?tenantId=${selectedTenantId}`, selectedTenantId],
-    enabled: !!selectedTenantId,
+    queryKey: ['/api/custom-roles'],
+    queryFn: async () => {
+      const response = await fetch('/api/custom-roles');
+      const roles = await response.json();
+      // Transform to match expected format
+      return roles.map((role: any) => ({
+        key: role.roleKey,
+        name: role.roleName,
+        description: role.description,
+        isCustom: !role.isDefault
+      }));
+    },
+    enabled: !!user,
   });
   
-  // Fetch all available roles for the editing user's tenant (for edit dialog)
-  const editUserTenantId = editingUser?.tenantId;
-  const { data: editUserAvailableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
-    queryKey: [`/api/permissions/available-roles?tenantId=${editUserTenantId}`, editUserTenantId],
-    enabled: !!editUserTenantId,
-  });
+  // Use the same role definitions for edit dialog (no need to fetch separately)
+  const editUserAvailableRoles = availableRoles;
   
   // Register user mutation
   const registerMutation = useMutation({
@@ -339,7 +346,7 @@ export default function CreatorDashboardPage() {
       setIsRoleDialogOpen(false);
       setEditingRole(null);
       roleForm.reset();
-      queryClient.invalidateQueries({ queryKey: ['/api/custom-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/custom-roles?forManagement=true'] });
     },
     onError: (error: Error) => {
       toast({
@@ -365,7 +372,7 @@ export default function CreatorDashboardPage() {
         title: "Role Deleted",
         description: "Custom role has been deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/custom-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/custom-roles?forManagement=true'] });
     },
     onError: (error: Error) => {
       toast({
@@ -462,18 +469,14 @@ export default function CreatorDashboardPage() {
       <h1 className="text-2xl font-bold mb-6">Creator Dashboard</h1>
       
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="register">
             <UserPlus className="h-4 w-4 mr-2" />
-            Register User
+            Registration
           </TabsTrigger>
           <TabsTrigger value="companies">
             <Building className="h-4 w-4 mr-2" />
             Companies
-          </TabsTrigger>
-          <TabsTrigger value="roles">
-            <Settings className="h-4 w-4 mr-2" />
-            Custom Roles
           </TabsTrigger>
           <TabsTrigger value="users">
             <Users className="h-4 w-4 mr-2" />
@@ -481,16 +484,30 @@ export default function CreatorDashboardPage() {
           </TabsTrigger>
         </TabsList>
         
-        {/* User Registration Tab */}
+        {/* User Registration Tab with Nested Tabs */}
         <TabsContent value="register">
-          <Card>
-            <CardHeader>
-              <CardTitle>Register New User</CardTitle>
-              <CardDescription>
-                Create a new user with company and team association
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <Tabs defaultValue="form" className="space-y-6">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="form">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Registration Form
+              </TabsTrigger>
+              <TabsTrigger value="role-management">
+                <Settings className="h-4 w-4 mr-2" />
+                Role Management
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Registration Form SubTab */}
+            <TabsContent value="form">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Register New User</CardTitle>
+                  <CardDescription>
+                    Create a new user with company and team association
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -802,8 +819,82 @@ export default function CreatorDashboardPage() {
                   </Button>
                 </form>
               </Form>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Role Management SubTab */}
+            <TabsContent value="role-management">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Custom User Roles</CardTitle>
+                  <CardDescription>
+                    Manage industry-specific roles with granular permissions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {customRoles.length === 0 ? (
+                    <p className="text-muted-foreground">No custom roles defined. Create one to get started.</p>
+                  ) : (
+                    <div className="border rounded-md divide-y">
+                      {customRoles.map((role: any) => (
+                        <div key={role.id} className="p-4" data-testid={`role-${role.id}`}>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h3 className="font-medium">{role.roleName}</h3>
+                              <p className="text-sm text-muted-foreground">Key: {role.roleKey}</p>
+                              {role.description && (
+                                <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
+                              )}
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {role.permissions?.canViewAllTickets && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">View All Tickets</span>
+                                )}
+                                {role.permissions?.canEditAllTickets && (
+                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Edit All Tickets</span>
+                                )}
+                                {role.permissions?.canDeleteTickets && (
+                                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Delete Tickets</span>
+                                )}
+                                {role.permissions?.canManageUsers && (
+                                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Manage Users</span>
+                                )}
+                                {role.permissions?.canManageTeams && (
+                                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Manage Teams</span>
+                                )}
+                                {role.permissions?.canManageSettings && (
+                                  <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Manage Settings</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEditRole(role)}
+                                data-testid={`button-edit-role-${role.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => deleteRoleMutation.mutate(role.id)}
+                                disabled={deleteRoleMutation.isPending}
+                                data-testid={`button-delete-role-${role.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
         
         {/* Companies Tab */}
@@ -850,86 +941,6 @@ export default function CreatorDashboardPage() {
                       ))}
                     </div>
                   )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Custom Roles Tab */}
-        <TabsContent value="roles">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Custom User Roles</CardTitle>
-                  <CardDescription>
-                    Manage industry-specific roles with granular permissions
-                  </CardDescription>
-                </div>
-                <Button onClick={() => window.location.href = '/creator/roles'} data-testid="button-manage-roles">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Manage Roles
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {customRoles.length === 0 ? (
-                <p className="text-muted-foreground">No custom roles defined. Create one to get started.</p>
-              ) : (
-                <div className="border rounded-md divide-y">
-                  {customRoles.map((role: any) => (
-                    <div key={role.id} className="p-4" data-testid={`role-${role.id}`}>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-medium">{role.roleName}</h3>
-                          <p className="text-sm text-muted-foreground">Key: {role.roleKey}</p>
-                          {role.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
-                          )}
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {role.permissions?.canViewAllTickets && (
-                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">View All Tickets</span>
-                            )}
-                            {role.permissions?.canEditAllTickets && (
-                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Edit All Tickets</span>
-                            )}
-                            {role.permissions?.canDeleteTickets && (
-                              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Delete Tickets</span>
-                            )}
-                            {role.permissions?.canManageUsers && (
-                              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Manage Users</span>
-                            )}
-                            {role.permissions?.canManageTeams && (
-                              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Manage Teams</span>
-                            )}
-                            {role.permissions?.canManageSettings && (
-                              <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Manage Settings</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditRole(role)}
-                            data-testid={`button-edit-role-${role.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => deleteRoleMutation.mutate(role.id)}
-                            disabled={deleteRoleMutation.isPending}
-                            data-testid={`button-delete-role-${role.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               )}
             </CardContent>

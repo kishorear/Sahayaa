@@ -173,38 +173,20 @@ export async function getAvailableRolesForTenant(tenantId: number) {
   try {
     const tenant = await storage.getTenantById(tenantId);
     if (!tenant) return [];
-
-    const industryType = (tenant.industryType || 'none') as IndustryType;
     
-    // Get all roles from database:
-    // 1. System roles (industryType='none', isDefault=true) - always included
-    // 2. Industry-specific custom roles (industryType=tenant.industryType, isDefault=false) - from ALL tenants with same industry
-    const systemRoles = await storage.getCustomUserRoles(tenantId, 'none');
-    const industryRoles = industryType !== 'none' 
-      ? await storage.getCustomUserRoles(tenantId, industryType)
-      : [];
+    // Get ALL roles from database (system roles + all custom roles from all industries and tenants)
+    const allRoles = await storage.getAllCustomUserRoles();
     
-    // Combine and deduplicate by roleKey (system roles take precedence)
+    // Deduplicate by roleKey and filter only active roles
     const roleMap = new Map<string, {key: string, name: string, description: string, isCustom: boolean}>();
     
-    // Add system roles first
-    systemRoles.filter(role => role.active).forEach(role => {
-      roleMap.set(role.roleKey, {
-        key: role.roleKey,
-        name: role.roleName,
-        description: role.description || '',
-        isCustom: false
-      });
-    });
-    
-    // Add industry-specific roles (won't override system roles due to Map)
-    industryRoles.filter(role => role.active).forEach(role => {
+    allRoles.filter(role => role.active).forEach(role => {
       if (!roleMap.has(role.roleKey)) {
         roleMap.set(role.roleKey, {
           key: role.roleKey,
           name: role.roleName,
           description: role.description || '',
-          isCustom: true
+          isCustom: !role.isDefault
         });
       }
     });

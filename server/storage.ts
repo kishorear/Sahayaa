@@ -217,6 +217,7 @@ export interface IStorage {
   
   // Custom user role operations (creator-only)
   getCustomUserRoles(tenantId: number, industryType?: string): Promise<CustomUserRole[]>;
+  getAllCustomUserRoles(): Promise<CustomUserRole[]>;
   getCustomUserRoleById(id: number, tenantId?: number): Promise<CustomUserRole | undefined>;
   getCustomUserRoleByKey(roleKey: string, tenantId: number, industryType?: string): Promise<CustomUserRole | undefined>;
   createCustomUserRole(role: InsertCustomUserRole): Promise<CustomUserRole>;
@@ -5926,6 +5927,20 @@ export class DatabaseStorage implements IStorage {
         .orderBy(customUserRoles.roleName);
     } catch (error) {
       console.error('Error getting custom user roles:', error);
+      return [];
+    }
+  }
+
+  async getAllCustomUserRoles(): Promise<CustomUserRole[]> {
+    try {
+      // Return ALL roles from all tenants and all industries
+      // This includes both system roles and all custom roles
+      return await db
+        .select()
+        .from(customUserRoles)
+        .orderBy(customUserRoles.roleName);
+    } catch (error) {
+      console.error('Error getting all custom user roles:', error);
       return [];
     }
   }

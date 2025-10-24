@@ -150,6 +150,7 @@ const RegistrationPage = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [editingUserTenantId, setEditingUserTenantId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [generateRandom, setGenerateRandom] = useState(true);
   
@@ -255,13 +256,16 @@ const RegistrationPage = () => {
   });
   
   // Fetch available roles for the editing user's tenant
-  const editUserTenantId = editForm.watch("companyId");
+  // Watch the current companyId in the form, but fallback to editingUserTenantId on initial load
+  const currentEditCompanyId = editForm.watch("companyId");
+  const roleQueryTenantId = currentEditCompanyId || editingUserTenantId;
+  
   const { data: editUserAvailableRoles = [] } = useQuery<Array<{key: string, name: string, description: string, isCustom: boolean}>>({
-    queryKey: [`/api/permissions/available-roles?tenantId=${editUserTenantId}`, editUserTenantId],
+    queryKey: [`/api/permissions/available-roles?tenantId=${roleQueryTenantId}`, roleQueryTenantId],
     queryFn: () => 
-      apiRequest("GET", `/api/permissions/available-roles?tenantId=${editUserTenantId}`)
+      apiRequest("GET", `/api/permissions/available-roles?tenantId=${roleQueryTenantId}`)
         .then(res => res.json()),
-    enabled: !!editUserTenantId && editDialogOpen,
+    enabled: !!roleQueryTenantId && editDialogOpen,
   });
   
   // Create user mutation
@@ -333,6 +337,7 @@ const RegistrationPage = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/creators/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/creators/tenants"] });
       setEditDialogOpen(false);
+      setEditingUserTenantId(null);
       editForm.reset();
     },
     onError: (error: any) => {
@@ -606,6 +611,7 @@ const RegistrationPage = () => {
                                   size="sm"
                                   onClick={() => {
                                     setSelectedUserId(user.id);
+                                    setEditingUserTenantId(user.tenantId);
                                     setEditDialogOpen(true);
                                     // Pre-populate the edit form with user data
                                     editForm.reset({

@@ -5893,22 +5893,19 @@ export class DatabaseStorage implements IStorage {
   // Custom user role operations (creator-only)
   async getCustomUserRoles(tenantId: number, industryType?: string): Promise<CustomUserRole[]> {
     try {
-      // If industryType is provided, fetch:
-      // 1. System roles (isDefault=true) for THIS specific tenant only
-      // 2. Industry-wide custom roles (isDefault=false) from ALL tenants with that industry
-      //    (except for 'none' which should remain tenant-specific)
-      // If no industryType, just fetch all roles for the specific tenant
+      // NEW LOGIC: System roles and custom roles are matched by industry type, NOT tenant ID
+      // 1. System roles (isDefault=true, industryType='none') - appear for ALL tenants globally
+      // 2. Custom roles (isDefault=false) - matched by industryType across ALL tenants
+      
       const conditions = industryType
         ? or(
-            // System roles for THIS tenant only (tenant-specific activation/deactivation)
-            // System roles ALWAYS have industryType='none' regardless of tenant's industry
+            // System roles: Global, not tenant-specific (ANY tenant can use them)
             and(
-              eq(customUserRoles.tenantId, tenantId), 
               eq(customUserRoles.industryType, 'none'), 
               eq(customUserRoles.isDefault, true)
             ),
-            // Custom roles with this industry type from ANY tenant (industry-wide sharing)
-            // BUT: 'none' industry custom roles remain tenant-specific
+            // Custom roles: Match by industry type across ALL tenants
+            // 'none' industry custom roles remain tenant-specific for backwards compatibility
             industryType !== 'none'
               ? and(
                   eq(customUserRoles.industryType, industryType), 

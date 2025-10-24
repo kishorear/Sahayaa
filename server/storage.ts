@@ -63,7 +63,7 @@ import {
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import createMemoryStore from "memorystore";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql } from "drizzle-orm";
 import { db, pool, testDbConnection, executeQuery } from "./db";
 
 // Determine if we're in a production environment

@@ -5901,9 +5901,10 @@ export class DatabaseStorage implements IStorage {
       const conditions = industryType
         ? or(
             // System roles for THIS tenant only (tenant-specific activation/deactivation)
+            // System roles ALWAYS have industryType='none' regardless of tenant's industry
             and(
               eq(customUserRoles.tenantId, tenantId), 
-              eq(customUserRoles.industryType, industryType), 
+              eq(customUserRoles.industryType, 'none'), 
               eq(customUserRoles.isDefault, true)
             ),
             // Custom roles with this industry type from ANY tenant (industry-wide sharing)

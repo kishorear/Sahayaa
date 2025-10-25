@@ -27,22 +27,17 @@ export async function getUserPermissions(userId: number): Promise<RolePermission
     const industryType = (tenant.industryType || 'none') as IndustryType;
 
     // First, check if this is a custom role from the database
-    console.log(`[getUserPermissions] Looking up role: ${user.role}, tenantId: ${user.tenantId}, industryType: ${industryType}`);
     const customRole = await storage.getCustomUserRoleByKey(user.role, user.tenantId, industryType);
-    console.log(`[getUserPermissions] Custom role found:`, customRole ? `Yes (active: ${customRole.active})` : 'No');
     if (customRole) {
       // If we found a database role, respect its active flag
       // If inactive, deny permissions (return null for no permissions)
       if (!customRole.active) {
-        console.log(`[getUserPermissions] Role ${user.role} is inactive, denying permissions`);
         return null;
       }
-      console.log(`[getUserPermissions] Returning custom role permissions for ${user.role}`);
       return customRole.permissions as RolePermissions;
     }
 
     // Only fall back to hardcoded industry roles if no database role exists
-    console.log(`[getUserPermissions] No custom role found, falling back to hardcoded role: ${user.role}`);
     return getRolePermissions(industryType, user.role);
   } catch (error) {
     console.error('Error getting user permissions:', error);

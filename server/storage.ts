@@ -3146,7 +3146,6 @@ export class DatabaseStorage implements IStorage {
             apiKey: tenantData.apiKey || tenantData.apikey,
             settings: settings,
             branding: branding,
-            industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
@@ -3156,7 +3155,6 @@ export class DatabaseStorage implements IStorage {
           console.log(`[DEBUG] getTenantById(${id}): Tenant found:`, {
             id: tenant.id,
             name: tenant.name,
-            industryType: tenant.industryType,
             hasSettings: tenant.settings !== undefined && tenant.settings !== null,
             settingsType: tenant.settings ? typeof tenant.settings : 'null/undefined',
             settingsKeys: tenant.settings && typeof tenant.settings === 'object' ? 
@@ -3268,7 +3266,6 @@ export class DatabaseStorage implements IStorage {
             apiKey: tenantData.apiKey || tenantData.apikey,
             settings: settings,
             branding: branding,
-            industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
@@ -3383,7 +3380,6 @@ export class DatabaseStorage implements IStorage {
             apiKey: tenantData.apiKey || tenantData.apikey,
             settings: settings,
             branding: branding,
-            industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
@@ -5970,7 +5966,6 @@ export class DatabaseStorage implements IStorage {
 
   async getCustomUserRoleByKey(roleKey: string, tenantId: number, industryType?: string): Promise<CustomUserRole | undefined> {
     try {
-      console.log(`[getCustomUserRoleByKey] Input: roleKey=${roleKey}, tenantId=${tenantId}, industryType=${industryType}`);
       // Strategy: Try multiple lookups in priority order
       // 1. Tenant-specific role with matching industryType (tenant custom role)
       // 2. Tenant-specific system role (industryType='none', isDefault=true)
@@ -5978,7 +5973,6 @@ export class DatabaseStorage implements IStorage {
       
       // Try 1: Tenant-specific role with matching industryType
       if (industryType) {
-        console.log(`[getCustomUserRoleByKey] Step 1: Looking for tenant-specific role with industryType=${industryType}`);
         const tenantIndustryRole = await db
           .select()
           .from(customUserRoles)
@@ -5991,7 +5985,6 @@ export class DatabaseStorage implements IStorage {
           )
           .limit(1);
         
-        console.log(`[getCustomUserRoleByKey] Step 1 result:`, tenantIndustryRole[0] ? `Found: ${tenantIndustryRole[0].roleName}` : 'Not found');
         if (tenantIndustryRole[0]) {
           return tenantIndustryRole[0];
         }

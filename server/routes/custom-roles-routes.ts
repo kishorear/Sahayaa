@@ -29,20 +29,16 @@ export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHand
   app.get('/api/custom-roles', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     console.log('GET /api/custom-roles - Request from user:', req.user?.username);
     try {
-      const { forManagement, industryType } = req.query;
+      const { forManagement } = req.query;
       
       // Get ALL roles from the database
       const allRoles = await storage.getAllCustomUserRoles();
       
       if (forManagement === 'true') {
         // For role management (edit/delete), creators get ALL roles across all tenants
-        // Filter by industryType if provided
-        let filteredRoles = allRoles;
-        if (industryType && typeof industryType === 'string') {
-          filteredRoles = allRoles.filter(role => role.industryType === industryType);
-        }
-        console.log('GET /api/custom-roles - Returning', filteredRoles.length, 'roles for industry', industryType || 'all', '(creator management mode)');
-        res.json(filteredRoles);
+        // This allows creators to manage roles system-wide
+        console.log('GET /api/custom-roles - Returning', allRoles.length, 'roles across all tenants (creator management mode)');
+        res.json(allRoles);
       } else {
         // For dropdowns (registration), return unique role DEFINITIONS only (deduplicated by roleKey)
         // Project only the definition fields, not tenant-specific metadata

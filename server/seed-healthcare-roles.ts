@@ -58,7 +58,7 @@ async function seedHealthcareRoles() {
             description: roleData.description,
             permissions: roleData.permissions as any,
             industryType: 'healthcare',
-            isDefault: true, // Healthcare roles are system defaults for healthcare tenants
+            isDefault: false, // Healthcare-specific roles are not system defaults
             active: true,
           });
           

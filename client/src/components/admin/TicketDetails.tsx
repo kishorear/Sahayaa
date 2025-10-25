@@ -34,11 +34,6 @@ export default function TicketDetails() {
   
   // Check if user can edit complexity (admin, chief_doctor, doctor)
   const canEditComplexity = user?.role === 'admin' || user?.role === 'chief_doctor' || user?.role === 'doctor';
-  
-  // Debug logging
-  console.log('TicketDetails - User:', user);
-  console.log('TicketDetails - User role:', user?.role);
-  console.log('TicketDetails - canEditComplexity:', canEditComplexity);
 
 
   const { data: ticket, isLoading: ticketLoading } = useQuery<Ticket & { messages: Message[]; attachments: Attachment[] }>({

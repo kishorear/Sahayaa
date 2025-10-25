@@ -182,6 +182,12 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
       
+      // Verify user has permission to access integrations
+      const hasAccessIntegrationsPermission = await userHasPermission(req, 'canAccessIntegrations');
+      if (!hasAccessIntegrationsPermission) {
+        return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access integrations' });
+      }
+      
       const tenantId = req.user.tenantId;
       console.log(`Loading integration settings from database for tenant ${tenantId}`);
       

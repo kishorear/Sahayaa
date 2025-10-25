@@ -1122,41 +1122,64 @@ export class MemStorage implements IStorage {
     }
     
     // Filter users by role based on ticket category
+    // Map categories to eligible roles
     let eligibleUsers: User[] = [];
     
-    switch (category.toLowerCase()) {
-      case 'technical':
-      case 'integration':
-      case 'api':
-      case 'bug':
+    switch (category?.toLowerCase()) {
+      case 'technical_issue':
+      case 'feature_request':
+        // Technical issues go to support agents, engineers, doctors, and chief doctors
         eligibleUsers = tenantUsers.filter(user => 
-          user.role === 'support_engineer' || user.role === 'administrator'
+          user.role === 'support_agent' || 
+          user.role === 'engineer' || 
+          user.role === 'doctor' ||
+          user.role === 'chief_doctor' ||
+          user.role === 'admin'
         );
         break;
       case 'billing':
-      case 'payment':
-      case 'subscription':
+        // Billing issues go to admin and chief doctors
         eligibleUsers = tenantUsers.filter(user => 
-          user.role === 'administrator' || user.role === 'member'
+          user.role === 'admin' || 
+          user.role === 'chief_doctor' ||
+          user.role === 'support_agent'
         );
         break;
       case 'authentication':
-      case 'security':
+      case 'account':
+        // Authentication and account issues go to support agents and doctors
         eligibleUsers = tenantUsers.filter(user => 
-          user.role === 'administrator' || user.role === 'support_engineer'
+          user.role === 'support_agent' || 
+          user.role === 'doctor' ||
+          user.role === 'chief_doctor' ||
+          user.role === 'admin'
+        );
+        break;
+      case 'documentation':
+        // Documentation requests go to support agents
+        eligibleUsers = tenantUsers.filter(user => 
+          user.role === 'support_agent' ||
+          user.role === 'doctor' ||
+          user.role === 'admin'
         );
         break;
       default:
-        // For general inquiries, any support role can handle
+        // For general inquiries, any support role can handle (excluding creators and basic users)
         eligibleUsers = tenantUsers.filter(user => 
-          user.role !== 'creator' // Creators typically don't handle support tickets
+          user.role === 'admin' ||
+          user.role === 'support_agent' ||
+          user.role === 'engineer' ||
+          user.role === 'doctor' ||
+          user.role === 'chief_doctor'
         );
         break;
     }
     
-    // If no specific role users found, fall back to all non-creator users
+    // If no specific role users found, fall back to all non-creator, non-user roles
     if (eligibleUsers.length === 0) {
-      eligibleUsers = tenantUsers.filter(user => user.role !== 'creator');
+      eligibleUsers = tenantUsers.filter(user => 
+        user.role !== 'creator' && user.role !== 'user' && user.role !== 'nurse'
+      );
     }
     
     // If still no users, return null
@@ -1164,9 +1187,39 @@ export class MemStorage implements IStorage {
       return null;
     }
     
-    // Randomly select from eligible users
-    const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
-    return eligibleUsers[randomIndex];
+    // Calculate workload for each eligible user (count active tickets)
+    const allTickets = Array.from(this.tickets.values());
+    const userWorkload = eligibleUsers.map(user => {
+      const ticketCount = allTickets.filter(ticket => 
+        ticket.assignedTo === user.id.toString() && 
+        ticket.status !== 'resolved' &&
+        ticket.status !== 'closed' &&
+        (tenantId ? ticket.tenantId === tenantId : true)
+      ).length;
+      
+      return {
+        user,
+        ticketCount
+      };
+    });
+    
+    // Sort by ticket count (ascending - least busy first)
+    userWorkload.sort((a, b) => a.ticketCount - b.ticketCount);
+    
+    // Find the minimum ticket count
+    const minTicketCount = userWorkload[0].ticketCount;
+    
+    // Get all users with the minimum ticket count
+    const leastBusyUsers = userWorkload.filter(w => w.ticketCount === minTicketCount);
+    
+    // If multiple users have the same (lowest) workload, randomly assign to one of them
+    if (leastBusyUsers.length > 1) {
+      const randomIndex = Math.floor(Math.random() * leastBusyUsers.length);
+      return leastBusyUsers[randomIndex].user;
+    }
+    
+    // Return the single least busy user
+    return leastBusyUsers[0].user;
   }
 
   async resetTicketIdsForTenantIsolation(): Promise<void> {
@@ -3974,6 +4027,129 @@ export class DatabaseStorage implements IStorage {
       return workload[0].user;
     } catch (error) {
       console.error(`Error in assignTicketToLeastBusyMember(${teamId}):`, error);
+      return null;
+    }
+  }
+
+  async assignTicketRandomlyInDepartment(category: string, tenantId?: number): Promise<User | null> {
+    try {
+      // Get all users in the tenant
+      const tenantUsers = await this.getUsersByTenantId(tenantId || 1);
+      
+      if (tenantUsers.length === 0) {
+        return null;
+      }
+      
+      // Filter users by role based on ticket category
+      // Map categories to eligible roles
+      let eligibleUsers: User[] = [];
+      
+      switch (category?.toLowerCase()) {
+        case 'technical_issue':
+        case 'feature_request':
+          // Technical issues go to support agents, engineers, doctors, and chief doctors
+          eligibleUsers = tenantUsers.filter(user => 
+            user.role === 'support_agent' || 
+            user.role === 'engineer' || 
+            user.role === 'doctor' ||
+            user.role === 'chief_doctor' ||
+            user.role === 'admin'
+          );
+          break;
+        case 'billing':
+          // Billing issues go to admin and chief doctors
+          eligibleUsers = tenantUsers.filter(user => 
+            user.role === 'admin' || 
+            user.role === 'chief_doctor' ||
+            user.role === 'support_agent'
+          );
+          break;
+        case 'authentication':
+        case 'account':
+          // Authentication and account issues go to support agents and doctors
+          eligibleUsers = tenantUsers.filter(user => 
+            user.role === 'support_agent' || 
+            user.role === 'doctor' ||
+            user.role === 'chief_doctor' ||
+            user.role === 'admin'
+          );
+          break;
+        case 'documentation':
+          // Documentation requests go to support agents
+          eligibleUsers = tenantUsers.filter(user => 
+            user.role === 'support_agent' ||
+            user.role === 'doctor' ||
+            user.role === 'admin'
+          );
+          break;
+        default:
+          // For general inquiries, any support role can handle (excluding creators and basic users)
+          eligibleUsers = tenantUsers.filter(user => 
+            user.role === 'admin' ||
+            user.role === 'support_agent' ||
+            user.role === 'engineer' ||
+            user.role === 'doctor' ||
+            user.role === 'chief_doctor'
+          );
+          break;
+      }
+      
+      // If no specific role users found, fall back to all non-creator, non-user roles
+      if (eligibleUsers.length === 0) {
+        eligibleUsers = tenantUsers.filter(user => 
+          user.role !== 'creator' && user.role !== 'user' && user.role !== 'nurse'
+        );
+      }
+      
+      // If still no users, return null
+      if (eligibleUsers.length === 0) {
+        return null;
+      }
+      
+      // Calculate workload for each eligible user (count active tickets)
+      const userWorkload = await Promise.all(
+        eligibleUsers.map(async (user) => {
+          const ticketCountQuery = db
+            .select({ count: sql<number>`count(*)` })
+            .from(tickets)
+            .where(
+              and(
+                eq(tickets.assignedTo, user.id.toString()),
+                sql`${tickets.status} != 'resolved'`,
+                sql`${tickets.status} != 'closed'`,
+                tenantId ? eq(tickets.tenantId, tenantId) : sql`1=1`
+              )
+            );
+          
+          const [result] = await ticketCountQuery;
+          const ticketCount = Number(result?.count || 0);
+          
+          return {
+            user,
+            ticketCount
+          };
+        })
+      );
+      
+      // Sort by ticket count (ascending - least busy first)
+      userWorkload.sort((a, b) => a.ticketCount - b.ticketCount);
+      
+      // Find the minimum ticket count
+      const minTicketCount = userWorkload[0].ticketCount;
+      
+      // Get all users with the minimum ticket count
+      const leastBusyUsers = userWorkload.filter(w => w.ticketCount === minTicketCount);
+      
+      // If multiple users have the same (lowest) workload, randomly assign to one of them
+      if (leastBusyUsers.length > 1) {
+        const randomIndex = Math.floor(Math.random() * leastBusyUsers.length);
+        return leastBusyUsers[randomIndex].user;
+      }
+      
+      // Return the single least busy user
+      return leastBusyUsers[0].user;
+    } catch (error) {
+      console.error(`Error in assignTicketRandomlyInDepartment(${category}):`, error);
       return null;
     }
   }

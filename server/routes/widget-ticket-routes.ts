@@ -148,19 +148,18 @@ export function registerWidgetTicketRoutes(app: Express): void {
       
       const ticket = await storage.createTicket(ticketData);
       
-      // Step 4.5: Automatic ticket assignment after creation using department-based random assignment
+      // Step 4.5: Automatic ticket assignment after creation using workload-based routing
       try {
-        // Use department-based random assignment for fair distribution
+        // Use workload-based assignment for fair distribution (assigns to least busy eligible team member)
         const assignedUser = await storage.assignTicketRandomlyInDepartment(ticket.category, tenantId);
         
         if (assignedUser) {
           const updatedTicket = await storage.updateTicket(ticket.id, {
-            assignedTo: assignedUser.id.toString(),
-            status: 'assigned'
+            assignedTo: assignedUser.id.toString()
           });
-          console.log(`Widget Ticket: Randomly assigned ticket #${ticket.id} to ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) in ${ticket.category} department`);
+          console.log(`Widget Ticket: Auto-assigned ticket #${ticket.id} to ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) based on category "${ticket.category}" (least busy eligible team member)`);
         } else {
-          console.warn(`Widget Ticket: No users available in ${ticket.category} department for assignment of ticket #${ticket.id}`);
+          console.warn(`Widget Ticket: No available users for category "${ticket.category}" - ticket #${ticket.id} remains unassigned`);
         }
       } catch (assignmentError) {
         console.error(`Widget Ticket: Assignment failed for ticket #${ticket.id}:`, assignmentError);

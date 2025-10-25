@@ -691,21 +691,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const classification = await classifyTicket(enhancedTitle, ticketData.description, tenantId);
       
-      // Use department-based random assignment for fair distribution
+      // Use workload-based assignment for fair distribution (assigns to least busy team member)
       let assignedUserId: string | null = null;
       let teamId = ticketData.teamId;
       
-      // Try to assign based on ticket category (department)
+      // Try to assign based on ticket category with workload balancing
       try {
         const assignedUser = await storage.assignTicketRandomlyInDepartment(classification.category, tenantId);
         if (assignedUser) {
           assignedUserId = assignedUser.id.toString();
-          console.log(`Ticket randomly assigned to ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) in ${classification.category} department`);
+          console.log(`Ticket auto-assigned to ${assignedUser.name || assignedUser.username} (ID: ${assignedUser.id}) based on category "${classification.category}" (least busy eligible team member)`);
         } else {
-          console.log(`No users available in ${classification.category} department for assignment`);
+          console.log(`No available users for category "${classification.category}" - ticket will remain unassigned`);
         }
       } catch (error) {
-        console.error(`Error assigning ticket randomly:`, error);
+        console.error(`Error auto-assigning ticket:`, error);
       }
       
       const newTicket: InsertTicket = {

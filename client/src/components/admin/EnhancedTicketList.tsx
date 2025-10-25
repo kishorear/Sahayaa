@@ -16,6 +16,7 @@ import { Ticket } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TenantSelector from "@/components/TenantSelector";
 import { usePermissions } from "@/hooks/use-permissions";
+import CreateTicketDialog from "@/components/admin/CreateTicketDialog";
 import { 
   Search, 
   Filter, 
@@ -268,12 +269,7 @@ export default function EnhancedTicketList() {
             />
           )}
           
-          <Link href="/admin/tickets/new">
-            <Button>
-              <MessageSquare className="mr-2 h-4 w-4" />
-              New Ticket
-            </Button>
-          </Link>
+          <CreateTicketDialog />
         </div>
       </div>
 

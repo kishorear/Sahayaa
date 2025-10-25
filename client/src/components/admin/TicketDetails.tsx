@@ -5,6 +5,7 @@ import { formatDistance, format } from "date-fns";
 import { Ticket, Message, InsertMessage, User as UserSchema, Attachment } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +27,13 @@ export default function TicketDetails() {
   const { id } = useParams<{ id: string }>();
   const ticketId = parseInt(id, 10);
   const { toast } = useToast();
+  const { user } = useAuth();
   const [newMessage, setNewMessage] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
+  const [selectedComplexity, setSelectedComplexity] = useState<string | undefined>(undefined);
+  
+  // Check if user can edit complexity (admin, chief_doctor, doctor)
+  const canEditComplexity = user?.role === 'admin' || user?.role === 'chief_doctor' || user?.role === 'doctor';
 
 
   const { data: ticket, isLoading: ticketLoading } = useQuery<Ticket & { messages: Message[]; attachments: Attachment[] }>({
@@ -74,14 +80,14 @@ export default function TicketDetails() {
   });
 
   const updateTicketMutation = useMutation({
-    mutationFn: async (status: string) => {
-      return await apiRequest("PATCH", `/api/tickets/${ticketId}`, { status });
+    mutationFn: async (updates: { status?: string; complexity?: string }) => {
+      return await apiRequest("PATCH", `/api/tickets/${ticketId}`, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/tickets/${ticketId}`] });
       toast({
         title: "Ticket updated",
-        description: "Ticket status has been updated successfully.",
+        description: "Ticket has been updated successfully.",
       });
     },
     onError: (error) => {
@@ -95,7 +101,12 @@ export default function TicketDetails() {
 
   const handleStatusChange = (status: string) => {
     setSelectedStatus(status);
-    updateTicketMutation.mutate(status);
+    updateTicketMutation.mutate({ status });
+  };
+
+  const handleComplexityChange = (complexity: string) => {
+    setSelectedComplexity(complexity);
+    updateTicketMutation.mutate({ complexity });
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -280,7 +291,24 @@ export default function TicketDetails() {
 
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Complexity</h3>
-                <ComplexityBadge complexity={ticket.complexity || "medium"} />
+                {canEditComplexity ? (
+                  <Select
+                    value={selectedComplexity || ticket.complexity || "medium"}
+                    onValueChange={handleComplexityChange}
+                    disabled={updateTicketMutation.isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simple">Simple</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="complex">Complex</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <ComplexityBadge complexity={ticket.complexity || "medium"} />
+                )}
               </div>
 
               <div>

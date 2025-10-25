@@ -891,18 +891,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // MESSAGE ROUTES
-  app.get("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+  app.get("/api/tickets/:ticketId/messages", requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       
-      // Check if user is a creator to determine tenant filtering  
+      // Check if user has permission to view tickets
+      const { userHasPermission } = await import("./permissions");
+      const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
+      const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
       
+      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to view ticket messages" 
+        });
+      }
+      
       // For non-creator users, verify ticket belongs to their tenant
-      if (!isCreator) {
-        const ticket = await storage.getTicketById(ticketId, req.user?.tenantId);
-        if (!ticket) {
-          return res.status(404).json({ message: "Ticket not found" });
+      const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      const ticket = await storage.getTicketById(ticketId, tenantId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // If user can only view own tickets, verify they are assigned to or created this ticket
+      if (canViewOwnTickets && !canViewAllTickets && !isCreator) {
+        const userId = req.user?.id;
+        const isAssigned = ticket.assignedTo === String(userId);
+        const isCreatedBy = ticket.userId === userId;
+        
+        if (!isAssigned && !isCreatedBy) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only view messages for tickets assigned to you or created by you" 
+          });
         }
       }
       
@@ -914,13 +936,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tickets/:ticketId/messages", requireRole(['admin', 'support-agent', 'engineer', 'user', 'creator']), async (req, res) => {
+  app.post("/api/tickets/:ticketId/messages", requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
       const messageData = insertMessageSchema.parse({ ...req.body, ticketId });
       
-      // Check if user is a creator to determine tenant filtering
+      // Check if user has permission to comment on tickets (can view = can comment)
+      const { userHasPermission } = await import("./permissions");
+      const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
+      const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to comment on tickets" 
+        });
+      }
       
       // For non-creator users, always filter by their tenant
       const tenantId = !isCreator ? req.user?.tenantId : undefined;
@@ -929,6 +960,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticket = await storage.getTicketById(ticketId, tenantId);
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // If user can only view own tickets, verify they are assigned to or created this ticket
+      if (canViewOwnTickets && !canViewAllTickets && !isCreator) {
+        const userId = req.user?.id;
+        const isAssigned = ticket.assignedTo === String(userId);
+        const isCreatedBy = ticket.userId === userId;
+        
+        if (!isAssigned && !isCreatedBy) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only comment on tickets assigned to you or created by you" 
+          });
+        }
       }
       
       // Create message in our system
@@ -2130,9 +2174,43 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   });
   
   // ATTACHMENT ROUTES
-  app.get("/api/tickets/:ticketId/attachments", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
+  app.get("/api/tickets/:ticketId/attachments", requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
+      
+      // Check if user has permission to view tickets (and their attachments)
+      const { userHasPermission } = await import("./permissions");
+      const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
+      const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to view ticket attachments" 
+        });
+      }
+      
+      // For non-creator users, verify ticket belongs to their tenant
+      const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      const ticket = await storage.getTicketById(ticketId, tenantId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // If user can only view own tickets, verify they are assigned to or created this ticket
+      if (canViewOwnTickets && !canViewAllTickets && !isCreator) {
+        const userId = req.user?.id;
+        const isAssigned = ticket.assignedTo === String(userId);
+        const isCreatedBy = ticket.userId === userId;
+        
+        if (!isAssigned && !isCreatedBy) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only view attachments for tickets assigned to you or created by you" 
+          });
+        }
+      }
+      
       const attachments = await storage.getAttachmentsByTicketId(ticketId);
       res.status(200).json(attachments);
     } catch (error) {
@@ -2140,7 +2218,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     }
   });
   
-  app.get("/api/attachments/:id", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
+  app.get("/api/attachments/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const attachment = await storage.getAttachmentById(id);
@@ -2149,16 +2227,63 @@ Your goal is to quickly gather issue details and create comprehensive support ti
         return res.status(404).json({ message: "Attachment not found" });
       }
       
+      // Check if user has permission to view tickets (and their attachments)
+      const { userHasPermission } = await import("./permissions");
+      const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
+      const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to view attachments" 
+        });
+      }
+      
+      // If user can only view own tickets, verify they have access to the ticket this attachment belongs to
+      if (canViewOwnTickets && !canViewAllTickets && !isCreator && attachment.ticketId) {
+        const tenantId = req.user?.tenantId;
+        const ticket = await storage.getTicketById(attachment.ticketId, tenantId);
+        
+        if (!ticket) {
+          return res.status(404).json({ message: "Ticket not found" });
+        }
+        
+        const userId = req.user?.id;
+        const isAssigned = ticket.assignedTo === String(userId);
+        const isCreatedBy = ticket.userId === userId;
+        
+        if (!isAssigned && !isCreatedBy) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only view attachments for tickets assigned to you or created by you" 
+          });
+        }
+      }
+      
       res.status(200).json(attachment);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
   });
   
-  app.post("/api/tickets/:ticketId/attachments", requireRole(['admin', 'support-agent', 'engineer', 'user']), async (req, res) => {
+  app.post("/api/tickets/:ticketId/attachments", requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.ticketId);
-      const ticket = await storage.getTicketById(ticketId);
+      
+      // Check if user has permission to comment/add to tickets
+      const { userHasPermission } = await import("./permissions");
+      const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
+      const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
+      const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
+      
+      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to add attachments to tickets" 
+        });
+      }
+      
+      // For non-creator users, verify ticket belongs to their tenant
+      const tenantId = !isCreator ? req.user?.tenantId : undefined;
+      const ticket = await storage.getTicketById(ticketId, tenantId);
       
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });

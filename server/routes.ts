@@ -175,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { requireAuth, requireRole } = await setupAuth(app);
   
   // Register email-related routes
-  registerEmailRoutes(app, requireRole(['admin', 'support-agent']));
+  registerEmailRoutes(app, requireRole(['admin', 'support_agent']));
   
   // Register email support routes (publicly accessible)
   registerEmailSupportRoutes(app);
@@ -473,7 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tenantId = undefined;
         }
       } else if (!isCreator) {
-        // SECURITY FIX: ALL non-creator users (admin, support-agent, engineer) are restricted to their tenant
+        // SECURITY FIX: ALL non-creator users (admin, support_agent, engineer) are restricted to their tenant
         tenantId = req.user?.tenantId;
         console.log(`Non-creator user access - enforcing tenant isolation for user ${req.user?.username} (tenant: ${tenantId})`);
         
@@ -1851,8 +1851,8 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     }
   });
 
-  // DASHBOARD METRICS - Require admin or support-agent roles
-  app.get("/api/metrics/summary", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+  // DASHBOARD METRICS - Require admin or support_agent roles
+  app.get("/api/metrics/summary", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
@@ -1979,7 +1979,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     }
   });
 
-  app.get("/api/metrics/categories", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/categories", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
@@ -2037,7 +2037,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     }
   });
 
-  app.get("/api/metrics/recent", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/recent", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 5;
       
@@ -2080,7 +2080,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   });
   
   // API endpoint for response time metrics
-  app.get("/api/metrics/response-time", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/response-time", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
@@ -2160,7 +2160,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   });
   
   // API endpoint for ticket volume metrics
-  app.get("/api/metrics/ticket-volume", requireRole(['admin', 'support-agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/ticket-volume", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
     try {
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
@@ -2429,7 +2429,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   });
 
   // TicketFormatterAgent test endpoint
-  app.post("/api/test/ticket-formatter", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+  app.post("/api/test/ticket-formatter", requireRole(['admin', 'support_agent', 'engineer', 'creator']), async (req, res) => {
     try {
       console.log('TicketFormatter Test: Processing formatting request');
       
@@ -2477,7 +2477,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   });
 
   // SupportTeam Orchestrator test endpoint - Complete five-agent pipeline
-  app.post("/api/test/support-team-orchestrator", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+  app.post("/api/test/support-team-orchestrator", requireRole(['admin', 'support_agent', 'engineer', 'creator']), async (req, res) => {
     try {
       console.log('SupportTeam Orchestrator Test: Processing complete workflow');
       

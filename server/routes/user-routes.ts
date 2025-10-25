@@ -46,7 +46,7 @@ export function registerUserRoutes(
   });
 
   // Get all users (with strict tenant filtering for security)
-  app.get("/api/users", requireRole(['admin', 'support-agent']), async (req: Request, res: Response) => {
+  app.get("/api/users", requireRole(['admin', 'support_agent']), async (req: Request, res: Response) => {
     try {
       const tenantId = req.user?.tenantId;
       

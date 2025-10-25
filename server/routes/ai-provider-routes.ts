@@ -5,7 +5,7 @@ import { eq, and, or, isNull } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { checkAiProviderAccess } from '../ai/middleware/check-ai-provider';
-import { isCreatorOrAdminRole } from '../utils';
+import { userHasPermission } from '../permissions';
 import { getAiProviderAccessForUser } from '../ai/service';
 import { logAiProviderAccess, logAiProviderManagement } from '../ai/audit-log';
 
@@ -25,8 +25,9 @@ router.get('/ai/providers/available', async (req, res) => {
     const tenantId = req.user.tenantId;
     const teamId = req.user.teamId;
     
-    // Creator and admin roles always have access
-    if (isCreatorOrAdminRole(req.user.role)) {
+    // Users with AI provider access permission
+    const hasAIProvidersPermission = await userHasPermission(req, 'canAccessAIProviders');
+    if (hasAIProvidersPermission) {
       // Still check if there are providers configured for this tenant
       const providers = await db.select({ count: schema.aiProviders.id })
         .from(schema.aiProviders)
@@ -99,14 +100,15 @@ router.get('/tenants/:tenantId/ai-providers', checkAiProviderAccess, async (req,
     const tenantId = parseInt(req.params.tenantId);
     
     // Check if user has access to this tenant
-    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (!hasAISettingsPermission && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to access AI providers for this tenant' });
     }
     
     let aiProviders;
     
-    // For creator and admin roles, show all providers for the tenant
-    if (isCreatorOrAdminRole(req.user?.role)) {
+    // For users with AI settings permission, show all providers for the tenant
+    if (hasAISettingsPermission) {
       aiProviders = await db.select().from(schema.aiProviders)
         .where(eq(schema.aiProviders.tenantId, tenantId));
     } else {
@@ -136,13 +138,14 @@ router.post('/tenants/:tenantId/ai-providers', checkAiProviderAccess, async (req
     const tenantId = parseInt(req.params.tenantId);
     
     // Check if user has access to this tenant
-    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (!hasAISettingsPermission && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to create AI providers for this tenant' });
     }
     
-    // Only creator and admin can create providers
-    if (!isCreatorOrAdminRole(req.user?.role)) {
-      return res.status(403).json({ message: 'Only administrators and creators can create AI providers' });
+    // Only users with AI settings permission can create providers
+    if (!hasAISettingsPermission) {
+      return res.status(403).json({ message: 'You do not have permission to create AI providers' });
     }
     
     // Validate request body
@@ -221,13 +224,14 @@ router.patch('/tenants/:tenantId/ai-providers/:providerId', checkAiProviderAcces
     const providerId = parseInt(req.params.providerId);
     
     // Check if user has access to this tenant
-    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (!hasAISettingsPermission && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to update AI providers for this tenant' });
     }
     
-    // Only creator and admin can update providers
-    if (!isCreatorOrAdminRole(req.user?.role)) {
-      return res.status(403).json({ message: 'Only administrators and creators can update AI providers' });
+    // Only users with AI settings permission can update providers
+    if (!hasAISettingsPermission) {
+      return res.status(403).json({ message: 'You do not have permission to update AI providers' });
     }
     
     // Get the existing provider to check if it belongs to the tenant
@@ -333,13 +337,14 @@ router.delete('/tenants/:tenantId/ai-providers/:providerId', checkAiProviderAcce
     const providerId = parseInt(req.params.providerId);
     
     // Check if user has access to this tenant
-    if (!isCreatorOrAdminRole(req.user?.role) && req.user?.tenantId !== tenantId) {
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (!hasAISettingsPermission && req.user?.tenantId !== tenantId) {
       return res.status(403).json({ message: 'You do not have permission to delete AI providers for this tenant' });
     }
     
-    // Only creator and admin can delete providers
-    if (!isCreatorOrAdminRole(req.user?.role)) {
-      return res.status(403).json({ message: 'Only administrators and creators can delete AI providers' });
+    // Only users with AI settings permission can delete providers
+    if (!hasAISettingsPermission) {
+      return res.status(403).json({ message: 'You do not have permission to delete AI providers' });
     }
     
     // Get the provider to check if it exists and belongs to the tenant

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, AlertCircle, ChevronLeft } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -29,6 +29,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { CustomUserRole, RolePermissions } from "@shared/schema";
 
 export default function RoleManagementPage() {
+  const [, setLocation] = useLocation();
   const [selectedIndustry, setSelectedIndustry] = useState<string>("healthcare");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<CustomUserRole | null>(null);
@@ -122,11 +123,14 @@ export default function RoleManagementPage() {
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Link href="/creator/dashboard">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          </Link>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setLocation('/creator/dashboard')}
+            data-testid="button-back"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold" data-testid="page-title">Role Management</h1>
             <p className="text-muted-foreground mt-2">

@@ -467,7 +467,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
   });
   
   // Delete a team member
-  app.delete("/api/team-members/:id", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+  app.delete("/api/team-members/:id", requirePermission('canManageUsers'), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       

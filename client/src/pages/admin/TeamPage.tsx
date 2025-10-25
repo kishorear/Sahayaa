@@ -471,6 +471,8 @@ export default function TeamPage() {
                         <SelectItem value="support-agent">Support Agent</SelectItem>
                         <SelectItem value="engineer">Engineer</SelectItem>
                         <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="doctor">Doctor</SelectItem>
+                        <SelectItem value="chief_doctor">Chief Doctor</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -580,6 +582,8 @@ export default function TeamPage() {
                         <SelectItem value="support-agent">Support Agent</SelectItem>
                         <SelectItem value="engineer">Engineer</SelectItem>
                         <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="doctor">Doctor</SelectItem>
+                        <SelectItem value="chief_doctor">Chief Doctor</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

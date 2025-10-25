@@ -525,22 +525,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tickets/:id", requireRole(['admin', 'support-agent', 'engineer', 'creator']), async (req, res) => {
+  app.get("/api/tickets/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
-      // CRITICAL SECURITY: Only creator users can access cross-tenant data
+      // Check if user has permission to view tickets
+      const { userHasPermission } = await import("./permissions");
+      const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
+      const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
       
+      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+        return res.status(403).json({ 
+          message: "Access denied: You don't have permission to view tickets" 
+        });
+      }
+      
+      // CRITICAL SECURITY: Only creator users can access cross-tenant data
       // TENANT ISOLATION: ALL non-creator users are restricted to their tenant
       const tenantId = !isCreator ? req.user?.tenantId : undefined;
       
-      console.log(`Ticket access - User: ${req.user?.username}, Role: ${req.user?.role}, Tenant: ${tenantId}, Creator: ${isCreator}`);
+      console.log(`Ticket access - User: ${req.user?.username}, Role: ${req.user?.role}, Tenant: ${tenantId}, Creator: ${isCreator}, CanViewAll: ${canViewAllTickets}, CanViewOwn: ${canViewOwnTickets}`);
       
       const ticket = await storage.getTicketById(id, tenantId);
       
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // If user can only view own tickets, verify they are assigned to or created this ticket
+      if (canViewOwnTickets && !canViewAllTickets && !isCreator) {
+        const userId = req.user?.id;
+        const isAssigned = ticket.assignedTo === String(userId);
+        const isCreatedBy = ticket.userId === userId;
+        
+        if (!isAssigned && !isCreatedBy) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only view tickets assigned to you or created by you" 
+          });
+        }
       }
       
       const messages = await storage.getMessagesByTicketId(id);

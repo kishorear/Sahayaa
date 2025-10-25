@@ -82,10 +82,12 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
 
     try {
       setCheckingDuplicates(true);
-      const data: { hasDuplicates: boolean; similarTickets: SimilarTicket[] } = await apiRequest('POST', '/api/tickets/check-duplicates', {
+      const response = await apiRequest('POST', '/api/tickets/check-duplicates', {
         title,
         description,
       });
+      
+      const data: { hasDuplicates: boolean; similarTickets: SimilarTicket[] } = await response.json();
 
       if (data.hasDuplicates && data.similarTickets.length > 0) {
         setSimilarTickets(data.similarTickets);

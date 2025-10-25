@@ -238,7 +238,9 @@ export default function TeamPage() {
       "admin": "Administrator",
       "support-agent": "Support Agent",
       "engineer": "Engineer",
-      "user": "User"
+      "user": "User",
+      "doctor": "Doctor",
+      "chief_doctor": "Chief Doctor"
     };
     return roleMap[role] || role;
   };

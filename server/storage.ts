@@ -4036,10 +4036,15 @@ export class DatabaseStorage implements IStorage {
       // CRITICAL: Enforce tenant isolation - default to tenant 1 if not provided
       const effectiveTenantId = tenantId || 1;
       
+      console.log(`[AUTO-ASSIGN] Starting auto-assignment for category: "${category}", tenantId: ${effectiveTenantId}`);
+      
       // Get all users in the tenant
       const tenantUsers = await this.getUsersByTenantId(effectiveTenantId);
       
+      console.log(`[AUTO-ASSIGN] Found ${tenantUsers.length} users in tenant ${effectiveTenantId}`);
+      
       if (tenantUsers.length === 0) {
+        console.log(`[AUTO-ASSIGN] No users found in tenant ${effectiveTenantId}, cannot assign`);
         return null;
       }
       
@@ -4097,15 +4102,20 @@ export class DatabaseStorage implements IStorage {
           break;
       }
       
+      console.log(`[AUTO-ASSIGN] Found ${eligibleUsers.length} eligible users for category "${category}"`);
+      
       // If no specific role users found, fall back to all non-creator, non-user roles
       if (eligibleUsers.length === 0) {
+        console.log(`[AUTO-ASSIGN] No role-specific users found, falling back to all support roles`);
         eligibleUsers = tenantUsers.filter(user => 
           user.role !== 'creator' && user.role !== 'user' && user.role !== 'nurse'
         );
+        console.log(`[AUTO-ASSIGN] Fallback found ${eligibleUsers.length} eligible users`);
       }
       
       // If still no users, return null
       if (eligibleUsers.length === 0) {
+        console.log(`[AUTO-ASSIGN] No eligible users found after fallback, cannot assign`);
         return null;
       }
       
@@ -4138,20 +4148,32 @@ export class DatabaseStorage implements IStorage {
       // Sort by ticket count (ascending - least busy first)
       userWorkload.sort((a, b) => a.ticketCount - b.ticketCount);
       
+      console.log(`[AUTO-ASSIGN] User workload:`, userWorkload.map(w => ({
+        user: w.user.username,
+        role: w.user.role,
+        ticketCount: w.ticketCount
+      })));
+      
       // Find the minimum ticket count
       const minTicketCount = userWorkload[0].ticketCount;
       
       // Get all users with the minimum ticket count
       const leastBusyUsers = userWorkload.filter(w => w.ticketCount === minTicketCount);
       
+      console.log(`[AUTO-ASSIGN] ${leastBusyUsers.length} users with minimum workload (${minTicketCount} tickets)`);
+      
       // If multiple users have the same (lowest) workload, randomly assign to one of them
       if (leastBusyUsers.length > 1) {
         const randomIndex = Math.floor(Math.random() * leastBusyUsers.length);
-        return leastBusyUsers[randomIndex].user;
+        const assignedUser = leastBusyUsers[randomIndex].user;
+        console.log(`[AUTO-ASSIGN] Randomly assigned to ${assignedUser.username} (${assignedUser.role})`);
+        return assignedUser;
       }
       
       // Return the single least busy user
-      return leastBusyUsers[0].user;
+      const assignedUser = leastBusyUsers[0].user;
+      console.log(`[AUTO-ASSIGN] Assigned to ${assignedUser.username} (${assignedUser.role})`);
+      return assignedUser;
     } catch (error) {
       console.error(`Error in assignTicketRandomlyInDepartment(${category}):`, error);
       return null;

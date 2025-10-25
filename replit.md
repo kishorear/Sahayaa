@@ -124,6 +124,18 @@ The system checks for similar existing tickets before creation:
 - **Tenant Isolation**: Duplicate detection is tenant-scoped to ensure data privacy
 - **User Choice**: Users can choose to create anyway or review similar tickets first
 
+### AI Complexity Classification
+The AI classification system automatically analyzes ticket descriptions to determine complexity:
+- **Enhanced Equipment Detection**: AI automatically classifies tickets mentioning equipment as "not working," "broken," "down," "offline," or "failed" as high complexity
+- **Manual Override**: High-level users (admin, chief_doctor, doctor, creator) can manually adjust complexity level in ticket details
+- **Frontend Controls**: Complexity field shows as editable Select dropdown for authorized users, read-only badge for others
+- **Backend Security**: Server enforces role-based access control - only admin, chief_doctor, doctor, and creator roles can modify complexity via API
+- **Complexity Levels**: Simple, Medium, Complex
+
 ## Recent Changes (October 25, 2025)
+- **Enhanced AI Classification**: Updated AI prompt to automatically detect broken/not working equipment and classify as high complexity
+- **Manual Complexity Editing**: Added editable complexity field in ticket details for admin, chief_doctor, and doctor roles with frontend and backend permission enforcement
+- **Backend Security**: Implemented role-based validation on PATCH /api/tickets/:id to prevent unauthorized complexity modifications
 - **Bug Fix**: Corrected auto-assignment function calls in both `server/routes.ts` and `server/routes/widget-ticket-routes.ts` to use the existing `assignTicketRandomlyInDepartment` function instead of non-existent `assignTicketByCategory`
 - **Improved Logging**: Enhanced log messages to clearly indicate workload-based assignment and show assigned user details
+- **Dependency Update**: Updated browserslist database to latest version (caniuse-lite 1.0.30001751)

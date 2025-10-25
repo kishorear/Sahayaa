@@ -106,3 +106,24 @@ Each role is mapped to 15+ granular permissions:
   - `/api/permissions/available-roles?tenantId={id}` - Get all roles for a tenant (system + industry-specific)
   - `/api/custom-roles?industryType={type}` - Get roles for specific industry type
   - `/api/custom-roles` - CRUD operations for custom roles (POST/PUT/DELETE)
+
+## Ticket Management Features
+
+### Auto-Assignment System
+The system automatically assigns new tickets to team members based on category and workload:
+- **Workload-Based Routing**: Uses `assignTicketRandomlyInDepartment` function to assign tickets to the least busy eligible team member
+- **Category-Based Eligibility**: Filters users by role based on ticket category (e.g., technical issues go to support_agent, engineer, doctor, chief_doctor, admin)
+- **Fair Distribution**: Calculates current workload (active ticket count) and assigns to team members with fewest active tickets
+- **Applies to All Ticket Creation**: Both regular ticket creation (`/api/tickets`) and widget ticket creation (`/api/widget/create-ticket`) use the same auto-assignment logic
+- **Error Handling**: Assignment failures don't interrupt ticket creation - tickets remain unassigned and errors are logged for debugging
+
+### Duplicate Detection
+The system checks for similar existing tickets before creation:
+- **Similarity Scoring**: Uses text comparison with >30% threshold to identify similar open tickets
+- **Modal Display**: Shows up to 5 most similar tickets with similarity scores before final submission
+- **Tenant Isolation**: Duplicate detection is tenant-scoped to ensure data privacy
+- **User Choice**: Users can choose to create anyway or review similar tickets first
+
+## Recent Changes (October 25, 2025)
+- **Bug Fix**: Corrected auto-assignment function calls in both `server/routes.ts` and `server/routes/widget-ticket-routes.ts` to use the existing `assignTicketRandomlyInDepartment` function instead of non-existent `assignTicketByCategory`
+- **Improved Logging**: Enhanced log messages to clearly indicate workload-based assignment and show assigned user details

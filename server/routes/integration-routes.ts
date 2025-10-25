@@ -183,10 +183,14 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       }
       
       // Verify user has permission to access integrations
+      console.log(`[GET /api/integrations] Checking canAccessIntegrations permission for user ${req.user.username} (role: ${req.user.role}, tenantId: ${req.user.tenantId})`);
       const hasAccessIntegrationsPermission = await userHasPermission(req, 'canAccessIntegrations');
+      console.log(`[GET /api/integrations] Permission check result: ${hasAccessIntegrationsPermission}`);
       if (!hasAccessIntegrationsPermission) {
+        console.log(`[GET /api/integrations] DENIED - User ${req.user.username} does not have canAccessIntegrations permission`);
         return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access integrations' });
       }
+      console.log(`[GET /api/integrations] ALLOWED - User ${req.user.username} has canAccessIntegrations permission`);
       
       const tenantId = req.user.tenantId;
       console.log(`Loading integration settings from database for tenant ${tenantId}`);
@@ -257,10 +261,14 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
       }
       
       // Only users with integration management permission can update integrations
+      console.log(`[POST /api/integrations/:type] Checking canManageIntegrations permission for user ${req.user.username} (role: ${req.user.role}, tenantId: ${req.user.tenantId})`);
       const hasManageIntegrationsPermission = await userHasPermission(req, 'canManageIntegrations');
+      console.log(`[POST /api/integrations/:type] Permission check result: ${hasManageIntegrationsPermission}`);
       if (!hasManageIntegrationsPermission) {
+        console.log(`[POST /api/integrations/:type] DENIED - User ${req.user.username} does not have canManageIntegrations permission`);
         return res.status(403).json({ message: 'You do not have permission to manage integrations' });
       }
+      console.log(`[POST /api/integrations/:type] ALLOWED - User ${req.user.username} has canManageIntegrations permission`);
       
       console.log('Received integration configuration request:', {
         type: req.params.type,

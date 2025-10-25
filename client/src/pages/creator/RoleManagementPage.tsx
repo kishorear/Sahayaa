@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, AlertCircle, ChevronLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import AdminLayout from "@/components/admin/AdminLayout";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,36 +109,39 @@ export default function RoleManagementPage() {
 
   if (showRoleForm) {
     return (
-      <RoleFormPage
-        industry={selectedIndustry}
-        role={editingRole}
-        onBack={() => {
-          setShowRoleForm(false);
-          setEditingRole(null);
-        }}
-      />
+      <AdminLayout>
+        <RoleFormPage
+          industry={selectedIndustry}
+          role={editingRole}
+          onBack={() => {
+            setShowRoleForm(false);
+            setEditingRole(null);
+          }}
+        />
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setLocation('/creator/dashboard')}
-            data-testid="button-back"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold" data-testid="page-title">Role Management</h1>
-            <p className="text-muted-foreground mt-2">
-              Create and manage custom roles for different industries
-            </p>
+    <AdminLayout>
+      <div className="min-h-screen bg-background p-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setLocation('/creator/dashboard')}
+              data-testid="button-back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold" data-testid="page-title">Role Management</h1>
+              <p className="text-muted-foreground mt-2">
+                Create and manage custom roles for different industries
+              </p>
+            </div>
           </div>
-        </div>
 
         <Card>
           <CardHeader>
@@ -277,7 +281,8 @@ export default function RoleManagementPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
 

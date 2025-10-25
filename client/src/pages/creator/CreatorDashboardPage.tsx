@@ -45,6 +45,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Loader2, UserPlus, Building, Users, Edit, Trash2, Settings, Plus } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Redirect } from "wouter";
+import AdminLayout from "@/components/admin/AdminLayout";
 
 // Schema for user registration
 const userSchema = z.object({
@@ -465,8 +466,9 @@ export default function CreatorDashboardPage() {
   const isLoading = tenantsLoading || teamsLoading || usersLoading;
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Creator Dashboard</h1>
+    <AdminLayout>
+      <div className="container mx-auto py-8">
+        <h1 className="text-2xl font-bold mb-6">Creator Dashboard</h1>
       
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid grid-cols-3 w-full">
@@ -1321,6 +1323,7 @@ export default function CreatorDashboardPage() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

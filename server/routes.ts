@@ -941,13 +941,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticketId = parseInt(req.params.ticketId);
       const messageData = insertMessageSchema.parse({ ...req.body, ticketId });
       
-      // Check if user has permission to comment on tickets (can view = can comment)
+      // Check if user has permission to comment on tickets
       const { userHasPermission } = await import("./permissions");
+      const canCommentOnTickets = await userHasPermission(req, 'canCommentOnTickets');
       const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
       const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
       
-      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+      if (!canCommentOnTickets && !isCreator) {
         return res.status(403).json({ 
           message: "Access denied: You don't have permission to comment on tickets" 
         });
@@ -962,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
-      // If user can only view own tickets, verify they are assigned to or created this ticket
+      // If user can only view own tickets (not all tickets), verify they are assigned to or created this ticket
       if (canViewOwnTickets && !canViewAllTickets && !isCreator) {
         const userId = req.user?.id;
         const isAssigned = ticket.assignedTo === String(userId);
@@ -2269,13 +2270,16 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     try {
       const ticketId = parseInt(req.params.ticketId);
       
-      // Check if user has permission to comment/add to tickets
+      // Check if user has permission to add attachments (requires comment or edit permission)
       const { userHasPermission } = await import("./permissions");
+      const canCommentOnTickets = await userHasPermission(req, 'canCommentOnTickets');
+      const canEditAllTickets = await userHasPermission(req, 'canEditAllTickets');
+      const canEditOwnTickets = await userHasPermission(req, 'canEditOwnTickets');
       const canViewAllTickets = await userHasPermission(req, 'canViewAllTickets');
       const canViewOwnTickets = await userHasPermission(req, 'canViewOwnTickets');
       const isCreator = req.user?.role === 'creator' || req.isCreatorUser;
       
-      if (!canViewAllTickets && !canViewOwnTickets && !isCreator) {
+      if (!canCommentOnTickets && !canEditAllTickets && !canEditOwnTickets && !isCreator) {
         return res.status(403).json({ 
           message: "Access denied: You don't have permission to add attachments to tickets" 
         });
@@ -2287,6 +2291,19 @@ Your goal is to quickly gather issue details and create comprehensive support ti
       
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // If user can only edit/view own tickets, verify they are assigned to or created this ticket
+      if ((canEditOwnTickets || canViewOwnTickets) && !canEditAllTickets && !canViewAllTickets && !isCreator) {
+        const userId = req.user?.id;
+        const isAssigned = ticket.assignedTo === String(userId);
+        const isCreatedBy = ticket.userId === userId;
+        
+        if (!isAssigned && !isCreatedBy) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only add attachments to tickets assigned to you or created by you" 
+          });
+        }
       }
       
       const attachmentData = insertAttachmentSchema.parse({ 

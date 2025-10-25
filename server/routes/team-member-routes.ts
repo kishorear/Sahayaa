@@ -342,7 +342,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
   });
   
   // Update a team member
-  app.patch("/api/team-members/:id", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+  app.patch("/api/team-members/:id", requirePermission('canManageUsers'), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       

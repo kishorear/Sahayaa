@@ -4033,8 +4033,11 @@ export class DatabaseStorage implements IStorage {
 
   async assignTicketRandomlyInDepartment(category: string, tenantId?: number): Promise<User | null> {
     try {
+      // CRITICAL: Enforce tenant isolation - default to tenant 1 if not provided
+      const effectiveTenantId = tenantId || 1;
+      
       // Get all users in the tenant
-      const tenantUsers = await this.getUsersByTenantId(tenantId || 1);
+      const tenantUsers = await this.getUsersByTenantId(effectiveTenantId);
       
       if (tenantUsers.length === 0) {
         return null;
@@ -4107,6 +4110,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Calculate workload for each eligible user (count active tickets)
+      // CRITICAL: Always filter by tenant to maintain tenant isolation
       const userWorkload = await Promise.all(
         eligibleUsers.map(async (user) => {
           const ticketCountQuery = db
@@ -4115,9 +4119,9 @@ export class DatabaseStorage implements IStorage {
             .where(
               and(
                 eq(tickets.assignedTo, user.id.toString()),
+                eq(tickets.tenantId, effectiveTenantId),
                 sql`${tickets.status} != 'resolved'`,
-                sql`${tickets.status} != 'closed'`,
-                tenantId ? eq(tickets.tenantId, tenantId) : sql`1=1`
+                sql`${tickets.status} != 'closed'`
               )
             );
           

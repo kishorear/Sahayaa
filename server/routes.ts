@@ -592,6 +592,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check for similar/duplicate tickets before creation
+  app.post("/api/tickets/check-duplicates", async (req, res) => {
+    try {
+      const { title, description } = req.body;
+      const tenantId = req.tenant?.id || req.user?.tenantId || 1;
+      
+      if (!title || !description) {
+        return res.status(400).json({ message: "Title and description are required" });
+      }
+      
+      // Search for similar open tickets using text matching
+      const allTickets = await storage.getAllTickets(tenantId);
+      
+      // Filter for open/in-progress tickets only
+      const openTickets = allTickets.filter(ticket => 
+        ticket.status === 'new' || 
+        ticket.status === 'open' || 
+        ticket.status === 'in_progress'
+      );
+      
+      // Simple text similarity scoring
+      const searchTerms = `${title} ${description}`.toLowerCase().split(/\s+/);
+      
+      const similarTickets = openTickets.map(ticket => {
+        const ticketText = `${ticket.title} ${ticket.description}`.toLowerCase();
+        
+        // Count matching words
+        const matchCount = searchTerms.filter(term => 
+          term.length > 3 && ticketText.includes(term)
+        ).length;
+        
+        // Calculate similarity score (0-1)
+        const score = matchCount / Math.max(searchTerms.length, 1);
+        
+        return {
+          id: ticket.id,
+          title: ticket.title,
+          description: ticket.description,
+          status: ticket.status,
+          category: ticket.category,
+          createdAt: ticket.createdAt,
+          score: score
+        };
+      })
+      .filter(ticket => ticket.score > 0.3) // Only return tickets with >30% similarity
+      .sort((a, b) => b.score - a.score) // Sort by similarity score
+      .slice(0, 5); // Return top 5 matches
+      
+      console.log(`Found ${similarTickets.length} similar tickets for "${title}"`);
+      
+      res.status(200).json({
+        hasDuplicates: similarTickets.length > 0,
+        similarTickets: similarTickets
+      });
+    } catch (error) {
+      console.error("Error checking for duplicate tickets:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // This route needs no auth since it can be created by the chatbot
   app.post("/api/tickets", async (req, res) => {
     try {

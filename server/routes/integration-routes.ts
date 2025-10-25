@@ -13,7 +13,7 @@ import {
   JiraConfig,
   JiraService
 } from "../integrations/jira";
-import { isCreatorOrAdminRole } from "../utils";
+import { userHasPermission } from "../permissions";
 import { integrationSettingsService } from "../integration-settings-service";
 import { storage } from '../storage';
 import multer from 'multer';
@@ -250,10 +250,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
       
-      // Only creator role or administrator role can update integrations
-      const { role } = req.user;
-      if (!isCreatorOrAdminRole(role)) {
-        return res.status(403).json({ message: 'Only administrators and creators can update integrations' });
+      // Only users with integration management permission can update integrations
+      const hasManageIntegrationsPermission = await userHasPermission(req, 'canManageIntegrations');
+      if (!hasManageIntegrationsPermission) {
+        return res.status(403).json({ message: 'You do not have permission to manage integrations' });
       }
       
       console.log('Received integration configuration request:', {
@@ -509,10 +509,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
       
-      // Only creator role or administrator role can update integrations
-      const { role } = req.user;
-      if (!isCreatorOrAdminRole(role)) {
-        return res.status(403).json({ message: 'Only administrators and creators can sync tickets with integrations' });
+      // Only users with integration management permission can sync tickets
+      const hasManageIntegrationsPermission = await userHasPermission(req, 'canManageIntegrations');
+      if (!hasManageIntegrationsPermission) {
+        return res.status(403).json({ message: 'You do not have permission to sync tickets with integrations' });
       }
       
       const type = integrationTypeSchema.parse(req.params.type);
@@ -633,10 +633,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
       
-      // Only creator role or administrator role can test integrations
-      const { role } = req.user;
-      if (!isCreatorOrAdminRole(role)) {
-        return res.status(403).json({ message: 'Only administrators and creators can test integrations' });
+      // Only users with integration access permission can test integrations
+      const hasAccessIntegrationsPermission = await userHasPermission(req, 'canAccessIntegrations');
+      if (!hasAccessIntegrationsPermission) {
+        return res.status(403).json({ message: 'You do not have permission to test integrations' });
       }
       
       // Debug the raw request before it's processed by any middleware
@@ -911,9 +911,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const { role } = req.user;
-      if (!isCreatorOrAdminRole(role) && role !== 'support' && role !== 'user') {
-        return res.status(403).json({ message: 'Insufficient permissions' });
+      // Allow users with integration access to upload attachments
+      const hasAccessIntegrationsPermission = await userHasPermission(req, 'canAccessIntegrations');
+      if (!hasAccessIntegrationsPermission) {
+        return res.status(403).json({ message: 'You do not have permission to access integrations' });
       }
 
       const { issueKey } = req.params;
@@ -982,9 +983,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const { role } = req.user;
-      if (!isCreatorOrAdminRole(role) && role !== 'support') {
-        return res.status(403).json({ message: 'Insufficient permissions' });
+      // Allow users with integration access to sync attachments
+      const hasAccessIntegrationsPermission = await userHasPermission(req, 'canAccessIntegrations');
+      if (!hasAccessIntegrationsPermission) {
+        return res.status(403).json({ message: 'You do not have permission to access integrations' });
       }
 
       const { ticketId } = req.params;
@@ -1092,9 +1094,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const { role } = req.user;
-      if (!isCreatorOrAdminRole(role) && role !== 'support' && role !== 'user') {
-        return res.status(403).json({ message: 'Insufficient permissions' });
+      // Allow users with integration access to upload attachments
+      const hasAccessIntegrationsPermission = await userHasPermission(req, 'canAccessIntegrations');
+      if (!hasAccessIntegrationsPermission) {
+        return res.status(403).json({ message: 'You do not have permission to access integrations' });
       }
 
       const { ticketId } = req.params;
@@ -1163,9 +1166,10 @@ export function registerIntegrationRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const { role } = req.user;
-      if (!isCreatorOrAdminRole(role) && role !== 'support') {
-        return res.status(403).json({ message: 'Insufficient permissions' });
+      // Allow users with integration access to sync attachments
+      const hasAccessIntegrationsPermission = await userHasPermission(req, 'canAccessIntegrations');
+      if (!hasAccessIntegrationsPermission) {
+        return res.status(403).json({ message: 'You do not have permission to access integrations' });
       }
 
       const { ticketId } = req.params;

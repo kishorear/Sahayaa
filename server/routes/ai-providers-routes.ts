@@ -4,7 +4,7 @@ import * as schema from '../../shared/schema';
 import { eq, and, or, isNull } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { isCreatorOrAdminRole } from '../utils';
+import { userHasPermission } from '../permissions';
 import { getAiProviderAccessForUser, reloadProvidersFromDatabase } from '../ai/service';
 import { logAiProviderAccess, logAiProviderManagement } from '../ai/audit-log';
 
@@ -67,11 +67,12 @@ router.get('/', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    const { tenantId, teamId, role } = req.user;
+    const { tenantId, teamId } = req.user;
     let providers = [];
 
-    // Creator and admin roles see all providers for the tenant
-    if (isCreatorOrAdminRole(role)) {
+    // Users with AI settings permission see all providers for the tenant
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (hasAISettingsPermission) {
       providers = await db.select().from(schema.aiProviders)
         .where(eq(schema.aiProviders.tenantId, tenantId));
     } else {
@@ -118,10 +119,10 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    // Creator or admin roles can create AI providers
-    // This check is maintained to guarantee API consistency, but the function already returns true for administrator
-    if (!isCreatorOrAdminRole(req.user.role)) {
-      return res.status(403).json({ message: 'Only administrators and creators can create AI providers' });
+    // Users with AI settings permission can create AI providers
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (!hasAISettingsPermission) {
+      return res.status(403).json({ message: 'You do not have permission to create AI providers' });
     }
 
     const { tenantId } = req.user;
@@ -209,7 +210,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    const { tenantId, teamId, role } = req.user;
+    const { tenantId, teamId } = req.user;
     const providerId = parseInt(req.params.id);
 
     // Get the provider
@@ -223,12 +224,13 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     // Check permissions
-    if (provider[0].tenantId !== tenantId && !isCreatorOrAdminRole(role)) {
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (provider[0].tenantId !== tenantId && !hasAISettingsPermission) {
       return res.status(403).json({ message: 'You do not have permission to view this AI provider' });
     }
 
     // Regular users can only see providers for their tenant and team
-    if (!isCreatorOrAdminRole(role) && 
+    if (!hasAISettingsPermission && 
         provider[0].teamId !== null && 
         provider[0].teamId !== teamId) {
       return res.status(403).json({ message: 'You do not have permission to view this AI provider' });
@@ -265,8 +267,9 @@ router.patch('/:id', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    if (!isCreatorOrAdminRole(req.user.role)) {
-      return res.status(403).json({ message: 'Only administrators and creators can update AI providers' });
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (!hasAISettingsPermission) {
+      return res.status(403).json({ message: 'You do not have permission to update AI providers' });
     }
 
     const { tenantId } = req.user;
@@ -283,7 +286,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     }
 
     // Check permissions
-    if (existingProvider[0].tenantId !== tenantId && !isCreatorOrAdminRole(req.user.role)) {
+    if (existingProvider[0].tenantId !== tenantId && !hasAISettingsPermission) {
       return res.status(403).json({ message: 'You do not have permission to update this AI provider' });
     }
 
@@ -391,8 +394,9 @@ router.delete('/:id', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    if (!isCreatorOrAdminRole(req.user.role)) {
-      return res.status(403).json({ message: 'Only administrators and creators can delete AI providers' });
+    const hasAISettingsPermission = await userHasPermission(req, 'canAccessAISettings');
+    if (!hasAISettingsPermission) {
+      return res.status(403).json({ message: 'You do not have permission to delete AI providers' });
     }
 
     const { tenantId } = req.user;
@@ -409,7 +413,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     }
 
     // Check permissions
-    if (existingProvider[0].tenantId !== tenantId && !isCreatorOrAdminRole(req.user.role)) {
+    if (existingProvider[0].tenantId !== tenantId && !hasAISettingsPermission) {
       return res.status(403).json({ message: 'You do not have permission to delete this AI provider' });
     }
 

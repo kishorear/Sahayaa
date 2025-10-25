@@ -141,9 +141,14 @@ Provide helpful, non-technical guidance that leads to ticket creation.`;
         
         1. Category (one of: authentication, billing, feature_request, documentation, technical_issue, account, other)
         2. Complexity (one of: simple, medium, complex)
+           - Use "complex" for: equipment/machines not working, broken systems, critical failures, complete service outages
+           - Use "medium" for: partial issues, intermittent problems, performance degradation
+           - Use "simple" for: questions, minor issues, documentation requests
         3. Department to assign to (one of: support, engineering, product, billing)
         4. Whether the ticket can be automatically resolved (true or false)
         5. Notes for additional context (optional)
+        
+        IMPORTANT: If the ticket mentions machines, equipment, or systems "not working", "broken", "down", "offline", or "failed", classify as "complex".
         
         Ticket Title: ${title}
         Ticket Description: ${description}

@@ -580,7 +580,9 @@ export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
-export type Ticket = typeof tickets.$inferSelect;
+export type Ticket = typeof tickets.$inferSelect & {
+  assignedToUsername?: string | null;
+};
 export type InsertTicket = z.infer<typeof insertTicketSchema>;
 
 export type Message = typeof messages.$inferSelect;

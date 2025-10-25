@@ -396,7 +396,7 @@ export default function TicketDetails() {
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Assigned To</h3>
                 <div className="flex items-center">
                   <User className="h-5 w-5 mr-2 text-gray-400" />
-                  <span>{ticket.assignedTo ? ticket.assignedTo : "Unassigned"}</span>
+                  <span>{ticket.assignedToUsername || ticket.assignedTo || "Unassigned"}</span>
                 </div>
               </div>
 

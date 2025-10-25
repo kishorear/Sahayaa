@@ -64,6 +64,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import createMemoryStore from "memorystore";
 import { eq, and, or, desc, asc, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db, pool, testDbConnection, executeQuery } from "./db";
 
 // Determine if we're in a production environment
@@ -3955,17 +3956,29 @@ export class DatabaseStorage implements IStorage {
   
   async getTicketsByTeamId(teamId: number, tenantId?: number): Promise<Ticket[]> {
     try {
-      // Build query based on whether tenantId is provided
-      const baseQuery = db
-        .select()
-        .from(tickets)
-        .where(eq(tickets.teamId, teamId));
-        
-      const results = tenantId
-        ? await baseQuery.where(eq(tickets.tenantId, tenantId))
-        : await baseQuery;
+      // Use raw SQL to join with users table and get assigned username
+      const query = tenantId
+        ? sql`
+            SELECT 
+              t.*,
+              u.username as "assignedToUsername"
+            FROM tickets t
+            LEFT JOIN users u ON u.id::text = t."assignedTo" AND u."tenantId" = t."tenantId"
+            WHERE t."teamId" = ${teamId} AND t."tenantId" = ${tenantId}
+            ORDER BY t."createdAt" DESC
+          `
+        : sql`
+            SELECT 
+              t.*,
+              u.username as "assignedToUsername"
+            FROM tickets t
+            LEFT JOIN users u ON u.id::text = t."assignedTo"
+            WHERE t."teamId" = ${teamId}
+            ORDER BY t."createdAt" DESC
+          `;
       
-      return results;
+      const results = await db.execute(query);
+      return results.rows as any[];
     } catch (error) {
       console.error(`Error in getTicketsByTeamId(${teamId}):`, error);
       return [];
@@ -5016,32 +5029,52 @@ export class DatabaseStorage implements IStorage {
 
   // Ticket operations
   async getAllTickets(tenantId?: number): Promise<Ticket[]> {
-    if (tenantId) {
-      return await db
-        .select()
-        .from(tickets)
-        .where(eq(tickets.tenantId, tenantId))
-        .orderBy(desc(tickets.createdAt));
-    }
-    return await db
-      .select()
-      .from(tickets)
-      .orderBy(desc(tickets.createdAt));
+    // Use raw SQL to join with users table and get assigned username
+    const query = tenantId
+      ? sql`
+          SELECT 
+            t.*,
+            u.username as "assignedToUsername"
+          FROM tickets t
+          LEFT JOIN users u ON u.id::text = t."assignedTo" AND u."tenantId" = t."tenantId"
+          WHERE t."tenantId" = ${tenantId}
+          ORDER BY t."createdAt" DESC
+        `
+      : sql`
+          SELECT 
+            t.*,
+            u.username as "assignedToUsername"
+          FROM tickets t
+          LEFT JOIN users u ON u.id::text = t."assignedTo"
+          ORDER BY t."createdAt" DESC
+        `;
+    
+    const results = await db.execute(query);
+    return results.rows as any[];
   }
 
   async getTicketById(id: number, tenantId?: number): Promise<Ticket | undefined> {
-    if (tenantId) {
-      const results = await db
-        .select()
-        .from(tickets)
-        .where(and(
-          eq(tickets.id, id),
-          eq(tickets.tenantId, tenantId)
-        ));
-      return results[0];
-    }
-    const results = await db.select().from(tickets).where(eq(tickets.id, id));
-    return results[0];
+    // Use raw SQL to join with users table and get assigned username
+    const query = tenantId
+      ? sql`
+          SELECT 
+            t.*,
+            u.username as "assignedToUsername"
+          FROM tickets t
+          LEFT JOIN users u ON u.id::text = t."assignedTo" AND u."tenantId" = t."tenantId"
+          WHERE t.id = ${id} AND t."tenantId" = ${tenantId}
+        `
+      : sql`
+          SELECT 
+            t.*,
+            u.username as "assignedToUsername"
+          FROM tickets t
+          LEFT JOIN users u ON u.id::text = t."assignedTo"
+          WHERE t.id = ${id}
+        `;
+    
+    const results = await db.execute(query);
+    return results.rows[0] as any;
   }
 
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {

@@ -93,7 +93,8 @@ Each role is mapped to 15+ granular permissions:
   - All roles (system + custom) stored in `custom_user_roles` table
   - System roles marked with `isDefault: true` and `industryType: 'none'` to appear across all industries
   - Custom roles use specific `industryType` values and `isDefault: false`
-  - Seed script at `server/seed-default-roles.ts` populates 6 system roles (admin, support_agent, engineer, user, doctor, chief_doctor) for all tenants
+  - Seed script at `server/seed-default-roles.ts` populates 4 system roles (admin, support_agent, engineer, user) for all tenants
+  - Healthcare-specific roles (doctor, chief_doctor) are only available for tenants with industryType='healthcare'
   - Role Management UI displays both system and custom roles with visual badges
 - **API Routes**: 
   - `/api/permissions/me` - Get current user's permissions

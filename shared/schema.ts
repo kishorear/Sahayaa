@@ -293,62 +293,6 @@ export const DefaultRoles: Record<string, IndustryRoleDefinition> = {
       canAccessAnalytics: false,
       canAccessChatLogs: false
     }
-  },
-  chief_doctor: {
-    key: 'chief_doctor',
-    name: 'Chief Doctor',
-    description: 'Full administrative access to all system features',
-    permissions: {
-      canViewOwnTickets: true,
-      canViewAllTickets: true,
-      canCreateTickets: true,
-      canEditOwnTickets: true,
-      canEditAllTickets: true,
-      canAssignTickets: true,
-      canDeleteTickets: true,
-      canCommentOnTickets: true,
-      canAccessAISettings: true,
-      canAccessAIProviders: true,
-      canManageInstructions: true,
-      canManageAgentResources: true,
-      canAccessIntegrations: true,
-      canManageIntegrations: true,
-      canViewUsers: true,
-      canManageUsers: true,
-      canManageTeams: true,
-      canAccessSettings: true,
-      canManageSettings: true,
-      canAccessAnalytics: true,
-      canAccessChatLogs: true
-    }
-  },
-  doctor: {
-    key: 'doctor',
-    name: 'Doctor',
-    description: 'Can manage tickets and assign cases, but no AI/integration settings access',
-    permissions: {
-      canViewOwnTickets: true,
-      canViewAllTickets: true,
-      canCreateTickets: true,
-      canEditOwnTickets: true,
-      canEditAllTickets: true,
-      canAssignTickets: true,
-      canDeleteTickets: false,
-      canCommentOnTickets: true,
-      canAccessAISettings: false,
-      canAccessAIProviders: false,
-      canManageInstructions: false,
-      canManageAgentResources: false,
-      canAccessIntegrations: false,
-      canManageIntegrations: false,
-      canViewUsers: true,
-      canManageUsers: false,
-      canManageTeams: false,
-      canAccessSettings: false,
-      canManageSettings: false,
-      canAccessAnalytics: true,
-      canAccessChatLogs: false
-    }
   }
 };
 

@@ -3,6 +3,7 @@ import { db } from '../db';
 import { users, teams } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { hashPassword } from '../auth';
+import { requirePermission } from '../permissions';
 
 const router = Router();
 
@@ -287,7 +288,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
   });
   
   // Create a new team member
-  app.post("/api/team-members", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+  app.post("/api/team-members", requirePermission('canManageUsers'), async (req: Request, res: Response) => {
     try {
       const { username, password, role, name, email } = req.body;
       

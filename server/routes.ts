@@ -1867,6 +1867,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   app.get("/api/metrics/summary", requireAuth, async (req, res) => {
     try {
       // Check if user has permission to access analytics
+      const { userHasPermission } = await import("./permissions");
       const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
       if (!hasAnalyticsPermission) {
         return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
@@ -2000,6 +2001,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   app.get("/api/metrics/categories", requireAuth, async (req, res) => {
     try {
       // Check if user has permission to access analytics
+      const { userHasPermission } = await import("./permissions");
       const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
       if (!hasAnalyticsPermission) {
         return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
@@ -2064,6 +2066,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   app.get("/api/metrics/recent", requireAuth, async (req, res) => {
     try {
       // Check if user has permission to access analytics
+      const { userHasPermission } = await import("./permissions");
       const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
       if (!hasAnalyticsPermission) {
         return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
@@ -2113,6 +2116,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   app.get("/api/metrics/response-time", requireAuth, async (req, res) => {
     try {
       // Check if user has permission to access analytics
+      const { userHasPermission } = await import("./permissions");
       const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
       if (!hasAnalyticsPermission) {
         return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
@@ -2199,6 +2203,7 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   app.get("/api/metrics/ticket-volume", requireAuth, async (req, res) => {
     try {
       // Check if user has permission to access analytics
+      const { userHasPermission } = await import("./permissions");
       const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
       if (!hasAnalyticsPermission) {
         return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });

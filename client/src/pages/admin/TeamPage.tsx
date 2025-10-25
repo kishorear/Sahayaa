@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import TenantSelector from "@/components/TenantSelector";
 
 // Define the team member type and valid roles
-type Role = "admin" | "support-agent" | "engineer" | "user";
+type Role = "admin" | "support-agent" | "engineer" | "user" | "doctor" | "chief_doctor";
 
 type TeamMember = {
   id: number;
@@ -38,7 +38,7 @@ type TeamMember = {
 const teamMemberSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
-  role: z.enum(["admin", "support-agent", "engineer", "user"], {
+  role: z.enum(["admin", "support-agent", "engineer", "user", "doctor", "chief_doctor"], {
     required_error: "Please select a role",
   }),
   name: z.string().optional().or(z.literal("")),

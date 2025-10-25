@@ -32,6 +32,7 @@ import ChatbotInterface from "@/components/chatbot/ChatbotInterface";
 import AuthPage from "@/pages/AuthPage";
 import CreatorLoginPage from "@/pages/creator/CreatorLoginPage"; // Creator login page
 import CreatorDashboardPage from "@/pages/creator/CreatorDashboardPage"; // Creator dashboard
+import RoleManagementPage from "@/pages/creator/RoleManagementPage"; // Role management page
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CreatorProtectedRoute } from "@/lib/creator-protected-route"; // Creator route protection
@@ -56,6 +57,7 @@ function Router() {
       {/* Creator Routes */}
       <Route path="/creator/login" component={CreatorLoginPage} />
       <CreatorProtectedRoute path="/creator/dashboard" component={CreatorDashboardPage} />
+      <CreatorProtectedRoute path="/creator/roles" component={RoleManagementPage} />
       
       {/* Protected Routes - Application */}
       <ProtectedRoute path="/dashboard" component={Dashboard} />

@@ -142,7 +142,7 @@ export const HealthcareRoles: Record<string, IndustryRoleDefinition> = {
       canAccessIntegrations: false,
       canManageIntegrations: false,
       canViewUsers: true,
-      canManageUsers: false,
+      canManageUsers: true,
       canManageTeams: false,
       canAccessSettings: false,
       canManageSettings: false,

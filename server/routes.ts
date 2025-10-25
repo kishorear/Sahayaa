@@ -897,6 +897,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Special permission check for complexity field updates
+      if (req.body.complexity !== undefined) {
+        const userRole = req.user?.role;
+        const canEditComplexity = userRole === 'admin' || userRole === 'chief_doctor' || userRole === 'doctor' || isCreator;
+        
+        if (!canEditComplexity) {
+          return res.status(403).json({ 
+            message: "Access denied: Only admin, chief_doctor, doctor, and creator roles can modify ticket complexity" 
+          });
+        }
+      }
+      
       // Update the ticket
       const updatedTicket = await storage.updateTicket(id, req.body, tenantId);
       res.status(200).json(updatedTicket);

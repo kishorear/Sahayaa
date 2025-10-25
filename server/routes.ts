@@ -1863,9 +1863,15 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     }
   });
 
-  // DASHBOARD METRICS - Require admin or support_agent roles
-  app.get("/api/metrics/summary", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
+  // DASHBOARD METRICS - Require analytics access permission
+  app.get("/api/metrics/summary", requireAuth, async (req, res) => {
     try {
+      // Check if user has permission to access analytics
+      const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
+      if (!hasAnalyticsPermission) {
+        return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
+      }
+      
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering
@@ -1991,8 +1997,14 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     }
   });
 
-  app.get("/api/metrics/categories", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/categories", requireAuth, async (req, res) => {
     try {
+      // Check if user has permission to access analytics
+      const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
+      if (!hasAnalyticsPermission) {
+        return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
+      }
+      
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering
@@ -2049,8 +2061,14 @@ Your goal is to quickly gather issue details and create comprehensive support ti
     }
   });
 
-  app.get("/api/metrics/recent", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/recent", requireAuth, async (req, res) => {
     try {
+      // Check if user has permission to access analytics
+      const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
+      if (!hasAnalyticsPermission) {
+        return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
+      }
+      
       const limit = parseInt(req.query.limit as string) || 5;
       
       // Check if user is a creator to determine tenant filtering
@@ -2092,8 +2110,14 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   });
   
   // API endpoint for response time metrics
-  app.get("/api/metrics/response-time", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/response-time", requireAuth, async (req, res) => {
     try {
+      // Check if user has permission to access analytics
+      const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
+      if (!hasAnalyticsPermission) {
+        return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
+      }
+      
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering
@@ -2172,8 +2196,14 @@ Your goal is to quickly gather issue details and create comprehensive support ti
   });
   
   // API endpoint for ticket volume metrics
-  app.get("/api/metrics/ticket-volume", requireRole(['admin', 'support_agent', 'creator']), async (req, res) => {
+  app.get("/api/metrics/ticket-volume", requireAuth, async (req, res) => {
     try {
+      // Check if user has permission to access analytics
+      const hasAnalyticsPermission = await userHasPermission(req, 'canAccessAnalytics');
+      if (!hasAnalyticsPermission) {
+        return res.status(403).json({ message: 'Forbidden: Insufficient permissions to access analytics' });
+      }
+      
       const timePeriod = req.query.timePeriod as string || 'weekly';
       
       // Check if user is a creator to determine tenant filtering

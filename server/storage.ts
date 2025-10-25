@@ -6476,6 +6476,15 @@ class StorageWrapper implements IStorage {
       throw error;
     }
   }
+
+  async assignTicketRandomlyInDepartment(category: string, tenantId?: number): Promise<User | null> {
+    try {
+      return await this.storageImpl.assignTicketRandomlyInDepartment(category, tenantId);
+    } catch (error) {
+      console.error(`Error in assignTicketRandomlyInDepartment(${category}):`, error);
+      throw error;
+    }
+  }
   
   // User operations
   async getUser(id: number): Promise<User | undefined> {

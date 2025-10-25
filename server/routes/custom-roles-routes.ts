@@ -25,21 +25,20 @@ export function registerCustomRolesRoutes(app: Express, requireAuth: RequestHand
   
   // Get all custom user roles - returns deduplicated role definitions (creator only)
   // This endpoint returns role DEFINITIONS (roleKey, name, description, permissions) for dropdowns
-  // For role MANAGEMENT (edit/delete), roles are filtered by tenantId
+  // For role MANAGEMENT (edit/delete), creators get ALL roles with full access
   app.get('/api/custom-roles', requireAuth, requireCreatorRole, async (req: Request, res: Response) => {
     console.log('GET /api/custom-roles - Request from user:', req.user?.username);
     try {
       const { forManagement } = req.query;
-      const tenantId = req.user!.tenantId;
       
       // Get ALL roles from the database
       const allRoles = await storage.getAllCustomUserRoles();
       
       if (forManagement === 'true') {
-        // For role management (edit/delete), only return roles belonging to this tenant
-        const tenantRoles = allRoles.filter(role => role.tenantId === tenantId);
-        console.log('GET /api/custom-roles - Returning', tenantRoles.length, 'roles for tenant', tenantId, '(management mode)');
-        res.json(tenantRoles);
+        // For role management (edit/delete), creators get ALL roles across all tenants
+        // This allows creators to manage roles system-wide
+        console.log('GET /api/custom-roles - Returning', allRoles.length, 'roles across all tenants (creator management mode)');
+        res.json(allRoles);
       } else {
         // For dropdowns (registration), return unique role DEFINITIONS only (deduplicated by roleKey)
         // Project only the definition fields, not tenant-specific metadata

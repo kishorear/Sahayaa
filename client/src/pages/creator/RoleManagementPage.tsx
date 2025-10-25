@@ -197,7 +197,7 @@ export default function RoleManagementPage() {
             ) : (
               <div className="space-y-4">
                 {roles.map((role) => (
-                  <Card key={role.id} className="border-2" data-testid={`role-card-${role.id}`}>
+                  <Card key={`${role.tenantId}-${role.id}`} className="border-2" data-testid={`role-card-${role.id}`}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">
                         <div className="space-y-2 flex-1">

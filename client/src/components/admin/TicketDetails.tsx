@@ -19,9 +19,10 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Bot, CircleCheck, Clock, Calendar, Mail, Paperclip, Download, Eye, X } from "lucide-react";
+import { User, Bot, CircleCheck, Clock, Calendar, Mail, Paperclip, Download, Eye, X, Edit2, Save, XCircle } from "lucide-react";
 import { TicketStatusProgress } from "@/components/admin/TicketStatusProgress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function TicketDetails() {
   const { id } = useParams<{ id: string }>();
@@ -31,9 +32,16 @@ export default function TicketDetails() {
   const [newMessage, setNewMessage] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [selectedComplexity, setSelectedComplexity] = useState<string | undefined>(undefined);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
+  const [editedCategory, setEditedCategory] = useState("");
   
   // Check if user can edit complexity (admin, chief_doctor, doctor)
   const canEditComplexity = user?.role === 'admin' || user?.role === 'chief_doctor' || user?.role === 'doctor';
+  
+  // Check if user can edit tickets
+  const canEditTicket = user?.role === 'admin' || user?.role === 'chief_doctor' || user?.role === 'doctor' || user?.role === 'support_agent';
 
 
   const { data: ticket, isLoading: ticketLoading } = useQuery<Ticket & { messages: Message[]; attachments: Attachment[] }>({
@@ -80,11 +88,12 @@ export default function TicketDetails() {
   });
 
   const updateTicketMutation = useMutation({
-    mutationFn: async (updates: { status?: string; complexity?: string }) => {
+    mutationFn: async (updates: { status?: string; complexity?: string; title?: string; description?: string; category?: string }) => {
       return await apiRequest("PATCH", `/api/tickets/${ticketId}`, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/tickets/${ticketId}`] });
+      setIsEditMode(false);
       toast({
         title: "Ticket updated",
         description: "Ticket has been updated successfully.",
@@ -115,6 +124,30 @@ export default function TicketDetails() {
     createMessageMutation.mutate(newMessage);
   };
 
+  const handleEditClick = () => {
+    if (ticket) {
+      setEditedTitle(ticket.title);
+      setEditedDescription(ticket.description);
+      setEditedCategory(ticket.category);
+      setIsEditMode(true);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    updateTicketMutation.mutate({
+      title: editedTitle,
+      description: editedDescription,
+      category: editedCategory,
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditedTitle("");
+    setEditedDescription("");
+    setEditedCategory("");
+  };
+
   // Function to get tenant-specific ticket number
   const calculateTenantTicketNumber = (ticket: Ticket, allTickets?: Ticket[]) => {
     // Use the companyTicketId field if available, otherwise fall back to global ID
@@ -140,11 +173,58 @@ export default function TicketDetails() {
       <div className="md:col-span-2">
         <Card>
           <CardHeader className="px-6 py-4 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-lg font-medium text-gray-900">
-                Ticket #{calculateTenantTicketNumber(ticket, allTenantTickets)}: {ticket.title}
-              </CardTitle>
-              <StatusBadge status={ticket.status} />
+            <div className="flex justify-between items-center gap-4">
+              <div className="flex-1">
+                {isEditMode ? (
+                  <Input
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    placeholder="Ticket title"
+                    className="text-lg font-medium"
+                    data-testid="input-ticket-title"
+                  />
+                ) : (
+                  <CardTitle className="text-lg font-medium text-gray-900">
+                    Ticket #{calculateTenantTicketNumber(ticket, allTenantTickets)}: {ticket.title}
+                  </CardTitle>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status={ticket.status} />
+                {canEditTicket && !isEditMode && (
+                  <Button
+                    onClick={handleEditClick}
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-edit-ticket"
+                  >
+                    <Edit2 className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                )}
+                {isEditMode && (
+                  <>
+                    <Button
+                      onClick={handleSaveEdit}
+                      size="sm"
+                      disabled={updateTicketMutation.isPending}
+                      data-testid="button-save-ticket"
+                    >
+                      <Save className="h-4 w-4 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      onClick={handleCancelEdit}
+                      variant="outline"
+                      size="sm"
+                      data-testid="button-cancel-edit"
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -163,9 +243,20 @@ export default function TicketDetails() {
                     </time>
                   </div>
                   <div className="mt-1">
-                    <div className="max-h-[400px] overflow-y-auto p-4 bg-white rounded-md border border-gray-100 shadow-sm">
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
-                    </div>
+                    {isEditMode ? (
+                      <Textarea
+                        value={editedDescription}
+                        onChange={(e) => setEditedDescription(e.target.value)}
+                        placeholder="Ticket description"
+                        rows={8}
+                        className="min-h-[200px] bg-white"
+                        data-testid="textarea-ticket-description"
+                      />
+                    ) : (
+                      <div className="max-h-[400px] overflow-y-auto p-4 bg-white rounded-md border border-gray-100 shadow-sm">
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -278,7 +369,27 @@ export default function TicketDetails() {
 
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Category</h3>
-                <Badge className="capitalize">{formatCategory(ticket.category)}</Badge>
+                {isEditMode ? (
+                  <Select
+                    value={editedCategory}
+                    onValueChange={setEditedCategory}
+                    data-testid="select-ticket-category"
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="technical_issue">Technical Issue</SelectItem>
+                      <SelectItem value="feature_request">Feature Request</SelectItem>
+                      <SelectItem value="billing">Billing</SelectItem>
+                      <SelectItem value="authentication">Authentication</SelectItem>
+                      <SelectItem value="documentation">Documentation</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Badge className="capitalize">{formatCategory(ticket.category)}</Badge>
+                )}
               </div>
 
               <div>

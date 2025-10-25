@@ -3146,6 +3146,7 @@ export class DatabaseStorage implements IStorage {
             apiKey: tenantData.apiKey || tenantData.apikey,
             settings: settings,
             branding: branding,
+            industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
@@ -3155,6 +3156,7 @@ export class DatabaseStorage implements IStorage {
           console.log(`[DEBUG] getTenantById(${id}): Tenant found:`, {
             id: tenant.id,
             name: tenant.name,
+            industryType: tenant.industryType,
             hasSettings: tenant.settings !== undefined && tenant.settings !== null,
             settingsType: tenant.settings ? typeof tenant.settings : 'null/undefined',
             settingsKeys: tenant.settings && typeof tenant.settings === 'object' ? 
@@ -3266,6 +3268,7 @@ export class DatabaseStorage implements IStorage {
             apiKey: tenantData.apiKey || tenantData.apikey,
             settings: settings,
             branding: branding,
+            industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
@@ -3380,6 +3383,7 @@ export class DatabaseStorage implements IStorage {
             apiKey: tenantData.apiKey || tenantData.apikey,
             settings: settings,
             branding: branding,
+            industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat

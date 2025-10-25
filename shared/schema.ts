@@ -125,7 +125,7 @@ export const HealthcareRoles: Record<string, IndustryRoleDefinition> = {
   doctor: {
     key: 'doctor',
     name: 'Doctor',
-    description: 'Can manage tickets and assign cases, but no AI/integration settings access',
+    description: 'Can manage tickets, assign cases, and configure integrations',
     permissions: {
       canViewOwnTickets: true,
       canViewAllTickets: true,
@@ -139,8 +139,8 @@ export const HealthcareRoles: Record<string, IndustryRoleDefinition> = {
       canAccessAIProviders: false,
       canManageInstructions: false,
       canManageAgentResources: false,
-      canAccessIntegrations: false,
-      canManageIntegrations: false,
+      canAccessIntegrations: true,
+      canManageIntegrations: true,
       canViewUsers: true,
       canManageUsers: true,
       canManageTeams: false,

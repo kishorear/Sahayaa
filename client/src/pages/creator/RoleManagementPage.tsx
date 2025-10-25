@@ -44,13 +44,15 @@ export default function RoleManagementPage() {
   });
 
   // Fetch roles for selected industry (includes both industry-specific and system roles)
+  // Use forManagement=true to get actual role records with IDs for edit/delete operations
   const { data: roles = [], isLoading } = useQuery<CustomUserRole[]>({
-    queryKey: ['/api/custom-roles', selectedIndustry],
+    queryKey: ['/api/custom-roles', selectedIndustry, 'management'],
     queryFn: async () => {
       // Fetch both system roles (industryType='none') and industry-specific roles
+      // Use forManagement=true to get role records with database IDs
       const [systemRolesRes, industryRolesRes] = await Promise.all([
-        fetch(`/api/custom-roles?industryType=none`, { credentials: 'include' }),
-        fetch(`/api/custom-roles?industryType=${selectedIndustry}`, { credentials: 'include' })
+        fetch(`/api/custom-roles?industryType=none&forManagement=true`, { credentials: 'include' }),
+        fetch(`/api/custom-roles?industryType=${selectedIndustry}&forManagement=true`, { credentials: 'include' })
       ]);
       
       if (!systemRolesRes.ok || !industryRolesRes.ok) {

@@ -118,8 +118,8 @@ export default function TeamPage() {
     if (selectedMember && isEditDialogOpen) {
       editForm.setValue("username", selectedMember.username);
       // Make sure we set a valid role value with proper type casting
-      if (["admin", "support-agent", "engineer", "user"].includes(selectedMember.role)) {
-        editForm.setValue("role", selectedMember.role as "admin" | "support-agent" | "engineer" | "user");
+      if (["admin", "support-agent", "engineer", "user", "doctor", "chief_doctor"].includes(selectedMember.role)) {
+        editForm.setValue("role", selectedMember.role as "admin" | "support-agent" | "engineer" | "user" | "doctor" | "chief_doctor");
       } else {
         editForm.setValue("role", "user"); // Default to user role if invalid
       }

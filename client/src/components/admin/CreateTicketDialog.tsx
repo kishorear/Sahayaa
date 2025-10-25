@@ -57,6 +57,8 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
   const [similarTickets, setSimilarTickets] = useState<SimilarTicket[]>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [showSimilarWarning, setShowSimilarWarning] = useState(false);
+  const [hasCheckedDuplicates, setHasCheckedDuplicates] = useState(false);
+  const [userConfirmedCreate, setUserConfirmedCreate] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -77,6 +79,7 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
   // Check for duplicate tickets
   const checkDuplicates = async (title: string, description: string) => {
     if (!title || !description || title.length < 3 || description.length < 5) {
+      setHasCheckedDuplicates(true);
       return;
     }
 
@@ -96,9 +99,11 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
         setSimilarTickets([]);
         setShowSimilarWarning(false);
       }
+      setHasCheckedDuplicates(true);
     } catch (error) {
       console.error("Error checking duplicates:", error);
       // Continue without duplicate check
+      setHasCheckedDuplicates(true);
     } finally {
       setCheckingDuplicates(false);
     }
@@ -118,6 +123,8 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
       form.reset();
       setSimilarTickets([]);
       setShowSimilarWarning(false);
+      setHasCheckedDuplicates(false);
+      setUserConfirmedCreate(false);
       setOpen(false);
     },
     onError: (error: any) => {
@@ -130,16 +137,25 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
   });
 
   const onSubmit = async (data: InsertTicket) => {
-    // If similar tickets found and user hasn't acknowledged, check again
-    if (!showSimilarWarning) {
+    // If we haven't checked for duplicates yet, do it now and wait for user to review
+    if (!hasCheckedDuplicates) {
       await checkDuplicates(data.title, data.description);
-      // If duplicates found, wait for user confirmation
-      if (similarTickets.length > 0) {
-        return;
-      }
+      // After check completes, if there are similar tickets, block and show warning
+      // If no similar tickets, the form will be submitted on next attempt
+      return;
     }
 
-    // Create the ticket
+    // If similar tickets exist and user hasn't confirmed they want to create anyway
+    if (similarTickets.length > 0 && !userConfirmedCreate) {
+      toast({
+        title: "Similar Tickets Found",
+        description: "Please review the similar tickets or click 'Create Anyway' to proceed.",
+        variant: "default",
+      });
+      return;
+    }
+
+    // All checks passed - create the ticket
     createTicketMutation.mutate(data);
   };
 
@@ -147,6 +163,17 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
     const title = form.getValues('title');
     const description = form.getValues('description');
     checkDuplicates(title, description);
+  };
+
+  const handleFieldChange = () => {
+    // Reset duplicate check when user modifies title or description
+    // This ensures fresh checks for changed content
+    if (hasCheckedDuplicates) {
+      setHasCheckedDuplicates(false);
+      setSimilarTickets([]);
+      setShowSimilarWarning(false);
+      setUserConfirmedCreate(false);
+    }
   };
 
   return (
@@ -221,8 +248,13 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setSimilarTickets([]);
+                    // User has explicitly confirmed they want to create despite duplicates
+                    // Get the current form values and create the ticket directly
+                    const formData = form.getValues();
                     setShowSimilarWarning(false);
+                    setUserConfirmedCreate(true);
+                    // Create the ticket immediately - bypassing the onSubmit guards
+                    createTicketMutation.mutate(formData);
                   }}
                   data-testid="button-create-anyway"
                 >
@@ -245,6 +277,10 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
                     <Input
                       placeholder="Brief summary of the issue"
                       {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        handleFieldChange();
+                      }}
                       data-testid="input-ticket-title"
                     />
                   </FormControl>
@@ -264,6 +300,10 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
                       placeholder="Detailed description of the issue"
                       rows={5}
                       {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        handleFieldChange();
+                      }}
                       onBlur={handleDescriptionBlur}
                       data-testid="input-ticket-description"
                     />
@@ -311,6 +351,8 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
                   form.reset();
                   setSimilarTickets([]);
                   setShowSimilarWarning(false);
+                  setHasCheckedDuplicates(false);
+                  setUserConfirmedCreate(false);
                 }}
                 data-testid="button-cancel"
               >

@@ -89,6 +89,11 @@ Each role is mapped to 15+ granular permissions:
 - **Backend**: Permission middleware (`requirePermission`, `requireAnyPermission`) protects all sensitive endpoints
 - **Frontend**: React hooks (`usePermissions`, `useHasPermission`) control UI element visibility
 - **Security**: All permission checks occur on both frontend and backend, with tenant isolation enforced
+- **Permission-Based Access Control (PBAC)**: 
+  - All critical routes (AI settings, integrations, team management) use permission-based checks instead of role-based checks
+  - Routes check for specific permissions (e.g., `canAccessAISettings`, `canManageIntegrations`) rather than hardcoded role names
+  - This allows any role with the appropriate permissions to access features, not just "admin" or "creator"
+  - Examples: chief_doctor can create/edit AI settings because they have `canAccessAISettings: true`, doctor can manage team members because they have `canManageUsers: true`
 - **Database-Driven Role System**: 
   - All roles (system + custom) stored in `custom_user_roles` table
   - System roles marked with `isDefault: true` and `industryType: 'none'` to appear across all industries

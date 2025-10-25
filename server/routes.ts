@@ -180,8 +180,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register email support routes (publicly accessible)
   registerEmailSupportRoutes(app);
   
-  // Register third-party integration routes
-  registerIntegrationRoutes(app, requireRole(['admin']));
+  // Register third-party integration routes (now using permission-based checks inside routes)
+  registerIntegrationRoutes(app, requireAuth);
   
   // Register data source routes
   registerDataSourceRoutes(app, requireRole(['admin']));

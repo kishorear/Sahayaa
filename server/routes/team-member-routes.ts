@@ -178,7 +178,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
   });
   
   // Get all team members (used by the TeamPage.tsx)
-  app.get("/api/team-members", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+  app.get("/api/team-members", requirePermission('canViewUsers'), async (req: Request, res: Response) => {
     try {
       // Get the tenant context from the user
       const tenantId = req.user?.tenantId || 1;
@@ -225,7 +225,7 @@ export function registerTeamMemberRoutes(app: any, requireRole: Function) {
   });
   
   // Get a specific team member
-  app.get("/api/team-members/:id", requireRole(['admin', 'creator']), async (req: Request, res: Response) => {
+  app.get("/api/team-members/:id", requirePermission('canViewUsers'), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       

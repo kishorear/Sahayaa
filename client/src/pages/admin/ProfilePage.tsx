@@ -6,8 +6,6 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useOnboardingTour } from "@/hooks/use-onboarding-tour";
-import OnboardingTour from "@/components/OnboardingTour";
 
 import AdminLayout from "@/components/admin/AdminLayout";
 import MfaSetupDialog from "@/components/admin/MfaSetupDialog";
@@ -79,9 +77,6 @@ export default function ProfilePage() {
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState('');
-  
-  // Initialize onboarding tour
-  const { startTour, resetTour, hasTourCompleted } = useOnboardingTour(user?.role || 'administrator');
 
   // Query for the user's profile
   const { data: profile, isLoading } = useQuery({
@@ -91,26 +86,27 @@ export default function ProfilePage() {
       if (!response.ok) {
         throw new Error('Failed to fetch profile');
       }
-      const data = await response.json();
-      console.log('Profile data received:', data);
-      console.log('Profile tenantName:', data.tenantName);
-      return data;
+      return response.json();
     },
     enabled: !!user,
   });
 
   // Initialize the form with profile data
+  // For non-creator users, show tenant name (read-only)
+  // For creator users, show company field (editable)
+  const companyValue = user?.role === 'creator' ? (profile?.company || '') : (profile?.tenantName || '');
+  
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: profile?.name || '',
       email: profile?.email || '',
-      company: profile?.company || '',
+      company: companyValue,
     },
     values: {
       name: profile?.name || '',
       email: profile?.email || '',
-      company: profile?.company || '',
+      company: companyValue,
     },
   });
 
@@ -366,8 +362,6 @@ export default function ProfilePage() {
 
   return (
     <AdminLayout>
-      {/* Add the OnboardingTour component */}
-      <OnboardingTour userRole={user?.role || 'administrator'} />
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">My Profile</h1>
 
@@ -683,45 +677,6 @@ export default function ProfilePage() {
                       </Button>
                     </div>
                     
-                    <div className="space-y-2 pt-4 border-t tour-section">
-                      <h3 className="text-lg font-medium">Onboarding Tour</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Learn about the key features of the platform with a guided tour.
-                      </p>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => startTour()}
-                          className="start-tour-btn"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 16v-4"></path>
-                            <path d="M12 8h.01"></path>
-                          </svg>
-                          Start Tour Now
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          onClick={() => resetTour()}
-                          className="reset-tour-btn"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                            <path d="M3 3v5h5"></path>
-                            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
-                            <path d="M16 21h5v-5"></path>
-                          </svg>
-                          Reset Tour
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {hasTourCompleted 
-                          ? 'You have completed the tour. Reset it to see it again on your next login.' 
-                          : 'The tour will start automatically on your next login.'}
-                      </p>
-                    </div>
                   </div>
                 </TabsContent>
               </Tabs>

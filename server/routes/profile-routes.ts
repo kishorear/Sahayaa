@@ -72,10 +72,21 @@ export function registerProfileRoutes(app: Express, requireAuth: any) {
         return res.status(401).json({ message: "Not authenticated" });
       }
       
+      // Get tenant information to include company name
+      let tenantName = null;
+      if (req.user.tenantId) {
+        const tenant = await storage.getTenantById(req.user.tenantId);
+        tenantName = tenant?.name || null;
+      }
+      
       // Remove sensitive information before sending
       const { password, mfaSecret, mfaBackupCodes, ...safeUser } = req.user;
       
-      res.status(200).json(safeUser);
+      // Add tenant company name to the response
+      res.status(200).json({
+        ...safeUser,
+        tenantName
+      });
     } catch (error) {
       console.error("Error fetching user profile:", error);
       res.status(500).json({ message: "Error fetching user profile" });

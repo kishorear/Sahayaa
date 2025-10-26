@@ -77,16 +77,19 @@ export function registerProfileRoutes(app: Express, requireAuth: any) {
       if (req.user.tenantId) {
         const tenant = await storage.getTenantById(req.user.tenantId);
         tenantName = tenant?.name || null;
+        console.log(`Profile endpoint - User: ${req.user.username}, TenantId: ${req.user.tenantId}, TenantName: ${tenantName}`);
       }
       
       // Remove sensitive information before sending
       const { password, mfaSecret, mfaBackupCodes, ...safeUser } = req.user;
       
       // Add tenant company name to the response
-      res.status(200).json({
+      const responseData = {
         ...safeUser,
         tenantName
-      });
+      };
+      console.log(`Profile response includes tenantName: ${responseData.tenantName}`);
+      res.status(200).json(responseData);
     } catch (error) {
       console.error("Error fetching user profile:", error);
       res.status(500).json({ message: "Error fetching user profile" });

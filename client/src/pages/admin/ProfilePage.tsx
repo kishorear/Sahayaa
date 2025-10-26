@@ -91,7 +91,10 @@ export default function ProfilePage() {
       if (!response.ok) {
         throw new Error('Failed to fetch profile');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Profile data received:', data);
+      console.log('Profile tenantName:', data.tenantName);
+      return data;
     },
     enabled: !!user,
   });

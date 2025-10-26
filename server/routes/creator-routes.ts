@@ -560,6 +560,65 @@ router.put("/users/:id", requireCreatorRole, async (req: Request, res: Response)
 });
 
 /**
+ * Update a user's password (edit)
+ * PATCH /api/creators/users/:id/password
+ */
+router.patch("/users/:id/password", requireCreatorRole, async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { newPassword } = req.body;
+    
+    // Validation
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: "New password is required and must be at least 6 characters" });
+    }
+    
+    // Check if user exists
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    if (existingUser.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    const user = existingUser[0];
+    
+    // Hash the password
+    const hashedPassword = await hashPassword(newPassword);
+    
+    // Update the user's password
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+    
+    // Log the action
+    logCreatorAction(req.user!.id, "update_password", {
+      userId,
+      username: user.username
+    }, userId, user.tenantId);
+    
+    return res.status(200).json({
+      message: "Password updated successfully",
+      username: user.username
+    });
+  } catch (error) {
+    console.error("Error updating password:", error);
+    return res.status(500).json({ message: "Failed to update password" });
+  }
+});
+
+/**
  * Reset a user's password
  * POST /api/creators/users/:id/reset-password
  */

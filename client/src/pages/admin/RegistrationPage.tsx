@@ -149,9 +149,12 @@ const RegistrationPage = () => {
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [editPasswordDialogOpen, setEditPasswordDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserUsername, setSelectedUserUsername] = useState<string>("");
   const [editingUserTenantId, setEditingUserTenantId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [editPasswordValue, setEditPasswordValue] = useState("");
   const [generateRandom, setGenerateRandom] = useState(true);
   
   // Pagination state
@@ -322,6 +325,34 @@ const RegistrationPage = () => {
       toast({
         title: "Failed to reset password",
         description: error.message || "There was an error resetting the password. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Edit password mutation
+  const editPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: number, newPassword: string }) => {
+      const response = await apiRequest("PATCH", `/api/creators/users/${userId}/password`, {
+        newPassword
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Password updated successfully",
+        description: `Password has been changed for ${data.username}.`,
+        variant: "default",
+      });
+      setEditPasswordDialogOpen(false);
+      setEditPasswordValue("");
+      setSelectedUserId(null);
+      setSelectedUserUsername("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update password",
+        description: error.message || "There was an error updating the password. Please try again.",
         variant: "destructive",
       });
     },
@@ -611,45 +642,60 @@ const RegistrationPage = () => {
                                   </span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right space-x-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedUserId(user.id);
-                                    setEditingUserTenantId(user.tenantId);
-                                    setEditDialogOpen(true);
-                                    // Pre-populate the edit form with user data
-                                    editForm.reset({
-                                      username: user.username,
-                                      role: user.role,
-                                      name: user.name || "",
-                                      email: user.email || "",
-                                      companyId: user.tenantId,
-                                      companyName: "",
-                                      companyIndustryType: getIndustryTypeValue(user.tenantId),
-                                      companySSO: false,
-                                      teamId: user.teamId,
-                                      teamName: "",
-                                      active: user.active
-                                    });
-                                  }}
-                                  className="mr-2"
-                                >
-                                  <Edit className="h-4 w-4 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedUserId(user.id);
-                                    setResetPasswordDialogOpen(true);
-                                  }}
-                                >
-                                  <Key className="h-4 w-4 mr-1" />
-                                  Reset
-                                </Button>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedUserId(user.id);
+                                      setEditingUserTenantId(user.tenantId);
+                                      setEditDialogOpen(true);
+                                      // Pre-populate the edit form with user data
+                                      editForm.reset({
+                                        username: user.username,
+                                        role: user.role,
+                                        name: user.name || "",
+                                        email: user.email || "",
+                                        companyId: user.tenantId,
+                                        companyName: "",
+                                        companyIndustryType: getIndustryTypeValue(user.tenantId),
+                                        companySSO: false,
+                                        teamId: user.teamId,
+                                        teamName: "",
+                                        active: user.active
+                                      });
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4 mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedUserId(user.id);
+                                      setSelectedUserUsername(user.username);
+                                      setEditPasswordValue("");
+                                      setEditPasswordDialogOpen(true);
+                                    }}
+                                    data-testid={`button-edit-password-${user.id}`}
+                                  >
+                                    <Key className="h-4 w-4 mr-1" />
+                                    Edit Password
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedUserId(user.id);
+                                      setResetPasswordDialogOpen(true);
+                                    }}
+                                  >
+                                    <RefreshCw className="h-4 w-4 mr-1" />
+                                    Reset
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))
@@ -1304,6 +1350,78 @@ const RegistrationPage = () => {
                 </DialogFooter>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+        
+        {/* Edit Password Dialog */}
+        <Dialog open={editPasswordDialogOpen} onOpenChange={setEditPasswordDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Key size={18} />
+                Edit Password for {selectedUserUsername}
+              </DialogTitle>
+              <DialogDescription>
+                Enter a new password for this user. The password must be at least 6 characters long.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-password">New Password</Label>
+                <Input
+                  id="edit-password"
+                  type="password"
+                  placeholder="Enter new password (min 6 characters)"
+                  value={editPasswordValue}
+                  onChange={(e) => setEditPasswordValue(e.target.value)}
+                  data-testid="input-edit-password"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters long
+                </p>
+              </div>
+              
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => {
+                    setEditPasswordDialogOpen(false);
+                    setEditPasswordValue("");
+                    setSelectedUserId(null);
+                    setSelectedUserUsername("");
+                  }}
+                  data-testid="button-cancel-edit-password"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => {
+                    if (selectedUserId && editPasswordValue.length >= 6) {
+                      editPasswordMutation.mutate({
+                        userId: selectedUserId,
+                        newPassword: editPasswordValue
+                      });
+                    }
+                  }}
+                  disabled={!editPasswordValue || editPasswordValue.length < 6 || editPasswordMutation.isPending}
+                  data-testid="button-save-edit-password"
+                >
+                  {editPasswordMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="h-4 w-4 mr-2" />
+                      Update Password
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
         

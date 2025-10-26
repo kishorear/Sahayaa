@@ -838,7 +838,7 @@ const RegistrationPage = () => {
         
         {/* Register User Dialog */}
         <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserPlus size={18} />
@@ -850,8 +850,9 @@ const RegistrationPage = () => {
             </DialogHeader>
             
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex flex-col flex-1 overflow-hidden">
+                <div className="overflow-y-auto pr-2 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Username */}
                   <FormField
                     control={form.control}
@@ -1146,6 +1147,7 @@ const RegistrationPage = () => {
                       )}
                     />
                   </div>
+                </div>
                 </div>
                 
                 <DialogFooter>

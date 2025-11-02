@@ -366,6 +366,9 @@ export const tenants = pgTable("tenants", {
     emailTemplate: 'default'
   }).notNull(),
   active: boolean("active").default(true),
+  isTrial: boolean("isTrial").default(false).notNull(), // Trial account flag
+  ticketLimit: integer("ticketLimit").default(null), // Max tickets allowed (null = unlimited)
+  ticketsCreated: integer("ticketsCreated").default(0).notNull(), // Current ticket count
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -444,11 +447,11 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull().default(1), // Default to tenant 1 for backward compatibility
   teamId: integer("teamId"), // Reference to the team the user belongs to
-  username: text("username").notNull(),
+  username: text("username").notNull().unique(), // Global unique username across all tenants
   password: text("password").notNull(),
   role: text("role").notNull().default("member"), // creator, administrator, support_engineer, user, member
   name: text("name"),
-  email: text("email"),
+  email: text("email").unique(), // Global unique email across all tenants
   company: text("company"), // Company or organization name
   profilePicture: text("profilePicture"), // URL or path to profile picture
   
@@ -465,11 +468,6 @@ export const users = pgTable("users", {
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-}, (table) => {
-  return {
-    // Create a unique index on username + tenantId to allow same username in different tenants
-    usernameUnique: uniqueIndex("username_tenant_unique").on(table.username, table.tenantId),
-  };
 });
 
 export const insertUserSchema = createInsertSchema(users)

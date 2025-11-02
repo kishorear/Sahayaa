@@ -18,7 +18,7 @@ The system employs a loosely coupled microservices pattern:
 ### Key Components
 - **Frontend**: React with TypeScript, Tailwind CSS, Radix UI components, and Vite for multi-tenant support and a real-time monitoring dashboard.
 - **Backend**: Node.js with Express.js, Drizzle ORM, PostgreSQL, session-based authentication with RBAC, and robust health monitoring.
-- **AI Integration**: Supports multiple AI providers (OpenAI, Google AI, Anthropic, AWS Bedrock) for intelligent ticket classification, routing, and automated response generation.
+- **AI Integration**: Supports multiple AI providers (OpenAI, Google AI, Anthropic, AWS Bedrock, Ollama/Llama) for intelligent ticket classification, routing, and automated response generation.
 - **Production Monitoring**: Comprehensive health check endpoints, multi-layer caching, parallel processing, security service, circuit breaker patterns, and a real-time monitoring dashboard.
 - **AI Agent System with MCP Integration**: Processes customer interactions via specialized AI agents using MCP (Model Context Protocol) for workflow orchestration.
 - **Enhanced Security and RBAC System**: Enterprise-level security with Role-Based Access Control (RBAC), encryption, rate limiting, JWT authentication, and audit logging.
@@ -40,8 +40,7 @@ The system employs a loosely coupled microservices pattern:
 
 ### Required Services
 - **PostgreSQL**: Primary database.
-- **OpenAI API**: For embeddings and AI response generation.
-- **Optional AI Providers**: Google AI, Anthropic, AWS Bedrock.
+- **Optional AI Providers**: OpenAI, Google AI, Anthropic, AWS Bedrock, Ollama (self-hosted local LLMs).
 
 ### Self-Hosted Components
 - **Vector Storage**: Local file-based storage (ChromaDB/Milvus).
@@ -132,7 +131,17 @@ The AI classification system automatically analyzes ticket descriptions to deter
 - **Backend Security**: Server enforces role-based access control - only admin, chief_doctor, doctor, and creator roles can modify complexity via API
 - **Complexity Levels**: Simple, Medium, Complex
 
-## Recent Changes (October 25, 2025)
+## Recent Changes
+
+### November 2, 2025
+- **Ollama Integration**: Added support for local/self-hosted Llama models via Ollama API
+  - Backend provider implementation (`OllamaProvider.ts`) with full AIProviderInterface support
+  - Frontend UI in AI Settings page with Llama 3.1 model selection (8B, 70B, 405B variants)
+  - Endpoint URL configuration instead of API key for Ollama
+  - Form validation split into separate refinements for proper error messaging
+  - Supports all AI operations: chat, classification, auto-resolve, title generation, summarization
+
+### October 25, 2025
 - **Enhanced AI Classification**: Updated AI prompt to automatically detect broken/not working equipment and classify as high complexity
 - **Manual Complexity Editing**: Added editable complexity field in ticket details for admin, chief_doctor, and doctor roles with frontend and backend permission enforcement
 - **Backend Security**: Implemented role-based validation on PATCH /api/tickets/:id to prevent unauthorized complexity modifications

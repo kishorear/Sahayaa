@@ -27,6 +27,7 @@ const providerTypes = [
   { value: "gemini", label: "Google Gemini" },
   { value: "anthropic", label: "Anthropic Claude" },
   { value: "aws-bedrock", label: "AWS Bedrock" },
+  { value: "ollama", label: "Ollama (Local Llama)" },
   { value: "custom", label: "Custom API" }
 ];
 
@@ -54,7 +55,14 @@ const providerModels = {
     { value: "meta.llama3-8b-instruct-v1:0", label: "Llama 3 8B" },
     { value: "meta.llama3-70b-instruct-v1:0", label: "Llama 3 70B" }
   ],
-  // Perplexity AI models have been removed
+  ollama: [
+    { value: "llama3.1", label: "Llama 3.1 8B" },
+    { value: "llama3.1:70b", label: "Llama 3.1 70B" },
+    { value: "llama3.1:405b", label: "Llama 3.1 405B" },
+    { value: "llama3.2", label: "Llama 3.2" },
+    { value: "llama3", label: "Llama 3 8B" },
+    { value: "codellama", label: "Code Llama" }
+  ],
   custom: [
     { value: "custom", label: "Custom Model" }
   ]
@@ -71,12 +79,30 @@ const providerFormSchema = z.object({
   useForClassification: z.boolean().default(true),
   useForAutoResolve: z.boolean().default(true),
   useForEmail: z.boolean().default(true),
-  apiKey: z.string().min(1, "API key is required"),
+  apiKey: z.string().optional(), // Optional for Ollama
   model: z.string().min(1, "Model is required"),
-  baseUrl: z.string().optional(),
+  baseUrl: z.string().optional(), // Required for Ollama
   temperature: z.number().min(0).max(1).default(0.7),
   maxTokens: z.number().min(100).max(32000).default(2000),
   extraParams: z.string().optional(),
+}).refine((data) => {
+  // API key is required for all providers except Ollama
+  if (data.type !== 'ollama' && !data.apiKey) {
+    return false;
+  }
+  return true;
+}, {
+  message: "API key is required",
+  path: ["apiKey"],
+}).refine((data) => {
+  // Base URL is required for Ollama
+  if (data.type === 'ollama' && !data.baseUrl) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Ollama endpoint URL is required",
+  path: ["baseUrl"],
 });
 
 type ProviderFormValues = z.infer<typeof providerFormSchema>;
@@ -142,7 +168,7 @@ export default function AIProviderSettings({ aiProviders, aiStatus, isLoading }:
         }
       }
 
-      const payload = {
+      const payload: any = {
         ...values,
         settings: {
           temperature: values.temperature,
@@ -199,7 +225,7 @@ export default function AIProviderSettings({ aiProviders, aiStatus, isLoading }:
         }
       }
 
-      const payload = {
+      const payload: any = {
         ...values,
         settings: {
           temperature: values.temperature,
@@ -588,22 +614,43 @@ export default function AIProviderSettings({ aiProviders, aiStatus, isLoading }:
                     )}
                   />
 
-                  <FormField
-                    control={addForm.control}
-                    name="apiKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>API Key</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Your API key for this provider
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {addForm.watch("type") !== "ollama" && (
+                    <FormField
+                      control={addForm.control}
+                      name="apiKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>API Key</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Your API key for this provider
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {addForm.watch("type") === "ollama" && (
+                    <FormField
+                      control={addForm.control}
+                      name="baseUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ollama Endpoint URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="http://localhost:11434" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            The URL where Ollama is running (e.g., http://localhost:11434 or https://your-server.com:11434)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="flex items-center space-x-2">
                     <FormField
@@ -957,26 +1004,47 @@ export default function AIProviderSettings({ aiProviders, aiStatus, isLoading }:
                     )}
                   />
 
-                  <FormField
-                    control={editForm.control}
-                    name="apiKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>API Key</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="password" 
-                            {...field} 
-                            placeholder="••••••••••••••••••••••" 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Leave blank to keep the current API key
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {editForm.watch("type") !== "ollama" && (
+                    <FormField
+                      control={editForm.control}
+                      name="apiKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>API Key</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="password" 
+                              {...field} 
+                              placeholder="••••••••••••••••••••••" 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Leave blank to keep the current API key
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {editForm.watch("type") === "ollama" && (
+                    <FormField
+                      control={editForm.control}
+                      name="baseUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ollama Endpoint URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="http://localhost:11434" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            The URL where Ollama is running (e.g., http://localhost:11434 or https://your-server.com:11434)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="flex items-center space-x-2">
                     <FormField

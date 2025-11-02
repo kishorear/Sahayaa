@@ -10,6 +10,7 @@ export const AiProviderTypeEnum = z.enum([
   'anthropic',
   'aws-bedrock',
   'bedrock', // Including legacy 'bedrock' type which maps to 'aws-bedrock' in the code
+  'ollama', // Local/self-hosted Llama models via Ollama API
   // 'perplexity' removed
   'custom'
 ]);
@@ -751,11 +752,11 @@ export const aiProviders = pgTable("ai_providers", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   teamId: integer("teamId"), // Optional, if null, applies to all teams in tenant
-  type: text("type").notNull(), // 'openai', 'anthropic', 'google', 'aws', 'azure', 'custom'
+  type: text("type").notNull(), // 'openai', 'anthropic', 'google', 'aws', 'azure', 'ollama', 'custom'
   name: text("name").notNull(), // Display name for the provider
-  model: text("model").notNull(), // Model name to use, e.g., 'gpt-4', 'claude-3', etc.
-  apiKey: text("apiKey"), // API key (stored securely)
-  baseUrl: text("baseUrl"), // Base URL for API requests
+  model: text("model").notNull(), // Model name to use, e.g., 'gpt-4', 'claude-3', 'llama3.1', etc.
+  apiKey: text("apiKey"), // API key (stored securely, optional for Ollama)
+  baseUrl: text("baseUrl"), // Base URL for API requests (required for Ollama: http://localhost:11434)
   isPrimary: boolean("isPrimary").default(false), // Whether this is the primary provider
   isDefault: boolean("isDefault").default(false), // Whether this is the default provider
   enabled: boolean("enabled").default(true), // Whether this provider is enabled

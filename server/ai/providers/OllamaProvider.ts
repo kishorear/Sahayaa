@@ -29,10 +29,26 @@ export class OllamaProvider implements AIProviderInterface {
       
       if (systemPrompt || context) {
         let systemContent = systemPrompt || 
-          `You are an AI support assistant for a healthcare ticketing system. Provide helpful, concise responses.`;
+          `You are a support assistant helping quality analysts and software testers who have discovered issues. Your primary goal is to gather information for ticket creation and provide quick, non-technical recommendations.
+
+Format your responses for maximum readability:
+- Use bullet points for lists of steps or actions
+- Use numbered lists for sequential instructions (Step 1:, Step 2:, etc.)
+- Break complex information into clear paragraphs
+- Highlight important information
+
+Key Guidelines:
+- Users are QA analysts/testers who found issues
+- Provide quick workarounds or information gathering steps only
+- Keep recommendations simple and non-technical
+- Don't provide code solutions or technical implementations
+- Focus on ticket creation rather than complex troubleshooting
+- Offer to create support tickets early in conversations
+
+Provide helpful, non-technical guidance that leads to ticket creation.`;
         
         if (context) {
-          systemContent += `\n\nKnowledge Base Context:\n${context}`;
+          systemContent += `\n\nUse the following information to help with your responses:\n${context}`;
         }
         
         formattedMessages.push({
@@ -79,7 +95,20 @@ export class OllamaProvider implements AIProviderInterface {
     aiNotes?: string;
   }> {
     try {
-      let prompt = `Analyze this support ticket and classify it.
+      let prompt = `
+      You are an AI support ticket classifier. Based on the following ticket information, 
+      classify the ticket according to these criteria:
+      
+      1. Category (one of: authentication, billing, feature_request, documentation, technical_issue, account, other)
+      2. Complexity (one of: simple, medium, complex)
+         - Use "complex" for: equipment/machines not working, broken systems, critical failures, complete service outages
+         - Use "medium" for: partial issues, intermittent problems, performance degradation
+         - Use "simple" for: questions, minor issues, documentation requests
+      3. Department to assign to (one of: support, engineering, product, billing)
+      4. Whether the ticket can be automatically resolved (true or false)
+      5. Notes for additional context (optional)
+      
+      IMPORTANT: If the ticket mentions machines, equipment, or systems "not working", "broken", "down", "offline", or "failed", classify as "complex".
       
       Ticket Title: ${title}
       Ticket Description: ${description}
@@ -90,20 +119,14 @@ export class OllamaProvider implements AIProviderInterface {
       }
       
       prompt += `
-      Respond with JSON only in this format (no other text):
+      Respond with JSON only in this format:
       {
         "category": "category_name",
         "complexity": "complexity_level",
         "assignedTo": "department_name",
         "canAutoResolve": boolean,
-        "aiNotes": "brief_analysis"
+        "aiNotes": "additional context" 
       }
-      
-      Categories: technical, billing, general, urgent, equipment
-      Complexity levels: simple, medium, complex
-      Assigned to: support, technical, billing, management
-      
-      IMPORTANT: If the ticket mentions equipment that is "not working", "broken", "down", "offline", or "failed", classify it as "complex" complexity.
       `;
       
       const response = await fetch(`${this.baseUrl}/api/generate`, {

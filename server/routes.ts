@@ -72,6 +72,8 @@ import { tenantRoutes } from "./routes/tenant-routes";
 import { registerCustomRolesRoutes } from "./routes/custom-roles-routes";
 // Import permissions routes
 import permissionsRoutes from "./routes/permissions-routes";
+// Import trial routes for public trial registration
+import { trialRoutes } from "./routes/trial-routes";
 import { getSsoService } from "./sso-service";
 import { getIntegrationService } from "./integrations";
 import { healthCheckHandler, readinessHandler, livenessHandler } from "./health-check";
@@ -382,6 +384,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Register trial routes (public - no auth required)
+  app.use('/api/trial', trialRoutes);
   
   // Register widget analytics routes
   registerWidgetAnalyticsRoutes(app, requireAuth);

@@ -76,9 +76,11 @@ export interface IStorage {
   getTenantById(id: number): Promise<Tenant | undefined>;
   getTenantByApiKey(apiKey: string): Promise<Tenant | undefined>;
   getTenantBySubdomain(subdomain: string): Promise<Tenant | undefined>;
+  getTenantByName(name: string): Promise<Tenant | undefined>;
   getAllTenants(): Promise<Tenant[]>;
   createTenant(tenant: InsertTenant): Promise<Tenant>;
   updateTenant(id: number, updates: Partial<Tenant>): Promise<Tenant>;
+  deleteTenant(id: number): Promise<boolean>;
   
   // Widget API Key operations
   getApiKeyById(id: number): Promise<WidgetApiKey | undefined>;
@@ -106,6 +108,7 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string, tenantId?: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   getUsersByTenantId(tenantId: number): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
@@ -855,6 +858,15 @@ export class MemStorage implements IStorage {
     return tenant;
   }
 
+  async getTenantByName(name: string): Promise<Tenant | undefined> {
+    // Search through tenants array to find tenant with matching name
+    const tenant = Array.from(this.tenants.values()).find(
+      (tenant) => tenant.name === name
+    );
+    
+    return tenant;
+  }
+
   async getAllTenants(): Promise<Tenant[]> {
     return Array.from(this.tenants.values());
   }
@@ -912,6 +924,28 @@ export class MemStorage implements IStorage {
     console.log(`Cache entries cleared for tenant ID: ${id}`);
     
     return updatedTenant;
+  }
+
+  async deleteTenant(id: number): Promise<boolean> {
+    // Get the tenant to clear caches
+    const tenant = this.tenants.get(id);
+    if (!tenant) {
+      return false;
+    }
+    
+    // Remove from map
+    const result = this.tenants.delete(id);
+    
+    // Clear all cache entries for this tenant
+    this.tenantCache.delete(`tenant:${id}`);
+    if (tenant.apiKey) {
+      this.tenantByApiKeyCache.delete(tenant.apiKey);
+    }
+    if (tenant.subdomain) {
+      this.tenantBySubdomainCache.delete(tenant.subdomain);
+    }
+    
+    return result;
   }
   
   // Team operations
@@ -1328,6 +1362,15 @@ export class MemStorage implements IStorage {
         this.userCache.delete(cacheKey);
       }, 60 * 60 * 1000);
     }
+    
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    // Search through users array to find user with matching email (case-insensitive)
+    const user = Array.from(this.users.values()).find(
+      (user) => user.email && user.email.toLowerCase() === email.toLowerCase()
+    );
     
     return user;
   }
@@ -3471,6 +3514,41 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async getTenantByName(name: string): Promise<Tenant | undefined> {
+    // Query tenants table with name match
+    return executeQuery<Tenant | undefined>(
+      async () => {
+        try {
+          const result = await db
+            .select()
+            .from(tenants)
+            .where(eq(tenants.name, name));
+          
+          const tenant = result[0];
+          
+          if (tenant) {
+            // Update all relevant caches
+            this.tenantCache.set(tenant.id, tenant);
+            if (tenant.apiKey) this.tenantByApiKeyCache.set(tenant.apiKey, tenant);
+            if (tenant.subdomain) this.tenantBySubdomainCache.set(tenant.subdomain, tenant);
+          }
+          
+          return tenant;
+        } catch (error) {
+          console.error(`Error fetching tenant by name ${name}:`, error);
+          throw error;
+        }
+      },
+      undefined,
+      {
+        retries: 2,
+        initialDelay: 100,
+        timeoutMs: 3000,
+        logPrefix: `getTenantByName(${name})`
+      }
+    );
+  }
+
   async getAllTenants(): Promise<Tenant[]> {
     try {
       console.log('[DEBUG] getAllTenants: Executing database query');
@@ -3732,6 +3810,27 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`[ERROR] Failed to update tenant ${id}:`, error);
       throw error;
+    }
+  }
+
+  async deleteTenant(id: number): Promise<boolean> {
+    try {
+      // First get the tenant to clear caches
+      const tenant = await this.getTenantById(id);
+      
+      // Delete from tenants table
+      const result = await db
+        .delete(tenants)
+        .where(eq(tenants.id, id));
+      
+      // Clear all cache entries for this tenant
+      this.clearTenantFromCache(id);
+      
+      // Return true if deleted (result would be truthy if successful)
+      return true;
+    } catch (error) {
+      console.error(`Error deleting tenant ${id}:`, error);
+      return false;
     }
   }
   
@@ -4490,6 +4589,39 @@ export class DatabaseStorage implements IStorage {
         initialDelay: 100,
         timeoutMs: 5000,
         logPrefix: `getUserByUsername(${username})`
+      }
+    );
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    // Query users table with case-insensitive email match
+    return executeQuery<User | undefined>(
+      async () => {
+        try {
+          const result = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email.toLowerCase()));
+          
+          const user = result[0];
+          
+          if (user) {
+            // Cache the user for future lookups
+            this.userCache.set(user.id, user);
+          }
+          
+          return user;
+        } catch (error) {
+          console.error(`Error fetching user by email ${email}:`, error);
+          throw error;
+        }
+      },
+      undefined,
+      {
+        retries: 2,
+        initialDelay: 100,
+        timeoutMs: 3000,
+        logPrefix: `getUserByEmail(${email})`
       }
     );
   }

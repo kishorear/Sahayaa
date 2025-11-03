@@ -31,6 +31,9 @@ export default function LandingPage() {
               <Link href="/demo">
                 <span className="hover:text-primary transition-colors cursor-pointer">Demo</span>
               </Link>
+              <Link href="/trial">
+                <Button size="sm" variant="outline">Free Trial</Button>
+              </Link>
               <Link href="/auth">
                 <Button size="sm">Login</Button>
               </Link>
@@ -47,9 +50,9 @@ export default function LandingPage() {
             </h1>
             <p className="text-xl mb-8 text-indigo-100">Sahayaa AI uses specialized AI agents  to analyze issues and provide level 1 and 2 solution suggestions based on previously resolved similar tickets.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/auth">
+              <Link href="/trial">
                 <Button size="lg" className="bg-white text-indigo-600 hover:bg-indigo-50">
-                  Get Started
+                  Start Free Trial - 10 Tickets Free
                 </Button>
               </Link>
               <Link href="/pricing">
@@ -61,6 +64,7 @@ export default function LandingPage() {
                 </Button>
               </Link>
             </div>
+            <p className="mt-4 text-sm text-indigo-100">No credit card required • Get started in 2 minutes</p>
           </div>
         </div>
       </header>

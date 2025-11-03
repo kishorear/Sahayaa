@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Loader2, InfoIcon } from "lucide-react";
+import { Loader2, InfoIcon, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, Link } from "wouter";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -104,10 +104,32 @@ export default function AuthPage() {
                     </form>
                   </Form>
                   
-                  <div className="mt-6">
+                  <div className="mt-6 space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          Or
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <Link href="/trial">
+                      <Button 
+                        variant="outline" 
+                        className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                        data-testid="button-start-trial"
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Start Free Trial - 10 Tickets Free
+                      </Button>
+                    </Link>
+                    
                     <Alert className="bg-muted/50">
                       <InfoIcon className="h-4 w-4 mr-2" />
-                      <AlertDescription>Need an account? Please contact us</AlertDescription>
+                      <AlertDescription>Try our AI-powered system with 10 free tickets. No credit card required!</AlertDescription>
                     </Alert>
                   </div>
                 </CardContent>

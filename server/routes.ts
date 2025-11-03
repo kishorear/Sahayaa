@@ -667,6 +667,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Pass tenant context if available (from middleware or user)
       const tenantId = req.tenant?.id || req.user?.tenantId;
       
+      // Check if tenant has reached their ticket limit (for trial accounts)
+      if (tenantId) {
+        const tenant = await storage.getTenantById(tenantId);
+        if (tenant && tenant.isTrial && tenant.ticketLimit) {
+          if (tenant.ticketsCreated >= tenant.ticketLimit) {
+            return res.status(403).json({ 
+              message: `Trial account limit reached. You have created ${tenant.ticketsCreated} of ${tenant.ticketLimit} allowed tickets. Please upgrade to create more tickets.`,
+              limitReached: true,
+              ticketsCreated: tenant.ticketsCreated,
+              ticketLimit: tenant.ticketLimit
+            });
+          }
+        }
+      }
+      
       // Pre-load the AI providers to ensure we're using the latest configuration
       try {
         await reloadProvidersFromDatabase(tenantId || 1);
@@ -729,6 +744,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create ticket in our system
       const ticket = await storage.createTicket(newTicket);
+      
+      // Increment ticket counter for trial accounts
+      if (tenantId) {
+        try {
+          const tenant = await storage.getTenantById(tenantId);
+          if (tenant && tenant.isTrial) {
+            await storage.updateTenant(tenantId, {
+              ticketsCreated: (tenant.ticketsCreated || 0) + 1
+            });
+            console.log(`Trial tenant ${tenantId} ticket count: ${(tenant.ticketsCreated || 0) + 1}/${tenant.ticketLimit || 'unlimited'}`);
+          }
+        } catch (error) {
+          console.error('Error incrementing trial ticket counter:', error);
+          // Don't fail the ticket creation if counter update fails
+        }
+      }
       
       // Create ticket in third-party systems - this happens for ALL tickets
       // as we want tickets created in both our system and third-party systems simultaneously

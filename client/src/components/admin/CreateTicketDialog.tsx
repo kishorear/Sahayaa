@@ -37,6 +37,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
+import { TrialTicketCounter } from "@/components/TrialTicketCounter";
 
 type SimilarTicket = {
   id: number;
@@ -193,6 +194,8 @@ export default function CreateTicketDialog({ children }: CreateTicketDialogProps
             Fill in the details below to create a new support ticket.
           </DialogDescription>
         </DialogHeader>
+        
+        <TrialTicketCounter variant="alert" />
 
         {showSimilarWarning && similarTickets.length > 0 && (
           <Alert variant="default" className="border-yellow-500 bg-yellow-50">

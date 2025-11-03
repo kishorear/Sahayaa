@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
+import { TrialTicketCounter } from "@/components/TrialTicketCounter";
 
 type AdminLayoutProps = {
   children: React.ReactNode;
@@ -220,9 +221,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </Button>
             </div>
             <div className="flex-1"></div>
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <TrialTicketCounter variant="badge" />
               {user && (
-                <div className="hidden md:flex mr-4 items-center">
+                <div className="hidden md:flex mr-1 items-center">
                   <div className="text-right">
                     <p className="text-sm font-medium">{user.name || user.username}</p>
                     {user.company && (

@@ -6524,6 +6524,15 @@ class StorageWrapper implements IStorage {
     }
   }
   
+  async getTenantByName(name: string): Promise<Tenant | undefined> {
+    try {
+      return await this.storageImpl.getTenantByName(name);
+    } catch (error) {
+      console.error(`Error in getTenantByName(${name}):`, error);
+      throw error;
+    }
+  }
+  
   async getAllTenants(): Promise<Tenant[]> {
     try {
       return await this.storageImpl.getAllTenants();
@@ -6547,6 +6556,15 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.updateTenant(id, updates);
     } catch (error) {
       console.error(`Error in updateTenant(${id}):`, error);
+      throw error;
+    }
+  }
+  
+  async deleteTenant(id: number): Promise<boolean> {
+    try {
+      return await this.storageImpl.deleteTenant(id);
+    } catch (error) {
+      console.error(`Error in deleteTenant(${id}):`, error);
       throw error;
     }
   }
@@ -6666,6 +6684,15 @@ class StorageWrapper implements IStorage {
       return await this.storageImpl.getUserByUsername(username, tenantId);
     } catch (error) {
       console.error(`Error in getUserByUsername(${username}):`, error);
+      throw error;
+    }
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+      return await this.storageImpl.getUserByEmail(email);
+    } catch (error) {
+      console.error(`Error in getUserByEmail(${email}):`, error);
       throw error;
     }
   }

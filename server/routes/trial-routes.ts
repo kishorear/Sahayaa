@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../storage";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "../auth";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -56,8 +56,8 @@ router.post("/register", async (req: Request, res: Response) => {
     // Generate unique API key for tenant
     const apiKey = crypto.randomBytes(32).toString('hex');
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password using scrypt (same as login system)
+    const hashedPassword = await hashPassword(password);
 
     // Create trial tenant with 10 ticket limit
     const tenant = await storage.createTenant({

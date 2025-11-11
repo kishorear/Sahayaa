@@ -95,6 +95,8 @@ router.post("/register", async (req: Request, res: Response) => {
       profilePicture: null,
       teamId: null
     });
+    
+    console.log(`[TRIAL] Created user:`, { id: user.id, username: user.username, tenantId: user.tenantId, role: user.role });
 
     if (!user) {
       // Rollback tenant creation if user creation fails

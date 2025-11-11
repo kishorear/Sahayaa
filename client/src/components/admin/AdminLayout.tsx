@@ -228,7 +228,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <div className="text-right">
                     <p className="text-sm font-medium">{user.name || user.username}</p>
                     {user.company && (
-                      <p className="text-xs text-gray-500">{user.company}</p>
+                      <p className="text-xs text-gray-500">
+                        {user.company}
+                        {(user as any).tenant?.isTrial && <span className="ml-1 text-blue-600 dark:text-blue-400 font-medium">(Trial)</span>}
+                      </p>
+                    )}
+                    {!(user as any).tenant?.isTrial && (user as any).tenant?.name && (
+                      <p className="text-xs text-gray-500">{(user as any).tenant.name}</p>
                     )}
                     <p className="text-xs text-gray-500 capitalize">{user.role} {user.teamId ? `• Team ${user.teamId}` : ''}</p>
                   </div>

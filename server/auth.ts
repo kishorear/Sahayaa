@@ -483,8 +483,28 @@ export async function setupAuth(app: Express) {
         try {
           // Remove password from response with extra error handling
           const { password: _, ...userWithoutPassword } = req.user;
+          
+          // Fetch tenant information
+          let tenantInfo = null;
+          if (req.user.tenantId) {
+            try {
+              const tenant = await storage.getTenantById(req.user.tenantId);
+              if (tenant) {
+                tenantInfo = {
+                  id: tenant.id,
+                  name: tenant.name,
+                  isTrial: tenant.isTrial,
+                  ticketLimit: tenant.ticketLimit,
+                  ticketsCreated: tenant.ticketsCreated
+                };
+              }
+            } catch (tenantError) {
+              console.error(`API user request [${traceId}] - Error fetching tenant:`, tenantError);
+            }
+          }
+          
           console.log(`API user request [${traceId}] - Returning user data for:`, userWithoutPassword.username);
-          return res.status(200).json(userWithoutPassword);
+          return res.status(200).json({ ...userWithoutPassword, tenant: tenantInfo });
         } catch (userObjectError) {
           console.error(`API user request [${traceId}] - Error processing user object:`, userObjectError);
           // Don't fail, continue to try fallback mechanisms
@@ -531,8 +551,28 @@ export async function setupAuth(app: Express) {
             req.user = user;
             try {
               const { password: _, ...userWithoutPassword } = user;
+              
+              // Fetch tenant information
+              let tenantInfo = null;
+              if (user.tenantId) {
+                try {
+                  const tenant = await storage.getTenantById(user.tenantId);
+                  if (tenant) {
+                    tenantInfo = {
+                      id: tenant.id,
+                      name: tenant.name,
+                      isTrial: tenant.isTrial,
+                      ticketLimit: tenant.ticketLimit,
+                      ticketsCreated: tenant.ticketsCreated
+                    };
+                  }
+                } catch (tenantError) {
+                  console.error(`API user request [${traceId}] - Error fetching tenant:`, tenantError);
+                }
+              }
+              
               console.log(`API user request [${traceId}] - User restored from session.userId:`, user.id);
-              return res.status(200).json(userWithoutPassword);
+              return res.status(200).json({ ...userWithoutPassword, tenant: tenantInfo });
             } catch (responseError) {
               console.error(`API user request [${traceId}] - Error formatting user response:`, responseError);
             }
@@ -607,8 +647,28 @@ export async function setupAuth(app: Express) {
               // Return the user data with error handling
               try {
                 const { password: _, ...userWithoutPassword } = user;
+                
+                // Fetch tenant information
+                let tenantInfo = null;
+                if (user.tenantId) {
+                  try {
+                    const tenant = await storage.getTenantById(user.tenantId);
+                    if (tenant) {
+                      tenantInfo = {
+                        id: tenant.id,
+                        name: tenant.name,
+                        isTrial: tenant.isTrial,
+                        ticketLimit: tenant.ticketLimit,
+                        ticketsCreated: tenant.ticketsCreated
+                      };
+                    }
+                  } catch (tenantError) {
+                    console.error(`API user request [${traceId}] - Error fetching tenant:`, tenantError);
+                  }
+                }
+                
                 console.log(`API user request [${traceId}] - User restored from direct ID cookie:`, user.id);
-                return res.status(200).json(userWithoutPassword);
+                return res.status(200).json({ ...userWithoutPassword, tenant: tenantInfo });
               } catch (responseError) {
                 console.error(`API user request [${traceId}] - Error formatting user response:`, responseError);
               }

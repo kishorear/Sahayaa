@@ -2769,18 +2769,23 @@ export class DatabaseStorage implements IStorage {
   
   // Helper method to clear all cached data for a user by ID
   private clearUserFromCache(userId: number): void {
+    // Use correct cache key format: "user:${id}"
+    const cacheKey = `user:${userId}`;
+    
     // First, get the user from cache to find username
-    const cachedUser = this.userCache.get(userId);
+    const cachedUser = this.userCache.get(cacheKey);
     
-    // Remove from ID cache
-    this.userCache.delete(userId);
+    // Remove from ID cache (this.userCache)
+    this.userCache.delete(cacheKey);
     
-    // If we found the cached user, also remove by username
+    // If we found the cached user, also remove by username from userByUsernameCache
     if (cachedUser) {
-      const usernameKey = cachedUser.tenantId 
-        ? `${cachedUser.username}:${cachedUser.tenantId}` 
-        : cachedUser.username;
-      this.userByUsernameCache.delete(usernameKey);
+      // Remove cache entry with tenantId from userByUsernameCache
+      const usernameKeyWithTenant = `${cachedUser.username}:${cachedUser.tenantId}`;
+      this.userByUsernameCache.delete(usernameKeyWithTenant);
+      
+      // Also remove cache entry without tenantId (for backward compatibility)
+      this.userByUsernameCache.delete(cachedUser.username);
     }
     
     console.log(`Cache entries cleared for user ID: ${userId}`);

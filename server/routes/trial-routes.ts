@@ -105,6 +105,40 @@ router.post("/register", async (req: Request, res: Response) => {
     // Update tenant adminId
     await storage.updateTenant(tenant.id, { adminId: user.id });
 
+    // Create default Gemini AI provider for trial tenant
+    try {
+      const googleApiKey = process.env.GOOGLE_AI_API_KEY;
+      if (googleApiKey) {
+        await storage.createAiProvider({
+          tenantId: tenant.id,
+          teamId: null, // Available to all teams
+          type: "google",
+          name: "Gemini (Trial Default)",
+          model: "gemini-1.5-flash",
+          apiKey: googleApiKey,
+          baseUrl: null,
+          isPrimary: true,
+          isDefault: true,
+          enabled: true,
+          settings: {},
+          useForClassification: true,
+          useForAutoResolve: true,
+          useForChat: true,
+          useForEmail: true,
+          priority: 50,
+          contextWindow: 32000,
+          maxTokens: 2048,
+          temperature: 10 // 1.0 when divided by 10 (valid range for Gemini: 0.0-2.0)
+        });
+        console.log(`Created default Gemini AI provider for trial tenant ${tenant.id}`);
+      } else {
+        console.warn("GOOGLE_AI_API_KEY not found, skipping AI provider setup for trial tenant");
+      }
+    } catch (aiProviderError) {
+      // Log but don't fail registration if AI provider creation fails
+      console.error("Failed to create AI provider for trial tenant:", aiProviderError);
+    }
+
     // Auto-login the user by creating session
     if (req.session) {
       req.session.userId = user.id;

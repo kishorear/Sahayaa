@@ -3,6 +3,14 @@
 ## Overview
 Sahayaa AI is an AI-powered, microservices-based support ticket management system. It provides multi-tenant support with intelligent ticket processing, automated responses, and vector-based similarity search. The system aims to streamline customer support, enhance operational efficiency, and provide intelligent solutions, leading to improved customer satisfaction and reduced support costs. Key capabilities include AI-powered classification, auto-assignment, duplicate detection, and robust security features with industry-specific role-based access control.
 
+## Recent Changes
+- **Tenant Isolation Security Fixes (November 11, 2025)**: 
+  - Removed all `tenantId || 1` fallbacks from chatbot endpoints to prevent data leakage
+  - Created `resolveTenantContext` helper function for safe tenant context resolution
+  - Fixed user cache invalidation to use consistent numeric ID keys
+  - Added dedicated `userByUsernameCache` to MemStorage for efficient lookups
+  - Enforced required tenantId in createUser to prevent cross-tenant user creation
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 

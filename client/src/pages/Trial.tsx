@@ -265,7 +265,7 @@ export default function Trial() {
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400">
                   Already have an account?{" "}
                   <a
-                    href="/login"
+                    href="/auth"
                     className="text-blue-600 hover:underline dark:text-blue-400"
                     data-testid="link-login"
                   >

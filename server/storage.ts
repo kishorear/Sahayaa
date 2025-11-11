@@ -266,7 +266,8 @@ export class MemStorage implements IStorage {
   private mcpQueryLogIdCounter: number;
   
   // Add caches for critical data in production
-  private userCache: Map<string, User> = new Map();
+  private userCache: Map<number, User> = new Map();
+  private userByUsernameCache: Map<string, User> = new Map();
   private tenantCache: Map<string, Tenant> = new Map();
   private tenantByApiKeyCache: Map<string, Tenant> = new Map();
   private tenantBySubdomainCache: Map<string, Tenant> = new Map();
@@ -1305,9 +1306,8 @@ export class MemStorage implements IStorage {
   
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    // Check cache first for better performance and resilience
-    const cacheKey = `user:${id}`;
-    const cachedUser = this.userCache.get(cacheKey);
+    // Check cache first for better performance and resilience (using numeric ID)
+    const cachedUser = this.userCache.get(id);
     if (cachedUser) {
       console.log(`User cache hit for ID: ${id}`);
       return cachedUser;
@@ -1318,11 +1318,11 @@ export class MemStorage implements IStorage {
     
     // If found, add to cache for future requests
     if (user) {
-      this.userCache.set(cacheKey, user);
+      this.userCache.set(id, user);
       
       // Clear cache entry after 1 hour to avoid stale data
       setTimeout(() => {
-        this.userCache.delete(cacheKey);
+        this.userCache.delete(id);
       }, 60 * 60 * 1000);
     }
     
@@ -1334,7 +1334,7 @@ export class MemStorage implements IStorage {
     const cacheKey = tenantId ? `${username}:${tenantId}` : username;
     
     // Check cache first for faster response and resilience
-    const cachedUser = this.userCache.get(cacheKey);
+    const cachedUser = this.userByUsernameCache.get(cacheKey);
     if (cachedUser) {
       console.log(`User cache hit for username: ${username}`);
       return cachedUser;
@@ -1355,11 +1355,11 @@ export class MemStorage implements IStorage {
     
     // If found, add to cache for future requests
     if (user) {
-      this.userCache.set(cacheKey, user);
+      this.userByUsernameCache.set(cacheKey, user);
       
       // Clear cache entry after 1 hour to avoid stale data
       setTimeout(() => {
-        this.userCache.delete(cacheKey);
+        this.userByUsernameCache.delete(cacheKey);
       }, 60 * 60 * 1000);
     }
     
@@ -1382,6 +1382,10 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    if (!insertUser.tenantId) {
+      throw new Error('tenantId is required when creating a user');
+    }
+    
     const id = this.userIdCounter++;
     const now = new Date();
     const user: User = { 
@@ -1390,7 +1394,7 @@ export class MemStorage implements IStorage {
       role: insertUser.role || "user",
       name: insertUser.name || null,
       email: insertUser.email || null,
-      tenantId: insertUser.tenantId || 1, // Default to tenant ID 1 if not specified
+      tenantId: insertUser.tenantId,
       
       // MFA fields
       mfaEnabled: false,
@@ -1425,18 +1429,18 @@ export class MemStorage implements IStorage {
     // Update in the main Map
     this.users.set(id, updatedUser);
     
-    // Clear any cached entries to ensure fresh data is retrieved next time
-    this.userCache.delete(`user:${id}`);
+    // Clear any cached entries to ensure fresh data is retrieved next time (using numeric ID)
+    this.userCache.delete(id);
     
     // If username is being changed, clear cache entries for both old and new usernames
     if (updates.username && updates.username !== user.username) {
-      // Clear old username cache
+      // Clear old username cache from userByUsernameCache
       const oldCacheKey = user.tenantId ? `${user.username}:${user.tenantId}` : user.username;
-      this.userCache.delete(oldCacheKey);
+      this.userByUsernameCache.delete(oldCacheKey);
       
       // Clear new username cache just in case it exists
       const newCacheKey = user.tenantId ? `${updates.username}:${user.tenantId}` : updates.username;
-      this.userCache.delete(newCacheKey);
+      this.userByUsernameCache.delete(newCacheKey);
     }
     
     console.log(`Cache entries cleared for user ID: ${id}`);
@@ -1453,13 +1457,13 @@ export class MemStorage implements IStorage {
     // Delete the user from the main Map
     this.users.delete(id);
     
-    // Clear any cached entries
-    this.userCache.delete(`user:${id}`);
+    // Clear any cached entries (using numeric ID)
+    this.userCache.delete(id);
     
-    // Clear username cache entries
+    // Clear username cache entries from userByUsernameCache
     if (user.username) {
       const cacheKey = user.tenantId ? `${user.username}:${user.tenantId}` : user.username;
-      this.userCache.delete(cacheKey);
+      this.userByUsernameCache.delete(cacheKey);
     }
     
     console.log(`User with ID ${id} has been deleted`);
@@ -2769,14 +2773,11 @@ export class DatabaseStorage implements IStorage {
   
   // Helper method to clear all cached data for a user by ID
   private clearUserFromCache(userId: number): void {
-    // Use correct cache key format: "user:${id}"
-    const cacheKey = `user:${userId}`;
+    // First, get the user from cache to find username (using numeric ID key)
+    const cachedUser = this.userCache.get(userId);
     
-    // First, get the user from cache to find username
-    const cachedUser = this.userCache.get(cacheKey);
-    
-    // Remove from ID cache (this.userCache)
-    this.userCache.delete(cacheKey);
+    // Remove from ID cache (this.userCache) using numeric ID
+    this.userCache.delete(userId);
     
     // If we found the cached user, also remove by username from userByUsernameCache
     if (cachedUser) {
@@ -4682,6 +4683,10 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
+      if (!insertUser.tenantId) {
+        throw new Error('tenantId is required when creating a user');
+      }
+      
       // Create a SQL query that explicitly names the columns to avoid case sensitivity issues
       // Use drizzle SQL helpers instead of raw execute to properly handle parameter binding
       const result = await db.execute(sql`
@@ -4695,7 +4700,7 @@ export class DatabaseStorage implements IStorage {
           ${insertUser.role || 'user'},
           ${insertUser.name || null},
           ${insertUser.email || null},
-          ${insertUser.tenantId || 1},
+          ${insertUser.tenantId},
           ${false}, 
           ${'[]'}, 
           ${false}, 
@@ -4713,7 +4718,7 @@ export class DatabaseStorage implements IStorage {
       // Map the database field names to match our expected User type
       const user = {
         id: rawUser.id,
-        tenantId: rawUser.tenantid || 1,
+        tenantId: rawUser.tenantid,
         username: rawUser.username,
         password: rawUser.password,
         role: rawUser.role,
@@ -4733,13 +4738,11 @@ export class DatabaseStorage implements IStorage {
       
       // Add the new user to the cache immediately for better performance
       try {
-        // Cache by ID
+        // Cache by ID (using numeric key to match PgStorage getUser implementation)
         this.userCache.set(user.id, user);
         
-        // Cache by username (with tenant ID if provided)
-        const usernameKey = user.tenantId 
-          ? `${user.username}:${user.tenantId}` 
-          : user.username;
+        // Cache by username (with tenant ID)
+        const usernameKey = `${user.username}:${user.tenantId}`;
         this.userByUsernameCache.set(usernameKey, user);
         
         console.log(`New user ${user.username} (ID: ${user.id}) added to cache`);

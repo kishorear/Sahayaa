@@ -58,9 +58,9 @@ export default function Trial() {
         description: `Welcome to Sahayaa AI! You have 10 tickets to try our platform.`,
       });
 
-      // Redirect to login page
+      // Redirect to admin dashboard (user is auto-logged in)
       setTimeout(() => {
-        setLocation("/login");
+        setLocation("/admin");
       }, 2000);
     } catch (error: any) {
       toast({

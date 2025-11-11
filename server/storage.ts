@@ -3241,10 +3241,14 @@ export class DatabaseStorage implements IStorage {
             name: tenantData.name,
             subdomain: tenantData.subdomain,
             apiKey: tenantData.apiKey || tenantData.apikey,
+            adminId: tenantData.adminId || tenantData.adminid || null,
             settings: settings,
             branding: branding,
             industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
+            isTrial: tenantData.isTrial || tenantData.istrial || false,
+            ticketLimit: tenantData.ticketLimit || tenantData.ticketlimit || null,
+            ticketsCreated: tenantData.ticketsCreated || tenantData.ticketscreated || 0,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
           };
@@ -3363,10 +3367,14 @@ export class DatabaseStorage implements IStorage {
             name: tenantData.name,
             subdomain: tenantData.subdomain,
             apiKey: tenantData.apiKey || tenantData.apikey,
+            adminId: tenantData.adminId || tenantData.adminid || null,
             settings: settings,
             branding: branding,
             industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
+            isTrial: tenantData.isTrial || tenantData.istrial || false,
+            ticketLimit: tenantData.ticketLimit || tenantData.ticketlimit || null,
+            ticketsCreated: tenantData.ticketsCreated || tenantData.ticketscreated || 0,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
           };
@@ -3478,10 +3486,14 @@ export class DatabaseStorage implements IStorage {
             name: tenantData.name,
             subdomain: tenantData.subdomain,
             apiKey: tenantData.apiKey || tenantData.apikey,
+            adminId: tenantData.adminId || tenantData.adminid || null,
             settings: settings,
             branding: branding,
             industryType: tenantData.industryType || tenantData.industrytype || 'none',
             active: tenantData.active === undefined ? true : !!tenantData.active,
+            isTrial: tenantData.isTrial || tenantData.istrial || false,
+            ticketLimit: tenantData.ticketLimit || tenantData.ticketlimit || null,
+            ticketsCreated: tenantData.ticketsCreated || tenantData.ticketscreated || 0,
             createdAt: tenantData.createdAt || tenantData.createdat,
             updatedAt: tenantData.updatedAt || tenantData.updatedat
           };

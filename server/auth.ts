@@ -45,6 +45,61 @@ declare global {
   }
 }
 
+/**
+ * Safely resolve tenant context from request, preventing data leakage.
+ * 
+ * This helper enforces tenant isolation by:
+ * - Extracting tenantId from authenticated user (req.user)
+ * - Throwing an error if tenant context is missing (no fallback to tenant 1)
+ * - Allowing explicit creator role overrides for cross-tenant admin operations
+ * 
+ * @param req - Express request object
+ * @param options - Configuration options
+ * @returns The resolved tenant ID
+ * @throws Error if tenant context is missing and not optional
+ */
+export function resolveTenantContext(
+  req: Request,
+  options: {
+    allowCreatorOverride?: boolean;  // Allow creator role to specify tenantId in query/body
+    required?: boolean;                // If true (default), throw error if no tenant context
+  } = { required: true }
+): number | undefined {
+  const { allowCreatorOverride = false, required = true } = options;
+  
+  // 1. Check if user has creator role and override is allowed
+  if (allowCreatorOverride && req.user?.role === 'creator') {
+    // Creator can specify tenantId in query or body
+    const overrideTenantId = 
+      (req.query.tenantId as string) || 
+      (req.body?.tenantId as number);
+    
+    if (overrideTenantId) {
+      const parsedId = typeof overrideTenantId === 'string' 
+        ? parseInt(overrideTenantId, 10) 
+        : overrideTenantId;
+      
+      if (!isNaN(parsedId)) {
+        console.log(`[TENANT CONTEXT] Creator override: using tenantId ${parsedId}`);
+        return parsedId;
+      }
+    }
+  }
+  
+  // 2. Get tenant ID from authenticated user
+  const tenantId = req.user?.tenantId;
+  
+  // 3. Validate tenant context exists
+  if (tenantId === undefined || tenantId === null) {
+    if (required) {
+      throw new Error('Tenant context is required but missing. User must be authenticated with a valid tenant.');
+    }
+    return undefined;
+  }
+  
+  return tenantId;
+}
+
 // Using scrypt for password hashing
 const scryptAsync = promisify(scrypt);
 

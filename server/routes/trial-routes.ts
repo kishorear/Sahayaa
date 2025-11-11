@@ -144,12 +144,6 @@ router.post("/register", async (req: Request, res: Response) => {
     // Auto-login the user by creating session
     if (req.session) {
       req.session.userId = user.id;
-      req.session.user = {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        tenantId: user.tenantId,
-      };
       
       await new Promise<void>((resolve, reject) => {
         req.session!.save((err) => {

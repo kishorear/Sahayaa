@@ -19,7 +19,7 @@ import {
   type InsertAttachment,
   type ChatbotResponse
 } from "@shared/schema";
-import { setupAuth } from "./auth";
+import { setupAuth, resolveTenantContext } from "./auth";
 import monitoringRoutes from "./routes/monitoring-routes.js";
 import { registerEmailRoutes } from "./routes/email-routes";
 import { registerEmailSupportRoutes } from "./routes/email-support-routes";
@@ -1381,8 +1381,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
       
-      // Get tenant context from middleware or request
-      const tenantId = req.tenant?.id || req.user?.tenantId || 1; // Default to tenant 1 if not specified
+      // Get tenant context - required for proper data isolation
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant context is required" });
+      }
+      
       const userId = req.user?.id || null;
       
       // Log user message
@@ -1784,8 +1788,15 @@ Your goal is to quickly gather issue details and create comprehensive support ti
         });
       }
       
-      // Get tenant context from middleware or request
-      const tenantId = req.tenant?.id || req.user?.tenantId || 1; // Default to tenant 1 if not specified
+      // Get tenant context - required for proper data isolation
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Tenant context is required",
+          title: "Support Request"
+        });
+      }
       
       // Pre-load the AI providers to ensure we're using the latest configuration
       try {
@@ -1825,8 +1836,15 @@ Your goal is to quickly gather issue details and create comprehensive support ti
         });
       }
       
-      // Get tenant context from middleware or request
-      const tenantId = req.tenant?.id || req.user?.tenantId || 1; // Default to tenant 1 if not specified
+      // Get tenant context - required for proper data isolation
+      const tenantId = req.tenant?.id || req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Tenant context is required",
+          summary: "Support ticket created via chat. A summary could not be generated."
+        });
+      }
       
       // Pre-load the AI providers to ensure we're using the latest configuration
       try {

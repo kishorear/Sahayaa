@@ -100,6 +100,93 @@ export function resolveTenantContext(
   return tenantId;
 }
 
+/**
+ * Check if a trial tenant can create more tickets.
+ * This function ONLY enforces limits for trial tenants (isTrial: true).
+ * Regular/paid clients are completely unaffected and can create unlimited tickets.
+ * 
+ * @param tenantId - The tenant ID to check
+ * @returns Object with { canCreate: boolean, reason?: string, ticketsCreated?: number, ticketLimit?: number }
+ */
+export async function checkTrialTicketLimit(tenantId: number): Promise<{
+  canCreate: boolean;
+  reason?: string;
+  ticketsCreated?: number;
+  ticketLimit?: number;
+}> {
+  try {
+    const tenant = await storage.getTenantById(tenantId);
+    
+    // If tenant doesn't exist, prevent ticket creation
+    if (!tenant) {
+      return {
+        canCreate: false,
+        reason: 'Tenant not found'
+      };
+    }
+    
+    // If tenant is NOT a trial tenant, allow unlimited ticket creation
+    // This ensures paid/regular clients are completely unaffected
+    if (!tenant.isTrial) {
+      return {
+        canCreate: true
+      };
+    }
+    
+    // For trial tenants, check the limit
+    const ticketsCreated = tenant.ticketsCreated || 0;
+    const ticketLimit = tenant.ticketLimit || 10;
+    
+    if (ticketsCreated >= ticketLimit) {
+      return {
+        canCreate: false,
+        reason: `Trial account ticket limit reached (${ticketsCreated}/${ticketLimit}). Please upgrade to create more tickets.`,
+        ticketsCreated,
+        ticketLimit
+      };
+    }
+    
+    // Trial tenant has not reached limit
+    return {
+      canCreate: true,
+      ticketsCreated,
+      ticketLimit
+    };
+  } catch (error) {
+    console.error('Error checking trial ticket limit:', error);
+    // On error, allow ticket creation to prevent breaking paid clients
+    return {
+      canCreate: true,
+      reason: 'Error checking ticket limit, allowing creation'
+    };
+  }
+}
+
+/**
+ * Increment the ticket counter for trial tenants ONLY.
+ * Regular/paid clients are unaffected.
+ * 
+ * @param tenantId - The tenant ID to increment counter for
+ */
+export async function incrementTrialTicketCounter(tenantId: number): Promise<void> {
+  try {
+    const tenant = await storage.getTenantById(tenantId);
+    
+    // Only increment counter for trial tenants
+    if (tenant && tenant.isTrial) {
+      const newCount = (tenant.ticketsCreated || 0) + 1;
+      await storage.updateTenant(tenantId, {
+        ticketsCreated: newCount
+      });
+      console.log(`Trial tenant ${tenantId} ticket count: ${newCount}/${tenant.ticketLimit || 10}`);
+    }
+    // For non-trial tenants, do nothing (no counter increments)
+  } catch (error) {
+    console.error('Error incrementing trial ticket counter:', error);
+    // Don't throw - we don't want to fail ticket creation if counter update fails
+  }
+}
+
 // Using scrypt for password hashing
 const scryptAsync = promisify(scrypt);
 

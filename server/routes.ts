@@ -19,7 +19,7 @@ import {
   type InsertAttachment,
   type ChatbotResponse
 } from "@shared/schema";
-import { setupAuth, resolveTenantContext } from "./auth";
+import { setupAuth, resolveTenantContext, checkTrialTicketLimit, incrementTrialTicketCounter } from "./auth";
 import monitoringRoutes from "./routes/monitoring-routes.js";
 import { registerEmailRoutes } from "./routes/email-routes";
 import { registerEmailSupportRoutes } from "./routes/email-support-routes";
@@ -728,6 +728,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`Error auto-assigning ticket:`, error);
       }
       
+      // Check trial ticket limit (only enforces for trial tenants)
+      if (tenantId) {
+        const limitCheck = await checkTrialTicketLimit(tenantId);
+        if (!limitCheck.canCreate) {
+          console.log(`Main Ticket Creation: Trial tenant ${tenantId} ticket limit reached`);
+          return res.status(403).json({
+            message: limitCheck.reason || 'Ticket creation limit reached',
+            ticketsCreated: limitCheck.ticketsCreated,
+            ticketLimit: limitCheck.ticketLimit,
+            isTrial: true
+          });
+        }
+      }
+      
       const newTicket: InsertTicket = {
         ...ticketData,
         title: enhancedTitle, // Use the AI-enhanced title
@@ -745,20 +759,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create ticket in our system
       const ticket = await storage.createTicket(newTicket);
       
-      // Increment ticket counter for trial accounts
+      // Increment ticket counter for trial tenants only
       if (tenantId) {
-        try {
-          const tenant = await storage.getTenantById(tenantId);
-          if (tenant && tenant.isTrial) {
-            await storage.updateTenant(tenantId, {
-              ticketsCreated: (tenant.ticketsCreated || 0) + 1
-            });
-            console.log(`Trial tenant ${tenantId} ticket count: ${(tenant.ticketsCreated || 0) + 1}/${tenant.ticketLimit || 'unlimited'}`);
-          }
-        } catch (error) {
-          console.error('Error incrementing trial ticket counter:', error);
-          // Don't fail the ticket creation if counter update fails
-        }
+        await incrementTrialTicketCounter(tenantId);
       }
       
       // Create ticket in third-party systems - this happens for ALL tickets
@@ -1299,6 +1302,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fallback to legacy ticket creation workflow
         const classification = await classifyTicket("Agent Request", user_message, resolvedTenantId);
         
+        // Check trial ticket limit (only enforces for trial tenants)
+        const limitCheck = await checkTrialTicketLimit(resolvedTenantId);
+        if (!limitCheck.canCreate) {
+          console.log(`Agent Workflow Fallback: Trial tenant ${resolvedTenantId} ticket limit reached`);
+          return res.status(403).json({
+            success: false,
+            message: limitCheck.reason || 'Ticket creation limit reached',
+            ticketsCreated: limitCheck.ticketsCreated,
+            ticketLimit: limitCheck.ticketLimit,
+            isTrial: true
+          });
+        }
+        
         // Create ticket using legacy flow
         const ticketData: InsertTicket = {
           title: user_message.slice(0, 100) + (user_message.length > 100 ? '...' : ''),
@@ -1313,6 +1329,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         const newTicket = await storage.createTicket(ticketData);
+        
+        // Increment ticket counter for trial tenants only
+        await incrementTrialTicketCounter(resolvedTenantId);
         
         // Try auto-resolve if possible
         let resolution_steps: string[] = [];

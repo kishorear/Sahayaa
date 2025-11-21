@@ -107,17 +107,17 @@ router.post("/register", async (req: Request, res: Response) => {
     // Update tenant adminId
     await storage.updateTenant(tenant.id, { adminId: user.id });
 
-    // Create default Gemini AI provider for trial tenant
+    // Create default OpenAI ChatGPT AI provider for trial tenant
     try {
-      const googleApiKey = process.env.GOOGLE_AI_API_KEY;
-      if (googleApiKey) {
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      if (openaiApiKey) {
         await storage.createAiProvider({
           tenantId: tenant.id,
           teamId: null, // Available to all teams
-          type: "google",
-          name: "Gemini (Trial Default)",
-          model: "gemini-1.5-flash",
-          apiKey: googleApiKey,
+          type: "openai",
+          name: "ChatGPT (Trial Default)",
+          model: "gpt-4o",
+          apiKey: openaiApiKey,
           baseUrl: null,
           isPrimary: true,
           isDefault: true,
@@ -128,13 +128,13 @@ router.post("/register", async (req: Request, res: Response) => {
           useForChat: true,
           useForEmail: true,
           priority: 50,
-          contextWindow: 32000,
-          maxTokens: 2048,
-          temperature: 10 // 1.0 when divided by 10 (valid range for Gemini: 0.0-2.0)
+          contextWindow: 8000,
+          maxTokens: 2000,
+          temperature: 7 // 0.7 when divided by 10 (valid range for OpenAI: 0.0-2.0)
         });
-        console.log(`Created default Gemini AI provider for trial tenant ${tenant.id}`);
+        console.log(`Created default OpenAI ChatGPT AI provider for trial tenant ${tenant.id}`);
       } else {
-        console.warn("GOOGLE_AI_API_KEY not found, skipping AI provider setup for trial tenant");
+        console.warn("OPENAI_API_KEY not found, skipping AI provider setup for trial tenant");
       }
     } catch (aiProviderError) {
       // Log but don't fail registration if AI provider creation fails

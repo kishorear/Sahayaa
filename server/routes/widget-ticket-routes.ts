@@ -5,6 +5,7 @@ import { generateChatResponse, generateTicketTitle } from "../ai";
 import type { ChatMessage } from "../ai";
 import agentService from "../ai/agent-service";
 import { getIntegrationService } from "../integrations";
+import { checkTrialTicketLimit, incrementTrialTicketCounter } from "../auth";
 
 /**
  * Widget ticket creation request validation schema
@@ -125,6 +126,18 @@ export function registerWidgetTicketRoutes(app: Express): void {
         console.warn(`Widget Ticket: Agent analysis unavailable: ${agentError.message}`);
       }
       
+      // Step 3.5: Check trial ticket limit (only enforces for trial tenants)
+      const limitCheck = await checkTrialTicketLimit(tenantId);
+      if (!limitCheck.canCreate) {
+        console.log(`Widget Ticket: Trial tenant ${tenantId} ticket limit reached`);
+        return res.status(403).json({
+          error: limitCheck.reason || 'Ticket creation limit reached',
+          ticketsCreated: limitCheck.ticketsCreated,
+          ticketLimit: limitCheck.ticketLimit,
+          isTrial: true
+        });
+      }
+      
       // Step 4: Create the ticket in storage
       const ticketData = {
         title: ticketTitle,
@@ -147,6 +160,9 @@ export function registerWidgetTicketRoutes(app: Express): void {
       };
       
       const ticket = await storage.createTicket(ticketData);
+      
+      // Step 4.3: Increment ticket counter for trial tenants only
+      await incrementTrialTicketCounter(tenantId);
       
       // Step 4.5: Automatic ticket assignment after creation using workload-based routing
       try {

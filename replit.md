@@ -4,6 +4,15 @@
 Sahayaa AI is an AI-powered, microservices-based support ticket management system. It provides multi-tenant support with intelligent ticket processing, automated responses, and vector-based similarity search. The system aims to streamline customer support, enhance operational efficiency, and provide intelligent solutions, leading to improved customer satisfaction and reduced support costs. Key capabilities include AI-powered classification, auto-assignment, duplicate detection, and robust security features with industry-specific role-based access control.
 
 ## Recent Changes
+- **Trial Tenant OpenAI Default & Ticket Limits (November 21, 2025)**:
+  - Configured trial accounts to use OpenAI ChatGPT (GPT-4o) as default AI provider instead of Google Gemini
+  - Implemented strict 10-ticket limit enforcement for trial tenants shared across all users within that tenant
+  - Added `checkTrialTicketLimit` and `incrementTrialTicketCounter` helper functions that only affect trial tenants (isTrial: true)
+  - Ticket limit enforcement applied to all three ticket creation endpoints: widget, main, and agent workflow fallback
+  - Returns 403 error with clear messaging when trial tenants reach ticket limit
+  - Regular/paid clients completely unaffected - no limits, no counter increments, no behavior changes
+  - Users can change AI providers through the existing AI Settings page (/admin/ai-settings)
+  
 - **Tenant Isolation Security Fixes (November 11, 2025)**: 
   - Removed all `tenantId || 1` fallbacks from chatbot endpoints to prevent data leakage
   - Created `resolveTenantContext` helper function for safe tenant context resolution

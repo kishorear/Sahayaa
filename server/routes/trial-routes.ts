@@ -3,8 +3,16 @@ import { storage } from "../storage";
 import { hashPassword } from "../auth";
 import { z } from "zod";
 import crypto from "crypto";
+import { EmailVerificationService } from "../email-verification-service";
 
 const router = Router();
+
+// Initialize email verification service
+const emailVerificationService = new EmailVerificationService(
+  process.env.SENDGRID_API_KEY,
+  'support@sahayaa.ai',
+  'Sahayaa AI Support'
+);
 
 // Trial registration schema
 const trialRegistrationSchema = z.object({
@@ -83,7 +91,11 @@ router.post("/register", async (req: Request, res: Response) => {
       return res.status(500).json({ message: "Failed to create trial account" });
     }
 
-    // Create admin user for the trial tenant
+    // Generate verification code and expiry
+    const verificationCode = emailVerificationService.generateVerificationCode();
+    const verificationExpiry = emailVerificationService.getVerificationExpiry();
+
+    // Create admin user for the trial tenant (not verified yet)
     const user = await storage.createUser({
       tenantId: tenant.id,
       username,
@@ -93,7 +105,10 @@ router.post("/register", async (req: Request, res: Response) => {
       email,
       company: companyName,
       profilePicture: null,
-      teamId: null
+      teamId: null,
+      emailVerified: false,
+      emailVerificationCode: verificationCode,
+      emailVerificationExpiry: verificationExpiry
     });
     
     console.log(`[TRIAL] Created user:`, { id: user.id, username: user.username, tenantId: user.tenantId, role: user.role });
@@ -141,35 +156,27 @@ router.post("/register", async (req: Request, res: Response) => {
       console.error("Failed to create AI provider for trial tenant:", aiProviderError);
     }
 
-    // Auto-login the user by creating session
-    if (req.session) {
-      req.session.userId = user.id;
-      
-      await new Promise<void>((resolve, reject) => {
-        req.session!.save((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
+    // Send verification email
+    const emailSent = await emailVerificationService.sendVerificationEmail({
+      to: email,
+      name: name,
+      code: verificationCode
+    });
+
+    if (!emailSent) {
+      console.warn(`Failed to send verification email to ${email}, but user was created`);
     }
 
-    // Return success with user and tenant info
+    // Return success without auto-login - user must verify email first
     res.status(201).json({
-      message: "Trial account created successfully!",
+      message: "Trial account created successfully! Please check your email for the verification code.",
+      requiresVerification: true,
+      email: email,
       user: {
         id: user.id,
         username: user.username,
         name: user.name,
         email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-      },
-      tenant: {
-        id: tenant.id,
-        name: tenant.name,
-        isTrial: tenant.isTrial,
-        ticketLimit: tenant.ticketLimit,
-        ticketsCreated: tenant.ticketsCreated,
       }
     });
 
@@ -185,6 +192,132 @@ router.post("/register", async (req: Request, res: Response) => {
     res.status(500).json({ 
       message: error instanceof Error ? error.message : "Failed to create trial account" 
     });
+  }
+});
+
+// POST /api/trial/verify-email - Verify email with code
+router.post("/verify-email", async (req: Request, res: Response) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email and verification code are required" });
+    }
+
+    // Find user by email
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
+
+    // Check if code matches
+    if (user.emailVerificationCode !== code) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+
+    // Check if code is expired
+    if (!emailVerificationService.isCodeValid(user.emailVerificationExpiry)) {
+      return res.status(400).json({ 
+        message: "Verification code has expired. Please request a new code.",
+        expired: true
+      });
+    }
+
+    // Mark email as verified and clear verification fields
+    await storage.updateUser(user.id, {
+      emailVerified: true,
+      emailVerificationCode: null,
+      emailVerificationExpiry: null
+    });
+
+    // Auto-login the user by creating session
+    if (req.session) {
+      req.session.userId = user.id;
+      
+      await new Promise<void>((resolve, reject) => {
+        req.session!.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+
+    console.log(`[TRIAL] Email verified for user ${user.username} (${user.email})`);
+
+    // Return success with user info
+    res.status(200).json({
+      message: "Email verified successfully!",
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+      }
+    });
+
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    res.status(500).json({ message: "Failed to verify email" });
+  }
+});
+
+// POST /api/trial/resend-verification - Resend verification code
+router.post("/resend-verification", async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Find user by email
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
+
+    // Generate new verification code and expiry
+    const verificationCode = emailVerificationService.generateVerificationCode();
+    const verificationExpiry = emailVerificationService.getVerificationExpiry();
+
+    // Update user with new code
+    await storage.updateUser(user.id, {
+      emailVerificationCode: verificationCode,
+      emailVerificationExpiry: verificationExpiry
+    });
+
+    // Send verification email
+    const emailSent = await emailVerificationService.sendVerificationEmail({
+      to: email,
+      name: user.name || 'User',
+      code: verificationCode
+    });
+
+    if (!emailSent) {
+      return res.status(500).json({ message: "Failed to send verification email" });
+    }
+
+    console.log(`[TRIAL] Resent verification code to ${email}`);
+
+    res.status(200).json({
+      message: "Verification code sent successfully. Please check your email."
+    });
+
+  } catch (error) {
+    console.error("Error resending verification code:", error);
+    res.status(500).json({ message: "Failed to resend verification code" });
   }
 });
 

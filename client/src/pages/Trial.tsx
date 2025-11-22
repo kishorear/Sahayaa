@@ -54,14 +54,14 @@ export default function Trial() {
       }
 
       toast({
-        title: "Trial account created!",
-        description: `Welcome to Sahayaa AI! You have 10 tickets to try our platform.`,
+        title: "Account created!",
+        description: "Please check your email for the verification code.",
       });
 
-      // Redirect to admin dashboard (user is auto-logged in)
+      // Redirect to verification page
       setTimeout(() => {
-        setLocation("/admin");
-      }, 2000);
+        setLocation(`/verify-email?email=${encodeURIComponent(data.email)}`);
+      }, 1500);
     } catch (error: any) {
       toast({
         title: "Registration failed",

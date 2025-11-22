@@ -34,6 +34,7 @@ import CreatorLoginPage from "@/pages/creator/CreatorLoginPage"; // Creator logi
 import CreatorDashboardPage from "@/pages/creator/CreatorDashboardPage"; // Creator dashboard
 import RoleManagementPage from "@/pages/creator/RoleManagementPage"; // Role management page
 import TrialPage from "@/pages/Trial"; // Public trial registration page
+import VerifyEmail from "@/pages/VerifyEmail"; // Email verification page
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CreatorProtectedRoute } from "@/lib/creator-protected-route"; // Creator route protection
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/demo" component={DemoPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/trial" component={TrialPage} />
+      <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/mcp-test" component={MCPTestPage} />
       <Route path="/widget-test" component={WidgetTestPage} />
       

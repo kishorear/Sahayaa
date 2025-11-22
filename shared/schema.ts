@@ -466,6 +466,11 @@ export const users = pgTable("users", {
   ssoProviderId: text("ssoProviderId"), // External provider's user ID
   ssoProviderData: json("ssoProviderData").default({}),
   
+  // Email verification fields
+  emailVerified: boolean("emailVerified").default(false),
+  emailVerificationCode: text("emailVerificationCode"),
+  emailVerificationExpiry: timestamp("emailVerificationExpiry"),
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

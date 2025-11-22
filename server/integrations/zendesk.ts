@@ -60,7 +60,7 @@ export class ZendeskService {
           comment: { 
             body: ticket.description || "No description provided." 
           },
-          priority: this.mapComplexityToPriority(ticket.complexity),
+          priority: this.mapComplexityToPriority(ticket.complexity || 'medium'),
           tags: [ticket.category],
           custom_fields: [
             // Replace with actual custom field IDs or remove if not needed
@@ -98,7 +98,7 @@ export class ZendeskService {
           error: 'Invalid response from Zendesk API'
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating ticket in Zendesk:", error);
       
       // Extract detailed error information
@@ -159,7 +159,7 @@ export class ZendeskService {
         { auth: this.auth }
       );
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding comment to Zendesk ticket:", error);
       return false;
     }
@@ -319,7 +319,7 @@ export class ZendeskService {
       
       console.error("Unexpected response format from Zendesk API:", response.data);
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying Zendesk connection:", error.message);
       
       // Handle different error types for better debugging

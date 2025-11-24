@@ -4,6 +4,16 @@
 Sahayaa AI is an AI-powered, microservices-based support ticket management system. It provides multi-tenant support with intelligent ticket processing, automated responses, and vector-based similarity search. The system aims to streamline customer support, enhance operational efficiency, and provide intelligent solutions, leading to improved customer satisfaction and reduced support costs. Key capabilities include AI-powered classification, auto-assignment, duplicate detection, and robust security features with industry-specific role-based access control.
 
 ## Recent Changes
+- **Email Verification for Trial Users (November 24, 2025)**:
+  - Implemented email verification system for trial users to prevent fake emails and duplicates
+  - Verification codes are 6 digits, expire after 10 minutes, and sent from Resend integration
+  - Trial registration now sends verification email instead of auto-login
+  - Unverified trial users are blocked from logging in with helpful error message
+  - Frontend verification page with auto-submit, countdown timer, and resend functionality (60s cooldown)
+  - Rate limiting: Users can resend verification code once per minute
+  - Database schema updated with emailVerified, emailVerificationCode, and emailVerificationExpiry fields
+  - Resend connector integration used for reliable email delivery (replaced SendGrid)
+
 - **Trial Tenant OpenAI Default & Ticket Limits (November 21, 2025)**:
   - Configured trial accounts to use OpenAI ChatGPT (GPT-4o) as default AI provider instead of Google Gemini
   - Implemented strict 10-ticket limit enforcement for trial tenants shared across all users within that tenant
@@ -61,6 +71,8 @@ The system utilizes a loosely coupled microservices architecture:
 - Provides a public self-service trial registration with a 10-ticket limit per tenant.
 - First user of a trial tenant automatically receives admin privileges.
 - Enforces global email/username uniqueness and tenant-level quota.
+- Requires email verification before login (6-digit codes, 10-minute expiry).
+- Uses Resend integration for reliable transactional email delivery.
 
 ## External Dependencies
 
@@ -74,6 +86,7 @@ The system utilizes a loosely coupled microservices architecture:
 - **Instruction Management**: Local processing and storage of instruction documents.
 
 ### Email Integration
+- **Resend**: Primary email service for verification codes and transactional emails (connector integration).
 - **SMTP/IMAP**: Traditional email protocol support (currently using Nodemailer).
-- **SendGrid**: API-based email service integration.
+- **SendGrid**: API-based email service integration (available but not actively used).
 - **Outlook**: Manual SMTP setup available for Outlook integration (app passwords required).

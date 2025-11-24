@@ -23,11 +23,11 @@ export class EmailVerificationService {
   }
 
   /**
-   * Calculate verification code expiry time (15 minutes from now)
+   * Calculate verification code expiry time (10 minutes from now)
    */
   getVerificationExpiry(): Date {
     const expiry = new Date();
-    expiry.setMinutes(expiry.getMinutes() + 15);
+    expiry.setMinutes(expiry.getMinutes() + 10);
     return expiry;
   }
 
@@ -130,7 +130,7 @@ export class EmailVerificationService {
             <div>Your Verification Code</div>
             <div class="code">${code}</div>
             <div style="color: #666; font-size: 14px; margin-top: 10px;">
-              This code will expire in 15 minutes
+              This code will expire in 10 minutes
             </div>
           </div>
           

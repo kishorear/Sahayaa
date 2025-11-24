@@ -367,7 +367,7 @@ export const tenants = pgTable("tenants", {
   }).notNull(),
   active: boolean("active").default(true),
   isTrial: boolean("isTrial").default(false).notNull(), // Trial account flag
-  ticketLimit: integer("ticketLimit").default(null), // Max tickets allowed (null = unlimited)
+  ticketLimit: integer("ticketLimit"), // Max tickets allowed (null = unlimited)
   ticketsCreated: integer("ticketsCreated").default(0).notNull(), // Current ticket count
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
@@ -487,6 +487,9 @@ export const insertUserSchema = createInsertSchema(users)
     profilePicture: true,
     tenantId: true,
     teamId: true,
+    emailVerified: true,
+    emailVerificationCode: true,
+    emailVerificationExpiry: true,
   });
 
 // Schema for updating user profile

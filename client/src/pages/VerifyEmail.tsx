@@ -232,7 +232,7 @@ export default function VerifyEmail() {
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
-              <strong>Tip:</strong> The verification code will expire in 15 minutes. 
+              <strong>Tip:</strong> The verification code will expire in 10 minutes. 
               Check your spam folder if you don't see the email.
             </p>
           </div>

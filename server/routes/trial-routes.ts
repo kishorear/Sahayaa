@@ -7,12 +7,8 @@ import { EmailVerificationService } from "../email-verification-service";
 
 const router = Router();
 
-// Initialize email verification service
-const emailVerificationService = new EmailVerificationService(
-  process.env.SENDGRID_API_KEY,
-  'support@sahayaa.ai',
-  'Sahayaa AI Support'
-);
+// Initialize email verification service with Resend
+const emailVerificationService = new EmailVerificationService();
 
 // Trial registration schema
 const trialRegistrationSchema = z.object({

@@ -50,10 +50,9 @@ export default function VerifyEmail() {
 
   const verifyMutation = useMutation({
     mutationFn: async (verificationCode: string) => {
-      const response = await apiRequest('/api/trial/verify-email', {
-        method: 'POST',
-        body: JSON.stringify({ email, code: verificationCode }),
-        headers: { 'Content-Type': 'application/json' }
+      const response = await apiRequest('POST', '/api/trial/verify-email', { 
+        email, 
+        code: verificationCode 
       });
       return response.json();
     },
@@ -80,10 +79,8 @@ export default function VerifyEmail() {
 
   const resendMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('/api/trial/resend-verification', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-        headers: { 'Content-Type': 'application/json' }
+      const response = await apiRequest('POST', '/api/trial/resend-verification', { 
+        email 
       });
       return response.json();
     },

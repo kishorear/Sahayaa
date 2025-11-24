@@ -1,4 +1,4 @@
-import { SendGridService } from './sendgrid-service';
+import { ResendService } from './resend-service';
 import crypto from 'crypto';
 
 export interface VerificationEmailParams {
@@ -8,19 +8,11 @@ export interface VerificationEmailParams {
 }
 
 export class EmailVerificationService {
-  private sendGridService: SendGridService | null = null;
+  private resendService: ResendService;
 
-  constructor(sendGridApiKey?: string, fromEmail?: string, fromName?: string) {
-    if (sendGridApiKey && fromEmail && fromName) {
-      try {
-        this.sendGridService = new SendGridService(sendGridApiKey, fromEmail, fromName);
-        console.log('Email verification service initialized with SendGrid');
-      } catch (error) {
-        console.error('Failed to initialize SendGrid for email verification:', error);
-      }
-    } else {
-      console.warn('Email verification service initialized without SendGrid - verification emails will not be sent');
-    }
+  constructor() {
+    this.resendService = new ResendService();
+    console.log('Email verification service initialized with Resend');
   }
 
   /**
@@ -51,11 +43,6 @@ export class EmailVerificationService {
    * Send verification email with 6-digit code
    */
   async sendVerificationEmail(params: VerificationEmailParams): Promise<boolean> {
-    if (!this.sendGridService) {
-      console.error('Cannot send verification email: SendGrid not configured');
-      return false;
-    }
-
     const { to, name, code } = params;
 
     const subject = 'Verify Your Email - Sahayaa AI';
@@ -169,7 +156,7 @@ export class EmailVerificationService {
     `;
 
     try {
-      const success = await this.sendGridService.sendEmail(to, subject, htmlContent, true);
+      const success = await this.resendService.sendEmail(to, subject, htmlContent);
       if (success) {
         console.log(`Verification email sent successfully to ${to}`);
       } else {
@@ -183,9 +170,9 @@ export class EmailVerificationService {
   }
 
   /**
-   * Check if SendGrid is configured
+   * Check if email service is configured
    */
   isConfigured(): boolean {
-    return this.sendGridService !== null;
+    return true; // Resend is always available via connector
   }
 }

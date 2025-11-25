@@ -42,31 +42,23 @@ export async function getUncachableResendClient() {
 }
 
 export class ResendService {
+  // Use fallback sender until custom domain is verified in Resend dashboard
+  // Once verified, change this to your custom domain email (e.g., 'Sahayaa <support@sahayaa.ai>')
+  private static readonly FROM_EMAIL = 'Sahayaa <onboarding@resend.dev>';
+  
   /**
    * Send an email using Resend
    */
   async sendEmail(to: string, subject: string, htmlContent: string): Promise<boolean> {
     try {
-      const { client, fromEmail } = await getUncachableResendClient();
+      const { client } = await getUncachableResendClient();
       
-      // Try to send with configured email first
-      let response = await client.emails.send({
-        from: fromEmail,
+      const response = await client.emails.send({
+        from: ResendService.FROM_EMAIL,
         to: to,
         subject: subject,
         html: htmlContent
       });
-
-      // If domain is not verified, use fallback sender
-      if (response.error && response.error.statusCode === 403) {
-        console.log('Configured domain not verified, using fallback sender');
-        response = await client.emails.send({
-          from: 'onboarding@resend.dev',
-          to: to,
-          subject: subject,
-          html: htmlContent
-        });
-      }
 
       if (response.error) {
         console.error('Resend error:', response.error);

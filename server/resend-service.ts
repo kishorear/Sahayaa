@@ -49,12 +49,24 @@ export class ResendService {
     try {
       const { client, fromEmail } = await getUncachableResendClient();
       
-      const response = await client.emails.send({
+      // Try to send with configured email first
+      let response = await client.emails.send({
         from: fromEmail,
         to: to,
         subject: subject,
         html: htmlContent
       });
+
+      // If domain is not verified, use fallback sender
+      if (response.error && response.error.statusCode === 403) {
+        console.log('Configured domain not verified, using fallback sender');
+        response = await client.emails.send({
+          from: 'onboarding@resend.dev',
+          to: to,
+          subject: subject,
+          html: htmlContent
+        });
+      }
 
       if (response.error) {
         console.error('Resend error:', response.error);

@@ -147,26 +147,69 @@ router.get("/auth/google", (req: Request, res: Response, next: NextFunction) => 
 
 // GET /api/trial/auth/google/callback - Handle Google OAuth callback
 router.get("/auth/google/callback", (req: Request, res: Response, next: NextFunction) => {
+  console.log('[TRIAL] Google OAuth callback received');
+  
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    console.error('[TRIAL] Google OAuth not configured');
     return res.redirect('/trial?error=Google+OAuth+not+configured');
   }
   
-  passport.authenticate('google-trial', { session: false }, async (err: any, user: any) => {
+  passport.authenticate('google-trial', { session: false }, async (err: any, user: any, info: any) => {
+    console.log('[TRIAL] Google OAuth authenticate callback:', { 
+      hasError: !!err, 
+      hasUser: !!user, 
+      info,
+      errorMessage: err?.message 
+    });
+    
     if (err || !user) {
       console.error('[TRIAL] Google OAuth callback error:', err);
-      return res.redirect('/trial?error=' + encodeURIComponent(err?.message || 'Authentication failed'));
+      const errorMsg = err?.message || info?.message || 'Authentication failed';
+      return res.redirect('/trial?error=' + encodeURIComponent(errorMsg));
     }
     
-    // Log the user in
-    if (req.session) {
-      req.session.userId = user.id;
-      await new Promise<void>((resolve) => {
-        req.session!.save(() => resolve());
-      });
+    try {
+      // Log the user in with proper session handling
+      if (req.session) {
+        req.session.userId = user.id;
+        
+        // Save session and wait for completion
+        await new Promise<void>((resolve, reject) => {
+          req.session!.save((saveErr) => {
+            if (saveErr) {
+              console.error('[TRIAL] Session save error:', saveErr);
+              reject(saveErr);
+            } else {
+              console.log('[TRIAL] Session saved successfully for user:', user.id);
+              resolve();
+            }
+          });
+        });
+        
+        // Set backup cookies for reliability
+        res.cookie('ticket_support_sid_backup', req.session.id, {
+          maxAge: 24 * 60 * 60 * 1000,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          httpOnly: true,
+          path: '/'
+        });
+        
+        res.cookie('ticket_auth_user_id', user.id.toString(), {
+          maxAge: 24 * 60 * 60 * 1000,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          httpOnly: true,
+          path: '/'
+        });
+      }
+      
+      console.log(`[TRIAL] Google OAuth: User ${user.username} (ID: ${user.id}) logged in successfully`);
+      res.redirect('/');
+    } catch (sessionError) {
+      console.error('[TRIAL] Session handling error:', sessionError);
+      return res.redirect('/trial?error=' + encodeURIComponent('Session error during login'));
     }
-    
-    console.log(`[TRIAL] Google OAuth: User ${user.username} logged in`);
-    res.redirect('/');
   })(req, res, next);
 });
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Building2, Mail, User, Lock } from "lucide-react";
+import { SiGoogle } from "react-icons/si";
 import { useLocation } from "wouter";
 
 const trialSchema = z.object({
@@ -24,6 +26,24 @@ export default function Trial() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check for error query param from OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      toast({
+        title: "Sign in failed",
+        description: decodeURIComponent(error),
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/trial');
+    }
+  }, [toast]);
+
+  const handleGoogleSignIn = () => {
+    window.location.href = '/api/trial/auth/google';
+  };
 
   const form = useForm<TrialFormData>({
     resolver: zodResolver(trialSchema),
@@ -55,13 +75,13 @@ export default function Trial() {
 
       toast({
         title: "Account created!",
-        description: "Please check your email for the verification code.",
+        description: "You are now logged in.",
       });
 
-      // Redirect to verification page
+      // Redirect to dashboard
       setTimeout(() => {
-        setLocation(`/verify-email?email=${encodeURIComponent(data.email)}`);
-      }, 1500);
+        setLocation('/');
+      }, 1000);
     } catch (error: any) {
       toast({
         title: "Registration failed",
@@ -139,6 +159,29 @@ export default function Trial() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Google Sign In Button */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mb-4 flex items-center justify-center gap-2"
+              onClick={handleGoogleSignIn}
+              data-testid="button-google-signin"
+            >
+              <SiGoogle className="w-4 h-4" />
+              Continue with Google
+            </Button>
+
+            <div className="relative mb-4">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-gray-800 px-2 text-gray-500">
+                  Or register with email
+                </span>
+              </div>
+            </div>
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField

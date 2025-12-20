@@ -475,17 +475,6 @@ export async function setupAuth(app: Express) {
         });
       }
 
-      // Check if trial user needs email verification
-      const tenant = await storage.getTenantById(user.tenantId);
-      if (tenant?.isTrial && !user.emailVerified) {
-        console.log(`Login blocked: Trial user ${username} has not verified email`);
-        return res.status(403).json({ 
-          message: "Please verify your email address to continue. Check your inbox for the verification code.",
-          requiresVerification: true,
-          email: user.email
-        });
-      }
-
       // Set session
       try {
         // Set session directly

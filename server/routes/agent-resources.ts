@@ -114,7 +114,22 @@ router.get('/', requireAuth, async (req, res) => {
     }
     
     const resources = await storage.getAgentResources(agent, tenantId);
-    res.json(resources);
+    
+    // Transform to snake_case format expected by frontend
+    const transformedResources = resources.map((resource: any) => ({
+      id: resource.id,
+      agent_type: resource.agentType,
+      filename: resource.filename,
+      original_name: resource.originalName,
+      file_size: resource.fileSize,
+      file_type: resource.fileType,
+      upload_date: resource.uploadDate,
+      tenant_id: resource.tenantId,
+      uploaded_by: resource.uploadedBy,
+      metadata: resource.metadata
+    }));
+    
+    res.json(transformedResources);
   } catch (error) {
     console.error('Error fetching agent resources:', error);
     res.status(500).json({ error: 'Failed to fetch agent resources' });

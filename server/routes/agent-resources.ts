@@ -19,13 +19,13 @@ const AGENT_CONFIGS = {
   'chat-preprocessor': {
     name: 'Chat Preprocessor Agent',
     allowedTypes: ['.txt', '.md', '.json'],
-    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxFileSize: 50 * 1024 * 1024, // 50MB
     disabled: false
   },
   'instruction-lookup': {
     name: 'Instruction Lookup Agent',
     allowedTypes: ['.txt', '.pdf', '.docx', '.pptx', '.xlsx'],
-    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFileSize: 100 * 1024 * 1024, // 100MB
     disabled: false
   },
   'ticket-lookup': {
@@ -37,7 +37,7 @@ const AGENT_CONFIGS = {
   'ticket-formatter': {
     name: 'Ticket Formatter Agent',
     allowedTypes: ['.txt', '.md', '.json', '.html'],
-    maxFileSize: 2 * 1024 * 1024, // 2MB
+    maxFileSize: 50 * 1024 * 1024, // 50MB
     disabled: false
   }
 };
@@ -95,7 +95,7 @@ const upload = multer({
   storage: storage_config,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB max (will be checked per agent)
+    fileSize: 100 * 1024 * 1024 // 100MB max (will be checked per agent)
   }
 });
 

@@ -45,7 +45,7 @@ const AGENT_CONFIGS = {
     name: 'Chat Preprocessor Agent',
     description: 'Normalizes user messages and extracts metadata',
     allowedTypes: ['.txt', '.md', '.json'],
-    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxFileSize: 50 * 1024 * 1024, // 50MB
     icon: Bot,
     color: 'bg-blue-500',
     disabled: false,
@@ -55,7 +55,7 @@ const AGENT_CONFIGS = {
     name: 'Instruction Lookup Agent',
     description: 'Searches for relevant instructions using ChromaDB',
     allowedTypes: ['.txt', '.pdf', '.docx', '.pptx', '.xlsx'],
-    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFileSize: 100 * 1024 * 1024, // 100MB
     icon: FileText,
     color: 'bg-green-500',
     disabled: false,
@@ -75,7 +75,7 @@ const AGENT_CONFIGS = {
     name: 'Ticket Formatter Agent',
     description: 'Formats professional ticket responses',
     allowedTypes: ['.txt', '.md', '.json', '.html'],
-    maxFileSize: 2 * 1024 * 1024, // 2MB
+    maxFileSize: 50 * 1024 * 1024, // 50MB
     icon: CheckCircle,
     color: 'bg-purple-500',
     disabled: false,

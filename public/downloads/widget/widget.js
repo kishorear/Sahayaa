@@ -18,7 +18,7 @@
     autoOpen: __AUTO_OPEN__,
     branding: __BRANDING__,
     reportData: __REPORT_DATA__,
-    serverUrl: "https://api.support.ai"
+    serverUrl: "https://www.sahayaa.ai"
   };
 
   // Merge the default configuration with any user-provided configuration

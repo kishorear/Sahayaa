@@ -39,7 +39,7 @@ Add the following script tags to your website, right before the closing `</body>
     enableAIAgents: true
   };
 </script>
-<script src="https://your-domain.com/widget.js" async></script>
+<script src="https://www.sahayaa.ai/widget.js" async></script>
 ```
 
 ### NPM Package

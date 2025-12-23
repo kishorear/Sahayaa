@@ -33,7 +33,7 @@ GET /api/widget/config?apiKey=your_api_key_here
 All API endpoints use the following base URL:
 
 ```
-https://your-domain.com/api
+https://www.sahayaa.ai/api
 ```
 
 For development/testing:

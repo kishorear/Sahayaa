@@ -404,7 +404,7 @@
         <input type="text" placeholder="Type your message...">
         <button>Send</button>
       </div>
-      ${config.branding ? '<div class="branding">Powered by <a href="https://example.com" target="_blank">Support AI</a></div>' : ''}
+      ${config.branding ? '<div class="branding">Powered by <a href="https://www.sahayaa.ai" target="_blank">Sahayaa AI</a></div>' : ''}
     `;
     shadowRoot.appendChild(chatWindow);
     
@@ -602,9 +602,61 @@
 
   /**
    * Send message to Support AI backend
+   * Uses agent workflow for AI-powered responses
    */
   async function sendToSupportBackend(data) {
-    const apiUrl = 'https://' + window.location.host + '/api/widget/chat';
+    // Determine the server URL - use config or fall back to current host for development
+    const serverUrl = getServerUrl();
+    
+    // Try agent workflow first for AI-powered responses
+    try {
+      const agentResponse = await fetch(`${serverUrl}/api/agents/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': config.apiKey,
+          'X-Tenant-ID': config.tenantId.toString()
+        },
+        body: JSON.stringify({
+          user_message: data.message,
+          tenant_id: parseInt(config.tenantId),
+          session_id: data.sessionId,
+          user_context: {
+            url: data.url,
+            referrer: document.referrer,
+            timestamp: new Date().toISOString()
+          }
+        })
+      });
+      
+      if (agentResponse.ok) {
+        const result = await agentResponse.json();
+        if (result.success) {
+          // Format agent workflow response
+          let responseMessage = '';
+          if (result.resolution_steps && result.resolution_steps.length > 0) {
+            responseMessage = result.resolution_steps.join('\n\n');
+          }
+          if (result.ticket_id) {
+            if (responseMessage) responseMessage += '\n\n';
+            responseMessage += `Ticket #${result.ticket_id} created. Category: ${result.category || 'General'}, Urgency: ${result.urgency || 'Normal'}`;
+          }
+          // If no response message was generated, provide a fallback
+          if (!responseMessage) {
+            responseMessage = result.message || 'Thank you for your message. I\'ve processed your request and our team will assist you shortly.';
+          }
+          return { 
+            message: responseMessage,
+            actions: result.suggested_actions || []
+          };
+        }
+      }
+    } catch (agentError) {
+      console.debug('Agent workflow unavailable, falling back to chat API:', agentError);
+    }
+    
+    // Fall back to regular chat API
+    const apiUrl = `${serverUrl}/api/widget/chat`;
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -620,6 +672,22 @@
     }
     
     return await response.json();
+  }
+  
+  /**
+   * Get the server URL based on configuration and environment
+   */
+  function getServerUrl() {
+    // If we're on the Sahayaa AI domain, use it directly
+    if (window.location.hostname.includes('sahayaa.ai')) {
+      return 'https://www.sahayaa.ai';
+    }
+    // For development, use current host
+    if (window.location.hostname === 'localhost' || window.location.hostname.includes('replit')) {
+      return 'https://' + window.location.host;
+    }
+    // Default to production
+    return 'https://www.sahayaa.ai';
   }
 
   /**
@@ -722,14 +790,6 @@
     
     // Save to localStorage
     saveState();
-    
-    // Report the position change
-    reportWidgetEvent('widget_moved', { 
-      position: {
-        left: rect.left,
-        top: rect.top
-      }
-    });
   }
 
   /**
@@ -753,7 +813,7 @@
       }
     };
     
-    fetch('https://' + window.location.host + '/api/widget/analytics', {
+    fetch(getServerUrl() + '/api/widget/analytics', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

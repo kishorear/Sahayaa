@@ -948,6 +948,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Access denied: Only admin, chief_doctor, doctor, and creator roles can modify ticket complexity" 
           });
         }
+        
+        // Track complexity override with audit information
+        if (ticket.complexity !== req.body.complexity) {
+          req.body.complexityOverrideBy = req.user?.id;
+          req.body.complexityOverrideAt = new Date();
+          req.body.complexityReason = req.body.complexityReason || 
+            `Manually changed from ${ticket.complexity} to ${req.body.complexity} by ${req.user?.name || req.user?.username}`;
+          console.log(`Ticket #${id} complexity override: ${ticket.complexity} -> ${req.body.complexity} by user ${req.user?.id}`);
+        }
       }
       
       // Update the ticket

@@ -420,6 +420,31 @@ export default function TicketDetails() {
                 ) : (
                   <ComplexityBadge complexity={ticket.complexity || "medium"} />
                 )}
+                {/* AI Confidence Score */}
+                {ticket.complexityConfidence != null && ticket.complexityConfidence > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${
+                          (ticket.complexityConfidence ?? 0) >= 80 ? 'bg-green-500' : 
+                          (ticket.complexityConfidence ?? 0) >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${ticket.complexityConfidence ?? 0}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500">{ticket.complexityConfidence}% confidence</span>
+                  </div>
+                )}
+                {/* Complexity Reason */}
+                {ticket.complexityReason && (
+                  <p className="mt-1 text-xs text-gray-500 italic">{ticket.complexityReason}</p>
+                )}
+                {/* Override Info */}
+                {ticket.complexityOverrideBy && (
+                  <p className="mt-1 text-xs text-orange-600">
+                    Manually set by user #{ticket.complexityOverrideBy}
+                  </p>
+                )}
               </div>
 
               <div>

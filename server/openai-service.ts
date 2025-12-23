@@ -80,17 +80,26 @@ export async function classifyTicketWithAI(title: string, description: string, k
     1. Category (one of: authentication, billing, feature_request, documentation, technical_issue, account, other)
     
     2. Complexity (one of: simple, medium, complex) based on these guidelines:
-       - "simple": Straightforward issues with clear solutions, minimal technical knowledge needed, can be solved quickly
-       - "medium": Issues requiring some investigation, moderate technical knowledge, or multiple steps to resolve
-       - "complex": Complicated issues requiring in-depth technical analysis, code changes, database work, or specialist knowledge
+       - "simple": Straightforward issues with clear solutions, minimal technical knowledge needed, can be solved quickly (e.g., password resets, basic how-to questions)
+       - "medium": Issues requiring some investigation, moderate technical knowledge, or multiple steps to resolve (e.g., configuration issues, feature clarifications)
+       - "complex": Complicated issues requiring in-depth technical analysis, code changes, database work, or specialist knowledge (e.g., system outages, data corruption, security incidents)
     
-    3. Department to assign to (one of: support, engineering, product, billing)
+    3. Complexity Confidence (0-100): How confident you are in your complexity assessment
     
-    4. Whether the ticket can be automatically resolved (true or false)
+    4. Complexity Reason: A brief explanation (1-2 sentences) of why you chose this complexity level
     
-    5. Notes for additional context (optional)
+    5. Department to assign to (one of: support, engineering, product, billing)
     
-    Make sure to carefully assess the complexity based on the technical nature of the problem, not just the length of the description.
+    6. Whether the ticket can be automatically resolved (true or false)
+    
+    7. Notes for additional context (optional)
+    
+    Consider these factors when determining complexity:
+    - Technical depth of the issue
+    - Potential impact on the user/system
+    - Estimated time to resolve
+    - Whether specialist knowledge is required
+    - Historical patterns for similar issues
     
     Ticket Title: ${title}
     Ticket Description: ${description}
@@ -106,6 +115,8 @@ export async function classifyTicketWithAI(title: string, description: string, k
     {
       "category": "category_name",
       "complexity": "complexity_level",
+      "complexityConfidence": 85,
+      "complexityReason": "Brief explanation for complexity decision",
       "assignedTo": "department_name",
       "canAutoResolve": boolean,
       "aiNotes": "additional context" 
@@ -132,6 +143,10 @@ export async function classifyTicketWithAI(title: string, description: string, k
       result.canAutoResolve = !!result.canAutoResolve;
       result.aiNotes = result.aiNotes || "This ticket has been automatically classified";
     }
+    
+    // Ensure complexity confidence and reason are present
+    result.complexityConfidence = result.complexityConfidence || 70;
+    result.complexityReason = result.complexityReason || `AI classified this as ${result.complexity} complexity based on content analysis.`;
     
     return result;
   } catch (error) {
@@ -165,6 +180,8 @@ export async function classifyTicketWithAI(title: string, description: string, k
     return {
       category: "other",
       complexity,
+      complexityConfidence: 60,
+      complexityReason: `Classified as ${complexity} based on keyword analysis (fallback mode).`,
       assignedTo: "support",
       canAutoResolve: false,
       aiNotes: "This ticket has been automatically classified based on content analysis. The system has determined the complexity to be " + complexity + "."

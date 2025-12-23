@@ -747,6 +747,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: enhancedTitle, // Use the AI-enhanced title
         category: classification.category,
         complexity: classification.complexity,
+        complexityConfidence: classification.complexityConfidence,
+        complexityReason: classification.complexityReason,
         assignedTo: assignedUserId,
         aiNotes: classification.aiNotes,
         teamId: teamId,

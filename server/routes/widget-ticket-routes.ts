@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
-import { generateChatResponse, generateTicketTitle } from "../ai";
+import { generateChatResponse, generateTicketTitle, classifyTicket } from "../ai";
 import type { ChatMessage } from "../ai";
 import agentService from "../ai/agent-service";
 import { getIntegrationService } from "../integrations";
@@ -138,22 +138,35 @@ export function registerWidgetTicketRoutes(app: Express): void {
         });
       }
       
-      // Step 4: Create the ticket in storage
+      // Step 4: Use AI classifier for proper complexity analysis
+      const classification = await classifyTicket(ticketTitle, descriptionResponse.trim(), tenantId);
+      console.log(`Widget Ticket: AI Classification - Category: ${classification.category}, Complexity: ${classification.complexity} (${classification.complexityConfidence}% confidence)`);
+      
+      // Step 4.1: Create the ticket in storage with enhanced classification
       const ticketData = {
         title: ticketTitle,
         description: descriptionResponse.trim(),
-        category: agentInsights?.category || 'support',
-        complexity: agentInsights?.urgency || 'medium', // Map urgency to complexity
+        category: classification.category || agentInsights?.category || 'support',
+        complexity: classification.complexity || 'medium',
+        complexityConfidence: classification.complexityConfidence,
+        complexityReason: classification.complexityReason,
         status: 'new',
         tenantId,
         createdBy: userId || 1, // Use authenticated user ID or default to 1 for widget users
         source: 'widget',
+        aiNotes: classification.aiNotes,
         clientMetadata: {
           sessionId,
           conversationLength: conversation.length,
           agentCategory: agentInsights?.category,
           agentUrgency: agentInsights?.urgency,
           agentConfidence: agentInsights?.confidence,
+          aiClassification: {
+            category: classification.category,
+            complexity: classification.complexity,
+            confidence: classification.complexityConfidence,
+            reason: classification.complexityReason
+          },
           context: context,
           hasAttachments: attachments && attachments.length > 0
         }

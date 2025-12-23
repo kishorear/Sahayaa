@@ -33,6 +33,8 @@ export type ChatMessage = {
 type TicketClassification = {
   category: string;
   complexity: 'simple' | 'medium' | 'complex';
+  complexityConfidence: number; // 0-100 confidence score
+  complexityReason: string; // Explanation for complexity decision
   assignedTo: string;
   canAutoResolve: boolean;
   aiNotes?: string;
@@ -202,9 +204,28 @@ export async function classifyTicket(title: string, description: string, tenantI
     canAutoResolve = true;
   }
   
+  // Generate complexity reason based on analysis
+  let complexityReason = '';
+  let complexityConfidence = 70;
+  
+  if (complexity === 'simple') {
+    complexityReason = 'Straightforward issue with clear resolution path based on keyword analysis.';
+    complexityConfidence = 80;
+  } else if (complexity === 'complex') {
+    complexityReason = hasComplexTerms 
+      ? 'Contains critical/urgent indicators suggesting high-impact issue requiring specialist attention.'
+      : 'Technical complexity detected based on content analysis.';
+    complexityConfidence = 75;
+  } else {
+    complexityReason = 'Standard support issue requiring moderate investigation.';
+    complexityConfidence = 65;
+  }
+  
   return {
     category,
     complexity,
+    complexityConfidence,
+    complexityReason,
     assignedTo,
     canAutoResolve,
     aiNotes

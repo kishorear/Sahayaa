@@ -511,6 +511,10 @@ export const tickets = pgTable("tickets", {
   status: text("status").notNull().default("new"), // new, in_progress, resolved
   category: text("category").notNull(), // authentication, billing, feature_request, etc.
   complexity: text("complexity").default("medium"), // simple, medium, complex
+  complexityConfidence: integer("complexityConfidence").default(0), // AI confidence 0-100
+  complexityReason: text("complexityReason"), // AI explanation for complexity decision
+  complexityOverrideBy: integer("complexityOverrideBy"), // User ID who overrode the complexity
+  complexityOverrideAt: timestamp("complexityOverrideAt"), // When complexity was overridden
   assignedTo: text("assignedTo"), // role or specific user
   source: text("source").default("chat"), // chat, email, widget, api
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -1,0 +1,62 @@
+{
+  "name": "@sahayaa/widget",
+  "version": "1.0.0",
+  "description": "Embeddable Sahayaa AI chat widget — drop-in customer support powered by multi-agent AI",
+  "keywords": [
+    "sahayaa",
+    "ai",
+    "chat",
+    "widget",
+    "customer-support",
+    "multi-agent",
+    "chatbot",
+    "support-ticket"
+  ],
+  "author": "Sahayaa AI",
+  "license": "MIT",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/sahayaa-widget.umd.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c && tsc --emitDeclarationOnly --declaration --declarationDir dist",
+    "build:watch": "rollup -c --watch",
+    "dev": "rollup -c --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {},
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sahayaa-ai/sahayaa.git",
+    "directory": "packages/sahayaa-widget"
+  },
+  "homepage": "https://docs.sahayaa.ai/widget",
+  "bugs": {
+    "url": "https://github.com/sahayaa-ai/sahayaa/issues"
+  }
+}

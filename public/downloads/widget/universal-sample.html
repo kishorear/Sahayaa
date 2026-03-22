@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahayaa AI Universal Integration Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        header {
+            background-color: #82AEEB;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0;
+        }
+        .demo-section {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        textarea {
+            min-height: 100px;
+        }
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .feature-card {
+            flex: 1 1 calc(33% - 20px);
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .feature-card h3 {
+            color: #82AEEB;
+            margin-top: 0;
+        }
+        .highlight {
+            background-color: #ffeeba;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .code-block {
+            background-color: #f8f9fa;
+            border-left: 4px solid #82AEEB;
+            padding: 15px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        .example-instructions {
+            background-color: #e9f3ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .example-instructions h3 {
+            color: #82AEEB;
+            margin-top: 0;
+        }
+        .example-instructions ol {
+            padding-left: 20px;
+        }
+        .example-instructions li {
+            margin-bottom: 10px;
+        }
+        .context-awareness-demo {
+            background-color: #f3f3f3;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 25px;
+            border-left: 4px solid #82AEEB;
+        }
+        .context-awareness-demo h3 {
+            color: #82AEEB;
+            margin-top: 0;
+        }
+        .implementation-features {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .implementation-features li {
+            margin-bottom: 12px;
+            padding-left: 30px;
+            position: relative;
+        }
+        .implementation-features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #82AEEB;
+            font-weight: bold;
+        }
+        .code-block.advanced {
+            background-color: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            margin-top: 25px;
+        }
+        .code-block.advanced h4 {
+            margin-top: 0;
+            color: #6c757d;
+        }
+        @media (max-width: 768px) {
+            .feature-card {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Sahayaa AI Universal Integration Demo</h1>
+        <p>Experience the persistent chat functionality across your entire website</p>
+    </header>
+
+    <section class="demo-section">
+        <h2>Try It Out: Persistent Support Integration</h2>
+        <p>This page demonstrates how the <span class="highlight">Sahayaa AI Universal Integration</span> maintains its state and functionality as you navigate across pages.</p>
+        
+        <div class="example-instructions">
+            <h3>🔍 Experience These Features</h3>
+            <ol>
+                <li>Open the chat widget by clicking the button in the bottom-right corner</li>
+                <li>Send a message in the chat window</li>
+                <li>Navigate to different sections of this page using the links below</li>
+                <li>Notice how the chat widget maintains its state and messages</li>
+                <li>Try closing and reopening the widget - your conversation will still be there</li>
+            </ol>
+        </div>
+        
+        <form id="demo-form">
+            <div class="form-group">
+                <label for="name">Your Name</label>
+                <input type="text" id="name" name="name" placeholder="Enter your name">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email">
+            </div>
+            
+            <div class="form-group">
+                <label for="payment">Payment Information</label>
+                <input type="text" id="payment" name="payment" placeholder="Try typing 'payment error' here">
+            </div>
+            
+            <div class="form-group">
+                <label for="login">Login Details</label>
+                <input type="text" id="login" name="login" placeholder="Try asking 'How do I reset my password?'">
+            </div>
+            
+            <div class="form-group">
+                <label for="help">Share your problem</label>
+                <textarea id="help" name="help" placeholder="Type a detailed description of any issue you're having to see our intelligent support feature in action"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="question">Ask a Question</label>
+                <textarea id="question" name="question" placeholder="Try typing a long question that ends with a question mark?"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="">Please select...</option>
+                    <option value="technical">Technical Issue</option>
+                    <option value="billing">Billing Question</option>
+                    <option value="feature">Feature Request</option>
+                    <option value="support">Customer Support</option>
+                </select>
+            </div>
+        </form>
+        
+        <div class="context-awareness-demo">
+            <h3>✨ Persistent Chat Experience</h3>
+            <p>Unlike traditional chat widgets that reset when users navigate, our solution maintains conversations and state across page navigation, providing a seamless support experience throughout your website.</p>
+            <p>Try navigating between sections of this demo to see how the chat widget persists!</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>How It Works</h2>
+        <p>The Support AI Universal Integration is designed to provide seamless support that persists across your entire website. Unlike traditional chat widgets that reset when pages change, our universal integration:</p>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>Persistent Chat</h3>
+                <p>Maintains chat history and state as users navigate through your website for a seamless experience.</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>Session Storage</h3>
+                <p>Securely stores conversation history in the browser's session storage for the duration of the visit.</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>Shadow DOM Isolation</h3>
+                <p>Uses advanced browser technology to ensure our widget never conflicts with your website's styles.</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>Responsive Design</h3>
+                <p>Automatically adapts to different screen sizes and devices for optimal user experience.</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>Cross-Page Navigation</h3>
+                <p>Stays active as users move between pages without losing conversation context.</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>Zero Configuration</h3>
+                <p>Works right out of the box with minimal setup required—just add a single script tag.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="demo-section">
+        <h2>Implementation: Simple Integration</h2>
+        <p>Adding the universal integration to your website is incredibly simple - users only need to add a single script tag:</p>
+        
+        <div class="code-block">
+            <code>
+                &lt;!-- Support AI Universal Integration --&gt;<br>
+                &lt;script src="supportai-universal.js" async&gt;&lt;/script&gt;
+            </code>
+        </div>
+        
+        <p>That's it! No configuration needed. The widget automatically uses the settings provided during download and:</p>
+        
+        <ul class="implementation-features">
+            <li><strong>Works across your entire website</strong> - persists across all pages automatically</li>
+            <li><strong>Self-initializes with zero configuration</strong> - no need for additional setup code</li>
+            <li><strong>Creates an isolated environment</strong> using Shadow DOM to avoid conflicts</li>
+            <li><strong>Maintains conversation history</strong> through page navigation</li>
+            <li><strong>Delivers a seamless chat experience</strong> for better user satisfaction</li>
+            <li><strong>Uses session storage</strong> to keep conversation state during the visit</li>
+        </ul>
+        
+        <div class="code-block advanced">
+            <h4>Advanced Configuration (Optional)</h4>
+            <code>
+                &lt;script&gt;<br>
+                // Optional configuration customizations<br>
+                window.supportAiConfig = {<br>
+                &nbsp;&nbsp;autoOpen: false, // Don't auto-open the widget on page load<br>
+                &nbsp;&nbsp;persistState: true, // Persist chat state across page navigation<br>
+                &nbsp;&nbsp;colorTheme: "light", // Widget theme (light/dark)<br>
+                &nbsp;&nbsp;position: "right", // Widget position (right/left)<br>
+                &nbsp;&nbsp;allowedDomains: ["*"] // Domains where widget can operate<br>
+                };<br>
+                &lt;/script&gt;<br>
+                &lt;script src="supportai-universal.js" async&gt;&lt;/script&gt;
+            </code>
+        </div>
+    </section>
+
+    <!-- Sahayaa AI Universal Integration -->
+    <script src="universal-support-script.js" async></script>
+</body>
+</html>

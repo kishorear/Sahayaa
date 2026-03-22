@@ -1,0 +1,23 @@
+# Billing Procedures
+
+## Payment Processing
+For payment-related inquiries:
+
+1. Verify payment method validity
+2. Check sufficient funds/credit
+3. Confirm billing address
+4. Review transaction history
+5. Check for declined transactions
+
+## Subscription Management
+- Upgrade/downgrade plans
+- Cancel subscriptions
+- Refund processing
+- Proration calculations
+
+## Error Resolution
+Common billing errors:
+- PAY001: Card declined
+- PAY002: Insufficient funds
+- PAY003: Invalid payment method
+- PAY004: Billing address mismatch

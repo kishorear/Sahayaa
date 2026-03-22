@@ -1,0 +1,23 @@
+# Authentication Guide
+
+## Login Issues
+When users experience login problems:
+
+1. Verify username and password
+2. Check account status (locked/suspended)
+3. Verify two-factor authentication
+4. Clear browser cache
+5. Try incognito mode
+6. Check for service outages
+
+## Common Error Codes
+- AUTH001: Invalid credentials
+- AUTH002: Account locked
+- AUTH003: 2FA verification failed
+- AUTH004: Session expired
+
+## Troubleshooting Steps
+For persistent login issues:
+1. Reset password
+2. Disable/re-enable 2FA
+3. Contact system administrator

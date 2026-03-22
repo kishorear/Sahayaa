@@ -1,0 +1,32 @@
+{
+  "name": "@sahayaa/vite-plugin-theme-json",
+  "version": "1.0.0",
+  "description": "Vite plugin that reads theme.json and injects shadcn/ui CSS custom properties",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "vite": ">=4.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0"
+  },
+  "license": "MIT",
+  "author": "Sahayaa AI"
+}

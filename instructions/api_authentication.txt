@@ -1,0 +1,32 @@
+# API Authentication Guide
+
+## Overview
+This guide covers authentication methods for the support ticket API.
+
+## Bearer Token Authentication
+Use Bearer tokens in the Authorization header:
+```
+Authorization: Bearer your-api-token-here
+```
+
+## API Key Authentication
+Include your API key in the X-API-Key header:
+```
+X-API-Key: your-api-key-here
+```
+
+## Rate Limits
+- Free tier: 100 requests per minute
+- Premium tier: 1000 requests per minute
+- Enterprise: 5000 requests per minute
+
+## Error Codes
+- 401: Invalid or missing authentication
+- 403: Valid auth but insufficient permissions
+- 429: Rate limit exceeded
+
+## Best Practices
+1. Store API keys securely
+2. Use HTTPS for all requests
+3. Implement proper error handling
+4. Monitor rate limit headers

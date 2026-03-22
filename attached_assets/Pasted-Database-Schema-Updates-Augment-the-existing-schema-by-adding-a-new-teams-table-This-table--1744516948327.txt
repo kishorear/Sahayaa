@@ -1,0 +1,39 @@
+Database Schema Updates:
+
+    Augment the existing schema by adding a new "teams" table. This table should include unique identifiers, a name, and optionally a description.
+
+    Modify the "users" table by adding a field for the team identifier (“teamId”) and ensure that the user role enum contains values such as "admin", "support", "engineer", and "member".
+
+    Update the "tickets" table by adding a "teamId" field (to associate tickets with teams) and a "createdBy" field (to record the creator's user ID).
+
+    Adjust the migration or table creation process so that the new fields and relationships (foreign keys between teams and users/tickets) are properly established.
+
+Storage Interface and Implementation Adjustments:
+
+    Update the storage interface to include operations for managing teams. This should cover creating, retrieving, updating, deleting, and listing teams.
+
+    Implement these new team operations in your in‑memory storage class (and in your database storage class if applicable) while ensuring that the existing operations and data remain unaffected.
+
+API Endpoint Enhancements and Middleware Integration:
+
+    Integrate role‑based access control into the ticket management endpoints.
+
+    Add request validation so that admin users are allowed to access all tickets, while non‑admin users only have access to tickets that match their associated team.
+
+    Ensure that when a ticket is created, the system automatically assigns the current user’s team identifier to the new ticket.
+
+    Implement middleware (or similar logic) to enforce these role‑ and team‑based restrictions across all ticket-related API routes.
+
+Front‑End Modifications:
+
+    Adjust the ticket dashboard and relevant UI components to reflect the new role‑ and team‑based filtering.
+
+    Ensure that the logged‑in user’s role and team information (retrieved from the existing authentication/session setup) determine what data is displayed:
+
+        Admin users should see all tickets.
+
+        Non‑admin users should only see tickets that belong to their assigned team.
+
+    Update the ticket creation interface so that it automatically attaches the current user’s team information when submitting new tickets.
+
+    Provide clear error messages on the UI when a user attempts to access a ticket they are not authorized to view.

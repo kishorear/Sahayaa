@@ -1,0 +1,48 @@
+### Problem:
+Currently, users from one tenant can access AI chat functionality even without their own API provider configured. This is a **security breach**—API provider keys must be **strictly scoped and unique per `tenantId` (companyId)**, and **must not leak or be accessible by users from other tenants**.
+
+### Requirements:
+
+1. **Enforce Tenant‑Scoped AI Provider Keys**
+   - Modify the `ai_providers` table or schema to ensure each record is associated with a unique `tenantId` (and optionally `teamId`).
+   - Do not allow any API key to exist without being tied to a `tenantId`.
+
+2. **Chat Access Control**
+   - When a user accesses the chat module:
+     - Extract their `tenantId` (companyId) from the session, JWT, or user record.
+     - Query the `ai_providers` table with `WHERE tenantId = user.tenantId`.
+     - If no key is found, block access with a 403 Forbidden or `{"error": "No AI provider configured for your tenant."}`.
+   - Do **not allow fallback** to any default or global provider.
+
+3. **Prevent Cross-Tenant Leakage**
+   - Review backend service methods and ensure no logic loads or exposes provider credentials belonging to a different tenant.
+   - Use strict SQL filters or ORM scopes: `ai_provider.tenantId == current_user.tenantId`
+   - If using in-memory caches for providers, index/cache by `tenantId` only.
+
+4. **Frontend Chat Button Visibility**
+   - On login or chat page load, call a new endpoint like `/api/ai/providers/available`:
+     - This should return a boolean: `true` only if AI keys exist for the user's tenant.
+   - Use this to **hide or disable** the chat button if no key is configured for the tenant.
+
+5. **Security Validations**
+   - Prevent creators or admins from assigning API keys to tenants they don’t own.
+   - When saving a new API key from the Creator dashboard, enforce that the key is scoped to their own `tenantId`.
+
+6. **Audit Logging**
+   - Log every chat request with the user ID and the `tenantId` of the provider used.
+   - Log all API key creations, updates, and deletions with timestamps and creator IDs.
+
+7. **Tests**
+   - Write integration tests that:
+     - Verify a user from tenant A cannot access AI chat without a key.
+     - Ensure a user from tenant B cannot accidentally or maliciously access tenant A’s provider key.
+     - Validate that adding a key for a tenant enables chat **only** for that tenant.
+
+### Deliverables:
+- Backend enforcement logic (controllers/services/middleware)
+- Frontend visibility toggle logic for chat
+- Updated database schema or validation rules
+- Unit and integration tests
+- README note summarizing isolation enforcement and how to test
+
+Use clean, modular code. Do not proceed unless tenant isolation is fully guaranteed.

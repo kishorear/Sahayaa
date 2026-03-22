@@ -1,0 +1,139 @@
+5. SupportTeam (Parent Orchestrator Agent)
+Purpose
+
+Coordinates all four sub-agents in the correct sequence, manages shared context (via RedisMemory), and handles overall error checking. The SupportTeam agent ensures that from a single user message, the system flows through each agent in the prescribed order and returns the final output to the frontend.
+Responsibilities
+
+    Accept Raw User Message
+
+        Input: { "user_message": "..." } from the chat widget.
+
+    Run ChatProcessorAgent
+
+        Call ChatProcessorAgent.run(input_text=user_message).
+
+        Store processed prompt (proc_prompt) and any metadata (e.g., urgency, masked_pii) in memory or local variables.
+
+    Run InstructionLookupAgent
+
+        Call InstructionLookupAgent.run(prompt=proc_prompt).
+
+        Receive top-3 instruction hits [instr1, instr2, instr3], each containing full text and filename.
+
+    Run TicketLookupAgent
+
+        Call TicketLookupAgent.run(prompt=proc_prompt).
+
+        Receive top-3 similar tickets [ {ticket_id, score, resolution} ].
+
+    Fetch Full Ticket Resolutions (if TicketLookup only returned IDs)
+
+        For each ticket_id from TicketLookup: send an HTTP GET to the FastAPI /tickets/{ticket_id} endpoint.
+
+        Extract the resolution field.
+
+        Build a single string or list historical_resolutions = [res1, res2, res3].
+
+    Call LLM to Draft Solution Steps
+
+        Compose a prompt for the LLM such as:
+
+    "Historical Resolutions:\n- res1\n- res2\n- res3\nNow draft step-by-step instructions to resolve the user’s issue: ‘<proc_prompt>’"
+
+    Use OpenAI or Gemini via openai.ChatCompletion.create(...) or genai.GenerativeModel.generate_content(...).
+
+    Extract solution_steps from the LLM’s response.
+
+Run TicketFormatterAgent
+
+    Extract a concise subject from the original user message, e.g., first five words or a heuristic.
+
+    Provide id = new_ticket_id (the ID returned when we first inserted the user’s ticket into FastAPI).
+
+    Call TicketFormatterAgent.run(id=new_ticket_id, subject=extracted_subject, steps=solution_steps).
+
+    Receive the fully formatted ticket string.
+
+Return Final Output
+
+    Wrap the formatted ticket in a JSON response:
+
+        {
+          "formatted_ticket": "<full ticket string>",
+          "ticket_id": new_ticket_id
+        }
+
+        This single response is sent back to the chat widget (or to the Node proxy, then to the widget).
+
+Tools
+
+    RedisMemory
+
+        Shared memory for session flags (e.g., PII masked, urgency).
+
+        Key examples:
+
+            session:<session_id>:proc_prompt → “I need my VPN fixed ASAP.”
+
+            session:<session_id>:urgency → “HIGH”
+
+    LLMTemplateTool / HTTPTool
+
+        Used indirectly via sub-agents for making LLM calls and HTTP requests to the FastAPI service.
+
+Input / Output
+
+    Input
+
+{
+  "user_message": "I need my VPN fixed ASAP, credentials aren’t working"
+}
+
+Processing Steps
+
+    ChatProcessor
+
+{ "output": "I need my VPN fixed as soon as possible. [Urgent]" }
+
+InstructionLookup
+
+{  
+  "output": [  
+    { "filename": "vpn_guide.txt", "text": "...", "score": 0.10 },  
+    { "filename": "vpn_troubleshoot.pdf", "text": "...", "score": 0.12 },  
+    { "filename": "vpn_proxy_settings.docx", "text": "...", "score": 0.15 }  
+  ]  
+}
+
+TicketLookup
+
+{  
+  "output": [  
+    { "ticket_id": 101, "score": 0.08, "resolution": "Reset VPN credentials..." },  
+    { "ticket_id": 57, "score": 0.12, "resolution": "Checked network firewall..." },  
+    { "ticket_id": 22, "score": 0.20, "resolution": "Reinstalled VPN client..." }  
+  ]  
+}
+
+Fetch Resolutions (already included in TicketLookup’s payload or fetched separately).
+
+Draft Solution Prompt
+
+Historical Resolutions:
+- Reset VPN credentials...
+- Checked network firewall...
+- Reinstalled VPN client...
+Now draft step-by-step resolution instructions for: I need my VPN fixed as soon as possible. [Urgent]
+
+LLM Completion → steps = "1. Verify VPN account status...\n2. Reset credentials on the server...\n3. Restart the VPN service...\n4. Test connectivity..."
+
+TicketFormatter
+
+{ "output": "Ticket #202 • I need my VPN fixed\n\nDear Customer,\n\nBelow are the steps to resolve your issue:\n1. Verify your VPN account status.\n2. Reset your credentials on the VPN server.\n3. Restart the VPN service on your device.\n4. Test connectivity to ensure you can connect.\n\nSincerely,\nSupport Team" }
+
+Final Return
+
+{
+  "ticket_id": 202,
+  "formatted_ticket": "Ticket #202 • I need my VPN fixed\n\nDear Customer,..."
+}

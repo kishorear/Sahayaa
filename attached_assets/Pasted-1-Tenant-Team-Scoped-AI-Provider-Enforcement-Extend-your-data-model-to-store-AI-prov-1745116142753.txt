@@ -1,0 +1,33 @@
+1. **Tenant‑ & Team‑Scoped AI Provider Enforcement**  
+   - Extend your data model to store AI provider configurations in a table keyed by `companyId` and `teamId`.  
+   - When a user invokes the chat API, look up configured providers for **their** `companyId` and `teamId`.  
+   - If **no** providers are found, return an HTTP 403 or custom error (“No AI providers configured for your tenant”).  
+
+2. **Backend Middleware / Guard**  
+   - Create a `CheckAIProvider` middleware or interceptor that:  
+     - Reads the user’s `companyId` and `teamId` from the session or JWT.  
+     - Queries the AI provider table for matching entries.  
+     - Blocks the request if the result set is empty.  
+
+3. **Frontend Chat Button Visibility**  
+   - In your React/Vue/Angular UI, fetch the list of AI providers scoped to the current user’s tenant/team on page load.  
+   - Only render or enable the “Chat” button if the returned list is non‑empty.  
+   - If empty, optionally display a tooltip or message: “No AI providers configured—contact your creator.”  
+
+4. **Secure Key Access**  
+   - Ensure that all calls to external AI APIs use only the keys retrieved from the tenant/team configuration—never load or fallback to global or other-tenant keys.  
+   - Remove any fallback code that defaults to a shared key when a tenant‑specific key is missing.
+
+5. **Logging & Audit**  
+   - Log blocked attempts with user ID, `companyId`, `teamId`, timestamp, and requested endpoint.  
+   - Add an audit entry whenever a creator adds or removes an AI provider for a tenant/team.
+
+6. **Deliverables**  
+   - Updated backend routes, services, and middleware for AI enforcement.  
+   - Updated frontend components to conditionally render chat UI.  
+   - Tests verifying:  
+     - A user without configured providers cannot call the chat API.  
+     - A user with providers succeeds.  
+   - A README or comment summarizing the changes.
+
+Write clear, modular, and well‑documented code following existing project conventions. At the end, summarize your changes in bullet points.  

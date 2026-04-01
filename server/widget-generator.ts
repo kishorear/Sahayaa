@@ -60,7 +60,7 @@ export async function generateWidgetPackage(config: WidgetConfig, res: Response)
     .replace('__AUTO_OPEN__', config.autoOpen.toString())
     .replace('__BRANDING__', config.branding.toString())
     .replace('__REPORT_DATA__', config.reportData.toString())
-    .replace('https://api.support.ai', process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://www.sahayaa.ai');
+    .replace('https://api.support.ai', process.env.SAHAYAA_DEV_DOMAIN ? `https://${process.env.SAHAYAA_DEV_DOMAIN}` : 'https://www.sahayaa.ai');
 
   // Customize the sample implementation with the provided configuration
   const customizedSampleHtml = sampleHtml

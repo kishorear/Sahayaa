@@ -62,7 +62,7 @@ export async function generateAuthWidgetPackage(config: WidgetConfig, res: Respo
     .replace('__AUTO_OPEN__', config.autoOpen.toString())
     .replace('__BRANDING__', config.branding.toString())
     .replace('__REPORT_DATA__', config.reportData.toString())
-    .replace('https://api.support.ai', process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://your-support-ai-domain.com');
+    .replace('https://api.support.ai', process.env.SAHAYAA_DEV_DOMAIN ? `https://${process.env.SAHAYAA_DEV_DOMAIN}` : 'https://your-support-ai-domain.com');
 
   // Customize the sample implementation with the provided configuration
   const customizedSampleHtml = sampleHtml
@@ -75,7 +75,7 @@ export async function generateAuthWidgetPackage(config: WidgetConfig, res: Respo
     .replace('__BRANDING__', config.branding.toString())
     .replace('__REPORT_DATA__', config.reportData.toString())
     .replace('__ADMIN_ID__', config.adminId.toString())
-    .replace('https://your-support-ai-server.com', process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://your-support-ai-domain.com');
+    .replace('https://your-support-ai-server.com', process.env.SAHAYAA_DEV_DOMAIN ? `https://${process.env.SAHAYAA_DEV_DOMAIN}` : 'https://your-support-ai-domain.com');
 
   // Create comprehensive integration guide
   const integrationGuideContent = generateIntegrationGuide(config);

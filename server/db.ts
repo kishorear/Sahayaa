@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from '@shared/schema';
 
 // Determine if we're in a production environment
-const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
+const isProduction = process.env.NODE_ENV === 'production' || process.env.SAHAYAA_ENVIRONMENT === 'production';
 
 console.log("Database connection setup - Environment:", isProduction ? "Production" : "Development");
 console.log("Database URL available:", !!process.env.DATABASE_URL);

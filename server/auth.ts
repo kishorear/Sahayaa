@@ -193,8 +193,8 @@ const scryptAsync = promisify(scrypt);
 export async function hashPassword(password: string) {
   // Use a fixed salt in production for consistent hashing
   // This is not ideal for security but helps with debugging
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-  
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.SAHAYAA_ENVIRONMENT === 'production';
+
   const salt = isProduction 
     ? "97a66c9a73dcdd3710d82daa6967a53b" // Fixed salt for production
     : randomBytes(16).toString("hex");    // Random salt for development
@@ -236,15 +236,15 @@ export async function comparePasswords(supplied: string, stored: string) {
 
 export async function setupAuth(app: Express) {
   // Determine if we're in a production environment
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-  
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.SAHAYAA_ENVIRONMENT === 'production';
+
   console.log(`Auth setup - Environment: ${isProduction ? 'Production' : 'Development'}`);
   console.log(`Using PostgreSQL session store: ${storage.sessionStore ? 'Yes' : 'No'}`);
   
-  // For Replit deployments, create a basic cookie configuration
-  const cookieConfig: session.CookieOptions = { 
+  // Cookie configuration for Sahayaa deployments
+  const cookieConfig: session.CookieOptions = {
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    secure: false, // Setting secure: false works better with Replit deployments
+    secure: false, // Set to true in production when served over HTTPS
     sameSite: "lax", 
     httpOnly: true,
     path: '/'

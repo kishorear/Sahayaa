@@ -3,15 +3,15 @@ import { Resend } from 'resend';
 let connectionSettings: any;
 
 async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+  const hostname = process.env.SAHAYAA_CONNECTORS_HOSTNAME;
+  const xSahayaaToken = process.env.SAHAYAA_APP_TOKEN
+    ? 'app ' + process.env.SAHAYAA_APP_TOKEN
+    : process.env.SAHAYAA_DEPLOYMENT_TOKEN
+    ? 'depl ' + process.env.SAHAYAA_DEPLOYMENT_TOKEN
     : null;
 
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+  if (!xSahayaaToken) {
+    throw new Error('SAHAYAA_APP_TOKEN not found — set SAHAYAA_APP_TOKEN or SAHAYAA_DEPLOYMENT_TOKEN in your environment');
   }
 
   connectionSettings = await fetch(
@@ -19,7 +19,7 @@ async function getCredentials() {
     {
       headers: {
         'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
+        'X_SAHAYAA_TOKEN': xSahayaaToken
       }
     }
   ).then(res => res.json()).then(data => data.items?.[0]);

@@ -1,7 +1,7 @@
 [project]
-name = "repl-nix-workspace"
+name = "sahayaa"
 version = "0.1.0"
-description = "Add your description here"
+description = "Sahayaa AI - AI-powered multi-tenant support ticket management system"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.16.1",

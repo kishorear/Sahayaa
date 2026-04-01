@@ -1,0 +1,32 @@
+{"timestamp": "2025-07-13T00:19:43.995285", "level": "INFO", "logger": "__main__", "message": "Agent service starting", "service": "agent_orchestrator", "data_service_url": "http://localhost:8000", "qdrant_url": "http://localhost:6333", "agent_service_port": 8001}
+/home/runner/workspace/agents.py:131: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [2474]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-07-13T00:19:44.287364", "level": "INFO", "logger": "services.qdrant_ingestion_service", "message": "Connecting to local Qdrant at http://localhost:6333", "service": "qdrant_ingestion"}
+{"timestamp": "2025-07-13T00:19:44.339217", "level": "ERROR", "logger": "services.qdrant_ingestion_service", "message": "Failed to ensure collection: [Errno 99] Cannot assign requested address", "service": "qdrant_ingestion"}
+ERROR:services.qdrant_ingestion_service:Failed to ensure collection: [Errno 99] Cannot assign requested address
+{"timestamp": "2025-07-13T00:19:44.339529", "level": "WARNING", "logger": "__main__", "message": "Qdrant service unavailable: [Errno 99] Cannot assign requested address", "service": "agent_orchestrator"}
+WARNING:__main__:Qdrant service unavailable: [Errno 99] Cannot assign requested address
+{"timestamp": "2025-07-13T00:19:44.357152", "level": "INFO", "logger": "__main__", "message": "Agent orchestrator initialized successfully", "service": "agent_orchestrator"}
+INFO:__main__:Agent orchestrator initialized successfully
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+Starting Agent Workflow API on port 8001
+Available endpoints:
+  POST http://localhost:8001/process - Main workflow endpoint
+  POST http://localhost:8001/classify - Ticket classification
+  POST http://localhost:8001/auto-resolve - Auto-resolve attempt
+  POST http://localhost:8001/chat-response - Chat response generation
+  GET  http://localhost:8001/health - Health check
+INFO:     127.0.0.1:56502 - "GET /health HTTP/1.1" 200 OK
+{"timestamp": "2025-07-13T00:19:45.501928", "level": "INFO", "logger": "__main__", "message": "Processing support request", "service": "agent_orchestrator", "request_id": "req_1752365985501", "message_preview": "I cannot access my dashboard, getting error 500 wh", "tenant_id": 1, "user_id": "15", "team_id": null}
+INFO:__main__:Processing support request
+{"timestamp": "2025-07-13T00:19:45.502341", "level": "WARNING", "logger": "__main__", "message": "Failed to check collection size: name 'ingestion_service' is not defined", "service": "agent_orchestrator"}
+WARNING:__main__:Failed to check collection size: name 'ingestion_service' is not defined
+WARNING:services.agent_orchestrator:Qdrant service not available - skipping instruction search

@@ -682,8 +682,8 @@
     if (window.location.hostname.includes('sahayaa.ai')) {
       return 'https://www.sahayaa.ai';
     }
-    // For development, use current host
-    if (window.location.hostname === 'localhost' || window.location.hostname.includes('replit')) {
+    // For development/staging, use current host
+    if (window.location.hostname === 'localhost' || window.location.hostname.includes('staging.sahayaa')) {
       return 'https://' + window.location.host;
     }
     // Default to production

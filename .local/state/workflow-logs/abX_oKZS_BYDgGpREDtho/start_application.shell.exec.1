@@ -1,0 +1,85 @@
+
+> rest-express@1.0.0 dev
+> tsx server/index.ts
+
+[1G[0KDatabase connection setup - Environment: Production
+Database URL available: [33mtrue[39m
+Database connection config: {
+  connectionString: [32m'[REDACTED]'[39m,
+  ssl: [32m'Enabled with rejectUnauthorized=false'[39m,
+  connectionTimeoutMillis: [33m10000[39m,
+  idleTimeoutMillis: [33m60000[39m,
+  max: [33m15[39m,
+  statement_timeout: [33m20000[39m,
+  keepalive: [33mtrue[39m,
+  max_retries: [33m10[39m
+}
+Attempting to initialize database storage...
+Memory session store initialized as fallback. Reason: Initialization
+Setting up PostgreSQL session store - Environment: Production
+PostgreSQL session store initialized successfully
+Storage initialized successfully
+Legacy OpenAI service initialized - consider migrating to tenant-specific AI providers
+TicketLookupAgent: Initialized for MCP FastAPI service
+InstructionLookupAgent: Google AI initialized for ChromaDB embeddings
+TicketLookupAgent: Initialized for MCP FastAPI service
+TicketFormatterAgent: Google AI initialized for template processing
+SupportTeamOrchestrator: Google AI initialized for solution generation
+InstructionLookupAgent: Google AI initialized for ChromaDB embeddings
+TicketLookupAgent: Initialized for MCP FastAPI service
+TicketFormatterAgent: Google AI initialized for template processing
+SupportTeamOrchestrator: All sub-agents initialized
+Strict tenant-scoped AI providers enforced - no environment fallbacks
+Google OAuth for trial registration configured with callback: https://c0d90ae3-bfb9-46e9-912b-1c33b6de6bec-00-27n464p951uxi.kirk.replit.dev/api/trial/auth/google/callback
+MCP Database Connector: Initialized 0 active connections
+10:06:51 PM [express] Cache service initialized
+10:06:51 PM [express] Parallel processing service initialized
+10:06:51 PM [express] Circuit breaker system initialized
+10:06:51 PM [express] Resilience service initialized
+10:06:51 PM [express] Environment validation successful: 3/2 configured
+10:06:51 PM [express] Environment validation warnings: Optional environment variable GOOGLE_AI_API_KEY is not set. Google AI API key, Optional environment variable ANTHROPIC_API_KEY is not set. Anthropic API key, Optional environment variable DATA_SERVICE_URL is not set. Data service URL (defaults to http://localhost:8000), Optional environment variable AGENT_SERVICE_URL is not set. Agent service URL (defaults to http://localhost:8001), Optional environment variable VECTOR_STORAGE_PATH is not set. Vector storage directory path, Optional environment variable MAX_VECTOR_COUNT_BEFORE_SHARD is not set. Maximum vector count before sharding, Optional environment variable QDRANT_TIMEOUT_MS is not set. Qdrant timeout in milliseconds, Optional environment variable VECTOR_DIMENSION is not set. Vector dimension size, Optional environment variable LOG_LEVEL is not set. Logging level, Optional environment variable LOG_FORMAT is not set. Log format (json or text), Optional environment variable CORS_ORIGINS is not set. Allowed CORS origins, Optional environment variable RATE_LIMIT_WINDOW_MS is not set. Rate limit window in milliseconds, Optional environment variable RATE_LIMIT_MAX_REQUESTS is not set. Maximum requests per rate limit window
+Serving static files from: /home/runner/workspace/uploads
+Serving debug tools from: /home/runner/workspace/client
+Attempting to load email configuration from database...
+[DEBUG] getTenantById(1): Executing database query
+Database connection successful! { now: [35m2026-03-17T22:06:51.724Z[39m }
+[DEBUG] getTenantById(1): Tenant found: {
+  id: [33m1[39m,
+  name: [32m'Default Tenant'[39m,
+  industryType: [32m'none'[39m,
+  hasSettings: [33mtrue[39m,
+  settingsType: [32m'object'[39m,
+  settingsKeys: [],
+  hasBranding: [33mtrue[39m,
+  brandingType: [32m'object'[39m
+}
+No email configuration found in tenant settings
+Auth setup - Environment: Production
+Using PostgreSQL session store: Yes
+Session cookie configuration: {
+  maxAge: [33m86400000[39m,
+  secure: [33mfalse[39m,
+  sameSite: [32m'lax'[39m,
+  httpOnly: [33mtrue[39m,
+  path: [32m'/'[39m
+}
+Session store connection test successful
+Integration system initialized - tenant-specific configurations will be loaded from database
+Profile pictures uploads directory: /home/runner/workspace/uploads
+Initializing AI providers cache...
+Session store connection test successful
+Loaded 1 AI providers from database for tenant 1
+Loaded 1 AI providers from database for tenant 87
+Loaded 1 AI providers from database for tenant 69
+Loaded 1 AI providers from database for tenant 65
+Loaded 1 AI providers from database for tenant 2
+Loaded 1 AI providers from database for tenant 68
+Loaded 1 AI providers from database for tenant 38
+Loaded 1 AI providers from database for tenant 66
+Loaded 1 AI providers from database for tenant 70
+Loaded 1 AI providers from database for tenant 67
+Loaded 1 AI providers from database for tenant 37
+Loaded 1 AI providers from database for tenant 20
+Reloaded AI providers for 12 tenants
+AI providers cache initialized successfully
+10:06:53 PM [express] serving on port 5000

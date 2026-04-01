@@ -1,0 +1,7 @@
+INFO:     Started server process [2473]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51160 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51170 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51184 - "GET /tickets/search/?query=I+cannot+access+my+dashboard%2C+getting+error+500+when+trying+to+login&limit=5&tenant_id=1 HTTP/1.1" 200 OK

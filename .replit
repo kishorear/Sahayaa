@@ -8,7 +8,7 @@ packages = ["glibcLocales", "libxcrypt", "postgresql"]
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npm", "run", "start"]
+run = ["sh", "start-microservices.sh"]
 build = ["npm", "run", "build"]
 
 [workflows]
@@ -22,6 +22,10 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Start application"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Python services"
 
 [[workflows.workflow]]
 name = "Start application"
@@ -39,9 +43,39 @@ task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
+[[workflows.workflow]]
+name = "Start Python services"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install -r <(python -c \"import tomllib; data=tomllib.load(open('pyproject.toml','rb')); [print(d) for d in data['project']['dependencies']]\") --quiet 2>/dev/null || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python services/fastapi_data_service.py"
+waitForPort = 8000
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python agents.py"
+waitForPort = 8001
+
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
+[[ports]]
+localPort = 8001
+externalPort = 8001
 
 [agent]
 integrations = ["javascript_sendgrid:1.0.0", "resend:1.0.0"]

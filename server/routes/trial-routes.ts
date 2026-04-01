@@ -13,8 +13,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
-  const callbackURL = process.env.REPLIT_DOMAINS 
-    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/api/trial/auth/google/callback`
+  const callbackURL = process.env.SAHAYAA_DOMAINS
+    ? `https://${process.env.SAHAYAA_DOMAINS.split(',')[0]}/api/trial/auth/google/callback`
     : 'http://localhost:5000/api/trial/auth/google/callback';
   
   passport.use('google-trial', new GoogleStrategy({

@@ -68,7 +68,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { db, pool, testDbConnection, executeQuery } from "./db";
 
 // Determine if we're in a production environment
-const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
+const isProduction = process.env.NODE_ENV === 'production' || process.env.SAHAYAA_ENVIRONMENT === 'production';
 
 // Interface for all storage operations
 export interface IStorage {
